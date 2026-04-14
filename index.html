@@ -1,0 +1,1198 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>TileStorm — Block Puzzle</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&display=swap" rel="stylesheet" />
+  <style>
+    /* ── Design tokens ── */
+    :root {
+      --font: 'Plus Jakarta Sans', sans-serif;
+      --bg:         #0a0d1a;
+      --surface:    #111628;
+      --surface2:   #1a1f35;
+      --border:     rgba(255,255,255,0.08);
+      --text:       #e8eaf6;
+      --text-muted: #6b7299;
+      --primary:    #4f7cff;
+      --primary-glow: rgba(79,124,255,0.35);
+
+      /* tile palette — vibrant, distinct */
+      --tile-1: #ff4f6a;  /* rose */
+      --tile-2: #ff8c42;  /* orange */
+      --tile-3: #ffd23f;  /* yellow */
+      --tile-4: #3ddc84;  /* green */
+      --tile-5: #4f9eff;  /* blue */
+      --tile-6: #b66dff;  /* violet */
+      --tile-7: #ff6bb5;  /* pink */
+
+      --radius: 10px;
+      --radius-sm: 6px;
+      --transition: 160ms cubic-bezier(0.16,1,0.3,1);
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    html, body {
+      width: 100%; height: 100%;
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--font);
+      overflow: hidden;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+
+    /* ── Screens ── */
+    .screen {
+      position: fixed; inset: 0;
+      display: flex; align-items: center; justify-content: center;
+      flex-direction: column;
+      transition: opacity 0.3s ease, transform 0.3s ease;
+    }
+    .screen.hidden { opacity: 0; pointer-events: none; transform: scale(0.97); }
+
+    /* ── Title screen ── */
+    #screen-title {
+      background: radial-gradient(ellipse at 50% 30%, #1a1f45 0%, var(--bg) 70%);
+      gap: 24px;
+      text-align: center;
+    }
+    .title-logo {
+      display: flex; flex-direction: column; align-items: center; gap: 6px;
+    }
+    .title-logo svg { width: 56px; height: 56px; }
+    .title-name {
+      font-size: clamp(2.4rem, 6vw, 3.8rem);
+      font-weight: 800;
+      letter-spacing: -1px;
+      line-height: 1;
+      background: linear-gradient(135deg, #fff 30%, var(--primary) 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    .title-tagline {
+      font-size: 1rem;
+      color: var(--text-muted);
+      font-weight: 600;
+    }
+    .tile-preview {
+      display: flex; gap: 6px; margin: 8px 0;
+    }
+    .tile-preview-cell {
+      width: 22px; height: 22px; border-radius: 4px;
+    }
+    .btn-primary {
+      background: var(--primary);
+      color: #fff;
+      border: none;
+      padding: 14px 48px;
+      border-radius: 50px;
+      font-family: var(--font);
+      font-size: 1.05rem;
+      font-weight: 700;
+      cursor: pointer;
+      box-shadow: 0 0 32px var(--primary-glow);
+      transition: transform var(--transition), box-shadow var(--transition);
+    }
+    .btn-primary:hover { transform: scale(1.05); box-shadow: 0 0 48px var(--primary-glow); }
+    .btn-primary:active { transform: scale(0.97); }
+    .btn-secondary {
+      background: transparent;
+      color: var(--text-muted);
+      border: 1px solid var(--border);
+      padding: 10px 28px;
+      border-radius: 50px;
+      font-family: var(--font);
+      font-size: 0.9rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: color var(--transition), border-color var(--transition);
+    }
+    .btn-secondary:hover { color: var(--text); border-color: rgba(255,255,255,0.2); }
+    .high-score-display {
+      color: var(--text-muted); font-size: 0.85rem; font-weight: 600;
+    }
+    .high-score-display span { color: var(--primary); }
+
+    /* ── Game screen ── */
+    #screen-game {
+      background: var(--bg);
+      flex-direction: row;
+      align-items: flex-start;
+      justify-content: center;
+      gap: 20px;
+      padding: 20px;
+      overflow: hidden;
+    }
+
+    /* Sidebar */
+    .sidebar {
+      display: flex; flex-direction: column; gap: 14px;
+      width: 140px; flex-shrink: 0;
+      padding-top: 4px;
+    }
+    .sidebar-right { align-items: flex-end; }
+
+    .stat-box {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 12px 16px;
+      text-align: center;
+      width: 100%;
+    }
+    .stat-label {
+      font-size: 0.65rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 1.5px;
+      color: var(--text-muted);
+      margin-bottom: 4px;
+    }
+    .stat-value {
+      font-size: 1.5rem;
+      font-weight: 800;
+      font-variant-numeric: tabular-nums lining-nums;
+      color: var(--text);
+    }
+    .stat-value.accent { color: var(--primary); }
+
+    .combo-badge {
+      background: linear-gradient(135deg, #ff4f6a, #ff8c42);
+      border-radius: var(--radius);
+      padding: 10px 16px;
+      text-align: center;
+      font-size: 0.75rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      opacity: 0;
+      transform: scale(0.8);
+      transition: opacity 0.2s, transform 0.2s;
+      width: 100%;
+    }
+    .combo-badge.visible { opacity: 1; transform: scale(1); }
+    .combo-badge .combo-num { font-size: 1.8rem; font-weight: 800; display: block; }
+
+    .icon-btn {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      width: 36px; height: 36px;
+      display: flex; align-items: center; justify-content: center;
+      cursor: pointer; color: var(--text-muted);
+      transition: color var(--transition), border-color var(--transition);
+    }
+    .icon-btn:hover { color: var(--text); border-color: rgba(255,255,255,0.2); }
+
+    /* Progress bar for level */
+    .level-progress {
+      width: 100%;
+      background: var(--surface2);
+      border-radius: 99px;
+      height: 6px;
+      overflow: hidden;
+    }
+    .level-progress-fill {
+      height: 100%;
+      background: var(--primary);
+      border-radius: 99px;
+      transition: width 0.4s ease;
+    }
+
+    /* ── Grid ── */
+    #grid-wrap {
+      position: relative;
+      flex-shrink: 0;
+    }
+    #grid-canvas {
+      display: block;
+      border-radius: var(--radius);
+      cursor: default;
+    }
+
+    /* ── Piece tray ── */
+    #tray-wrap {
+      display: flex;
+      gap: 16px;
+      justify-content: center;
+      padding: 0 4px;
+    }
+    .tray-piece {
+      cursor: grab;
+      transition: transform 0.15s ease, opacity 0.2s;
+      transform-origin: center center;
+    }
+    .tray-piece:hover { transform: scale(1.08); }
+    .tray-piece.dragging { opacity: 0.3; cursor: grabbing; }
+    .tray-piece.used { opacity: 0.15; cursor: default; pointer-events: none; }
+
+    /* ── Game over screen ── */
+    #screen-gameover {
+      background: rgba(10,13,26,0.96);
+      gap: 20px;
+      text-align: center;
+    }
+    .go-title {
+      font-size: 2.8rem;
+      font-weight: 800;
+      color: #ff4f6a;
+    }
+    .go-score {
+      font-size: 1rem;
+      color: var(--text-muted);
+      font-weight: 600;
+    }
+    .go-score span {
+      color: var(--text);
+      font-size: 2.4rem;
+      font-weight: 800;
+      display: block;
+      font-variant-numeric: tabular-nums;
+    }
+    .go-best {
+      font-size: 0.85rem;
+      color: var(--primary);
+      font-weight: 700;
+    }
+    .go-btns { display: flex; gap: 12px; }
+
+    /* ── Floating score text ── */
+    .float-text {
+      position: absolute;
+      font-family: var(--font);
+      font-weight: 800;
+      font-size: 1.1rem;
+      color: #fff;
+      pointer-events: none;
+      animation: floatUp 0.9s ease forwards;
+      z-index: 20;
+      white-space: nowrap;
+      text-shadow: 0 2px 8px rgba(0,0,0,0.6);
+    }
+    @keyframes floatUp {
+      0%   { opacity: 1; transform: translateY(0) scale(1); }
+      60%  { opacity: 1; transform: translateY(-36px) scale(1.1); }
+      100% { opacity: 0; transform: translateY(-64px) scale(0.9); }
+    }
+
+    /* ── Particle canvas ── */
+    #particle-canvas {
+      position: fixed; inset: 0;
+      pointer-events: none;
+      z-index: 15;
+    }
+
+    /* ── Responsive layout ── */
+    .game-layout {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 16px;
+      width: 100%;
+      max-height: 100vh;
+    }
+    .game-top-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      width: 100%;
+      gap: 16px;
+    }
+    .game-bottom {
+      width: 100%;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 12px;
+    }
+
+    /* ── Ghost drag piece ── */
+    #drag-ghost {
+      position: fixed;
+      pointer-events: none;
+      z-index: 100;
+      display: none;
+      transform-origin: top left;
+    }
+  </style>
+</head>
+<body>
+
+<!-- Particle overlay -->
+<canvas id="particle-canvas"></canvas>
+
+<!-- Ghost piece for dragging -->
+<canvas id="drag-ghost"></canvas>
+
+<!-- ════════════════ TITLE SCREEN ════════════════ -->
+<div id="screen-title" class="screen">
+  <div class="title-logo">
+    <!-- Lightning bolt SVG logo -->
+    <svg viewBox="0 0 56 56" fill="none" aria-label="TileStorm logo">
+      <rect width="56" height="56" rx="14" fill="#4f7cff" opacity="0.15"/>
+      <polygon points="32,6 18,30 27,30 24,50 38,26 29,26" fill="#4f7cff"/>
+      <polygon points="32,6 18,30 27,30 24,50 38,26 29,26" fill="url(#lg)" opacity="0.9"/>
+      <defs>
+        <linearGradient id="lg" x1="18" y1="6" x2="38" y2="50" gradientUnits="userSpaceOnUse">
+          <stop offset="0%" stop-color="#fff"/>
+          <stop offset="100%" stop-color="#4f7cff"/>
+        </linearGradient>
+      </defs>
+    </svg>
+    <div class="title-name">TileStorm</div>
+    <div class="title-tagline">Block Puzzle</div>
+  </div>
+
+  <div class="tile-preview" id="title-tiles"></div>
+
+  <button class="btn-primary" id="btn-play">Play</button>
+  <div class="high-score-display" id="title-best">Best: <span id="title-best-val">0</span></div>
+</div>
+
+<!-- ════════════════ GAME SCREEN ════════════════ -->
+<div id="screen-game" class="screen hidden">
+  <div class="game-layout" id="game-layout">
+
+    <!-- Top bar: stats -->
+    <div class="game-top-bar" id="top-bar">
+      <div style="display:flex;gap:10px;align-items:flex-start;">
+        <div class="stat-box" style="min-width:90px;">
+          <div class="stat-label">Score</div>
+          <div class="stat-value" id="score-display">0</div>
+        </div>
+        <div class="stat-box" style="min-width:80px;">
+          <div class="stat-label">Best</div>
+          <div class="stat-value accent" id="best-display">0</div>
+        </div>
+      </div>
+      <div style="display:flex;gap:10px;align-items:flex-start;flex-direction:column;">
+        <div style="display:flex;gap:10px;">
+          <div class="stat-box" style="min-width:70px;">
+            <div class="stat-label">Level</div>
+            <div class="stat-value" id="level-display">1</div>
+          </div>
+          <div class="stat-box" style="min-width:80px;">
+            <div class="stat-label">Lines</div>
+            <div class="stat-value" id="lines-display">0</div>
+          </div>
+        </div>
+        <div class="combo-badge" id="combo-badge">
+          <span class="combo-num" id="combo-num">2</span>
+          COMBO!
+        </div>
+      </div>
+      <div style="display:flex;align-items:center;gap:8px;">
+        <button class="icon-btn" id="btn-sound" title="Toggle sound">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/>
+            <path d="M19.07 4.93a10 10 0 0 1 0 14.14"/>
+            <path d="M15.54 8.46a5 5 0 0 1 0 7.07"/>
+          </svg>
+        </button>
+        <button class="icon-btn" id="btn-menu" title="Main menu">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <line x1="3" y1="12" x2="21" y2="12"/>
+            <line x1="3" y1="6" x2="21" y2="6"/>
+            <line x1="3" y1="18" x2="21" y2="18"/>
+          </svg>
+        </button>
+      </div>
+    </div>
+
+    <!-- Grid canvas -->
+    <div id="grid-wrap">
+      <canvas id="grid-canvas"></canvas>
+    </div>
+
+    <!-- Piece tray -->
+    <div class="game-bottom">
+      <div id="tray-wrap"></div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ════════════════ GAME OVER SCREEN ════════════════ -->
+<div id="screen-gameover" class="screen hidden">
+  <div class="go-title">Game Over</div>
+  <div class="go-score">
+    Final Score
+    <span id="go-score-val">0</span>
+  </div>
+  <div class="go-best" id="go-best-msg"></div>
+  <div class="go-btns">
+    <button class="btn-primary" id="btn-restart">Play Again</button>
+    <button class="btn-secondary" id="btn-go-menu">Menu</button>
+  </div>
+</div>
+
+<script>
+// ═══════════════════════════════════════════════════════
+//  TILESTORM — complete game
+// ═══════════════════════════════════════════════════════
+
+// ── Constants ──────────────────────────────────────────
+const COLS = 10;
+const ROWS = 10;
+const TILE_COLORS = [
+  null,
+  '#ff4f6a','#ff8c42','#ffd23f','#3ddc84','#4f9eff','#b66dff','#ff6bb5'
+];
+const TILE_DARK = [
+  null,
+  '#c0243e','#c05f1a','#c09a10','#1ea857','#1a6ec0','#7a33d4','#c03d85'
+];
+
+// All pieces as [shape] arrays of [row,col] offsets
+const PIECES = [
+  // 1-cell
+  [[0,0]],
+  // 2-cell
+  [[0,0],[0,1]],
+  [[0,0],[1,0]],
+  // 3-cell line
+  [[0,0],[0,1],[0,2]],
+  [[0,0],[1,0],[2,0]],
+  // L shapes
+  [[0,0],[1,0],[1,1]],
+  [[0,0],[0,1],[1,0]],
+  [[0,0],[0,1],[1,1]],
+  [[1,0],[1,1],[0,1]],
+  // T shape
+  [[0,0],[0,1],[0,2],[1,1]],
+  [[0,0],[1,0],[2,0],[1,1]],
+  // S/Z
+  [[0,1],[0,2],[1,0],[1,1]],
+  [[0,0],[0,1],[1,1],[1,2]],
+  // 2x2 square
+  [[0,0],[0,1],[1,0],[1,1]],
+  // 4-cell line
+  [[0,0],[0,1],[0,2],[0,3]],
+  [[0,0],[1,0],[2,0],[3,0]],
+  // 3-cell L
+  [[0,0],[0,1],[0,2],[1,0]],
+  [[0,0],[1,0],[2,0],[2,1]],
+  [[0,0],[0,1],[0,2],[1,2]],
+  [[0,1],[1,1],[2,1],[2,0]],
+  // 2x3 block
+  [[0,0],[0,1],[1,0],[1,1],[2,0]],
+  [[0,0],[0,1],[1,0],[1,1],[0,2]],
+];
+
+// ── State ──────────────────────────────────────────────
+let grid = [];           // ROWS x COLS, 0=empty, 1-7=color
+let score = 0;
+let bestScore = 0;
+let level = 1;
+let linesCleared = 0;
+let combo = 0;
+let trayPieces = [];     // 3 pieces
+let trayUsed = [];       // which tray slots used this round
+let gameActive = false;
+let soundOn = true;
+
+// Drag state
+let dragging = false;
+let dragPieceIdx = -1;
+let dragShape = null;
+let dragColor = 0;
+let dragCanvasX = 0;
+let dragCanvasY = 0;
+let dragOffsetX = 0;  // cursor offset from piece top-left
+let dragOffsetY = 0;
+let hoverCell = null;  // {r,c} where piece top-left would land
+
+// Particles
+let particles = [];
+
+// ── Audio (procedural SFX only) ────────────────────────
+let audioCtx = null;
+
+function ensureAudio() {
+  if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  if (audioCtx.state === 'suspended') audioCtx.resume();
+}
+
+function playSFX(freq, duration, type = 'sine', volume = 0.18, delay = 0) {
+  if (!soundOn || !audioCtx) return;
+  const osc = audioCtx.createOscillator();
+  const gain = audioCtx.createGain();
+  osc.type = type;
+  osc.frequency.value = freq;
+  gain.gain.setValueAtTime(volume, audioCtx.currentTime + delay);
+  gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + delay + duration);
+  osc.connect(gain).connect(audioCtx.destination);
+  osc.start(audioCtx.currentTime + delay);
+  osc.stop(audioCtx.currentTime + delay + duration + 0.01);
+}
+
+function playPlace() {
+  playSFX(220, 0.06, 'square', 0.12);
+  playSFX(330, 0.08, 'sine', 0.1, 0.04);
+}
+
+function playClear(lines) {
+  const freqs = [440, 523, 659, 784];
+  for (let i = 0; i < Math.min(lines, 4); i++) {
+    playSFX(freqs[i], 0.18, 'sine', 0.15, i * 0.08);
+  }
+}
+
+function playCombo(n) {
+  playSFX(300 + n * 80, 0.25, 'sine', 0.2);
+  playSFX(400 + n * 100, 0.2, 'sine', 0.15, 0.12);
+}
+
+function playGameOver() {
+  playSFX(220, 0.4, 'sawtooth', 0.15);
+  playSFX(165, 0.5, 'sawtooth', 0.12, 0.3);
+  playSFX(110, 0.6, 'sawtooth', 0.1, 0.6);
+}
+
+// ── Canvas setup ───────────────────────────────────────
+const gridCanvas = document.getElementById('grid-canvas');
+const ctx = gridCanvas.getContext('2d');
+const ghostCanvas = document.getElementById('drag-ghost');
+const ghostCtx = ghostCanvas.getContext('2d');
+const particleCanvas = document.getElementById('particle-canvas');
+const particleCtx = particleCanvas.getContext('2d');
+
+let CELL = 44;  // pixels per cell, adjusted on resize
+
+function calcLayout() {
+  const vw = window.innerWidth;
+  const vh = window.innerHeight;
+
+  // Reserve space for top bar (~110px) and tray (~90px) and padding
+  const availH = vh - 230;
+  const availW = Math.min(vw - 40, 480);
+
+  CELL = Math.floor(Math.min(availH / ROWS, availW / COLS));
+  CELL = Math.max(28, Math.min(CELL, 52));
+
+  gridCanvas.width = COLS * CELL;
+  gridCanvas.height = ROWS * CELL;
+  particleCanvas.width = vw;
+  particleCanvas.height = vh;
+}
+
+// ── Grid helpers ───────────────────────────────────────
+function initGrid() {
+  grid = Array.from({length: ROWS}, () => new Array(COLS).fill(0));
+}
+
+function canPlace(shape, r, c) {
+  for (const [dr, dc] of shape) {
+    const nr = r + dr, nc = c + dc;
+    if (nr < 0 || nr >= ROWS || nc < 0 || nc >= COLS) return false;
+    if (grid[nr][nc] !== 0) return false;
+  }
+  return true;
+}
+
+function placeShape(shape, r, c, color) {
+  for (const [dr, dc] of shape) {
+    grid[r + dr][c + dc] = color;
+  }
+}
+
+function findCompletedLines() {
+  const completedRows = [];
+  const completedCols = [];
+  for (let r = 0; r < ROWS; r++) {
+    if (grid[r].every(v => v !== 0)) completedRows.push(r);
+  }
+  for (let c = 0; c < COLS; c++) {
+    if (grid.every(row => row[c] !== 0)) completedCols.push(c);
+  }
+  return { completedRows, completedCols };
+}
+
+function clearLines(completedRows, completedCols) {
+  const cleared = new Set();
+  for (const r of completedRows) {
+    for (let c = 0; c < COLS; c++) cleared.add(`${r},${c}`);
+    grid[r].fill(0);
+  }
+  for (const c of completedCols) {
+    for (let r = 0; r < ROWS; r++) {
+      cleared.add(`${r},${c}`);
+      grid[r][c] = 0;
+    }
+  }
+  return cleared;
+}
+
+// ── Score calculation ───────────────────────────────────
+function calcScore(cellsCleared, linesCount, comboMult) {
+  const base = cellsCleared * 10;
+  const lineBonus = linesCount * linesCount * 50;
+  return Math.round((base + lineBonus) * comboMult);
+}
+
+// ── Level system ───────────────────────────────────────
+function getLevel() {
+  return Math.floor(linesCleared / 10) + 1;
+}
+
+// ── Tray generation ────────────────────────────────────
+function randomPiece() {
+  return PIECES[Math.floor(Math.random() * PIECES.length)];
+}
+function randomColor() {
+  return Math.floor(Math.random() * 7) + 1;
+}
+
+function generateTray() {
+  trayPieces = [
+    { shape: randomPiece(), color: randomColor() },
+    { shape: randomPiece(), color: randomColor() },
+    { shape: randomPiece(), color: randomColor() },
+  ];
+  trayUsed = [false, false, false];
+  renderTray();
+}
+
+function checkAllUsed() {
+  if (trayUsed.every(u => u)) generateTray();
+}
+
+// ── Game over check ─────────────────────────────────────
+function checkGameOver() {
+  // Game over if no tray piece can be placed anywhere
+  for (let i = 0; i < 3; i++) {
+    if (trayUsed[i]) continue;
+    const shape = trayPieces[i].shape;
+    for (let r = 0; r < ROWS; r++) {
+      for (let c = 0; c < COLS; c++) {
+        if (canPlace(shape, r, c)) return false;
+      }
+    }
+  }
+  return true;
+}
+
+// ── Rendering ──────────────────────────────────────────
+const PADDING = 2;  // gap between cells
+
+function drawCell(cx, cr, cc, color, alpha = 1, highlight = false) {
+  const x = cc * CELL + PADDING;
+  const y = cr * CELL + PADDING;
+  const w = CELL - PADDING * 2;
+  const h = CELL - PADDING * 2;
+  ctx.save();
+  ctx.globalAlpha = alpha;
+
+  // Shadow
+  ctx.shadowColor = color;
+  ctx.shadowBlur = highlight ? 16 : 0;
+
+  // Main tile
+  ctx.fillStyle = color;
+  ctx.beginPath();
+  ctx.roundRect(x, y, w, h, 5);
+  ctx.fill();
+
+  // Shine highlight
+  ctx.shadowBlur = 0;
+  const grad = ctx.createLinearGradient(x, y, x, y + h * 0.55);
+  grad.addColorStop(0, 'rgba(255,255,255,0.28)');
+  grad.addColorStop(1, 'rgba(255,255,255,0)');
+  ctx.fillStyle = grad;
+  ctx.beginPath();
+  ctx.roundRect(x + 2, y + 2, w - 4, h * 0.5, 4);
+  ctx.fill();
+
+  ctx.restore();
+}
+
+function drawGrid() {
+  ctx.clearRect(0, 0, gridCanvas.width, gridCanvas.height);
+
+  // Background
+  ctx.fillStyle = '#0f1220';
+  ctx.beginPath();
+  ctx.roundRect(0, 0, gridCanvas.width, gridCanvas.height, 10);
+  ctx.fill();
+
+  // Grid lines
+  ctx.strokeStyle = 'rgba(255,255,255,0.04)';
+  ctx.lineWidth = 1;
+  for (let r = 0; r <= ROWS; r++) {
+    ctx.beginPath();
+    ctx.moveTo(0, r * CELL);
+    ctx.lineTo(gridCanvas.width, r * CELL);
+    ctx.stroke();
+  }
+  for (let c = 0; c <= COLS; c++) {
+    ctx.beginPath();
+    ctx.moveTo(c * CELL, 0);
+    ctx.lineTo(c * CELL, gridCanvas.height);
+    ctx.stroke();
+  }
+
+  // Placed tiles
+  for (let r = 0; r < ROWS; r++) {
+    for (let c = 0; c < COLS; c++) {
+      if (grid[r][c] !== 0) {
+        drawCell(ctx, r, c, TILE_COLORS[grid[r][c]]);
+      }
+    }
+  }
+
+  // Ghost preview (hover placement)
+  if (dragging && dragShape && hoverCell) {
+    const { r, c } = hoverCell;
+    const canDrop = canPlace(dragShape, r, c);
+    const previewColor = canDrop
+      ? TILE_COLORS[dragColor]
+      : '#ff4f6a';
+
+    for (const [dr, dc] of dragShape) {
+      const pr = r + dr, pc = c + dc;
+      if (pr >= 0 && pr < ROWS && pc >= 0 && pc < COLS) {
+        drawCell(ctx, pr, pc, previewColor, canDrop ? 0.45 : 0.2, canDrop);
+      }
+    }
+  }
+}
+
+// ── Tray rendering ─────────────────────────────────────
+const TRAY_CELL = 26;
+
+function renderTray() {
+  const trayWrap = document.getElementById('tray-wrap');
+  trayWrap.innerHTML = '';
+
+  trayPieces.forEach((piece, idx) => {
+    const shape = piece.shape;
+    const color = piece.color;
+
+    // Bounding box
+    const maxR = Math.max(...shape.map(([r]) => r));
+    const maxC = Math.max(...shape.map(([, c]) => c));
+    const canvasW = (maxC + 1) * TRAY_CELL + 4;
+    const canvasH = (maxR + 1) * TRAY_CELL + 4;
+
+    const pieceCanvas = document.createElement('canvas');
+    pieceCanvas.width = canvasW;
+    pieceCanvas.height = canvasH;
+    const pc = pieceCanvas.getContext('2d');
+
+    for (const [dr, dc] of shape) {
+      const px = dc * TRAY_CELL + 2;
+      const py = dr * TRAY_CELL + 2;
+      const sz = TRAY_CELL - 3;
+
+      pc.fillStyle = TILE_COLORS[color];
+      pc.beginPath();
+      pc.roundRect(px, py, sz, sz, 4);
+      pc.fill();
+
+      const grad = pc.createLinearGradient(px, py, px, py + sz * 0.5);
+      grad.addColorStop(0, 'rgba(255,255,255,0.25)');
+      grad.addColorStop(1, 'rgba(255,255,255,0)');
+      pc.fillStyle = grad;
+      pc.beginPath();
+      pc.roundRect(px + 1, py + 1, sz - 2, sz * 0.45, 3);
+      pc.fill();
+    }
+
+    const wrapper = document.createElement('div');
+    wrapper.className = 'tray-piece' + (trayUsed[idx] ? ' used' : '');
+    wrapper.dataset.idx = idx;
+    wrapper.appendChild(pieceCanvas);
+
+    // Drag events (mouse)
+    wrapper.addEventListener('mousedown', (e) => startDrag(e, idx, pieceCanvas));
+    wrapper.addEventListener('touchstart', (e) => startDragTouch(e, idx, pieceCanvas), {passive: false});
+
+    trayWrap.appendChild(wrapper);
+  });
+}
+
+// ── Drag & Drop ────────────────────────────────────────
+function getPieceMinRC(shape) {
+  const minR = Math.min(...shape.map(([r]) => r));
+  const minC = Math.min(...shape.map(([, c]) => c));
+  return { minR, minC };
+}
+
+function startDrag(e, idx, srcCanvas) {
+  if (trayUsed[idx]) return;
+  e.preventDefault();
+  ensureAudio();
+  beginDrag(e.clientX, e.clientY, idx, srcCanvas);
+}
+
+function startDragTouch(e, idx, srcCanvas) {
+  if (trayUsed[idx]) return;
+  e.preventDefault();
+  const t = e.touches[0];
+  ensureAudio();
+  beginDrag(t.clientX, t.clientY, idx, srcCanvas);
+}
+
+function beginDrag(clientX, clientY, idx, srcCanvas) {
+  dragging = true;
+  dragPieceIdx = idx;
+  dragShape = trayPieces[idx].shape;
+  dragColor = trayPieces[idx].color;
+
+  // Ghost canvas size
+  const maxR = Math.max(...dragShape.map(([r]) => r));
+  const maxC = Math.max(...dragShape.map(([, c]) => c));
+  ghostCanvas.width = (maxC + 1) * CELL + 4;
+  ghostCanvas.height = (maxR + 1) * CELL + 4;
+  ghostCanvas.style.display = 'block';
+
+  // Draw ghost
+  ghostCtx.clearRect(0, 0, ghostCanvas.width, ghostCanvas.height);
+  for (const [dr, dc] of dragShape) {
+    const gx = dc * CELL + 2;
+    const gy = dr * CELL + 2;
+    const gsz = CELL - 4;
+    ghostCtx.fillStyle = TILE_COLORS[dragColor];
+    ghostCtx.globalAlpha = 0.85;
+    ghostCtx.beginPath();
+    ghostCtx.roundRect(gx, gy, gsz, gsz, 6);
+    ghostCtx.fill();
+    const grad = ghostCtx.createLinearGradient(gx, gy, gx, gy + gsz * 0.5);
+    grad.addColorStop(0, 'rgba(255,255,255,0.3)');
+    grad.addColorStop(1, 'rgba(255,255,255,0)');
+    ghostCtx.fillStyle = grad;
+    ghostCtx.beginPath();
+    ghostCtx.roundRect(gx + 1, gy + 1, gsz - 2, gsz * 0.45, 4);
+    ghostCtx.fill();
+    ghostCtx.globalAlpha = 1;
+  }
+
+  // Offset: center ghost on cursor, biased to top
+  dragOffsetX = ghostCanvas.width / 2;
+  dragOffsetY = ghostCanvas.height + 20;
+
+  positionGhost(clientX, clientY);
+
+  const trayEl = document.querySelector(`.tray-piece[data-idx="${idx}"]`);
+  if (trayEl) trayEl.classList.add('dragging');
+
+  document.addEventListener('mousemove', onDragMove);
+  document.addEventListener('mouseup', onDragEnd);
+  document.addEventListener('touchmove', onDragMoveTouch, {passive: false});
+  document.addEventListener('touchend', onDragEndTouch);
+}
+
+function positionGhost(clientX, clientY) {
+  ghostCanvas.style.left = (clientX - dragOffsetX) + 'px';
+  ghostCanvas.style.top  = (clientY - dragOffsetY) + 'px';
+
+  // Compute hover cell
+  const rect = gridCanvas.getBoundingClientRect();
+  const gx = clientX - rect.left - dragOffsetX;
+  const gy = clientY - rect.top  - dragOffsetY;
+  const c = Math.round(gx / CELL);
+  const r = Math.round(gy / CELL);
+  hoverCell = { r, c };
+  drawGrid();
+}
+
+function onDragMove(e) { positionGhost(e.clientX, e.clientY); }
+function onDragMoveTouch(e) {
+  e.preventDefault();
+  positionGhost(e.touches[0].clientX, e.touches[0].clientY);
+}
+
+function onDragEnd(e) { endDrag(e.clientX, e.clientY); }
+function onDragEndTouch(e) {
+  const t = e.changedTouches[0];
+  endDrag(t.clientX, t.clientY);
+}
+
+function endDrag(clientX, clientY) {
+  ghostCanvas.style.display = 'none';
+  document.removeEventListener('mousemove', onDragMove);
+  document.removeEventListener('mouseup', onDragEnd);
+  document.removeEventListener('touchmove', onDragMoveTouch);
+  document.removeEventListener('touchend', onDragEndTouch);
+
+  const trayEl = document.querySelector(`.tray-piece[data-idx="${dragPieceIdx}"]`);
+  if (trayEl) trayEl.classList.remove('dragging');
+
+  if (hoverCell && dragShape) {
+    const { r, c } = hoverCell;
+    if (canPlace(dragShape, r, c)) {
+      // Place!
+      placeShape(dragShape, r, c, dragColor);
+      trayUsed[dragPieceIdx] = true;
+
+      playPlace();
+      spawnPlaceParticles(dragShape, r, c, dragColor);
+
+      // Mark tray slot as used
+      const usedEl = document.querySelector(`.tray-piece[data-idx="${dragPieceIdx}"]`);
+      if (usedEl) usedEl.classList.add('used');
+
+      // Check cleared lines
+      const { completedRows, completedCols } = findCompletedLines();
+      const totalLines = completedRows.length + completedCols.length;
+
+      if (totalLines > 0) {
+        combo++;
+        const clearedCells = clearLines(completedRows, completedCols);
+        const pts = calcScore(clearedCells.size, totalLines, 1 + (combo - 1) * 0.5);
+        score += pts;
+        linesCleared += totalLines;
+        level = getLevel();
+
+        playClear(totalLines);
+        if (combo > 1) playCombo(combo);
+
+        showCombo(combo);
+        spawnClearParticles(completedRows, completedCols);
+        showFloatText('+' + pts.toLocaleString(), completedRows, completedCols);
+      } else {
+        combo = 0;
+        hideCombo();
+      }
+
+      if (score > bestScore) bestScore = score;
+      updateUI();
+      checkAllUsed();
+
+      // Check game over
+      if (checkGameOver()) {
+        setTimeout(triggerGameOver, 500);
+      }
+    }
+  }
+
+  dragging = false;
+  dragPieceIdx = -1;
+  dragShape = null;
+  hoverCell = null;
+  drawGrid();
+}
+
+// ── Floating score text ────────────────────────────────
+function showFloatText(text, rows, cols) {
+  const r = rows[0] !== undefined ? rows[0] : (cols[0] !== undefined ? 0 : 5);
+  const gridRect = gridCanvas.getBoundingClientRect();
+  const x = gridRect.left + (COLS / 2) * CELL;
+  const y = gridRect.top  + r * CELL;
+
+  const el = document.createElement('div');
+  el.className = 'float-text';
+  el.textContent = text;
+  el.style.left = x + 'px';
+  el.style.top  = y + 'px';
+  el.style.color = TILE_COLORS[dragColor] || '#fff';
+  document.body.appendChild(el);
+  setTimeout(() => el.remove(), 950);
+}
+
+// ── Combo badge ────────────────────────────────────────
+function showCombo(n) {
+  if (n < 2) return;
+  const badge = document.getElementById('combo-badge');
+  document.getElementById('combo-num').textContent = n;
+  badge.classList.add('visible');
+}
+function hideCombo() {
+  document.getElementById('combo-badge').classList.remove('visible');
+}
+
+// ── UI updates ─────────────────────────────────────────
+function updateUI() {
+  document.getElementById('score-display').textContent = score.toLocaleString();
+  document.getElementById('best-display').textContent = bestScore.toLocaleString();
+  document.getElementById('level-display').textContent = level;
+  document.getElementById('lines-display').textContent = linesCleared;
+}
+
+// ── Particles ──────────────────────────────────────────
+function spawnPlaceParticles(shape, r, c, color) {
+  const rect = gridCanvas.getBoundingClientRect();
+  for (const [dr, dc] of shape) {
+    const px = rect.left + (c + dc + 0.5) * CELL;
+    const py = rect.top  + (r + dr + 0.5) * CELL;
+    for (let i = 0; i < 3; i++) {
+      particles.push({
+        x: px, y: py,
+        vx: (Math.random() - 0.5) * 80,
+        vy: (Math.random() - 0.5) * 80,
+        life: 0.4 + Math.random() * 0.2,
+        maxLife: 0.6,
+        color: TILE_COLORS[color],
+        size: 4 + Math.random() * 3,
+      });
+    }
+  }
+}
+
+function spawnClearParticles(rows, cols) {
+  const rect = gridCanvas.getBoundingClientRect();
+  for (const r of rows) {
+    for (let c = 0; c < COLS; c += 2) {
+      const px = rect.left + (c + 0.5) * CELL;
+      const py = rect.top  + (r + 0.5) * CELL;
+      for (let i = 0; i < 5; i++) {
+        const angle = Math.random() * Math.PI * 2;
+        const speed = 80 + Math.random() * 160;
+        particles.push({
+          x: px, y: py,
+          vx: Math.cos(angle) * speed,
+          vy: Math.sin(angle) * speed,
+          life: 0.6 + Math.random() * 0.4,
+          maxLife: 1,
+          color: TILE_COLORS[Math.ceil(Math.random() * 7)],
+          size: 5 + Math.random() * 5,
+        });
+      }
+    }
+  }
+  for (const col of cols) {
+    for (let r = 0; r < ROWS; r += 2) {
+      const px = rect.left + (col + 0.5) * CELL;
+      const py = rect.top  + (r + 0.5) * CELL;
+      for (let i = 0; i < 5; i++) {
+        const angle = Math.random() * Math.PI * 2;
+        const speed = 80 + Math.random() * 160;
+        particles.push({
+          x: px, y: py,
+          vx: Math.cos(angle) * speed,
+          vy: Math.sin(angle) * speed,
+          life: 0.6 + Math.random() * 0.4,
+          maxLife: 1,
+          color: TILE_COLORS[Math.ceil(Math.random() * 7)],
+          size: 5 + Math.random() * 5,
+        });
+      }
+    }
+  }
+}
+
+// ── Particle loop ──────────────────────────────────────
+let lastParticleTime = 0;
+function animateParticles(timestamp) {
+  const dt = Math.min((timestamp - lastParticleTime) / 1000, 0.05);
+  lastParticleTime = timestamp;
+
+  particleCtx.clearRect(0, 0, particleCanvas.width, particleCanvas.height);
+
+  for (const p of particles) {
+    p.x += p.vx * dt;
+    p.y += p.vy * dt;
+    p.vy += 200 * dt; // gravity
+    p.life -= dt;
+    const alpha = Math.max(0, p.life / p.maxLife);
+    particleCtx.globalAlpha = alpha;
+    particleCtx.fillStyle = p.color;
+    const sz = p.size * alpha;
+    particleCtx.beginPath();
+    particleCtx.roundRect(p.x - sz/2, p.y - sz/2, sz, sz, sz * 0.3);
+    particleCtx.fill();
+  }
+  particleCtx.globalAlpha = 1;
+  particles = particles.filter(p => p.life > 0);
+  requestAnimationFrame(animateParticles);
+}
+
+// ── Screen management ──────────────────────────────────
+function showScreen(id) {
+  document.querySelectorAll('.screen').forEach(s => {
+    s.classList.toggle('hidden', s.id !== id);
+  });
+}
+
+// ── Game init ──────────────────────────────────────────
+function startGame() {
+  initGrid();
+  score = 0;
+  linesCleared = 0;
+  level = 1;
+  combo = 0;
+  particles = [];
+  gameActive = true;
+
+  calcLayout();
+  generateTray();
+  updateUI();
+  hideCombo();
+  drawGrid();
+
+  showScreen('screen-game');
+}
+
+// ── Game over ──────────────────────────────────────────
+function triggerGameOver() {
+  gameActive = false;
+  playGameOver();
+
+  document.getElementById('go-score-val').textContent = score.toLocaleString();
+  const isNewBest = score >= bestScore && score > 0;
+  document.getElementById('go-best-msg').textContent = isNewBest ? '🏆 New high score!' : `Best: ${bestScore.toLocaleString()}`;
+  document.getElementById('title-best-val').textContent = bestScore.toLocaleString();
+
+  showScreen('screen-gameover');
+}
+
+// ── Button wiring ──────────────────────────────────────
+document.getElementById('btn-play').addEventListener('click', () => {
+  ensureAudio();
+  startGame();
+});
+
+document.getElementById('btn-restart').addEventListener('click', () => {
+  ensureAudio();
+  startGame();
+});
+
+document.getElementById('btn-go-menu').addEventListener('click', () => {
+  showScreen('screen-title');
+});
+
+document.getElementById('btn-menu').addEventListener('click', () => {
+  showScreen('screen-title');
+});
+
+document.getElementById('btn-sound').addEventListener('click', () => {
+  soundOn = !soundOn;
+  const btn = document.getElementById('btn-sound');
+  btn.style.opacity = soundOn ? '1' : '0.4';
+});
+
+// ── Title tile preview ─────────────────────────────────
+function buildTitleTiles() {
+  const wrap = document.getElementById('title-tiles');
+  TILE_COLORS.slice(1).forEach(c => {
+    const div = document.createElement('div');
+    div.className = 'tile-preview-cell';
+    div.style.background = c;
+    wrap.appendChild(div);
+  });
+}
+
+// ── Resize ─────────────────────────────────────────────
+window.addEventListener('resize', () => {
+  calcLayout();
+  if (gameActive) drawGrid();
+  particleCanvas.width = window.innerWidth;
+  particleCanvas.height = window.innerHeight;
+});
+
+// ── Init ───────────────────────────────────────────────
+buildTitleTiles();
+calcLayout();
+requestAnimationFrame(animateParticles);
+
+// Start on title
+showScreen('screen-title');
+</script>
+</body>
+</html>
