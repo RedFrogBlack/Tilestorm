@@ -317,6 +317,7 @@
     .solo-diff-btn[data-diff="easy"].active   { border-color: var(--red);    background: rgba(204,18,18,0.15); }
     .solo-diff-btn[data-diff="medium"].active { border-color: #F5A623; background: rgba(245,166,35,0.12); }
     .solo-diff-btn[data-diff="hard"].active   { border-color: #7B3FBE; background: rgba(123,63,190,0.15); }
+    .solo-diff-btn[data-diff="expert"].active { border-color: #F5E000; background: rgba(245,224,0,0.12); }
     .solo-diff-icon { font-size: 1.4rem; }
     .solo-diff-name {
       font-family: var(--font-display);
@@ -368,6 +369,7 @@
       color: #fff; padding: 2px 5px; border-radius: 4px;
       font-family: var(--font-display); letter-spacing: 0.08em;
     }
+    .challenge-desc { font-size:11px; color:#666; line-height:1.4; margin-top:3px; }
     /* Solo start button */
     #btn-solo-start {
       width: 100%;
@@ -399,7 +401,10 @@
     #challenge-hud.active { opacity: 1; }
     #challenge-hud-icon { font-size: 1rem; }
     #challenge-hud-text { color: #fff; }
-    #challenge-hud-timer { color: #F5E000; margin-left: 4px; font-weight: 700; }
+    #challenge-hud-timer { color: #F5E000; margin-left: 4px; font-weight: 700; font-family: var(--font-mono); font-size: 1.2rem; }
+    #challenge-hud-timer.urgent { color: #CC1212 !important; animation: pulse 0.5s infinite; }
+    @keyframes pulse { 0%,100%{opacity:1}50%{opacity:0.4} }
+    .tray-cell.colour-match { box-shadow: 0 0 12px rgba(204,18,18,0.7); border-color: #CC1212 !important; }
     /* Survival fill bar */
     #survival-bar-wrap {
       position: absolute;
@@ -1210,6 +1215,7 @@
     }
     #diff-indicator.medium { background:rgba(245,166,35,0.2); color:#F5A623; border-color:rgba(245,166,35,0.35); }
     #diff-indicator.hard   { background:rgba(123,63,190,0.2); color:#c084fc; border-color:rgba(123,63,190,0.35); }
+    #diff-indicator.expert { background:rgba(245,224,0,0.2); color:#F5E000; border-color:rgba(245,224,0,0.35); }
 
     /* ════════════════════════════════════════════════
        TOAST / FLOAT TEXT / PARTICLES
@@ -1817,7 +1823,12 @@
     opacity: 0.7;
     vertical-align: middle;
     margin-left: 2px;
+    color: #F7C948 !important;
   }
+
+  .modal-overlay { position:fixed;inset:0;background:rgba(0,0,0,0.85);display:flex;align-items:center;justify-content:center;z-index:1000; }
+  .modal-overlay.hidden { display:none !important; }
+  .modal-card { background:#111;border:1.5px solid #222;border-radius:20px;padding:28px 24px;max-width:320px;width:90%;display:flex;flex-direction:column;align-items:center; }
 
   /* ── ADHD / FOCUS improvements ─────────────────────────────── */
   .focus-badge {
@@ -1903,16 +1914,9 @@
 <div id="screen-title" class="screen">
   <div class="title-art-bg"></div>
   <div class="title-zebra"></div>
-  <!-- Art colour strips top -->
+  <!-- Art colour strip top -->
   <div class="title-art-strips">
-    <span style="background:#CC1212"></span>
-    <span style="background:#F5A623"></span>
-    <span style="background:#F5E000"></span>
-    <span style="background:#7ED321"></span>
-    <span style="background:#1B5FDB"></span>
-    <span style="background:#7B3FBE"></span>
-    <span style="background:#E62298"></span>
-    <span style="background:#00C5CD"></span>
+    <div style="height:4px;background:linear-gradient(90deg,#CC1212,#8B0000);width:100%;"></div>
   </div>
   <div class="title-bottom-bar"></div>
 
@@ -1922,23 +1926,18 @@
     <div class="title-badge-circle">
       <img src="./rfba-logo.png" alt="RedFrogBlackArt" class="title-logo-img" />
       <div class="title-headline">CROAK<br>DOWN</div>
-      <div class="title-tagline">Unleash your playful side</div>
+      <div class="title-tagline">REDFROGBLACK</div>
     </div>
 
     <!-- Below circle: just two big paths + shop -->
     <div class="title-sub">
-      <div class="title-swatches" id="title-swatches"></div>
-      <div id="title-tier-badge" class="tier-badge-title">
+      <div id="title-tier-badge" class="tier-badge-title" style="display:none;">
         <div class="tb-dot" id="tier-badge-dot" style="background:#666"></div>
         <span id="tier-badge-name">TADPOLE EDITION</span>
       </div>
 
-      <!-- Streak -->
-      <div class="streak-row" id="streak-row">
-        <span class="streak-fire">🔥</span>
-        <span class="streak-val" id="streak-val">0</span>
-        <span class="streak-label">DAY STREAK</span>
-      </div>
+      <!-- Hidden streak val for JS compatibility -->
+      <span id="streak-val" style="display:none;">0</span>
 
       <!-- Trial / subscription banner -->
       <div id="trial-banner">
@@ -1952,14 +1951,15 @@
           <span style="font-size:1.5rem">🎮</span>
           <span>SOLO PLAY</span>
         </button>
-        <button id="btn-duo-mode" style="background:rgba(123,63,190,0.18);border:2px solid rgba(123,63,190,0.6);border-radius:14px;color:#c084fc;font-family:var(--font-display);font-size:1.15rem;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;padding:20px 28px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:12px;transition:all 0.18s;">
+        <button id="btn-duo-mode" style="background:transparent;border:2px solid #CC1212;border-radius:14px;color:#CC1212;font-family:var(--font-display);font-size:1.15rem;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;padding:20px 28px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:12px;transition:all 0.18s;">
           <span style="font-size:1.5rem">👫</span>
           <span>DUO PLAY</span>
         </button>
       </div>
+      <p style="font-size:11px;color:#555;text-align:center;letter-spacing:1px;">Tap to learn more</p>
 
-      <button id="btn-quick-start">▶ QUICK START (last settings)</button>
-      <div class="best-label">Best Score &nbsp;<span id="title-best-val">0</span></div>
+      <div style="font-size:11px;color:#555;letter-spacing:1px;">🏆 BEST &nbsp;<span id="title-best-val" style="font-family:var(--font-mono);color:#F7C948;">0</span> &nbsp;|&nbsp; 🔥 <span id="streak-val-home" style="font-family:var(--font-mono);color:#CC1212;">0</span>-day streak</div>
+      <button id="btn-settings-home" style="background:transparent;border:none;color:#555;font-size:13px;letter-spacing:2px;cursor:pointer;font-family:var(--font-display);margin-top:8px;">⚙ SETTINGS</button>
     </div>
   </div>
 </div>
@@ -1986,17 +1986,22 @@
         <button class="solo-diff-btn active" data-diff="easy">
           <div class="solo-diff-icon">🟢</div>
           <div class="solo-diff-name">Easy</div>
-          <div class="solo-diff-hint">Relaxed pace, standard rules</div>
+          <div class="solo-diff-hint">×1.0 · Simple pieces</div>
         </button>
         <button class="solo-diff-btn" data-diff="medium">
           <div class="solo-diff-icon">🟡</div>
           <div class="solo-diff-name">Medium <span class="tier-lock" id="lock-medium">🔒</span></div>
-          <div class="solo-diff-hint">Speed pieces + hazards</div>
+          <div class="solo-diff-hint">×1.3 · 3s speed pieces</div>
         </button>
         <button class="solo-diff-btn" data-diff="hard">
           <div class="solo-diff-icon">🟣</div>
           <div class="solo-diff-name">Hard <span class="tier-lock" id="lock-hard">🔒</span></div>
-          <div class="solo-diff-hint">Vanishing tiles + 1.8× score</div>
+          <div class="solo-diff-hint">×1.8 · Tiles vanish 12s</div>
+        </button>
+        <button class="solo-diff-btn" data-diff="expert">
+          <div class="solo-diff-icon">🔴</div>
+          <div class="solo-diff-name">Expert <span class="tier-lock" id="lock-expert">🔒</span></div>
+          <div class="solo-diff-hint">×2.5 · Frog Stamp</div>
         </button>
       </div>
     </div>
@@ -2006,25 +2011,33 @@
       <div class="setup-section-label">2 — Choose Challenge Mode</div>
       <div class="challenge-grid">
         <div class="challenge-card active" data-challenge="standard">
+          <div class="challenge-lock-badge" style="background:rgba(126,211,33,0.7);">FREE</div>
           <div class="challenge-icon">⭐</div>
           <div class="challenge-name">Standard</div>
           <div class="challenge-hint">Classic tile game, no time limit</div>
+          <div class="challenge-desc">Clear rows, no time pressure</div>
         </div>
         <div class="challenge-card" data-challenge="frenzy">
+          <div class="challenge-lock-badge">🔒 Tree Frog</div>
           <div class="challenge-icon">⚡</div>
           <div class="challenge-name">Frenzy <span class="tier-lock" id="lock-frenzy">🔒</span></div>
           <div class="challenge-hint">Clear 3 lines in 25s — keep pushing</div>
+          <div class="challenge-desc">Clear target lines before timer — fail = row ADDED</div>
           <div class="focus-badge">⚡ BEST FOR FOCUS</div>
         </div>
         <div class="challenge-card" data-challenge="survival">
+          <div class="challenge-lock-badge">🔒 Poison Dart</div>
           <div class="challenge-icon">🛡️</div>
           <div class="challenge-name">Survival <span class="tier-lock" id="lock-survival">🔒</span></div>
-          <div class="challenge-hint">Keep board under 60% for 60s</div>
+          <div class="challenge-hint">Keep board under 50% for 60s</div>
+          <div class="challenge-desc">Glitch Frog eats your tiles at 50% board fill</div>
         </div>
         <div class="challenge-card" data-challenge="colourrun">
+          <div class="challenge-lock-badge">🔒 Golden Frog</div>
           <div class="challenge-icon">🎨</div>
           <div class="challenge-name">Colour Run <span class="tier-lock" id="lock-colourrun">🔒</span></div>
           <div class="challenge-hint">Match 4 same-colour pieces in a row</div>
+          <div class="challenge-desc">Match 4 same-colour pieces in a row for +300</div>
         </div>
       </div>
     </div>
@@ -2167,6 +2180,33 @@
   </div>
 </div>
 
+<!-- ════════════ PAUSE OVERLAY ════════════ -->
+<div id="pause-overlay" class="modal-overlay hidden">
+  <div class="modal-card" style="width:min(300px,90vw);">
+    <div style="font-family:var(--font-mono);font-size:13px;letter-spacing:4px;color:#fff;margin-bottom:16px;">PAUSED</div>
+    <div id="pause-score-card" style="width:100%;background:#0e0e0e;border:1px solid #222;border-radius:10px;padding:12px;display:flex;justify-content:space-around;margin-bottom:16px;">
+      <div style="text-align:center;"><div style="font-size:9px;color:#555;letter-spacing:1px;">SCORE</div><div id="pause-score-val" style="font-family:var(--font-mono);font-size:18px;">0</div></div>
+      <div style="width:1px;background:#222;"></div>
+      <div style="text-align:center;"><div style="font-size:9px;color:#555;letter-spacing:1px;">LEVEL</div><div id="pause-level-val" style="font-family:var(--font-mono);font-size:18px;color:#CC1212;">1</div></div>
+      <div style="width:1px;background:#222;"></div>
+      <div style="text-align:center;"><div style="font-size:9px;color:#555;letter-spacing:1px;">BEST</div><div id="pause-best-val" style="font-family:var(--font-mono);font-size:18px;color:#F7C948;">0</div></div>
+    </div>
+    <button id="btn-pause-resume" style="width:100%;background:#CC1212;border:none;border-radius:10px;color:#fff;font-family:var(--font-display);font-size:1rem;letter-spacing:2px;padding:14px;cursor:pointer;margin-bottom:8px;">▶ RESUME</button>
+    <button id="btn-pause-profile" style="width:100%;background:#111;border:1.5px solid #1e1e1e;border-radius:10px;color:#fff;font-family:var(--font-display);font-size:0.9rem;padding:12px;cursor:pointer;margin-bottom:8px;text-align:left;padding-left:16px;">👤 My Profile</button>
+    <button id="btn-pause-upgrade" style="width:100%;background:#111;border:1.5px solid #1e1e1e;border-radius:10px;color:#fff;font-family:var(--font-display);font-size:0.9rem;padding:12px;cursor:pointer;margin-bottom:8px;text-align:left;padding-left:16px;">🐸 Upgrade Tier</button>
+    <button id="btn-pause-settings" style="width:100%;background:#111;border:1.5px solid #1e1e1e;border-radius:10px;color:#fff;font-family:var(--font-display);font-size:0.9rem;padding:12px;cursor:pointer;margin-bottom:8px;text-align:left;padding-left:16px;">⚙️ Settings</button>
+    <button id="btn-pause-exit" style="width:100%;background:transparent;border:1.5px solid #1e1e1e;border-radius:10px;color:#555;font-family:var(--font-display);font-size:0.9rem;padding:12px;cursor:pointer;text-align:left;padding-left:16px;">🏠 Exit to Home</button>
+  </div>
+</div>
+
+<!-- ════════════ LEVEL UP OVERLAY ════════════ -->
+<div id="levelup-overlay" class="screen hidden" style="position:fixed;inset:0;background:rgba(8,8,8,0.95);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;z-index:500;">
+  <div style="font-family:var(--font-mono);font-size:13px;letter-spacing:4px;color:#CC1212;">LEVEL UP</div>
+  <div id="levelup-number" style="font-family:var(--font-mono);font-size:72px;font-weight:900;color:#fff;line-height:1;">5</div>
+  <div id="levelup-changes" style="display:flex;flex-direction:column;gap:6px;width:min(280px,88vw);margin:12px 0;"></div>
+  <button id="btn-levelup-continue" style="background:#CC1212;border:none;border-radius:12px;color:#fff;font-family:var(--font-display);font-size:1rem;letter-spacing:3px;padding:14px 32px;cursor:pointer;">KEEP PLAYING</button>
+</div>
+
 <!-- ════════════ GAME OVER ════════════ -->
 <div id="screen-gameover" class="screen hidden">
   <!-- Red circle — mirrors title badge -->
@@ -2180,6 +2220,19 @@
   <div class="go-btns">
     <button class="btn-red" id="btn-restart">Play Again</button>
     <button class="btn-outline" id="btn-go-menu">Menu</button>
+  </div>
+</div>
+
+<!-- ════════════ DUO MODAL ════════════ -->
+<div id="duo-modal" class="modal-overlay hidden">
+  <div class="modal-card">
+    <div style="font-size:32px;margin-bottom:8px;">🎮</div>
+    <h2 style="font-family:var(--font-display);font-size:1.3rem;letter-spacing:2px;margin-bottom:8px;">DUO MODE</h2>
+    <p style="color:#aaa;font-size:14px;text-align:center;line-height:1.6;margin-bottom:8px;">Play with a friend anywhere in the world.<br>Create a room, share the code, and compete live.</p>
+    <p style="font-family:var(--font-mono);font-size:1.6rem;color:#CC1212;font-weight:700;margin-bottom:4px;">£5 / month</p>
+    <p style="color:#555;font-size:11px;margin-bottom:20px;letter-spacing:1px;">EACH PLAYER PAYS SEPARATELY</p>
+    <button id="duo-modal-play" style="width:100%;background:#CC1212;border:none;border-radius:12px;color:#fff;font-family:var(--font-display);font-size:1rem;letter-spacing:2px;padding:14px;cursor:pointer;margin-bottom:10px;">SUBSCRIBE & PLAY</button>
+    <button id="duo-modal-cancel" style="background:transparent;border:none;color:#555;font-size:13px;cursor:pointer;letter-spacing:1px;">MAYBE LATER</button>
   </div>
 </div>
 
@@ -2305,41 +2358,41 @@ const TIERS = [
   {
     id: 'tadpole', name: 'TADPOLE', emoji: '🥚', color: '#888888',
     price: null,
-    desc: '7-day free trial. After that, upgrade to keep playing.',
+    desc: 'Free trial. Easy mode + Standard challenge only.',
     perks: ['Full game access for 7 days','Classic RFBA tile colours','Standard grid','All 22 piece shapes'],
     gridTheme: { bg: '#111111', gridLine: 'rgba(255,255,255,0.035)', corner: 'rgba(204,18,18,0.45)' },
     tileStyle: 'classic', powerup: null, powerupCount: 0,
   },
   {
-    id: 'froglet', name: 'FROGLET', emoji: '🐟', color: '#00BFFF',
-    price: 2.99,
-    desc: 'Keep the game forever. Easy mode + Standard challenge unlocked.',
+    id: 'froglet', name: 'FROGLET', emoji: '🐟', color: '#7ED321',
+    price: 0.99,
+    desc: 'Keep the game forever. Easy mode + Standard challenge.',
     perks: ['Easy mode — play forever','Standard challenge','Aqua shimmer tile skin','Ocean grid theme','SPLASH power-up (clear fullest row)','3 power-ups per game'],
     gridTheme: { bg: '#050e1a', gridLine: 'rgba(0,191,255,0.07)', corner: 'rgba(0,191,255,0.35)' },
     tileStyle: 'aqua', powerup: { id:'splash', label:'SPLASH', icon:'💧', count:3 }, powerupCount: 3,
   },
   {
-    id: 'treefrog', name: 'TREE FROG', emoji: '🐸', color: '#7ED321',
-    price: 4.99,
-    desc: 'Medium difficulty + Frenzy & Survival challenges unlocked.',
-    perks: ['Everything in Froglet','Medium difficulty','Frenzy challenge','Survival challenge','Neon green tile skin','Jungle canopy grid','BOMB power-up (blast 3×3 area)','3 power-ups per game','Frog mascot on grid'],
+    id: 'treefrog', name: 'TREE FROG', emoji: '🐸', color: '#F5A623',
+    price: 2.99,
+    desc: 'Medium difficulty + Frenzy challenge unlocked.',
+    perks: ['Everything in Froglet','Medium difficulty','Frenzy challenge','Neon green tile skin','Jungle canopy grid','BOMB power-up (blast 3×3 area)','3 power-ups per game','Frog mascot on grid'],
     gridTheme: { bg: '#050f05', gridLine: 'rgba(126,211,33,0.07)', corner: 'rgba(126,211,33,0.4)' },
     tileStyle: 'neon', powerup: { id:'bomb', label:'BOMB', icon:'💣', count:3 }, powerupCount: 3,
   },
   {
-    id: 'poisondart', name: 'POISON DART', emoji: '🦎', color: '#F5A623',
-    price: 7.99,
-    desc: 'Hard mode + all challenge modes. Full game unlocked.',
-    perks: ['Everything in Tree Frog','Hard difficulty (1.8× score)','Colour Run challenge','All power-ups unlocked','Toxic gradient tiles','Volcanic grid','VENOM power-up (wipe one colour)','5 power-ups per game','×1.5 score multiplier'],
+    id: 'poisondart', name: 'POISON DART', emoji: '🦎', color: '#CC1212',
+    price: 4.99,
+    desc: 'Hard mode + Survival challenge unlocked.',
+    perks: ['Everything in Tree Frog','Hard difficulty (1.8× score)','Survival challenge','Toxic gradient tiles','Volcanic grid','VENOM power-up (wipe one colour)','5 power-ups per game'],
     gridTheme: { bg: '#100500', gridLine: 'rgba(245,166,35,0.07)', corner: 'rgba(245,166,35,0.4)' },
     tileStyle: 'toxic', powerup: { id:'venom', label:'VENOM', icon:'☠️', count:5 }, powerupCount: 5,
     bonusMultiplier: 1.5,
   },
   {
-    id: 'goldenfrog', name: 'GOLDEN FROG', emoji: '✨', color: '#FFD700',
+    id: 'goldenfrog', name: 'GOLDEN FROG', emoji: '✨', color: '#F5E000',
     price: 7.99,
-    desc: 'Rarest of all. Legendary status. Pure gold.',
-    perks: ['Gold holographic tiles','Galaxy grid with starfield','STORM power-up (force-clear 2 lines)','5 power-ups per game','×2 score multiplier','Golden frog mascot','Rainbow particles'],
+    desc: 'Expert mode + Colour Run. Everything unlocked.',
+    perks: ['Expert difficulty (2.5× score)','Colour Run challenge','Gold holographic tiles','Galaxy grid with starfield','STORM power-up (force-clear 2 lines)','5 power-ups per game','×2 score multiplier','Golden frog mascot'],
     gridTheme: { bg: '#06060c', gridLine: 'rgba(255,215,0,0.06)', corner: 'rgba(255,215,0,0.4)' },
     tileStyle: 'gold', powerup: { id:'storm', label:'STORM', icon:'⚡', count:5 }, powerupCount: 5,
     bonusMultiplier: 2.0, starfield: true,
@@ -2347,8 +2400,8 @@ const TIERS = [
   {
     id: 'duopack', name: 'DUO PACK', emoji: '🎮', color: '#c084fc',
     price: 5.00,
-    subscription: true, // monthly
-    desc: 'Play with a friend anywhere. £5/month per player — connects two players for real-time multiplayer.',
+    subscription: true,
+    desc: 'Play with a friend anywhere. £5/month per player.',
     perks: ['Live Duel mode — first to 10 rows wins','Hazard Wars — attack your opponent','Co-op — survive together on one board','Room codes to connect worldwide','All 3 multiplayer modes'],
     gridTheme: { bg: '#0e0518', gridLine: 'rgba(192,132,252,0.06)', corner: 'rgba(192,132,252,0.4)' },
     tileStyle: 'classic', powerup: null, powerupCount: 0,
@@ -2424,9 +2477,10 @@ function hasAccess(tierIdRequired) {
 // Tier-specific access helpers
 function canPlayMedium()    { return hasAccess('treefrog'); }
 function canPlayHard()      { return hasAccess('poisondart'); }
+function canPlayExpert()    { return hasAccess('goldenfrog'); }
 function canPlayFrenzy()    { return hasAccess('treefrog'); }
-function canPlaySurvival()  { return hasAccess('treefrog'); }
-function canPlayColourRun() { return hasAccess('poisondart'); }
+function canPlaySurvival()  { return hasAccess('poisondart'); }
+function canPlayColourRun() { return hasAccess('goldenfrog'); }
 
 // Show the upgrade modal when a locked feature is tapped
 function showUpgradeModal(reason) {
@@ -2606,9 +2660,10 @@ const PAD=2;
 function getTileColor(idx){
   const colors=getTileColors();
   if(idx>=1&&idx<colors.length) return colors[idx];
-  // Special brick fallback colours by index 8+
+  // Special brick / stamp colours by index 8+
+  if(idx === 8) return '#8B0000'; // Frog Stamp dark red
   const specialFallbacks=['#00C5CD','#E62298','#F5E000'];
-  return specialFallbacks[(idx-8)%specialFallbacks.length]||'#ffffff';
+  return specialFallbacks[(idx-9)%specialFallbacks.length]||'#ffffff';
 }
 
 function drawTile(r,c,color,alpha=1,glow=false,gold=false){
@@ -2853,9 +2908,9 @@ function endDrag(cx,cy){
       if(total>0){
         combo++;if(navigator.vibrate)navigator.vibrate(combo>1?[40,20,60]:60);const cleared=clearLines(lines);
         const pts=Math.round(calcScore(cleared.size,total,1+(combo-1)*0.5)*getDiff().scoreMultiplier);
-        score+=pts;linesCleared+=total;const prevLevel=level;level=Math.floor(linesCleared/10)+1;
+        score+=pts;linesCleared+=total;const prevLevel=level;level=calcLevel(linesCleared);
         if(score>bestScore)bestScore=score;
-        playClear(total);if(combo>1)playCombo(combo);if(level>prevLevel){playLevelUp();flashLevel();}
+        playClear(total);if(combo>1)playCombo(combo);if(level>prevLevel){playLevelUp();flashLevel();showLevelUp(level);}
         showCombo(combo);spawnClearParticles(lines.completedRows,lines.completedCols);
         showFloatText('+'+pts.toLocaleString(),lines.completedRows,lines.completedCols);
       }else{combo=0;hideCombo();}
@@ -2894,7 +2949,7 @@ function activatePowerup(){
     let bestRow=0,bestFill=0;
     for(let r=0;r<ROWS;r++){const fill=grid[r].filter(v=>v!==0).length;if(fill>bestFill){bestFill=fill;bestRow=r;}}
     if(bestFill>0){const cleared=new Set();for(let c=0;c<COLS;c++){cleared.add(`${bestRow},${c}`);grid[bestRow][c]=0;}
-    const pts=calcScore(cleared.size,1,1);score+=pts;linesCleared+=1;level=Math.floor(linesCleared/10)+1;if(score>bestScore)bestScore=score;
+    const pts=calcScore(cleared.size,1,1);score+=pts;linesCleared+=1;level=calcLevel(linesCleared);if(score>bestScore)bestScore=score;
     spawnClearParticles([bestRow],[]);showFloatText('💧+'+pts,[bestRow],[]);}
     powerupsLeft--;updateUI();updatePowerupUI();drawGrid();showToast('💧 SPLASH — Row cleared!');
   }else if(pu.id==='venom'){
@@ -2911,7 +2966,7 @@ function activatePowerup(){
     targets.forEach(r=>{for(let c=0;c<COLS;c++)if(grid[r][c]===0)grid[r][c]=randomColor();});
     const lines=findCompletedLines();const total=lines.completedRows.length+lines.completedCols.length;
     if(total>0){const cleared=clearLines(lines);const pts=calcScore(cleared.size,total,1);
-    score+=pts;linesCleared+=total;level=Math.floor(linesCleared/10)+1;if(score>bestScore)bestScore=score;
+    score+=pts;linesCleared+=total;level=calcLevel(linesCleared);if(score>bestScore)bestScore=score;
     spawnClearParticles(lines.completedRows,lines.completedCols);showFloatText('⚡+'+pts,lines.completedRows,[]);}
     powerupsLeft--;updateUI();updatePowerupUI();drawGrid();showToast('⚡ STORM — Lines cleared!');
   }else if(pu.id==='bomb'){
@@ -2935,6 +2990,41 @@ gridCanvas.addEventListener('mousemove',e=>{if(!powerupActive)return;const rect=
 
 // ── UI helpers ────────────────────────────────────────────────────
 function flashLevel(){const fl=document.getElementById('level-flash');fl.classList.add('show');setTimeout(()=>fl.classList.remove('show'),280);}
+function showLevelUp(newLevel) {
+  document.getElementById('levelup-number').textContent = newLevel;
+  const changes = document.getElementById('levelup-changes');
+  const items = [];
+  items.push('Score multiplier: ×' + getDiff().scoreMultiplier.toFixed(1));
+  if(newLevel % 5 === 0) items.push('Piece complexity increased');
+  if(newLevel % 5 === 0) items.push('Hazard frequency increased');
+  changes.innerHTML = items.map(t => '<div style="background:#1a1a1a;border:1px solid #222;border-radius:8px;padding:8px 12px;font-size:12px;color:#aaa;text-align:center;">'+t+'</div>').join('');
+  gameActive = false;
+  document.getElementById('levelup-overlay').classList.remove('hidden');
+}
+document.getElementById('btn-levelup-continue').addEventListener('click', () => {
+  document.getElementById('levelup-overlay').classList.add('hidden');
+  gameActive = true;
+});
+
+// Pause menu buttons
+document.getElementById('btn-pause-resume').addEventListener('click', closePause);
+document.getElementById('btn-pause-exit').addEventListener('click', () => {
+  document.getElementById('pause-overlay').classList.add('hidden');
+  stopChallengeMode();
+  showScreen('screen-title');
+});
+document.getElementById('btn-pause-upgrade').addEventListener('click', () => {
+  closePause();
+  openShop();
+});
+document.getElementById('btn-pause-settings').addEventListener('click', () => {
+  closePause();
+  openShop(); // no dedicated settings screen yet
+});
+document.getElementById('btn-pause-profile').addEventListener('click', () => {
+  closePause();
+  showScreen('screen-profile');
+});
 function showFloatText(text,rows,cols){
   const r=rows[0]??0;const rect=gridCanvas.getBoundingClientRect();
   const el=document.createElement('div');el.className='float-text';el.textContent=text;
@@ -2950,13 +3040,15 @@ function updateUI(){
   document.getElementById('level-display').textContent=level;
   document.getElementById('lines-display').textContent=linesCleared;
   // Update mid-zone level progress
-  const linesPerLevel=10;
-  const linesInLevel=linesCleared%linesPerLevel;
-  const pct=Math.round((linesInLevel/linesPerLevel)*100);
+  const nextTarget = linesForNextLevel(linesCleared);
+  const prevTarget = level > 1 ? LEVEL_THRESHOLDS[level-2] || 0 : 0;
+  const range = nextTarget ? nextTarget - prevTarget : 1;
+  const progressInLevel = nextTarget ? linesCleared - prevTarget : range;
+  const pct = nextTarget ? Math.min(100, Math.round((progressInLevel / range) * 100)) : 100;
   const fill=document.getElementById('mid-progress-fill');
   const lbl=document.getElementById('mid-lines-label');
   if(fill)fill.style.width=pct+'%';
-  if(lbl)lbl.textContent=linesInLevel+' / '+linesPerLevel+' LINES';
+  if(lbl)lbl.textContent = nextTarget ? 'LEVEL '+level+' → '+(level+1)+' · '+linesCleared+' / '+nextTarget+' LINES' : 'MAX LEVEL';
 }
 function showToast(msg){
   const t=document.getElementById('powerup-toast');t.textContent=msg;
@@ -2984,7 +3076,7 @@ function animateParticles(ts){
 }
 
 // ── Screens ───────────────────────────────────────────────────────
-function showScreen(id){document.querySelectorAll('.screen').forEach(s=>s.classList.toggle('hidden',s.id!==id));if(id==='screen-title'){updateTrialBanner();}}
+function showScreen(id){document.querySelectorAll('.screen').forEach(s=>s.classList.toggle('hidden',s.id!==id));if(id==='screen-title'){updateTrialBanner();}if(id==='screen-profile'){updateProfileScreen();}}
 
 function startGame(){
   clearVanishTimers();clearSpeedCountdown();stopChallenges();stopChallengeMode();
@@ -2996,12 +3088,13 @@ function startGame(){
   document.getElementById('bonus-popup').classList.remove('show');
   showScreen('screen-game');
   // Welcome banner based on difficulty
-  const msgs = { easy:'🟢 EASY MODE — GOOD LUCK!', medium:'🟡 MEDIUM — STAY SHARP!', hard:'🟣 HARD MODE — BRACE YOURSELF!' };
+  const msgs = { easy:'🟢 EASY MODE — GOOD LUCK!', medium:'🟡 MEDIUM — STAY SHARP!', hard:'🟣 HARD MODE — BRACE YOURSELF!', expert:'🔴 EXPERT — FROG STAMP AWAITS!' };
   setTimeout(()=>showEventBanner(msgs[currentDiff]||''), 500);
 }
 function triggerGameOver(){
   stopChallengeMode();
   gameActive=false;playGameOver();
+  recordGameEnd();
   document.getElementById('go-score-val').textContent=score.toLocaleString();
   const best=score>=bestScore&&score>0;
   document.getElementById('go-best-msg').textContent=best?'🏆 NEW HIGH SCORE!':'BEST: '+bestScore.toLocaleString();
@@ -3078,9 +3171,24 @@ const DIFF_SETTINGS = {
   easy:   { label:'EASY',   hazardChance:0,    hazardInterval:0,   bonusInterval:8,  pieceComplexity:0.35, scoreMultiplier:1.0 },
   medium: { label:'MEDIUM', hazardChance:0.18, hazardInterval:25,  bonusInterval:12, pieceComplexity:0.65, scoreMultiplier:1.3 },
   hard:   { label:'HARD',   hazardChance:0.32, hazardInterval:15,  bonusInterval:18, pieceComplexity:1.0,  scoreMultiplier:1.8 },
+  expert: { label:'EXPERT', hazardChance:0.45, hazardInterval:10,  bonusInterval:22, pieceComplexity:1.0,  scoreMultiplier:2.5 },
 };
 let currentDiff = 'easy';
 let piecesPlaced = 0; // count placements since last event
+
+// ── Level thresholds (milestone-based) ───────────────────────
+const LEVEL_THRESHOLDS = [0,50,150,300,500,750,1050,1400,1800,2250,2750,3300,3900,4600,5400,6300,7300,8400,9600,10900,12300,13800,15400,17100,18900,20800,22800,24900,27100,29400,31800,34300,36900,39600,42400,45300,48300,51400,54600,57900,61300,64800,68400,72100,75900,79800,83800,87900,92100,96400];
+function calcLevel(lines) {
+  for(let i = LEVEL_THRESHOLDS.length-1; i >= 0; i--) {
+    if(lines >= LEVEL_THRESHOLDS[i]) return i+1;
+  }
+  return 1;
+}
+function linesForNextLevel(lines) {
+  const lv = calcLevel(lines);
+  if(lv >= 50) return null;
+  return LEVEL_THRESHOLDS[lv];
+}
 
 function setDifficulty(d){
   currentDiff = d;
@@ -3292,6 +3400,8 @@ function loadStreak(){
     saveStreak();
   }
   document.getElementById('streak-val').textContent = dayStreak;
+  const svh = document.getElementById('streak-val-home');
+  if(svh) svh.textContent = dayStreak;
 }
 
 function saveStreak(){
@@ -3358,6 +3468,10 @@ function trySetDifficulty(d){
     showUpgradeModal('Hard difficulty (1.8× score) requires Poison Dart tier (£7.99).');
     return;
   }
+  if(d === 'expert' && !canPlayExpert()){
+    showUpgradeModal('Expert difficulty (2.5× score) requires Golden Frog tier.');
+    return;
+  }
   setDifficulty(d);
 }
 
@@ -3376,7 +3490,7 @@ function updateDiffIndicator(){
 const vanishTimers = new Map(); // key: 'r,c' -> timeout
 
 function scheduleVanishIfHard(shape, baseR, baseC) {
-  if (currentDiff !== 'hard') return;
+  if (currentDiff !== 'hard' && currentDiff !== 'expert') return;
   shape.forEach(([dr, dc]) => {
     const r = baseR + dr, c = baseC + dc;
     const key = r + ',' + c;
@@ -3408,15 +3522,15 @@ function clearVanishTimers() {
 //  Every ~15 (Med) or ~8 (Hard) pieces, a speed piece appears with a countdown.
 //  If not placed before it expires, a full row of tiles is removed.
 // ════════════════════════════════════════════════════════════════
-const SPEED_INTERVAL = { medium: 15, hard: 8 };
-const SPEED_DURATION = { medium: 6, hard: 4 };
+const SPEED_INTERVAL = { medium: 15, hard: 8, expert: 5 };
+const SPEED_DURATION = { medium: 3, hard: 2, expert: 2 };
 let speedPiecePending = false;
 let speedCountdownVal = 0;
 let speedCountdownInterval = null;
 let speedPieceSlot = -1;
 
 function maybeSpeedPiece() {
-  if (currentDiff !== 'medium' && currentDiff !== 'hard') return;
+  if (currentDiff !== 'medium' && currentDiff !== 'hard' && currentDiff !== 'expert') return;
   const interval = SPEED_INTERVAL[currentDiff];
   if (piecesPlaced % interval !== 0 || piecesPlaced === 0) return;
   if (speedPiecePending) return;
@@ -3450,16 +3564,8 @@ function maybeSpeedPiece() {
       scEl.classList.remove('show', 'urgent');
       if (speedPiecePending) {
         speedPiecePending = false;
-        // Penalty: eat the fullest row
-        let maxFill = 0, penaltyRow = 0;
-        for (let r = 0; r < ROWS; r++) {
-          const fill = grid[r].filter(v => v !== 0).length;
-          if (fill > maxFill) { maxFill = fill; penaltyRow = r; }
-        }
-        if (maxFill > 0) {
-          for (let c = 0; c < COLS; c++) grid[penaltyRow][c] = 0;
-          drawGrid();
-        }
+        // Penalty: Frog Stamp
+        frogStamp();
         // Clear speed marker
         if (speedPieceSlot >= 0) {
           delete trayPieces[speedPieceSlot].isSpeed;
@@ -3467,9 +3573,6 @@ function maybeSpeedPiece() {
           if (el) el.style.filter = '';
           speedPieceSlot = -1;
         }
-        showEventBanner('⏰ TOO SLOW! Row eaten!');
-        flashHazard();
-        if (checkGameOver()) setTimeout(triggerGameOver, 400);
       }
     }
   }, 1000);
@@ -3488,6 +3591,7 @@ function clearSpeedCountdown() {
 const CHALLENGE_DEFS = {
   medium: { rowsNeeded: 2, timeLimit: 30, reward: 'meteor', label: '⚡ CLEAR 2 ROWS' },
   hard:   { rowsNeeded: 3, timeLimit: 20, reward: 'morph',  label: '🔥 CLEAR 3 ROWS' },
+  expert: { rowsNeeded: 4, timeLimit: 15, reward: 'morph',  label: '🔥 CLEAR 4 ROWS' },
 };
 let challengeActive = false;
 let challengeRowsAtStart = 0;
@@ -3495,10 +3599,10 @@ let challengeTimer = null;
 let challengeSecsLeft = 0;
 let challengeInterval = null; // every ~30 pieces
 let challengePieceCounter = 0;
-const CHALLENGE_EVERY = { medium: 30, hard: 22 };
+const CHALLENGE_EVERY = { medium: 30, hard: 22, expert: 18 };
 
 function maybeStartChallenge() {
-  if (currentDiff !== 'medium' && currentDiff !== 'hard') return;
+  if (currentDiff !== 'medium' && currentDiff !== 'hard' && currentDiff !== 'expert') return;
   if (challengeActive) return;
   challengePieceCounter++;
   const every = CHALLENGE_EVERY[currentDiff];
@@ -3936,6 +4040,7 @@ function updateLockIcons() {
   };
   setLock('lock-medium',   !canPlayMedium());
   setLock('lock-hard',     !canPlayHard());
+  setLock('lock-expert',   !canPlayExpert());
   setLock('lock-frenzy',   !canPlayFrenzy());
   setLock('lock-survival', !canPlaySurvival());
   setLock('lock-colourrun',!canPlayColourRun());
@@ -3950,6 +4055,7 @@ function openSoloSetup() {
     if (b.dataset.diff === 'easy')   { b.style.borderColor = b.classList.contains('active') ? 'var(--red)' : ''; }
     if (b.dataset.diff === 'medium') { b.style.borderColor = b.classList.contains('active') ? '#F5A623' : ''; }
     if (b.dataset.diff === 'hard')   { b.style.borderColor = b.classList.contains('active') ? '#7B3FBE' : ''; }
+    if (b.dataset.diff === 'expert') { b.style.borderColor = b.classList.contains('active') ? '#F5E000' : ''; }
   });
 }
 
@@ -3965,13 +4071,17 @@ document.querySelectorAll('.solo-diff-btn').forEach(btn => {
       showUpgradeModal('Hard difficulty (1.8× score) requires Poison Dart tier.');
       return;
     }
+    if (d === 'expert' && !canPlayExpert()) {
+      showUpgradeModal('Expert difficulty (2.5× score) requires Golden Frog tier.');
+      return;
+    }
     setDifficulty(d);
     document.querySelectorAll('.solo-diff-btn').forEach(b => {
       b.classList.remove('active');
       b.style.borderColor = '';
     });
     btn.classList.add('active');
-    const colors = { easy: 'var(--red)', medium: '#F5A623', hard: '#7B3FBE' };
+    const colors = { easy: 'var(--red)', medium: '#F5A623', hard: '#7B3FBE', expert: '#F5E000' };
     btn.style.borderColor = colors[d] || '';
   });
 });
@@ -4026,6 +4136,8 @@ let cm_survivedSecs = 0;
 let cm_survivalTimer = null;
 let cm_colourStreak = 0;
 let cm_lastColor = null;
+let cm_colourPenaltyTimer = null;
+let cm_colourPenaltySecs = 30;
 
 function initChallengeMode() {
   // Clear any previous timers
@@ -4053,8 +4165,8 @@ function initChallengeMode() {
       updateFrenzyHUD(target, cm_secsLeft);
       if (cm_secsLeft <= 0) {
         if (clearedSoFar < target) {
-          eatRandomRows(1);
-          showEventBanner('⚡ FRENZY FAILED — ROW EATEN!');
+          addPenaltyRow();
+          showEventBanner('⚡ FRENZY FAILED — ROW ADDED!');
         } else {
           showEventBanner('⚡ FRENZY COMPLETE! +200 BONUS!');
           score += 200; updateUI();
@@ -4077,11 +4189,9 @@ function initChallengeMode() {
       const pct = filled / (ROWS * COLS);
       const bar = document.getElementById('survival-bar');
       bar.style.width = (pct * 100) + '%';
-      bar.style.background = pct > 0.6 ? '#CC1212' : pct > 0.45 ? '#F5A623' : '#7ED321';
-      if (pct >= 0.6) {
-        score = Math.max(0, score - 30);
-        showEventBanner('🛡️ BOARD TOO FULL! −30 PTS');
-        updateUI();
+      bar.style.background = pct > 0.5 ? '#CC1212' : pct > 0.35 ? '#F5A623' : '#7ED321';
+      if (pct >= 0.5) {
+        glitchFrogAttack();
       } else {
         cm_survivedSecs++;
         if (cm_survivedSecs % 15 === 0) {
@@ -4095,18 +4205,29 @@ function initChallengeMode() {
   }
 
   if (activeChallengeMode === 'colourrun') {
-    cm_colourStreak = 0; cm_lastColor = null;
+    cm_colourStreak = 0; cm_lastColor = null; cm_colourPenaltySecs = 30;
     hud.classList.add('active');
     document.getElementById('challenge-hud-icon').textContent = '🎨';
-    document.getElementById('challenge-hud-text').textContent = 'COLOUR RUN: 0/4';
-    document.getElementById('challenge-hud-timer').textContent = '';
+    updateColourRunHUD();
+    cm_colourPenaltyTimer = setInterval(() => {
+      if(!gameActive) return;
+      cm_colourPenaltySecs--;
+      updateColourRunHUD();
+      if(cm_colourPenaltySecs <= 0) {
+        addObstacleTiles(2);
+        showEventBanner('🎨 COLOUR RUN PENALTY — TILES ADDED!');
+        cm_colourPenaltySecs = 30;
+      }
+    }, 1000);
   }
 }
 
 function updateFrenzyHUD(target, secs) {
   const clearedSoFar = linesCleared - cm_linesAtStart;
   document.getElementById('challenge-hud-text').textContent = 'FRENZY: ' + clearedSoFar + '/' + target + ' LINES';
-  document.getElementById('challenge-hud-timer').textContent = secs + 's';
+  const timerEl = document.getElementById('challenge-hud-timer');
+  timerEl.textContent = secs + 's';
+  timerEl.classList.toggle('urgent', secs < 8);
 }
 
 function updateSurvivalHUD() {
@@ -4114,36 +4235,121 @@ function updateSurvivalHUD() {
   document.getElementById('challenge-hud-timer').textContent = '';
 }
 
+function updateColourRunHUD() {
+  const dots = Array.from({length:4}, (_,i) => i < cm_colourStreak ? '●' : '○').join(' ');
+  document.getElementById('challenge-hud-text').textContent = 'COLOUR RUN: ' + dots;
+  document.getElementById('challenge-hud-timer').textContent = 'PENALTY ' + cm_colourPenaltySecs + 's';
+  const timerEl = document.getElementById('challenge-hud-timer');
+  timerEl.classList.toggle('urgent', cm_colourPenaltySecs < 8);
+}
+
 function onColourRunPlace(color) {
   if (activeChallengeMode !== 'colourrun') return;
   if (color === cm_lastColor) {
     cm_colourStreak++;
-    document.getElementById('challenge-hud-text').textContent = 'COLOUR RUN: ' + cm_colourStreak + '/4';
     if (cm_colourStreak >= 4) {
       score += 300;
       showEventBanner('🎨 COLOUR RUN! +300!');
       updateUI();
       cm_colourStreak = 0;
+      cm_colourPenaltySecs = 30; // reset penalty timer on success
     }
   } else {
     cm_colourStreak = 1;
-    document.getElementById('challenge-hud-text').textContent = 'COLOUR RUN: 1/4';
   }
   cm_lastColor = color;
+  updateColourRunHUD();
 }
 
 function stopChallengeMode() {
   if (cm_timer) { clearInterval(cm_timer); cm_timer = null; }
   if (cm_survivalTimer) { clearInterval(cm_survivalTimer); cm_survivalTimer = null; }
+  if (cm_colourPenaltyTimer) { clearInterval(cm_colourPenaltyTimer); cm_colourPenaltyTimer = null; }
   document.getElementById('challenge-hud').classList.remove('active');
   document.getElementById('survival-bar-wrap').classList.remove('active');
   activeChallengeMode = 'standard';
 }
 
+// ── Pause menu ───────────────────────────────────────────────────
+function openPause() {
+  gameActive = false;
+  document.getElementById('pause-score-val').textContent = score.toLocaleString();
+  document.getElementById('pause-level-val').textContent = level;
+  document.getElementById('pause-best-val').textContent = bestScore.toLocaleString();
+  document.getElementById('pause-overlay').classList.remove('hidden');
+}
+function closePause() {
+  document.getElementById('pause-overlay').classList.add('hidden');
+  gameActive = true;
+}
+
+// ── Penalty / Glitch functions ────────────────────────────────────
+function addPenaltyRow() {
+  grid.shift();
+  const penaltyRow = Array(COLS).fill(0).map(() => Math.floor(Math.random()*6)+1);
+  grid.push(penaltyRow);
+  drawGrid();
+  if(checkGameOver()) setTimeout(triggerGameOver, 400);
+}
+
+function glitchFrogAttack() {
+  const targets = [];
+  for(let r=0; r<ROWS; r++) {
+    const filled = grid[r].filter(v=>v!==0).length;
+    if(filled >= 4 && filled < COLS) targets.push(r);
+  }
+  if(targets.length === 0) return;
+  shuffle(targets);
+  const rowsToHit = targets.slice(0, Math.min(2, targets.length));
+  rowsToHit.forEach(r => {
+    const filled = [];
+    for(let c=0;c<COLS;c++) if(grid[r][c]!==0) filled.push(c);
+    shuffle(filled);
+    const toEat = filled.slice(0, 2 + Math.floor(Math.random()*2));
+    toEat.forEach(c => grid[r][c] = 0);
+  });
+  drawGrid();
+  flashHazard();
+  showEventBanner('👾 GLITCH FROG! Refill the gaps!');
+}
+
+function addObstacleTiles(n) {
+  const empty = [];
+  for(let r=0;r<ROWS;r++) for(let c=0;c<COLS;c++) if(grid[r][c]===0) empty.push([r,c]);
+  shuffle(empty);
+  empty.slice(0,n).forEach(([r,c]) => grid[r][c] = Math.floor(Math.random()*6)+1);
+  drawGrid();
+}
+
+function frogStamp() {
+  const startC = Math.floor((COLS - 5) / 2);
+  const startR = Math.floor(ROWS / 2) - 2;
+  const pattern = [
+    [1,1,0,1,1],
+    [1,1,1,1,1],
+    [0,1,1,1,0],
+    [0,1,0,1,0],
+  ];
+  const STAMP_COLOR = 8;
+  pattern.forEach((row, dr) => {
+    row.forEach((cell, dc) => {
+      if(cell) {
+        const r = startR + dr;
+        const c = startC + dc;
+        if(r>=0 && r<ROWS && c>=0 && c<COLS) grid[r][c] = STAMP_COLOR;
+      }
+    });
+  });
+  drawGrid();
+  flashHazard();
+  showEventBanner('🐸 FROG STAMP! Speed piece missed!');
+  if(checkGameOver()) setTimeout(triggerGameOver, 400);
+}
+
 // ── Event wiring ──────────────────────────────────────────────────
 document.getElementById('btn-restart').addEventListener('click',()=>{ensureAudio();activeChallengeMode='standard';selectedChallenge='standard';startGame();});
 document.getElementById('btn-go-menu').addEventListener('click',()=>{stopChallengeMode();showScreen('screen-title');});
-document.getElementById('btn-menu').addEventListener('click',()=>{stopChallengeMode();showScreen('screen-title');});
+document.getElementById('btn-menu').addEventListener('click',()=>{ openPause(); });
 // Shop button removed from home screen (now lives in Solo Setup only)
 document.getElementById('btn-shop-ingame').addEventListener('click',openShop);
 document.getElementById('shop-close').addEventListener('click',closeShop);
@@ -4156,7 +4362,16 @@ document.getElementById('btn-sound').addEventListener('click',()=>{soundOn=!soun
 
 // Home screen: Solo & Duo buttons
 document.getElementById('btn-solo').addEventListener('click', openSoloSetup);
-document.getElementById('btn-duo-mode').addEventListener('click', openDuoLobby);
+document.getElementById('btn-duo-mode').addEventListener('click', () => {
+  document.getElementById('duo-modal').classList.remove('hidden');
+});
+document.getElementById('duo-modal-cancel').addEventListener('click', () => {
+  document.getElementById('duo-modal').classList.add('hidden');
+});
+document.getElementById('duo-modal-play').addEventListener('click', () => {
+  document.getElementById('duo-modal').classList.add('hidden');
+  openDuoLobby();
+});
 
 // Duo lobby buttons
 document.getElementById('duo-back').addEventListener('click', ()=>showScreen('screen-title'));
@@ -4173,13 +4388,13 @@ document.getElementById('upgrade-close').addEventListener('click', hideUpgradeMo
 // ── Sound toggle on home screen ──────────────────────────────
 const soundHomeBtn = document.getElementById('btn-sound-home');
 function updateSoundHomeBtn() {
-  soundHomeBtn.textContent = soundEnabled ? '🔊' : '🔇';
-  soundHomeBtn.title = soundEnabled ? 'Mute sound' : 'Unmute sound';
+  soundHomeBtn.textContent = soundOn ? '🔊' : '🔇';
+  soundHomeBtn.title = soundOn ? 'Mute sound' : 'Unmute sound';
 }
 soundHomeBtn.addEventListener('click', () => {
   ensureAudio();
-  soundEnabled = !soundEnabled;
-  localStorage.setItem('ts_sound', soundEnabled ? '1' : '0');
+  soundOn = !soundOn;
+  localStorage.setItem('ts_sound', soundOn ? '1' : '0');
   updateSoundHomeBtn();
 });
 // Sync on show home
@@ -4195,6 +4410,7 @@ document.getElementById('btn-quick-start').addEventListener('click', () => {
   // Gate checks
   if (lastDiff === 'medium' && !canPlayMedium()) { setDifficulty('easy'); }
   else if (lastDiff === 'hard' && !canPlayHard()) { setDifficulty('easy'); }
+  else if (lastDiff === 'expert' && !canPlayExpert()) { setDifficulty('easy'); }
   else { setDifficulty(lastDiff); }
   if ((lastChallenge === 'frenzy' || lastChallenge === 'survival') && !canPlayFrenzy()) {
     activeChallengeMode = 'standard';
@@ -4214,9 +4430,54 @@ document.getElementById('join-code-input').addEventListener('keydown', e => {
   if (e.key === 'Enter') doJoinRoom();
 });
 
-// Title swatches
-const sw=document.getElementById('title-swatches');
-TILE_PALETTES.classic.forEach(c=>{const d=document.createElement('div');d.className='swatch';d.style.background=c;sw.appendChild(d);});
+// Settings button on home screen
+document.getElementById('btn-settings-home').addEventListener('click', () => {
+  // No dedicated settings screen yet — open shop as settings
+  openShop();
+});
+
+// ── Profile / Stats ──────────────────────────────────────────────
+const STATS_KEY = 'cd_stats';
+function loadStats() {
+  return JSON.parse(localStorage.getItem(STATS_KEY) || '{"totalLines":0,"gamesPlayed":0,"history":[]}');
+}
+function saveStats(stats) {
+  localStorage.setItem(STATS_KEY, JSON.stringify(stats));
+}
+function recordGameEnd() {
+  const stats = loadStats();
+  stats.totalLines = (stats.totalLines||0) + linesCleared;
+  stats.gamesPlayed = (stats.gamesPlayed||0) + 1;
+  if(!stats.history) stats.history = [];
+  stats.history.unshift({
+    score, level, linesCleared,
+    mode: activeChallengeMode,
+    diff: currentDiff,
+    date: new Date().toLocaleDateString()
+  });
+  stats.history = stats.history.slice(0, 10);
+  saveStats(stats);
+}
+function updateProfileScreen() {
+  const stats = loadStats();
+  document.getElementById('profile-best').textContent = bestScore.toLocaleString();
+  document.getElementById('profile-streak').textContent = '🔥 ' + dayStreak;
+  document.getElementById('profile-lines').textContent = (stats.totalLines||0).toLocaleString();
+  document.getElementById('profile-games').textContent = stats.gamesPlayed||0;
+  const hist = document.getElementById('profile-history');
+  hist.innerHTML = (stats.history||[]).slice(0,5).map(g => `
+    <div style="display:flex;justify-content:space-between;align-items:center;padding:9px 0;border-bottom:1px solid #1a1a1a;">
+      <div style="display:flex;gap:10px;align-items:center;">
+        <span style="font-size:14px;">${g.mode==='frenzy'?'⚡':g.mode==='survival'?'🛡️':g.mode==='colourrun'?'🎨':'🎮'}</span>
+        <div>
+          <div style="font-family:var(--font-mono);font-size:13px;">${(g.score||0).toLocaleString()}</div>
+          <div style="font-size:10px;color:#555;">${(g.mode||'standard').toUpperCase()} · ${(g.diff||'easy').toUpperCase()} · Lv${g.level||1}</div>
+        </div>
+      </div>
+      <span style="font-size:10px;color:#333;">${g.date||''}</span>
+    </div>
+  `).join('');
+}
 
 window.addEventListener('resize',()=>{calcLayout();if(gameActive)drawGrid();particleCanvas.width=window.innerWidth;particleCanvas.height=window.innerHeight;});
 
@@ -4224,6 +4485,38 @@ window.addEventListener('resize',()=>{calcLayout();if(gameActive)drawGrid();part
 calcLayout();updateTierBadge();loadStreak();requestAnimationFrame(animateParticles);initTrial();updateTrialBanner();updateLockIcons();showScreen('screen-title');
 </script>
 
+
+<!-- ════════════ PROFILE SCREEN ════════════ -->
+<div id="screen-profile" class="screen hidden">
+  <div style="height:4px;background:linear-gradient(90deg,#CC1212,#8B0000);width:100%;position:absolute;top:0;left:0;right:0;"></div>
+  <div style="background:#0e0e0e;border-bottom:1px solid #1a1a1a;display:flex;align-items:center;gap:12px;padding:12px 16px;position:absolute;top:4px;left:0;right:0;">
+    <button onclick="showScreen('screen-title')" style="background:none;border:none;color:#CC1212;font-size:20px;cursor:pointer;">‹</button>
+    <span style="font-family:var(--font-display);font-size:16px;letter-spacing:2px;">MY PROFILE</span>
+  </div>
+  <div style="padding:16px;overflow-y:auto;max-height:calc(100vh - 60px);margin-top:50px;width:min(400px,96vw);">
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:16px;">
+      <div style="background:#111;border:1px solid #1e1e1e;border-radius:10px;padding:12px;">
+        <div style="font-size:9px;color:#555;letter-spacing:1px;margin-bottom:4px;">BEST SCORE</div>
+        <div id="profile-best" style="font-family:var(--font-mono);font-size:20px;color:#F7C948;">0</div>
+      </div>
+      <div style="background:#111;border:1px solid #1e1e1e;border-radius:10px;padding:12px;">
+        <div style="font-size:9px;color:#555;letter-spacing:1px;margin-bottom:4px;">DAY STREAK</div>
+        <div id="profile-streak" style="font-family:var(--font-mono);font-size:20px;color:#CC1212;">🔥 0</div>
+      </div>
+      <div style="background:#111;border:1px solid #1e1e1e;border-radius:10px;padding:12px;">
+        <div style="font-size:9px;color:#555;letter-spacing:1px;margin-bottom:4px;">TOTAL LINES</div>
+        <div id="profile-lines" style="font-family:var(--font-mono);font-size:20px;">0</div>
+      </div>
+      <div style="background:#111;border:1px solid #1e1e1e;border-radius:10px;padding:12px;">
+        <div style="font-size:9px;color:#555;letter-spacing:1px;margin-bottom:4px;">GAMES PLAYED</div>
+        <div id="profile-games" style="font-family:var(--font-mono);font-size:20px;">0</div>
+      </div>
+    </div>
+    <div style="font-size:10px;color:#444;letter-spacing:2px;margin-bottom:8px;">RECENT GAMES</div>
+    <div id="profile-history" style="display:flex;flex-direction:column;gap:0;"></div>
+    <p style="font-size:10px;color:#333;margin-top:16px;text-align:center;letter-spacing:1px;">Scores saved on this device · Cloud sync coming soon</p>
+  </div>
+</div>
 
 </body>
 </html>
