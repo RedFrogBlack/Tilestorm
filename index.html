@@ -139,7 +139,7 @@
     /* ── Red circle badge — smaller now, title is above ── */
     .title-badge-circle {
       position: relative;
-      width: min(160px, 42vw);
+      width: min(140px, 36vw);
       aspect-ratio: 1;
       background: var(--red);
       border-radius: 50%;
@@ -159,7 +159,7 @@
     }
 
     .title-logo-img {
-      width: 100%; height: auto;
+      width: 85%; height: auto;
       filter: drop-shadow(0 2px 16px rgba(255,255,255,0.15));
       animation: logoBob 3s ease-in-out infinite;
     }
@@ -385,23 +385,22 @@
     #btn-solo-start:active { transform: translateY(0); }
     /* Challenge active UI in-game */
     #challenge-hud {
-      position: absolute;
-      top: 4px; left: 50%; transform: translateX(-50%);
-      z-index: 55; pointer-events: none;
-      display: flex; align-items: center; gap: 8px;
-      background: rgba(10,10,15,0.88);
-      border: 1px solid rgba(255,255,255,0.15);
-      border-radius: 20px;
-      padding: 5px 14px;
-      font-family: var(--font-display);
-      font-size: 0.7rem; letter-spacing: 0.1em;
-      opacity: 0; transition: opacity 0.2s;
+      width: 100%;
+      max-width: 480px;
+      background: linear-gradient(90deg, #8B0000, #CC1212);
+      display: none;
+      align-items: center;
+      justify-content: space-between;
+      padding: 8px 14px;
+      box-sizing: border-box;
+      flex-shrink: 0;
     }
-    #challenge-hud.active { opacity: 1; }
-    #challenge-hud-icon { font-size: 1rem; }
-    #challenge-hud-text { color: #fff; }
-    #challenge-hud-timer { color: #F5E000; margin-left: 4px; font-weight: 700; font-family: var(--font-mono); font-size: 1.2rem; }
-    #challenge-hud-timer.urgent { color: #CC1212 !important; animation: pulse 0.5s infinite; }
+    #challenge-hud.active { display: flex; }
+    #challenge-hud-left { display: flex; flex-direction: column; }
+    #challenge-hud-title { font-family: var(--font-display); font-size: 0.8rem; font-weight: 700; letter-spacing: 0.1em; color: #fff; text-transform: uppercase; }
+    #challenge-hud-sub { font-size: 0.65rem; color: rgba(255,255,255,0.6); margin-top: 2px; }
+    #challenge-hud-timer { font-family: var(--font-display); font-size: 2rem; font-weight: 900; color: #F5E000; line-height: 1; }
+    #challenge-hud-timer.urgent { color: #fff; animation: pulse 0.5s infinite; }
     @keyframes pulse { 0%,100%{opacity:1}50%{opacity:0.4} }
     .tray-cell.colour-match { box-shadow: 0 0 12px rgba(204,18,18,0.7); border-color: #CC1212 !important; }
     /* Survival fill bar */
@@ -434,7 +433,6 @@
       .game-topbar { max-width: 480px; width: 100%; }
       #grid-canvas { max-width: 480px; }
       .tray-area { max-width: 480px; width: 100%; }
-      .mid-zone { max-width: 480px; width: 100%; }
     }
 
     /* Subtle zebra texture on game background — RFBA brand nod */
@@ -1874,8 +1872,149 @@
   #btn-quick-start:hover { border-color: rgba(255,255,255,0.3); color: rgba(255,255,255,0.7); }
 
   /* Top bar reduced — Score + Level only during gameplay */
-  .stat-pill:has(#best-display),
   .stat-pill:has(#lines-display) { display: none; }
+
+  /* ── Home screen mockup classes ─────────────────────────────── */
+  .home-title {
+    font-family: var(--font-display);
+    font-size: clamp(2.4rem, 11vw, 4.5rem);
+    font-weight: 900;
+    letter-spacing: 0.04em;
+    color: #fff;
+    text-transform: uppercase;
+    line-height: 1;
+    text-align: center;
+    margin-top: 14px;
+  }
+  .home-tagline {
+    font-size: 0.65rem;
+    letter-spacing: 0.3em;
+    color: rgba(255,255,255,0.3);
+    text-transform: uppercase;
+    margin-top: 4px;
+    margin-bottom: 20px;
+  }
+  .home-score-pill {
+    display: flex;
+    align-items: center;
+    background: rgba(255,255,255,0.05);
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 16px;
+    width: min(320px, 88vw);
+    padding: 14px 20px;
+    box-sizing: border-box;
+    margin-bottom: 16px;
+  }
+  .home-score-item {
+    flex: 1;
+    text-align: center;
+  }
+  .home-score-label {
+    font-size: 0.6rem;
+    letter-spacing: 0.2em;
+    color: rgba(255,255,255,0.35);
+    text-transform: uppercase;
+    margin-bottom: 4px;
+  }
+  .home-score-val {
+    font-family: var(--font-display);
+    font-size: 1.6rem;
+    font-weight: 700;
+    color: #F7C948;
+  }
+  .home-score-val.red { color: #CC1212; }
+  .home-score-divider {
+    width: 1px;
+    height: 40px;
+    background: rgba(255,255,255,0.1);
+    margin: 0 12px;
+  }
+  .home-btn-stack {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    width: min(320px, 88vw);
+  }
+  .home-btn-solo {
+    background: #CC1212;
+    border: none;
+    border-radius: 14px;
+    color: #fff;
+    font-family: var(--font-display);
+    font-size: 1.1rem;
+    font-weight: 700;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    padding: 18px;
+    cursor: pointer;
+    box-shadow: 0 4px 24px rgba(204,18,18,0.45);
+    transition: opacity 0.15s;
+  }
+  .home-btn-duo {
+    background: transparent;
+    border: 2px solid #CC1212;
+    border-radius: 14px;
+    color: #CC1212;
+    font-family: var(--font-display);
+    font-size: 1.1rem;
+    font-weight: 700;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    padding: 18px;
+    cursor: pointer;
+    transition: opacity 0.15s;
+  }
+  .home-tap-hint {
+    font-size: 11px;
+    color: #444;
+    text-align: center;
+    letter-spacing: 1px;
+    margin: 0;
+  }
+  .home-settings-pill {
+    background: transparent;
+    border: 1px solid rgba(255,255,255,0.12);
+    border-radius: 30px;
+    color: rgba(255,255,255,0.3);
+    font-family: var(--font-display);
+    font-size: 0.7rem;
+    letter-spacing: 0.2em;
+    padding: 10px 24px;
+    cursor: pointer;
+    margin-top: 16px;
+  }
+
+  /* ── Level progress bar (under topbar) ─────────────────────── */
+  #level-progress-bar {
+    width: 100%;
+    max-width: 480px;
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+    background: #080808;
+    flex-shrink: 0;
+  }
+  #level-progress-label-row {
+    display: flex;
+    justify-content: space-between;
+    padding: 3px 12px;
+    font-family: var(--font-display);
+    font-size: 0.52rem;
+    letter-spacing: 0.12em;
+    color: rgba(255,255,255,0.3);
+    text-transform: uppercase;
+  }
+  #level-progress-track-main {
+    width: 100%;
+    height: 3px;
+    background: rgba(255,255,255,0.06);
+  }
+  #level-progress-fill-main {
+    height: 100%;
+    background: #CC1212;
+    transition: width 0.4s ease;
+    width: 0%;
+  }
   </style>
 </head>
 <body>
@@ -1921,50 +2060,45 @@
   <button id="btn-sound-home" title="Toggle sound">🔊</button>
 
   <div class="title-inner">
-
-    <!-- BIG TITLE at top -->
-    <div style="font-family:var(--font-display);font-size:clamp(2.8rem,14vw,5.5rem);font-weight:900;letter-spacing:0.04em;color:#fff;text-transform:uppercase;line-height:1;text-align:center;margin-bottom:8px;">CROAKDOWN</div>
-    <div style="font-size:0.7rem;letter-spacing:0.28em;color:rgba(255,255,255,0.35);text-transform:uppercase;margin-bottom:24px;">REDFROGBLACK</div>
-
-    <!-- Small red circle logo -->
+    <!-- Small logo circle -->
     <div class="title-badge-circle">
-      <img src="./rfba-logo.png" alt="RedFrogBlackArt" class="title-logo-img" />
+      <img src="./rfba-logo.png" alt="RFBA" class="title-logo-img" />
     </div>
 
-    <!-- Score card -->
-    <div style="display:flex;gap:16px;margin-top:20px;margin-bottom:4px;">
-      <div style="background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.08);border-radius:12px;padding:10px 20px;text-align:center;">
-        <div style="font-size:0.6rem;letter-spacing:0.18em;color:rgba(255,255,255,0.35);text-transform:uppercase;margin-bottom:4px;">🏆 BEST</div>
-        <div id="title-best-val" style="font-family:var(--font-mono);font-size:1.4rem;font-weight:700;color:#F7C948;">0</div>
-      </div>
-      <div style="background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.08);border-radius:12px;padding:10px 20px;text-align:center;">
-        <div style="font-size:0.6rem;letter-spacing:0.18em;color:rgba(255,255,255,0.35);text-transform:uppercase;margin-bottom:4px;">🔥 STREAK</div>
-        <div id="streak-val-home" style="font-family:var(--font-mono);font-size:1.4rem;font-weight:700;color:#CC1212;">0</div>
-      </div>
-    </div>
+    <!-- Big title below circle -->
+    <div class="home-title">CROAKDOWN</div>
+    <div class="home-tagline">REDFROGBLACK</div>
 
-    <!-- Hidden for JS compat -->
+    <!-- Hidden for JS -->
     <span id="streak-val" style="display:none;">0</span>
     <div id="title-tier-badge" class="tier-badge-title" style="display:none;">
       <div class="tb-dot" id="tier-badge-dot" style="background:#666"></div>
       <span id="tier-badge-name">TADPOLE EDITION</span>
     </div>
-    <div id="trial-banner" style="margin-top:4px;">
-      <span id="trial-banner-icon">⏳</span>
-      <span id="trial-banner-text">7 days free trial remaining</span>
+    <div id="trial-banner"><span id="trial-banner-icon">⏳</span><span id="trial-banner-text">7 days free trial remaining</span></div>
+
+    <!-- Score pill — ONE card, both stats side by side -->
+    <div class="home-score-pill">
+      <div class="home-score-item">
+        <div class="home-score-label">🏆 BEST</div>
+        <div class="home-score-val" id="title-best-val">0</div>
+      </div>
+      <div class="home-score-divider"></div>
+      <div class="home-score-item">
+        <div class="home-score-label">🔥 STREAK</div>
+        <div class="home-score-val red" id="streak-val-home">0</div>
+      </div>
     </div>
 
-    <!-- Two big buttons -->
-    <div style="display:flex;flex-direction:column;gap:12px;width:min(320px,88vw);margin-top:20px;">
-      <button id="btn-solo" style="background:var(--red);border:none;border-radius:14px;color:#fff;font-family:var(--font-display);font-size:1.15rem;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;padding:18px 28px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:12px;box-shadow:0 4px 28px rgba(204,18,18,0.5);transition:all 0.18s;">
-        SOLO PLAY
-      </button>
-      <button id="btn-duo-mode" style="background:transparent;border:2px solid #CC1212;border-radius:14px;color:#CC1212;font-family:var(--font-display);font-size:1.15rem;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;padding:18px 28px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:12px;transition:all 0.18s;">
-        DUO MODE
-      </button>
+    <!-- Buttons -->
+    <div class="home-btn-stack">
+      <button id="btn-solo" class="home-btn-solo">SOLO PLAY</button>
+      <button id="btn-duo-mode" class="home-btn-duo">DUO MODE</button>
+      <p class="home-tap-hint">Tap to learn more</p>
     </div>
 
-    <button id="btn-settings-home" style="background:transparent;border:none;color:#555;font-size:12px;letter-spacing:3px;cursor:pointer;font-family:var(--font-display);margin-top:18px;">⚙ SETTINGS</button>
+    <!-- Settings pill -->
+    <button id="btn-settings-home" class="home-settings-pill">⚙ SETTINGS</button>
   </div>
 </div>
 
@@ -2094,21 +2228,29 @@
     </div>
   </div>
 
+  <div id="level-progress-bar">
+    <div id="level-progress-label-row">
+      <span id="lpb-level-label">LEVEL 1 → 2</span>
+      <span id="lpb-lines-label">0 / 50 LINES</span>
+    </div>
+    <div id="level-progress-track-main">
+      <div id="level-progress-fill-main"></div>
+    </div>
+  </div>
+
+  <!-- Challenge HUD — wide red banner -->
+  <div id="challenge-hud">
+    <div id="challenge-hud-left">
+      <div id="challenge-hud-title"><span id="challenge-hud-icon">⚡</span> <span id="challenge-hud-text">FRENZY · CLEAR 2 LINES</span></div>
+      <div id="challenge-hud-sub">1 / 2 cleared</div>
+    </div>
+    <div id="challenge-hud-timer">25s</div>
+  </div>
+
   <div class="game-area">
     <div class="grid-center">
       <div class="grid-frame">
         <canvas id="grid-canvas"></canvas>
-      </div>
-    </div>
-    <div class="mid-zone">
-      <div class="mid-progress-wrap">
-        <div class="mid-progress-label">
-          <span id="mid-level-label">LEVEL 1</span>
-          <span id="mid-lines-label">0 / 10 LINES</span>
-        </div>
-        <div class="mid-progress-track">
-          <div class="mid-progress-fill" id="mid-progress-fill"></div>
-        </div>
       </div>
     </div>
     <div class="tray-section">
@@ -2119,12 +2261,7 @@
   <div id="hazard-overlay"></div>
   <div id="attack-overlay"></div>
 
-  <!-- Challenge HUD -->
-  <div id="challenge-hud">
-    <span id="challenge-hud-icon">⚡</span>
-    <span id="challenge-hud-text">FRENZY</span>
-    <span id="challenge-hud-timer">25s</span>
-  </div>
+  <!-- Challenge HUD (moved) -->
   <!-- Survival fill bar -->
   <div id="survival-bar-wrap"><div id="survival-bar"></div></div>
 
@@ -2146,6 +2283,32 @@
     <div id="emoji-incoming-icon"></div>
     <div id="emoji-incoming-label">FROM OPPONENT</div>
   </div>
+
+  <!-- Duo Race HUD -->
+  <div id="duo-race-hud" style="display:none;flex-direction:column;width:100%;max-width:480px;flex-shrink:0;">
+    <div style="text-align:center;font-family:var(--font-display);font-size:0.65rem;letter-spacing:0.25em;color:rgba(255,255,255,0.35);padding:6px 0 0;">MATCH 1 OF 3</div>
+    <div id="duo-timer-display" style="text-align:center;font-family:var(--font-display);font-size:3rem;font-weight:900;color:#fff;line-height:1;padding:4px 0;">1:00</div>
+    <div style="height:2px;background:linear-gradient(90deg,#CC1212,#8B0000);width:100%;margin-bottom:6px;"></div>
+    <!-- Opponent bar -->
+    <div style="display:flex;justify-content:space-between;align-items:center;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:8px;padding:8px 14px;margin:0 8px 6px;box-sizing:border-box;">
+      <div style="display:flex;align-items:center;gap:8px;">
+        <span style="font-size:0.9rem;">🎮</span>
+        <span style="font-family:var(--font-display);font-size:0.75rem;font-weight:700;letter-spacing:0.1em;color:rgba(255,255,255,0.6);">OPPONENT</span>
+      </div>
+      <div style="display:flex;gap:16px;">
+        <span style="font-size:0.7rem;color:rgba(255,255,255,0.4);"><span id="duo-opp-lines">0</span> LINES</span>
+        <span style="font-family:var(--font-display);font-size:0.8rem;color:rgba(255,255,255,0.5);" id="duo-opp-score">0</span>
+      </div>
+    </div>
+    <!-- You bar (green highlight) -->
+    <div style="display:flex;justify-content:space-between;align-items:center;background:rgba(126,211,33,0.08);border:1px solid rgba(126,211,33,0.25);border-radius:8px;padding:8px 14px;margin:0 8px 6px;box-sizing:border-box;">
+      <div style="font-family:var(--font-display);font-size:0.75rem;font-weight:700;letter-spacing:0.1em;color:#7ED321;">YOU</div>
+      <div style="display:flex;gap:16px;">
+        <span style="font-size:0.7rem;color:rgba(126,211,33,0.7);"><span id="duo-my-lines">0</span> LINES</span>
+        <span style="font-family:var(--font-display);font-size:0.8rem;color:#7ED321;" id="duo-my-score">0</span>
+      </div>
+    </div>
+  </div>
 </div>
 
 <!-- Bonus unlock popup -->
@@ -2161,20 +2324,43 @@
 
 <!-- ════════════ PAUSE OVERLAY ════════════ -->
 <div id="pause-overlay" class="modal-overlay hidden">
-  <div class="modal-card" style="width:min(300px,90vw);">
-    <div style="font-family:var(--font-mono);font-size:13px;letter-spacing:4px;color:#fff;margin-bottom:16px;">PAUSED</div>
-    <div id="pause-score-card" style="width:100%;background:#0e0e0e;border:1px solid #222;border-radius:10px;padding:12px;display:flex;justify-content:space-around;margin-bottom:16px;">
-      <div style="text-align:center;"><div style="font-size:9px;color:#555;letter-spacing:1px;">SCORE</div><div id="pause-score-val" style="font-family:var(--font-mono);font-size:18px;">0</div></div>
-      <div style="width:1px;background:#222;"></div>
-      <div style="text-align:center;"><div style="font-size:9px;color:#555;letter-spacing:1px;">LEVEL</div><div id="pause-level-val" style="font-family:var(--font-mono);font-size:18px;color:#CC1212;">1</div></div>
-      <div style="width:1px;background:#222;"></div>
-      <div style="text-align:center;"><div style="font-size:9px;color:#555;letter-spacing:1px;">BEST</div><div id="pause-best-val" style="font-family:var(--font-mono);font-size:18px;color:#F7C948;">0</div></div>
+  <div class="modal-card" style="width:min(320px,90vw);">
+    <div style="display:flex;flex-direction:column;align-items:center;padding:24px 20px;">
+      <!-- Frog circle -->
+      <div style="width:64px;height:64px;background:#CC1212;border-radius:50%;display:flex;align-items:center;justify-content:center;margin-bottom:16px;box-shadow:0 0 30px rgba(204,18,18,0.5);">
+        <img src="./rfba-logo.png" style="width:44px;filter:brightness(0) invert(1);" />
+      </div>
+      <div style="font-family:var(--font-display);font-size:1.4rem;letter-spacing:0.3em;color:rgba(255,255,255,0.5);margin-bottom:20px;">PAUSED</div>
+      <!-- Stats row -->
+      <div style="display:flex;gap:0;width:100%;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:14px;margin-bottom:20px;overflow:hidden;">
+        <div style="flex:1;text-align:center;padding:14px 8px;border-right:1px solid rgba(255,255,255,0.06);">
+          <div style="font-size:0.55rem;letter-spacing:0.2em;color:rgba(255,255,255,0.35);text-transform:uppercase;margin-bottom:6px;">SCORE</div>
+          <div id="pause-score-val" style="font-family:var(--font-display);font-size:1.1rem;font-weight:700;color:#fff;">0</div>
+        </div>
+        <div style="flex:1;text-align:center;padding:14px 8px;border-right:1px solid rgba(255,255,255,0.06);">
+          <div style="font-size:0.55rem;letter-spacing:0.2em;color:rgba(255,255,255,0.35);text-transform:uppercase;margin-bottom:6px;">LEVEL</div>
+          <div id="pause-level-val" style="font-family:var(--font-display);font-size:1.1rem;font-weight:700;color:#CC1212;">1</div>
+        </div>
+        <div style="flex:1;text-align:center;padding:14px 8px;">
+          <div style="font-size:0.55rem;letter-spacing:0.2em;color:rgba(255,255,255,0.35);text-transform:uppercase;margin-bottom:6px;">BEST</div>
+          <div id="pause-best-val" style="font-family:var(--font-display);font-size:1.1rem;font-weight:700;color:#F7C948;">0</div>
+        </div>
+      </div>
+      <!-- Menu items -->
+      <button id="btn-pause-resume" style="width:100%;background:#CC1212;border:none;border-radius:12px;color:#fff;font-family:var(--font-display);font-size:1rem;font-weight:700;letter-spacing:0.15em;text-transform:uppercase;padding:16px;cursor:pointer;margin-bottom:10px;display:flex;align-items:center;justify-content:center;gap:10px;">▶ RESUME</button>
+      <button id="btn-pause-profile" style="width:100%;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.1);border-radius:12px;color:#fff;font-family:var(--font-display);font-size:0.9rem;letter-spacing:0.12em;text-transform:uppercase;padding:14px;cursor:pointer;margin-bottom:8px;display:flex;align-items:center;justify-content:space-between;">
+        <span>👤 MY PROFILE</span><span style="color:rgba(255,255,255,0.3);">›</span>
+      </button>
+      <button id="btn-pause-upgrade" style="width:100%;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.1);border-radius:12px;color:#fff;font-family:var(--font-display);font-size:0.9rem;letter-spacing:0.12em;text-transform:uppercase;padding:14px;cursor:pointer;margin-bottom:8px;display:flex;align-items:center;justify-content:space-between;">
+        <span>🐸 UPGRADE TIER</span><span style="color:rgba(255,255,255,0.3);">›</span>
+      </button>
+      <button id="btn-pause-settings" style="width:100%;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.1);border-radius:12px;color:#fff;font-family:var(--font-display);font-size:0.9rem;letter-spacing:0.12em;text-transform:uppercase;padding:14px;cursor:pointer;margin-bottom:8px;display:flex;align-items:center;justify-content:space-between;">
+        <span>⚙ SETTINGS</span><span style="color:rgba(255,255,255,0.3);">›</span>
+      </button>
+      <button id="btn-pause-home" style="width:100%;background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.06);border-radius:12px;color:rgba(255,255,255,0.4);font-family:var(--font-display);font-size:0.9rem;letter-spacing:0.12em;text-transform:uppercase;padding:14px;cursor:pointer;display:flex;align-items:center;justify-content:space-between;">
+        <span>🏠 EXIT TO HOME</span><span style="color:rgba(255,255,255,0.15);">›</span>
+      </button>
     </div>
-    <button id="btn-pause-resume" style="width:100%;background:#CC1212;border:none;border-radius:10px;color:#fff;font-family:var(--font-display);font-size:1rem;letter-spacing:2px;padding:14px;cursor:pointer;margin-bottom:8px;">▶ RESUME</button>
-    <button id="btn-pause-profile" style="width:100%;background:#111;border:1.5px solid #1e1e1e;border-radius:10px;color:#fff;font-family:var(--font-display);font-size:0.9rem;padding:12px;cursor:pointer;margin-bottom:8px;text-align:left;padding-left:16px;">👤 My Profile</button>
-    <button id="btn-pause-upgrade" style="width:100%;background:#111;border:1.5px solid #1e1e1e;border-radius:10px;color:#fff;font-family:var(--font-display);font-size:0.9rem;padding:12px;cursor:pointer;margin-bottom:8px;text-align:left;padding-left:16px;">🐸 Upgrade Tier</button>
-    <button id="btn-pause-settings" style="width:100%;background:#111;border:1.5px solid #1e1e1e;border-radius:10px;color:#fff;font-family:var(--font-display);font-size:0.9rem;padding:12px;cursor:pointer;margin-bottom:8px;text-align:left;padding-left:16px;">⚙️ Settings</button>
-    <button id="btn-pause-exit" style="width:100%;background:transparent;border:1.5px solid #1e1e1e;border-radius:10px;color:#555;font-family:var(--font-display);font-size:0.9rem;padding:12px;cursor:pointer;text-align:left;padding-left:16px;">🏠 Exit to Home</button>
   </div>
 </div>
 
@@ -2205,13 +2391,15 @@
 <!-- ════════════ DUO MODAL ════════════ -->
 <div id="duo-modal" class="modal-overlay hidden">
   <div class="modal-card">
-    <div style="font-size:32px;margin-bottom:8px;">🎮</div>
-    <h2 style="font-family:var(--font-display);font-size:1.3rem;letter-spacing:2px;margin-bottom:8px;">DUO MODE</h2>
-    <p style="color:#aaa;font-size:14px;text-align:center;line-height:1.6;margin-bottom:8px;">Play with a friend anywhere in the world.<br>Create a room, share the code, and compete live.</p>
-    <p style="font-family:var(--font-mono);font-size:1.6rem;color:#CC1212;font-weight:700;margin-bottom:4px;">£5 / month</p>
-    <p style="color:#555;font-size:11px;margin-bottom:20px;letter-spacing:1px;">EACH PLAYER PAYS SEPARATELY</p>
-    <button id="duo-modal-play" style="width:100%;background:#CC1212;border:none;border-radius:12px;color:#fff;font-family:var(--font-display);font-size:1rem;letter-spacing:2px;padding:14px;cursor:pointer;margin-bottom:10px;">SUBSCRIBE & PLAY</button>
-    <button id="duo-modal-cancel" style="background:transparent;border:none;color:#555;font-size:13px;cursor:pointer;letter-spacing:1px;">MAYBE LATER</button>
+    <div style="text-align:center;padding:8px 0 16px;">
+      <div style="font-size:3rem;margin-bottom:12px;">🐸</div>
+      <h2 style="font-family:var(--font-display);font-size:1.6rem;font-weight:900;letter-spacing:0.12em;color:#fff;margin:0 0 12px;">DUO MODE</h2>
+      <p style="font-size:0.9rem;color:rgba(255,255,255,0.55);margin:0 0 24px;line-height:1.5;">Play with a friend anywhere in the world.<br>Create a room, share the code, and compete live.</p>
+      <div style="font-family:var(--font-display);font-size:2.2rem;font-weight:900;color:#CC1212;margin-bottom:6px;">£5 / month</div>
+      <div style="font-size:0.72rem;color:rgba(255,255,255,0.35);letter-spacing:0.15em;margin-bottom:24px;">Each player pays separately</div>
+      <button id="duo-modal-play" style="width:100%;background:#CC1212;border:none;border-radius:14px;color:#fff;font-family:var(--font-display);font-size:1rem;font-weight:700;letter-spacing:0.2em;text-transform:uppercase;padding:16px;cursor:pointer;margin-bottom:12px;">SUBSCRIBE &amp; PLAY</button>
+      <button id="duo-modal-close" style="background:none;border:none;color:rgba(255,255,255,0.3);font-family:var(--font-display);font-size:0.75rem;letter-spacing:0.2em;text-transform:uppercase;cursor:pointer;padding:8px;">MAYBE LATER</button>
+    </div>
   </div>
 </div>
 
@@ -2347,7 +2535,7 @@ const TIERS = [
     id: 'treefrog', name: 'TREE FROG', emoji: '🐸', color: '#F5A623',
     price: 2.99,
     desc: 'Medium difficulty + Frenzy challenge unlocked.',
-    perks: ['Everything in Froglet','Medium difficulty','Frenzy challenge','Neon green tile skin','Jungle canopy grid','BOMB power-up (blast 3×3 area)','3 power-ups per game','Frog mascot on grid'],
+    perks: ['Everything in Tadpole','Medium difficulty','Frenzy challenge','Neon green tile skin','Jungle canopy grid','BOMB power-up (blast 3×3 area)','3 power-ups per game','Frog mascot on grid'],
     gridTheme: { bg: '#050f05', gridLine: 'rgba(126,211,33,0.07)', corner: 'rgba(126,211,33,0.4)' },
     tileStyle: 'neon', powerup: { id:'bomb', label:'BOMB', icon:'💣', count:3 }, powerupCount: 3,
   },
@@ -2586,8 +2774,8 @@ let CELL=44;
 
 function calcLayout(){
   const topH=document.querySelector('.game-topbar')?.offsetHeight||60;
-  // mid-zone: just the progress bar now (~38px), tray: ~160px
-  const trayH=160+38+8;
+  // tray only (mid-zone removed)
+  const trayH=155+8;
   const availH=window.innerHeight-topH-trayH;
   // Cap width at 480px on desktop so game stays portrait-friendly
   const maxW=Math.min(window.innerWidth-8, 480);
@@ -2980,9 +3168,10 @@ document.getElementById('btn-levelup-continue').addEventListener('click', () => 
 
 // Pause menu buttons
 document.getElementById('btn-pause-resume').addEventListener('click', closePause);
-document.getElementById('btn-pause-exit').addEventListener('click', () => {
+document.getElementById('btn-pause-home').addEventListener('click', () => {
   document.getElementById('pause-overlay').classList.add('hidden');
   stopChallengeMode();
+  gameActive = false;
   showScreen('screen-title');
 });
 document.getElementById('btn-pause-upgrade').addEventListener('click', () => {
@@ -2995,7 +3184,7 @@ document.getElementById('btn-pause-settings').addEventListener('click', () => {
 });
 document.getElementById('btn-pause-profile').addEventListener('click', () => {
   closePause();
-  showScreen('screen-profile');
+  openProfile();
 });
 function showFloatText(text,rows,cols){
   const r=rows[0]??0;const rect=gridCanvas.getBoundingClientRect();
@@ -3011,18 +3200,18 @@ function updateUI(){
   document.getElementById('best-display').textContent=bestScore.toLocaleString();
   document.getElementById('level-display').textContent=level;
   document.getElementById('lines-display').textContent=linesCleared;
-  // Update mid-zone level progress
+  // Update level progress bar (new under-topbar bar)
   const nextTarget = linesForNextLevel(linesCleared);
   const prevTarget = level > 1 ? LEVEL_THRESHOLDS[level-2] || 0 : 0;
   const range = nextTarget ? nextTarget - prevTarget : 1;
   const progressInLevel = nextTarget ? linesCleared - prevTarget : range;
   const pct = nextTarget ? Math.min(100, Math.round((progressInLevel / range) * 100)) : 100;
-  const levelLbl=document.getElementById('mid-level-label');
-  if(levelLbl)levelLbl.textContent='LEVEL '+currentLevel;
-  const fill=document.getElementById('mid-progress-fill');
-  const lbl=document.getElementById('mid-lines-label');
-  if(fill)fill.style.width=pct+'%';
-  if(lbl)lbl.textContent = nextTarget ? 'LEVEL '+level+' → '+(level+1)+' · '+linesCleared+' / '+nextTarget+' LINES' : 'MAX LEVEL';
+  const mainFill = document.getElementById('level-progress-fill-main');
+  if(mainFill) mainFill.style.width = pct + '%';
+  const lpbLevel = document.getElementById('lpb-level-label');
+  if(lpbLevel) lpbLevel.textContent = nextTarget ? 'LEVEL ' + level + ' → ' + (level+1) : 'MAX LEVEL';
+  const lpbLines = document.getElementById('lpb-lines-label');
+  if(lpbLines) lpbLines.textContent = nextTarget ? linesCleared + ' / ' + nextTarget + ' LINES' : 'MAX LEVEL';
 }
 function showToast(msg){
   const t=document.getElementById('powerup-toast');t.textContent=msg;
@@ -4214,22 +4403,28 @@ function initChallengeMode() {
 
 function updateFrenzyHUD(target, secs) {
   const clearedSoFar = linesCleared - cm_linesAtStart;
-  document.getElementById('challenge-hud-text').textContent = 'FRENZY: ' + clearedSoFar + '/' + target + ' LINES';
+  document.getElementById('challenge-hud-text').textContent = 'FRENZY · CLEAR ' + target + ' LINES';
+  const sub = document.getElementById('challenge-hud-sub');
+  if(sub) sub.textContent = clearedSoFar + ' / ' + target + ' cleared';
   const timerEl = document.getElementById('challenge-hud-timer');
   timerEl.textContent = secs + 's';
   timerEl.classList.toggle('urgent', secs < 8);
 }
 
 function updateSurvivalHUD() {
-  document.getElementById('challenge-hud-text').textContent = 'SURVIVAL: ' + cm_survivedSecs + 's';
+  document.getElementById('challenge-hud-text').textContent = 'SURVIVAL';
+  const sub = document.getElementById('challenge-hud-sub');
+  if(sub) sub.textContent = 'Survived ' + cm_survivedSecs + 's';
   document.getElementById('challenge-hud-timer').textContent = '';
 }
 
 function updateColourRunHUD() {
   const dots = Array.from({length:4}, (_,i) => i < cm_colourStreak ? '●' : '○').join(' ');
-  document.getElementById('challenge-hud-text').textContent = 'COLOUR RUN: ' + dots;
-  document.getElementById('challenge-hud-timer').textContent = 'PENALTY ' + cm_colourPenaltySecs + 's';
+  document.getElementById('challenge-hud-text').textContent = 'COLOUR RUN';
+  const sub = document.getElementById('challenge-hud-sub');
+  if(sub) sub.textContent = dots + ' · Penalty ' + cm_colourPenaltySecs + 's';
   const timerEl = document.getElementById('challenge-hud-timer');
+  timerEl.textContent = cm_colourPenaltySecs + 's';
   timerEl.classList.toggle('urgent', cm_colourPenaltySecs < 8);
 }
 
@@ -4265,7 +4460,7 @@ function openPause() {
   gameActive = false;
   document.getElementById('pause-score-val').textContent = score.toLocaleString();
   document.getElementById('pause-level-val').textContent = level;
-  document.getElementById('pause-best-val').textContent = bestScore.toLocaleString();
+  document.getElementById('pause-best-val').textContent = (bestScore || parseInt(localStorage.getItem('ts_best'))||0).toLocaleString();
   document.getElementById('pause-overlay').classList.remove('hidden');
 }
 function closePause() {
@@ -4355,7 +4550,7 @@ document.getElementById('btn-solo').addEventListener('click', () => { ensureAudi
 document.getElementById('btn-duo-mode').addEventListener('click', () => {
   document.getElementById('duo-modal').classList.remove('hidden');
 });
-document.getElementById('duo-modal-cancel').addEventListener('click', () => {
+document.getElementById('duo-modal-close').addEventListener('click', () => {
   document.getElementById('duo-modal').classList.add('hidden');
 });
 document.getElementById('duo-modal-play').addEventListener('click', () => {
@@ -4391,7 +4586,8 @@ soundHomeBtn.addEventListener('click', () => {
 const _origShowScreen = showScreen;
 
 // ── Quick Start ──────────────────────────────────────────────
-document.getElementById('btn-quick-start').addEventListener('click', () => {
+const _qsBtn = document.getElementById('btn-quick-start');
+if(_qsBtn) _qsBtn.addEventListener('click', () => {
   ensureAudio();
   if (!checkAccessBeforeStart()) return;
   // Use last saved settings
@@ -4451,22 +4647,50 @@ function recordGameEnd() {
 function updateProfileScreen() {
   const stats = loadStats();
   document.getElementById('profile-best').textContent = bestScore.toLocaleString();
-  document.getElementById('profile-streak').textContent = '🔥 ' + dayStreak;
+  document.getElementById('profile-streak').textContent = dayStreak;
   document.getElementById('profile-lines').textContent = (stats.totalLines||0).toLocaleString();
   document.getElementById('profile-games').textContent = stats.gamesPlayed||0;
-  const hist = document.getElementById('profile-history');
-  hist.innerHTML = (stats.history||[]).slice(0,5).map(g => `
-    <div style="display:flex;justify-content:space-between;align-items:center;padding:9px 0;border-bottom:1px solid #1a1a1a;">
-      <div style="display:flex;gap:10px;align-items:center;">
-        <span style="font-size:14px;">${g.mode==='frenzy'?'⚡':g.mode==='survival'?'🛡️':g.mode==='colourrun'?'🎨':'🎮'}</span>
+  // Tier badge
+  const tier = equippedTier();
+  const pill = document.getElementById('profile-tier-badge-pill');
+  if(pill) { pill.textContent = tier.name; pill.style.background = tier.color; }
+  // Recent games
+  const list = document.getElementById('profile-recent-list');
+  if(list && stats.history && stats.history.length > 0) {
+    list.innerHTML = stats.history.slice(0,5).map(g => `
+      <div style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.07);border-radius:10px;padding:12px 14px;display:flex;align-items:center;justify-content:space-between;">
         <div>
-          <div style="font-family:var(--font-mono);font-size:13px;">${(g.score||0).toLocaleString()}</div>
-          <div style="font-size:10px;color:#555;">${(g.mode||'standard').toUpperCase()} · ${(g.diff||'easy').toUpperCase()} · Lv${g.level||1}</div>
+          <div style="font-family:var(--font-display);font-size:1rem;font-weight:700;color:#fff;">${(g.score||0).toLocaleString()}</div>
+          <div style="font-size:0.65rem;color:rgba(255,255,255,0.35);text-transform:uppercase;letter-spacing:0.1em;margin-top:2px;">${(g.mode||'standard').toUpperCase()} · ${(g.diff||'easy').toUpperCase()} · LVL ${g.level||1}</div>
         </div>
+        <div style="font-size:0.65rem;color:rgba(255,255,255,0.25);">${g.date||''}</div>
       </div>
-      <span style="font-size:10px;color:#333;">${g.date||''}</span>
+    `).join('');
+  }
+}
+
+function openProfile() {
+  updateProfileScreen();
+  showScreen('screen-profile');
+}
+
+function showSessionResult(matchResults, myWins, oppWins) {
+  const verdict = myWins > oppWins ? 'YOU WIN 🏆' : myWins < oppWins ? 'YOU LOSE' : 'DRAW';
+  document.getElementById('session-verdict').textContent = verdict;
+  document.getElementById('session-verdict').style.color = myWins > oppWins ? '#CC1212' : myWins < oppWins ? '#666' : '#F5A623';
+  document.getElementById('session-final-score').textContent = myWins + ' — ' + oppWins;
+  const rows = document.getElementById('session-match-rows');
+  rows.innerHTML = matchResults.map((m, i) => `
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 16px;border-bottom:1px solid rgba(255,255,255,0.06);">
+      <span style="font-family:var(--font-display);font-size:0.7rem;letter-spacing:0.1em;color:rgba(255,255,255,0.4);">M${i+1}</span>
+      <span style="font-family:var(--font-display);font-size:0.9rem;font-weight:700;color:#fff;">YOU ${m.myScore.toLocaleString()}</span>
+      <span style="font-family:var(--font-display);font-size:0.85rem;color:rgba(255,255,255,0.4);">OPP ${m.oppScore.toLocaleString()}</span>
+      <span style="font-size:1rem;">${m.myScore >= m.oppScore ? '✓' : '✗'}</span>
     </div>
   `).join('');
+  document.getElementById('btn-session-play-again').onclick = () => { showScreen('screen-duo-lobby'); };
+  document.getElementById('btn-session-home').onclick = () => showScreen('screen-title');
+  showScreen('screen-session-result');
 }
 
 window.addEventListener('resize',()=>{calcLayout();if(gameActive)drawGrid();particleCanvas.width=window.innerWidth;particleCanvas.height=window.innerHeight;});
@@ -4478,34 +4702,77 @@ calcLayout();updateTierBadge();loadStreak();requestAnimationFrame(animateParticl
 
 <!-- ════════════ PROFILE SCREEN ════════════ -->
 <div id="screen-profile" class="screen hidden">
-  <div style="height:4px;background:linear-gradient(90deg,#CC1212,#8B0000);width:100%;position:absolute;top:0;left:0;right:0;"></div>
-  <div style="background:#0e0e0e;border-bottom:1px solid #1a1a1a;display:flex;align-items:center;gap:12px;padding:12px 16px;position:absolute;top:4px;left:0;right:0;">
-    <button onclick="showScreen('screen-title')" style="background:none;border:none;color:#CC1212;font-size:20px;cursor:pointer;">‹</button>
-    <span style="font-family:var(--font-display);font-size:16px;letter-spacing:2px;">MY PROFILE</span>
+<div style="padding:16px;max-width:480px;margin:0 auto;width:100%;box-sizing:border-box;overflow-y:auto;max-height:100vh;">
+  <!-- Header -->
+  <div style="display:flex;align-items:center;gap:12px;margin-bottom:24px;">
+    <button onclick="showScreen('screen-game')" style="background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);border-radius:50%;width:36px;height:36px;color:#fff;font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center;">‹</button>
+    <div style="font-family:var(--font-display);font-size:1rem;font-weight:700;letter-spacing:0.15em;color:rgba(255,255,255,0.9);">MY PROFILE</div>
   </div>
-  <div style="padding:16px;overflow-y:auto;max-height:calc(100vh - 60px);margin-top:50px;width:min(400px,96vw);">
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:16px;">
-      <div style="background:#111;border:1px solid #1e1e1e;border-radius:10px;padding:12px;">
-        <div style="font-size:9px;color:#555;letter-spacing:1px;margin-bottom:4px;">BEST SCORE</div>
-        <div id="profile-best" style="font-family:var(--font-mono);font-size:20px;color:#F7C948;">0</div>
-      </div>
-      <div style="background:#111;border:1px solid #1e1e1e;border-radius:10px;padding:12px;">
-        <div style="font-size:9px;color:#555;letter-spacing:1px;margin-bottom:4px;">DAY STREAK</div>
-        <div id="profile-streak" style="font-family:var(--font-mono);font-size:20px;color:#CC1212;">🔥 0</div>
-      </div>
-      <div style="background:#111;border:1px solid #1e1e1e;border-radius:10px;padding:12px;">
-        <div style="font-size:9px;color:#555;letter-spacing:1px;margin-bottom:4px;">TOTAL LINES</div>
-        <div id="profile-lines" style="font-family:var(--font-mono);font-size:20px;">0</div>
-      </div>
-      <div style="background:#111;border:1px solid #1e1e1e;border-radius:10px;padding:12px;">
-        <div style="font-size:9px;color:#555;letter-spacing:1px;margin-bottom:4px;">GAMES PLAYED</div>
-        <div id="profile-games" style="font-family:var(--font-mono);font-size:20px;">0</div>
-      </div>
+  <!-- Avatar + name -->
+  <div style="display:flex;align-items:center;gap:16px;margin-bottom:24px;">
+    <div style="width:60px;height:60px;background:#CC1212;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:1.8rem;">🐸</div>
+    <div>
+      <div style="font-family:var(--font-display);font-size:1.4rem;font-weight:700;letter-spacing:0.06em;color:#fff;">PLAYER ONE</div>
+      <div id="profile-tier-badge-pill" style="display:inline-block;background:#CC1212;color:#fff;font-family:var(--font-display);font-size:0.6rem;letter-spacing:0.15em;padding:3px 10px;border-radius:6px;margin-top:4px;text-transform:uppercase;">TADPOLE</div>
     </div>
-    <div style="font-size:10px;color:#444;letter-spacing:2px;margin-bottom:8px;">RECENT GAMES</div>
-    <div id="profile-history" style="display:flex;flex-direction:column;gap:0;"></div>
-    <p style="font-size:10px;color:#333;margin-top:16px;text-align:center;letter-spacing:1px;">Scores saved on this device · Cloud sync coming soon</p>
   </div>
+  <!-- 4 stat cards -->
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:20px;">
+    <div style="background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:14px;padding:16px;">
+      <div style="font-size:0.58rem;letter-spacing:0.18em;color:rgba(255,255,255,0.35);text-transform:uppercase;margin-bottom:6px;">🏆 BEST SCORE</div>
+      <div id="profile-best" style="font-family:var(--font-display);font-size:1.5rem;font-weight:700;color:#F7C948;">0</div>
+    </div>
+    <div style="background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:14px;padding:16px;">
+      <div style="font-size:0.58rem;letter-spacing:0.18em;color:rgba(255,255,255,0.35);text-transform:uppercase;margin-bottom:6px;">🔥 DAY STREAK</div>
+      <div id="profile-streak" style="font-family:var(--font-display);font-size:1.5rem;font-weight:700;color:#CC1212;">0</div>
+    </div>
+    <div style="background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:14px;padding:16px;">
+      <div style="font-size:0.58rem;letter-spacing:0.18em;color:rgba(255,255,255,0.35);text-transform:uppercase;margin-bottom:6px;">📊 TOTAL LINES</div>
+      <div id="profile-lines" style="font-family:var(--font-display);font-size:1.5rem;font-weight:700;color:#fff;">0</div>
+    </div>
+    <div style="background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:14px;padding:16px;">
+      <div style="font-size:0.58rem;letter-spacing:0.18em;color:rgba(255,255,255,0.35);text-transform:uppercase;margin-bottom:6px;">🎮 GAMES PLAYED</div>
+      <div id="profile-games" style="font-family:var(--font-display);font-size:1.5rem;font-weight:700;color:#fff;">0</div>
+    </div>
+  </div>
+  <!-- Recent games -->
+  <div style="font-family:var(--font-display);font-size:0.7rem;letter-spacing:0.2em;color:#CC1212;text-transform:uppercase;margin-bottom:12px;">RECENT GAMES</div>
+  <div id="profile-recent-list" style="display:flex;flex-direction:column;gap:8px;margin-bottom:20px;">
+    <div style="color:rgba(255,255,255,0.3);font-size:0.8rem;text-align:center;padding:16px;">No games yet — start playing!</div>
+  </div>
+  <!-- Upgrade promo card -->
+  <div id="profile-upgrade-card" style="background:rgba(245,224,0,0.06);border:1.5px solid rgba(245,224,0,0.25);border-radius:14px;padding:16px;">
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">
+      <span style="font-size:1.2rem;">✨</span>
+      <span style="font-family:var(--font-display);font-size:0.9rem;font-weight:700;letter-spacing:0.1em;color:#F5E000;">GOLDEN FROG</span>
+      <span style="margin-left:auto;font-family:var(--font-display);font-size:0.8rem;color:rgba(255,255,255,0.5);">£7.99</span>
+    </div>
+    <div style="font-size:0.75rem;color:rgba(255,255,255,0.45);line-height:1.5;margin-bottom:12px;">Unlocks Colour Run mode, Expert difficulty &amp; Frog Stamp. ×2.5 score multiplier.</div>
+    <button onclick="openShop()" style="width:100%;background:#F5E000;border:none;border-radius:10px;color:#000;font-family:var(--font-display);font-size:0.8rem;font-weight:700;letter-spacing:0.12em;padding:10px;cursor:pointer;">UPGRADE NOW</button>
+  </div>
+  <!-- Cloud note -->
+  <div style="text-align:center;font-size:0.65rem;color:rgba(255,255,255,0.2);margin-top:16px;line-height:1.6;">Scores saved on this device.<br>Sign in with Apple/Google coming soon.</div>
+</div>
+</div>
+
+<!-- ════════════ SESSION RESULT (Duo) ════════════ -->
+<div id="screen-session-result" class="screen hidden" style="background:#080808;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:32px 20px;box-sizing:border-box;">
+  <div style="width:72px;height:72px;background:#CC1212;border-radius:50%;display:flex;align-items:center;justify-content:center;margin-bottom:20px;box-shadow:0 0 40px rgba(204,18,18,0.5);">
+    <img src="./rfba-logo.png" style="width:50px;filter:brightness(0) invert(1);" />
+  </div>
+  <div style="font-family:var(--font-display);font-size:0.9rem;letter-spacing:0.3em;color:rgba(255,255,255,0.4);text-transform:uppercase;margin-bottom:8px;">SESSION COMPLETE</div>
+  <div id="session-verdict" style="font-family:var(--font-display);font-size:2.2rem;font-weight:900;color:#CC1212;text-transform:uppercase;margin-bottom:24px;">YOU WIN 🏆</div>
+  <!-- Match breakdown -->
+  <div style="width:100%;max-width:340px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:14px;overflow:hidden;margin-bottom:20px;">
+    <div id="session-match-rows" style="display:flex;flex-direction:column;">
+      <!-- populated by JS -->
+    </div>
+  </div>
+  <!-- Big score -->
+  <div id="session-final-score" style="font-family:var(--font-display);font-size:3.5rem;font-weight:900;color:#fff;line-height:1;margin-bottom:24px;">2 — 1</div>
+  <!-- Buttons -->
+  <button id="btn-session-play-again" style="width:min(320px,88vw);background:#CC1212;border:none;border-radius:14px;color:#fff;font-family:var(--font-display);font-size:1rem;font-weight:700;letter-spacing:0.2em;text-transform:uppercase;padding:18px;cursor:pointer;margin-bottom:12px;">PLAY AGAIN</button>
+  <button id="btn-session-home" style="width:min(320px,88vw);background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:14px;color:rgba(255,255,255,0.6);font-family:var(--font-display);font-size:1rem;font-weight:700;letter-spacing:0.2em;text-transform:uppercase;padding:18px;cursor:pointer;">HOME</button>
 </div>
 
 </body>
