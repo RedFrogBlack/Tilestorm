@@ -80,8 +80,7 @@
     ════════════════════════════════════════════════ */
     #screen-title {
       background: var(--black);
-      justify-content: center;
-      align-items: center;
+      justify-content: flex-end;
       overflow: hidden;
     }
 
@@ -134,25 +133,24 @@
       display: flex; flex-direction: column; align-items: center;
       gap: 0;
       width: 100%;
-      padding: 16px 0;
+      padding-bottom: 40px;
     }
 
-    /* ── Red circle badge ── */
+    /* ── Red circle badge — smaller now, title is above ── */
     .title-badge-circle {
       position: relative;
-      width: min(320px, 80vw, 46vh);
+      width: min(160px, 42vw);
       aspect-ratio: 1;
       background: var(--red);
       border-radius: 50%;
       display: flex; flex-direction: column;
       align-items: center; justify-content: center;
-      gap: 10px;
-      padding: 32px;
+      gap: 0;
+      padding: 18px;
       box-shadow:
         0 0 0 2px rgba(255,255,255,0.08),
-        0 30px 80px rgba(204,18,18,0.5),
-        0 0 120px rgba(204,18,18,0.2);
-      margin-bottom: 0;
+        0 20px 60px rgba(204,18,18,0.55),
+        0 0 100px rgba(204,18,18,0.25);
       animation: badgePulse 4s ease-in-out infinite;
     }
     @keyframes badgePulse {
@@ -161,7 +159,7 @@
     }
 
     .title-logo-img {
-      width: 160px; height: auto;
+      width: 100%; height: auto;
       filter: drop-shadow(0 2px 16px rgba(255,255,255,0.15));
       animation: logoBob 3s ease-in-out infinite;
     }
@@ -1915,53 +1913,58 @@
 <div id="screen-title" class="screen">
   <div class="title-art-bg"></div>
   <div class="title-zebra"></div>
-  <!-- Art colour strip top -->
   <div class="title-art-strips">
     <div style="height:4px;background:linear-gradient(90deg,#CC1212,#8B0000);width:100%;"></div>
   </div>
   <div class="title-bottom-bar"></div>
 
   <button id="btn-sound-home" title="Toggle sound">🔊</button>
+
   <div class="title-inner">
-    <!-- Red circle badge -->
+
+    <!-- BIG TITLE at top -->
+    <div style="font-family:var(--font-display);font-size:clamp(2.8rem,14vw,5.5rem);font-weight:900;letter-spacing:0.04em;color:#fff;text-transform:uppercase;line-height:1;text-align:center;margin-bottom:8px;">CROAKDOWN</div>
+    <div style="font-size:0.7rem;letter-spacing:0.28em;color:rgba(255,255,255,0.35);text-transform:uppercase;margin-bottom:24px;">REDFROGBLACK</div>
+
+    <!-- Small red circle logo -->
     <div class="title-badge-circle">
       <img src="./rfba-logo.png" alt="RedFrogBlackArt" class="title-logo-img" />
-      <div class="title-headline">CROAK<br>DOWN</div>
-      <div class="title-tagline">REDFROGBLACK</div>
     </div>
 
-    <!-- Below circle: just two big paths + shop -->
-    <div class="title-sub">
-      <div id="title-tier-badge" class="tier-badge-title" style="display:none;">
-        <div class="tb-dot" id="tier-badge-dot" style="background:#666"></div>
-        <span id="tier-badge-name">TADPOLE EDITION</span>
+    <!-- Score card -->
+    <div style="display:flex;gap:16px;margin-top:20px;margin-bottom:4px;">
+      <div style="background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.08);border-radius:12px;padding:10px 20px;text-align:center;">
+        <div style="font-size:0.6rem;letter-spacing:0.18em;color:rgba(255,255,255,0.35);text-transform:uppercase;margin-bottom:4px;">🏆 BEST</div>
+        <div id="title-best-val" style="font-family:var(--font-mono);font-size:1.4rem;font-weight:700;color:#F7C948;">0</div>
       </div>
-
-      <!-- Hidden streak val for JS compatibility -->
-      <span id="streak-val" style="display:none;">0</span>
-
-      <!-- Trial / subscription banner -->
-      <div id="trial-banner">
-        <span id="trial-banner-icon">⏳</span>
-        <span id="trial-banner-text">7 days free trial remaining</span>
+      <div style="background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.08);border-radius:12px;padding:10px 20px;text-align:center;">
+        <div style="font-size:0.6rem;letter-spacing:0.18em;color:rgba(255,255,255,0.35);text-transform:uppercase;margin-bottom:4px;">🔥 STREAK</div>
+        <div id="streak-val-home" style="font-family:var(--font-mono);font-size:1.4rem;font-weight:700;color:#CC1212;">0</div>
       </div>
-
-      <!-- Two big mode buttons -->
-      <div style="display:flex;flex-direction:column;gap:12px;width:min(320px,88vw);">
-        <button id="btn-solo" style="background:var(--red);border:none;border-radius:14px;color:#fff;font-family:var(--font-display);font-size:1.15rem;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;padding:20px 28px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:12px;box-shadow:0 4px 28px rgba(204,18,18,0.5);transition:all 0.18s;">
-          <span style="font-size:1.5rem">🎮</span>
-          <span>SOLO PLAY</span>
-        </button>
-        <button id="btn-duo-mode" style="background:transparent;border:2px solid #CC1212;border-radius:14px;color:#CC1212;font-family:var(--font-display);font-size:1.15rem;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;padding:20px 28px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:12px;transition:all 0.18s;">
-          <span style="font-size:1.5rem">👫</span>
-          <span>DUO PLAY</span>
-        </button>
-      </div>
-      <p style="font-size:11px;color:#555;text-align:center;letter-spacing:1px;">Tap to learn more</p>
-
-      <div style="font-size:11px;color:#555;letter-spacing:1px;">🏆 BEST &nbsp;<span id="title-best-val" style="font-family:var(--font-mono);color:#F7C948;">0</span> &nbsp;|&nbsp; 🔥 <span id="streak-val-home" style="font-family:var(--font-mono);color:#CC1212;">0</span>-day streak</div>
-      <button id="btn-settings-home" style="background:transparent;border:none;color:#555;font-size:13px;letter-spacing:2px;cursor:pointer;font-family:var(--font-display);margin-top:8px;">⚙ SETTINGS</button>
     </div>
+
+    <!-- Hidden for JS compat -->
+    <span id="streak-val" style="display:none;">0</span>
+    <div id="title-tier-badge" class="tier-badge-title" style="display:none;">
+      <div class="tb-dot" id="tier-badge-dot" style="background:#666"></div>
+      <span id="tier-badge-name">TADPOLE EDITION</span>
+    </div>
+    <div id="trial-banner" style="margin-top:4px;">
+      <span id="trial-banner-icon">⏳</span>
+      <span id="trial-banner-text">7 days free trial remaining</span>
+    </div>
+
+    <!-- Two big buttons -->
+    <div style="display:flex;flex-direction:column;gap:12px;width:min(320px,88vw);margin-top:20px;">
+      <button id="btn-solo" style="background:var(--red);border:none;border-radius:14px;color:#fff;font-family:var(--font-display);font-size:1.15rem;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;padding:18px 28px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:12px;box-shadow:0 4px 28px rgba(204,18,18,0.5);transition:all 0.18s;">
+        SOLO PLAY
+      </button>
+      <button id="btn-duo-mode" style="background:transparent;border:2px solid #CC1212;border-radius:14px;color:#CC1212;font-family:var(--font-display);font-size:1.15rem;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;padding:18px 28px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:12px;transition:all 0.18s;">
+        DUO MODE
+      </button>
+    </div>
+
+    <button id="btn-settings-home" style="background:transparent;border:none;color:#555;font-size:12px;letter-spacing:3px;cursor:pointer;font-family:var(--font-display);margin-top:18px;">⚙ SETTINGS</button>
   </div>
 </div>
 
@@ -3098,7 +3101,22 @@ function buildShopUI(){
   });
   path.querySelectorAll('[data-buy]').forEach(btn=>btn.addEventListener('click',()=>openPurchaseModal(parseInt(btn.dataset.buy))));
   path.querySelectorAll('[data-equip]').forEach(btn=>btn.addEventListener('click',()=>equipTier(btn.dataset.equip)));
-  path.querySelectorAll('[data-play]').forEach(btn=>btn.addEventListener('click',()=>{ equipTier(btn.dataset.play); closeShop(); showScreen('screen-solo-setup'); }));
+  path.querySelectorAll('[data-play]').forEach(btn=>btn.addEventListener('click',()=>{
+    const tid = btn.dataset.play;
+    equipTier(tid);
+    closeShop();
+    // Set difficulty + challenge based on tier
+    const map = { tadpole:{diff:'easy',challenge:'standard'}, treefrog:{diff:'medium',challenge:'frenzy'}, poisondart:{diff:'hard',challenge:'survival'}, goldenfrog:{diff:'expert',challenge:'colourrun'} };
+    const m = map[tid] || {diff:'easy',challenge:'standard'};
+    setDifficulty(m.diff);
+    selectedChallenge = m.challenge;
+    activeChallengeMode = m.challenge;
+    localStorage.setItem('ts_last_diff', m.diff);
+    localStorage.setItem('ts_last_challenge', m.challenge);
+    if (!checkAccessBeforeStart()) return;
+    startGame();
+    initChallengeMode();
+  }));
 }
 
 function openShop(){buildShopUI();document.getElementById('shop-overlay').classList.add('open');}
@@ -4333,7 +4351,7 @@ document.getElementById('btn-powerup').addEventListener('click',()=>{ensureAudio
 document.getElementById('btn-sound').addEventListener('click',()=>{soundOn=!soundOn;document.getElementById('btn-sound').style.opacity=soundOn?'1':'0.35';});
 
 // Home screen: Solo & Duo buttons
-document.getElementById('btn-solo').addEventListener('click', openSoloSetup);
+document.getElementById('btn-solo').addEventListener('click', () => { ensureAudio(); openShop(); });
 document.getElementById('btn-duo-mode').addEventListener('click', () => {
   document.getElementById('duo-modal').classList.remove('hidden');
 });
