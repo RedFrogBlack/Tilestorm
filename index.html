@@ -7,6 +7,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <!-- Oswald (condensed caps display) + DM Sans (clean body) -->
+  <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
   <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600;700&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet" />
 
   <style>
@@ -3897,134 +3898,139 @@ function stopChallenges() {
 
 // ════════════════════════════════════════════════════════════════
 //  DUO MULTIPLAYER SYSTEM
-//  WebSocket rooms — test server via Cloudflare tunnel
+//  PeerJS peer-to-peer — free public broker, no server needed
 // ════════════════════════════════════════════════════════════════
 
-const WS_URL = 'wss://david-scanner-prove-mega.trycloudflare.com';
-
-let ws = null;
-let duoMode = 'duel';    // 'duel' | 'hazard' | 'coop'
-let duoPlayer = -1;       // 0 or 1
+let peer = null;       // PeerJS Peer instance
+let conn = null;       // DataConnection to partner
+let duoMode = 'duel';
+let duoPlayer = -1;       // 0 = host, 1 = joiner
 let duoRoomCode = null;
 let duoGameActive = false;
 let myDuoLines = 0;
 let coopMyTurn = false;
 let oppGrid = null;
 let oppScore = 0, oppLines = 0;
-// Duel mode: target lines
-const DUEL_WIN_LINES = 10;
 
-function isDuoSubscriber() {
-  return true; // TEST MODE — open access for duo testing
+function genRoomCode() {
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ';
+  return Array.from({length:4}, () => chars[Math.floor(Math.random()*chars.length)]).join('');
 }
 
-function connectWS() {
-  if (ws && ws.readyState === WebSocket.OPEN) return Promise.resolve();
-  return new Promise((resolve, reject) => {
-    ws = new WebSocket(WS_URL);
-    ws.onopen = () => resolve();
-    ws.onerror = () => reject(new Error('Connection failed'));
-    ws.onmessage = e => handleWSMessage(JSON.parse(e.data));
-    ws.onclose = () => {
-      if (duoGameActive) {
-        showEventBanner('📡 CONNECTION LOST');
-        showToast('💔 Disconnected from partner');
-        stopDuoGame();
-      }
-    };
+function peerSend(msg) {
+  if (conn && conn.open) { try { conn.send(msg); } catch(e) {} }
+}
+function wsSend(msg) { peerSend(msg); }
+
+function onConnOpen() {
+  conn.on('data', handleWSMessage);
+  conn.on('close', () => {
+    if (duoGameActive) {
+      showEventBanner('📡 CONNECTION LOST');
+      showToast('💔 Partner disconnected');
+      stopDuoGame();
+    }
   });
 }
 
-function wsSend(msg) {
-  if (ws && ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify(msg));
-}
+function doCreateRoom() {
+  if (!isDuoSubscriber()) {
+    document.getElementById('create-status').textContent = '🔒 Duo Pack required';
+    document.getElementById('create-status').className = 'duo-status error';
+    return;
+  }
+  duoMode = selectedDuoMode;
+  duoPlayer = 0;
+  if (peer) { try { peer.destroy(); } catch(e) {} peer = null; }
 
-function handleWSMessage(data) {
-  switch (data.type) {
-    case 'room_created':
-      duoRoomCode = data.code;
-      duoPlayer = data.player;
-      document.getElementById('duo-code-display').innerHTML =
-        `<span class="code-val">${data.code}</span>`;
-      document.getElementById('create-status').textContent = '⏳ Waiting for partner…';
-      document.getElementById('create-status').className = 'duo-status waiting';
-      break;
-    case 'opponent_joined':
+  document.getElementById('duo-code-display').innerHTML = '<span class="code-waiting">CONNECTING…</span>';
+  document.getElementById('create-status').textContent = '⏳ Setting up room…';
+  document.getElementById('create-status').className = 'duo-status waiting';
+
+  const code = genRoomCode();
+  duoRoomCode = code;
+  // Use PeerJS public broker with a unique room ID
+  peer = new Peer('croakdown-' + code, {
+    host: '0.peerjs.com', port: 443, path: '/', secure: true,
+    config: { iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] }
+  });
+
+  peer.on('open', () => {
+    document.getElementById('duo-code-display').innerHTML = '<span class="code-val">' + code + '</span>';
+    document.getElementById('create-status').textContent = '⏳ Share code — waiting for partner…';
+    document.getElementById('create-status').className = 'duo-status waiting';
+  });
+
+  peer.on('connection', (c) => {
+    conn = c;
+    conn.on('open', () => {
+      onConnOpen();
+      // Tell joiner the mode, then start both
+      peerSend({ type: 'game_start', mode: duoMode });
       document.getElementById('create-status').textContent = '✅ Partner connected! Starting…';
       document.getElementById('create-status').className = 'duo-status success';
-      setTimeout(() => wsSend({ type: 'ready' }), 600);
-      break;
-    case 'joined':
-      duoRoomCode = data.code;
-      duoPlayer = data.player;
-      duoMode = data.mode;
-      document.getElementById('join-status').textContent = '✅ Joined! Waiting for host to start…';
-      document.getElementById('join-status').className = 'duo-status success';
-      wsSend({ type: 'ready' });
-      break;
-    case 'game_start':
-      duoMode = data.mode;
-      startDuoGame();
-      break;
-    case 'opponent_update':
-      oppScore = data.score || 0;
-      oppLines = data.lines || 0;
-      if (data.grid) { oppGrid = data.grid; drawOppMiniBoard(); }
-      document.getElementById('opp-score-val').textContent = oppScore.toLocaleString();
-      document.getElementById('opp-lines-val').textContent = oppLines;
-      // Duel win check — if opponent reached 10 lines, they win
-      if (duoMode === 'duel' && oppLines >= DUEL_WIN_LINES) {
-        showEventBanner('🏆 OPPONENT WINS!');
-        setTimeout(() => endDuoGame('opponent'), 1200);
-      }
-      break;
-    case 'attack':
-      if (duoMode === 'hazard') receiveHazardAttack(data.count);
-      break;
-    case 'coop_place':
-      if (duoMode === 'coop' && data.player !== duoPlayer) {
-        // Partner placed a piece — apply it to our shared grid and switch turn
-        const {shape, color, row, col} = data;
-        if (canPlace(shape, row, col)) placeShape(shape, row, col, color);
-        const lines = findCompletedLines();
-        if (lines.completedRows.length + lines.completedCols.length > 0) {
-          const cleared = clearLines(lines);
-          const pts = calcScore(cleared.size, lines.completedRows.length + lines.completedCols.length, 1);
-          score += pts; linesCleared += lines.completedRows.length + lines.completedCols.length;
-          if (score > bestScore) bestScore = score;
-          updateUI();
-        }
-        drawGrid();
-        coopMyTurn = true;
-        updateCoopTurnBanner();
-        generateTray();
-        if (checkGameOver()) setTimeout(() => endDuoGame('gameover'), 500);
-      }
-      break;
-    case 'player_game_over':
-      if (duoMode === 'duel' || duoMode === 'hazard') {
-        if (data.player !== duoPlayer) {
-          showEventBanner('🏆 YOU WIN! Opponent out!');
-          setTimeout(() => endDuoGame('win'), 1500);
-        }
-      } else if (duoMode === 'coop') {
-        endDuoGame('coop_over');
-      }
-      break;
-    case 'emoji_reaction':
-      receiveEmojiReaction(data.emoji);
-      break;
-    case 'opponent_disconnected':
-      showEventBanner('💔 PARTNER DISCONNECTED');
-      showToast('Your partner disconnected');
-      setTimeout(() => stopDuoGame(), 2000);
-      break;
-    case 'error':
-      showToast('⚠️ ' + data.msg);
-      document.getElementById('join-status').textContent = '❌ ' + data.msg;
-      document.getElementById('join-status').className = 'duo-status error';
-      break;
+      setTimeout(() => startDuoGame(), 1000);
+    });
+  });
+
+  peer.on('error', (err) => {
+    if (err.type === 'unavailable-id') {
+      peer.destroy(); doCreateRoom(); // try again with new code
+    } else {
+      document.getElementById('create-status').textContent = '❌ Error: ' + (err.message || err.type);
+      document.getElementById('create-status').className = 'duo-status error';
+    }
+  });
+}
+
+function doJoinRoom() {
+  if (!isDuoSubscriber()) {
+    document.getElementById('join-status').textContent = '🔒 Duo Pack required';
+    document.getElementById('join-status').className = 'duo-status error';
+    return;
   }
+  const code = document.getElementById('join-code-input').value.trim().toUpperCase();
+  if (code.length !== 4) {
+    document.getElementById('join-status').textContent = 'Enter the 4-letter code from your partner';
+    document.getElementById('join-status').className = 'duo-status error';
+    return;
+  }
+  duoMode = selectedDuoMode;
+  duoPlayer = 1;
+  duoRoomCode = code;
+  if (peer) { try { peer.destroy(); } catch(e) {} peer = null; }
+
+  document.getElementById('join-status').textContent = '🔗 Connecting to room…';
+  document.getElementById('join-status').className = 'duo-status waiting';
+
+  peer = new Peer(undefined, {
+    host: '0.peerjs.com', port: 443, path: '/', secure: true,
+    config: { iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] }
+  });
+
+  peer.on('open', () => {
+    conn = peer.connect('croakdown-' + code, { reliable: true, serialization: 'json' });
+    conn.on('open', () => {
+      onConnOpen();
+      document.getElementById('join-status').textContent = '✅ Connected! Starting…';
+      document.getElementById('join-status').className = 'duo-status success';
+    });
+    conn.on('error', () => {
+      document.getElementById('join-status').textContent = '❌ Room not found. Check the code.';
+      document.getElementById('join-status').className = 'duo-status error';
+    });
+  });
+
+  peer.on('error', (err) => {
+    document.getElementById('join-status').textContent = '❌ ' + (err.message || 'Connection failed');
+    document.getElementById('join-status').className = 'duo-status error';
+  });
+}
+
+const DUEL_WIN_LINES = 10;
+
+function isDuoSubscriber() {
+  return true; // TEST MODE — open access
 }
 
 function startDuoGame() {
@@ -4199,71 +4205,63 @@ function drawOppMiniBoard() {
     }
   }
 }
-
-// ════════════════════════════════════════════════════════════════
-//  DUO LOBBY UI
-// ════════════════════════════════════════════════════════════════
-let selectedDuoMode = 'duel';
-
-function openDuoLobby() {
-  // Reset UI
-  document.getElementById('duo-code-display').innerHTML = '<span class="code-waiting">PRESS CREATE ROOM</span>';
-  document.getElementById('create-status').textContent = 'Pick a mode and create a room';
-  document.getElementById('create-status').className = 'duo-status waiting';
-  document.getElementById('join-status').textContent = 'Enter the 4-letter code from your partner';
-  document.getElementById('join-status').className = 'duo-status waiting';
-  document.getElementById('join-code-input').value = '';
-  // Show paywall if not subscribed
-  document.getElementById('duo-paywall-notice').style.display =
-    isDuoSubscriber() ? 'none' : 'block';
-  // Select first mode by default
-  selectDuoMode('duel');
-  showScreen('screen-duo-lobby');
-}
-
-function selectDuoMode(mode) {
-  selectedDuoMode = mode;
-  document.querySelectorAll('.mode-card').forEach(card => {
-    card.classList.toggle('selected', card.dataset.mode === mode);
-  });
-}
-
-function doCreateRoom() {
-  if (!isDuoSubscriber()) {
-    document.getElementById('create-status').textContent = '🔒 Unlock Duo Pack to play multiplayer';
-    document.getElementById('create-status').className = 'duo-status error';
-    return;
+// ── Message handler (used by PeerJS conn.on('data', ...) ────────
+function handleWSMessage(data) {
+  if (!data || !data.type) return;
+  switch (data.type) {
+    case 'game_start':
+      duoMode = data.mode || duoMode;
+      startDuoGame();
+      break;
+    case 'opponent_update':
+      oppScore = data.score || 0;
+      oppLines = data.lines || 0;
+      if (data.grid) { oppGrid = data.grid; drawOppMiniBoard(); }
+      const oScoreEl = document.getElementById('opp-score-val');
+      const oLinesEl = document.getElementById('opp-lines-val');
+      if (oScoreEl) oScoreEl.textContent = oppScore.toLocaleString();
+      if (oLinesEl) oLinesEl.textContent = oppLines;
+      if (duoMode === 'duel' && oppLines >= DUEL_WIN_LINES) {
+        showEventBanner('🏆 OPPONENT WINS!');
+        setTimeout(() => endDuoGame('opponent'), 1200);
+      }
+      break;
+    case 'attack':
+      if (duoMode === 'hazard') receiveHazardAttack(data.count);
+      break;
+    case 'coop_place':
+      if (duoMode === 'coop' && data.player !== duoPlayer) {
+        const {shape, color, row, col} = data;
+        if (canPlace(shape, row, col)) placeShape(shape, row, col, color);
+        const lines = findCompletedLines();
+        if (lines.completedRows.length + lines.completedCols.length > 0) {
+          const cleared = clearLines(lines);
+          const pts = calcScore(cleared.size, lines.completedRows.length + lines.completedCols.length, 1);
+          score += pts; linesCleared += lines.completedRows.length + lines.completedCols.length;
+          if (score > bestScore) bestScore = score;
+          updateUI();
+        }
+        drawGrid();
+        coopMyTurn = true;
+        updateCoopTurnBanner();
+        generateTray();
+        if (checkGameOver()) setTimeout(() => endDuoGame('gameover'), 500);
+      }
+      break;
+    case 'player_game_over':
+      if (duoMode === 'duel' || duoMode === 'hazard') {
+        if (data.player !== duoPlayer) {
+          showEventBanner('🏆 YOU WIN! Opponent out!');
+          setTimeout(() => endDuoGame('win'), 1500);
+        }
+      } else if (duoMode === 'coop') {
+        endDuoGame('coop_over');
+      }
+      break;
+    case 'emoji_reaction':
+      receiveEmojiReaction(data.emoji);
+      break;
   }
-  duoMode = selectedDuoMode;
-  document.getElementById('duo-code-display').innerHTML = '<span class="code-waiting">CONNECTING…</span>';
-  connectWS().then(() => {
-    wsSend({ type: 'create', mode: duoMode });
-  }).catch(() => {
-    document.getElementById('create-status').textContent = '❌ Connection failed. Try again.';
-    document.getElementById('create-status').className = 'duo-status error';
-  });
-}
-
-function doJoinRoom() {
-  if (!isDuoSubscriber()) {
-    document.getElementById('join-status').textContent = '🔒 Unlock Duo Pack to play multiplayer';
-    document.getElementById('join-status').className = 'duo-status error';
-    return;
-  }
-  const code = document.getElementById('join-code-input').value.trim().toUpperCase();
-  if (code.length !== 4) {
-    document.getElementById('join-status').textContent = 'Enter a 4-letter room code';
-    document.getElementById('join-status').className = 'duo-status error';
-    return;
-  }
-  duoMode = selectedDuoMode;
-  document.getElementById('join-status').textContent = '🔗 Joining…';
-  connectWS().then(() => {
-    wsSend({ type: 'join', code });
-  }).catch(() => {
-    document.getElementById('join-status').textContent = '❌ Connection failed';
-    document.getElementById('join-status').className = 'duo-status error';
-  });
 }
 
 // ────────────────────────────────────────────────────────────────
