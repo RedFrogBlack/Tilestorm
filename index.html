@@ -3276,7 +3276,7 @@ function buildShopUI(){
     }
     const owned=tierOwned(tier.id);const isEquipped=(equippedTierId===tier.id);
     const card=document.createElement('div');
-    card.className='tier-card'+(isEquipped?' active-tier':'')+(!owned&&tier.price?' locked-card':'');
+    card.className='tier-card'+(isEquipped?' active-tier':'')+(!owned&&tier.price?' locked-card':''); if(!owned&&tier.price){card.style.setProperty('--lock-color','#F7C948');}
     card.style.setProperty('--tier-color',tier.color);
 
     const trialLabel = tier.trialDays ? `<div class="tier-price" style="font-size:0.75rem;color:#7ED321">FREE ${tier.trialDays} DAYS</div><div style="font-size:0.7rem;color:rgba(255,255,255,0.4);margin-top:2px">then £${tier.price.toFixed(2)}</div>` : null;
@@ -4254,6 +4254,7 @@ function buildSoloSetupCards() {
       if (!card.querySelector('.gtc-lock-badge')) {
         const lb = document.createElement('div');
         lb.className = 'gtc-lock-badge';
+        lb.style.cssText = 'position:absolute;top:8px;right:58px;font-size:0.58rem;letter-spacing:0.08em;color:#F7C948;background:rgba(247,201,72,0.12);border:1px solid rgba(247,201,72,0.25);border-radius:6px;padding:2px 6px;';
         const priceMap = { treefrog:'£2.99', poisondart:'£4.99', goldenfrog:'£7.99' };
         lb.textContent = priceMap[tid] || '';
         card.appendChild(lb);
@@ -4263,9 +4264,9 @@ function buildSoloSetupCards() {
 }
 
 function openSoloSetup() {
+  // Solo setup is now the shop — go straight there
   ensureAudio();
-  showScreen('screen-solo-setup');
-  buildSoloSetupCards();
+  openShop();
 }
 
 // Wire up game card play buttons
