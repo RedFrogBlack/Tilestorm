@@ -8,6 +8,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <!-- Oswald (condensed caps display) + DM Sans (clean body) -->
   <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600;700&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet" />
+
   <style>
     /* ════════════════════════════════════════════════
        DESIGN TOKENS — RedFrogBlackArt Premium
@@ -1146,6 +1147,60 @@
       60%  { opacity:0.6; }
       100% { opacity:0; border-color:transparent; }
     }
+    /* ── Glitch Frog visual overlay (Survival mode) ── */
+    #glitch-frog-overlay {
+      position: fixed; inset: 0; z-index: 999;
+      pointer-events: none;
+      display: flex; align-items: center; justify-content: center;
+      opacity: 0;
+    }
+    #glitch-frog-overlay.show {
+      animation: glitchFrogSlam 1.4s cubic-bezier(0.16,1,0.3,1) forwards;
+    }
+    .glitch-frog-inner {
+      display: flex; flex-direction: column; align-items: center; gap: 8px;
+      background: rgba(8,8,8,0.88);
+      border: 2px solid #CC1212;
+      border-radius: 20px;
+      padding: 24px 36px;
+      box-shadow: 0 0 60px rgba(204,18,18,0.5);
+      transform: scale(0.4);
+    }
+    .glitch-frog-emoji {
+      font-size: 4rem;
+      line-height: 1;
+      filter: drop-shadow(0 0 16px rgba(204,18,18,0.8));
+      animation: frogShake 0.3s ease infinite alternate;
+    }
+    .glitch-frog-text {
+      font-family: var(--font-display);
+      font-size: 1rem; font-weight: 700;
+      letter-spacing: 0.15em; text-transform: uppercase;
+      color: #CC1212;
+    }
+    .glitch-frog-sub {
+      font-size: 0.7rem; color: rgba(255,255,255,0.5);
+      letter-spacing: 0.08em;
+    }
+    @keyframes glitchFrogSlam {
+      0%   { opacity: 0; transform: scale(0) translateY(-80px); }
+      20%  { opacity: 1; transform: scale(1.1) translateY(0); }
+      35%  { transform: scale(0.95); }
+      50%  { opacity: 1; transform: scale(1); }
+      80%  { opacity: 1; }
+      100% { opacity: 0; transform: scale(1.05); }
+    }
+    @keyframes glitchFrogSlam .glitch-frog-inner {
+      0%  { transform: scale(0.4); }
+      20% { transform: scale(1.1); }
+      50% { transform: scale(1); }
+    }
+    @keyframes frogShake {
+      from { transform: rotate(-5deg) scale(1); }
+      to   { transform: rotate(5deg) scale(1.05); }
+    }
+
+
 
     /* Special brick indicators in tray */
     .special-label {
@@ -2260,7 +2315,6 @@
   </div>
   <div id="hazard-overlay"></div>
   <div id="attack-overlay"></div>
-
   <!-- Challenge HUD (moved) -->
   <!-- Survival fill bar -->
   <div id="survival-bar-wrap"><div id="survival-bar"></div></div>
@@ -3843,20 +3897,19 @@ function stopChallenges() {
 
 // ════════════════════════════════════════════════════════════════
 //  DUO MULTIPLAYER SYSTEM
-//  WebSocket connection, room management, 3 modes
+//  WebSocket rooms — test server via Cloudflare tunnel
 // ════════════════════════════════════════════════════════════════
 
-// WebSocket URL — works locally and via deployed proxy
-const WS_URL = 'wss://grand-academic-classroom-polar.trycloudflare.com';
+const WS_URL = 'wss://david-scanner-prove-mega.trycloudflare.com';
 
 let ws = null;
 let duoMode = 'duel';    // 'duel' | 'hazard' | 'coop'
 let duoPlayer = -1;       // 0 or 1
 let duoRoomCode = null;
 let duoGameActive = false;
-let myDuoLines = 0;       // lines cleared in this duo session
-let coopMyTurn = false;   // for coop mode
-let oppGrid = null;       // opponent's grid state (for mini-board)
+let myDuoLines = 0;
+let coopMyTurn = false;
+let oppGrid = null;
 let oppScore = 0, oppLines = 0;
 // Duel mode: target lines
 const DUEL_WIN_LINES = 10;
@@ -3899,7 +3952,6 @@ function handleWSMessage(data) {
     case 'opponent_joined':
       document.getElementById('create-status').textContent = '✅ Partner connected! Starting…';
       document.getElementById('create-status').className = 'duo-status success';
-      // Both ready — tell server we're ready
       setTimeout(() => wsSend({ type: 'ready' }), 600);
       break;
     case 'joined':
@@ -4186,8 +4238,8 @@ function doCreateRoom() {
   document.getElementById('duo-code-display').innerHTML = '<span class="code-waiting">CONNECTING…</span>';
   connectWS().then(() => {
     wsSend({ type: 'create', mode: duoMode });
-  }).catch(err => {
-    document.getElementById('create-status').textContent = '❌ Connection failed. Is the server running?';
+  }).catch(() => {
+    document.getElementById('create-status').textContent = '❌ Connection failed. Try again.';
     document.getElementById('create-status').className = 'duo-status error';
   });
 }
@@ -4485,7 +4537,12 @@ function addPenaltyRow() {
   if(checkGameOver()) setTimeout(triggerGameOver, 400);
 }
 
+let _glitchFrogCooldown = false;
 function glitchFrogAttack() {
+  if (_glitchFrogCooldown) return; // don't spam every second
+  _glitchFrogCooldown = true;
+  setTimeout(() => _glitchFrogCooldown = false, 4000);
+
   const targets = [];
   for(let r=0; r<ROWS; r++) {
     const filled = grid[r].filter(v=>v!==0).length;
@@ -4503,7 +4560,12 @@ function glitchFrogAttack() {
   });
   drawGrid();
   flashHazard();
-  showEventBanner('👾 GLITCH FROG! Refill the gaps!');
+  // Show frog head overlay
+  const el = document.getElementById('glitch-frog-overlay');
+  el.classList.remove('show');
+  void el.offsetWidth; // reflow to restart animation
+  el.classList.add('show');
+  setTimeout(() => el.classList.remove('show'), 1500);
 }
 
 function addObstacleTiles(n) {
@@ -4783,5 +4845,13 @@ calcLayout();updateTierBadge();loadStreak();requestAnimationFrame(animateParticl
   <button id="btn-session-home" style="width:min(320px,88vw);background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:14px;color:rgba(255,255,255,0.6);font-family:var(--font-display);font-size:1rem;font-weight:700;letter-spacing:0.2em;text-transform:uppercase;padding:18px;cursor:pointer;">HOME</button>
 </div>
 
+<!-- Glitch Frog overlay — fixed position, always on top -->
+<div id="glitch-frog-overlay">
+  <div class="glitch-frog-inner">
+    <div class="glitch-frog-emoji">☠️🐸</div>
+    <div class="glitch-frog-text">GLITCH FROG ATTACK!</div>
+    <div class="glitch-frog-sub">Board over 50% — tiles eaten!</div>
+  </div>
+</div>
 </body>
 </html>
