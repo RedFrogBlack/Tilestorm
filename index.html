@@ -422,9 +422,16 @@
     #screen-game {
       background: var(--black);
       flex-direction: column;
-      align-items: stretch;
+      align-items: center;
       justify-content: flex-start;
       overflow: hidden;
+    }
+    /* On desktop, cap game content to 480px and centre it */
+    @media (min-width: 500px) {
+      .game-topbar { max-width: 480px; width: 100%; }
+      #grid-canvas { max-width: 480px; }
+      .tray-area { max-width: 480px; width: 100%; }
+      .level-progress-row { max-width: 480px; width: 100%; }
     }
 
     /* Subtle zebra texture on game background — RFBA brand nod */
@@ -2557,7 +2564,9 @@ function calcLayout(){
   // Fixed tray: 140px tray-wrap + ~30px label+gap + padding = 170, plus grid padding 12px
   const trayH=170+12;
   const availH=window.innerHeight-topH-trayH;
-  const availW=window.innerWidth-16;
+  // Cap width at 480px on desktop so game stays portrait-friendly
+  const maxW=Math.min(window.innerWidth-16, 480);
+  const availW=maxW;
   CELL=Math.floor(Math.min(availH/ROWS,availW/COLS));
   CELL=Math.max(26,Math.min(CELL,60));
   gridCanvas.width=COLS*CELL;gridCanvas.height=ROWS*CELL;
