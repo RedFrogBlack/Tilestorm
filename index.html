@@ -2622,7 +2622,7 @@
     <div class="duo-panel" id="duo-create-panel">
       <div class="duo-panel-title">🏠 CREATE A ROOM</div>
       <div class="duo-code-display" id="duo-code-display">
-        <span class="code-waiting">GENERATING CODE…</span>
+        <span class="code-waiting">PRESS CREATE ROOM</span>
       </div>
       <div class="duo-status waiting" id="create-status">Share this code with your partner</div>
       <button class="btn-red" id="btn-create-room" style="width:100%;margin-top:14px;">CREATE ROOM</button>
@@ -4051,29 +4051,21 @@ function doCreateRoom() {
   duoPlayer = 0;
   if (peer) { try { peer.destroy(); } catch(e) {} peer = null; }
 
-  document.getElementById('duo-code-display').innerHTML = '<span class="code-waiting">CONNECTING…</span>';
-  document.getElementById('create-status').textContent = '⏳ Setting up room…';
-  document.getElementById('create-status').className = 'duo-status waiting';
-
   const code = genRoomCode();
   duoRoomCode = code;
-  // Use PeerJS public broker with a unique room ID
-  peer = new Peer('croakdown-' + code, {
-    host: '0.peerjs.com', port: 443, path: '/', secure: true,
-    config: { iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] }
-  });
 
-  peer.on('open', () => {
-    document.getElementById('duo-code-display').innerHTML = '<span class="code-val">' + code + '</span>';
-    document.getElementById('create-status').textContent = '⏳ Share code — waiting for partner…';
-    document.getElementById('create-status').className = 'duo-status waiting';
-  });
+  // Show code immediately — don't wait for broker
+  document.getElementById('duo-code-display').innerHTML = '<span class="code-val">' + code + '</span>';
+  document.getElementById('create-status').textContent = '⏳ Share code — waiting for partner…';
+  document.getElementById('create-status').className = 'duo-status waiting';
+
+  // Connect to PeerJS default cloud broker
+  peer = new Peer('croakdown-' + code);
 
   peer.on('connection', (c) => {
     conn = c;
     conn.on('open', () => {
       onConnOpen();
-      // Tell joiner the mode, then start both
       peerSend({ type: 'game_start', mode: duoMode });
       document.getElementById('create-status').textContent = '✅ Partner connected! Starting…';
       document.getElementById('create-status').className = 'duo-status success';
@@ -4083,9 +4075,9 @@ function doCreateRoom() {
 
   peer.on('error', (err) => {
     if (err.type === 'unavailable-id') {
-      peer.destroy(); doCreateRoom(); // try again with new code
+      peer.destroy(); doCreateRoom();
     } else {
-      document.getElementById('create-status').textContent = '❌ Error: ' + (err.message || err.type);
+      document.getElementById('create-status').textContent = '❌ Connection error — try again';
       document.getElementById('create-status').className = 'duo-status error';
     }
   });
@@ -4111,10 +4103,8 @@ function doJoinRoom() {
   document.getElementById('join-status').textContent = '🔗 Connecting to room…';
   document.getElementById('join-status').className = 'duo-status waiting';
 
-  peer = new Peer(undefined, {
-    host: '0.peerjs.com', port: 443, path: '/', secure: true,
-    config: { iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] }
-  });
+  // Connect to PeerJS default cloud broker
+  peer = new Peer();
 
   peer.on('open', () => {
     conn = peer.connect('croakdown-' + code, { reliable: true, serialization: 'json' });
