@@ -73,7 +73,7 @@
       flex-direction: column;
       transition: opacity 0.3s ease, transform 0.3s ease;
     }
-    .screen.hidden { opacity: 0; pointer-events: none; transform: scale(0.98); }
+    .screen.hidden { display: none !important; }
 
     /* ════════════════════════════════════════════════
        TITLE SCREEN — Art collage hero + red circle badge
@@ -2031,6 +2031,17 @@
 </div>
 
 <!-- ════════════ GAME ════════════ -->
+<!-- ════════════ UPGRADE MODAL ════════════ -->
+<div id="upgrade-overlay" class="hidden">
+  <div id="upgrade-modal">
+    <button id="upgrade-close">✕</button>
+    <div id="upgrade-title">🐸 UNLOCK MORE</div>
+    <div id="upgrade-reason">Upgrade to access this feature</div>
+    <div id="upgrade-tiers-list"></div>
+    <p class="upgrade-free-note">One-off payment · No subscription required (except Duo)</p>
+  </div>
+</div>
+
 <div id="screen-game" class="screen hidden">
   <div id="event-banner"></div>
 
@@ -4204,15 +4215,6 @@ window.addEventListener('resize',()=>{calcLayout();if(gameActive)drawGrid();part
 calcLayout();updateTierBadge();loadStreak();requestAnimationFrame(animateParticles);initTrial();updateTrialBanner();updateLockIcons();showScreen('screen-title');
 </script>
 
-<!-- ════════════ UPGRADE MODAL ════════════ -->
-<div id="upgrade-overlay" class="hidden">
-  <div id="upgrade-modal">
-    <button id="upgrade-close">✕</button>
-    <div id="upgrade-title">🐸 UNLOCK MORE</div>
-    <div id="upgrade-reason">Upgrade to access this feature</div>
-    <div id="upgrade-tiers-list"></div>
-    <p class="upgrade-free-note">One-off payment · No subscription required (except Duo)</p>
-  </div>
-</div>
+
 </body>
 </html>
