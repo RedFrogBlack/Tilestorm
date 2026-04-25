@@ -175,3 +175,21 @@ These match the RFBA website and must be consistent across the game, marketing m
 ---
 
 *Last updated: based on full TileStorm project chat history.*
+
+---
+
+## 📧 Account Email Reference
+
+| Purpose | Email to Use |
+|---------|-------------|
+| Primary (all platforms) | info@redfrogblackart.com |
+| Backup / account recovery | kzitova@windowslive.com |
+| GitHub account | info@redfrogblackart.com |
+| Fly.io account | info@redfrogblackart.com |
+| Apple Developer account | info@redfrogblackart.com |
+| Google Play account | info@redfrogblackart.com (needs Google account) |
+| Stripe / payments | info@redfrogblackart.com |
+
+**Note on Google:** Google Play requires a Google account. Create one at google.com using info@redfrogblackart.com as the email — takes 2 minutes and means all your developer accounts are under one brand identity.
+
+**Note on recovery:** Set kzitova@windowslive.com as the backup/recovery email on every platform so you can always regain access if needed.
