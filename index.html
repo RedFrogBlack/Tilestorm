@@ -114,13 +114,13 @@
       pointer-events: none;
     }
 
-    /* Colourful art strips across top */
+    /* Single dark-red gradient bar across top */
     .title-art-strips {
       position: absolute; top: 0; left: 0; right: 0;
-      height: 7px;
-      display: flex;
+      height: 4px;
+      background: linear-gradient(90deg,#CC1212,#8B0000);
     }
-    .title-art-strips span { flex: 1; }
+    .title-art-strips span { display: none; }
 
     /* Bottom red bar */
     .title-bottom-bar {
@@ -1967,87 +1967,73 @@
 
 <!-- ════════════ SOLO SETUP ════════════ -->
 <div id="screen-solo-setup" class="screen hidden">
-  <div class="title-art-strips">
-    <span style="background:#CC1212"></span><span style="background:#F5A623"></span>
-    <span style="background:#F5E000"></span><span style="background:#7ED321"></span>
-    <span style="background:#1B5FDB"></span><span style="background:#7B3FBE"></span>
-    <span style="background:#E62298"></span><span style="background:#00C5CD"></span>
-  </div>
+  <div class="title-art-strips"></div>
   <div class="solo-setup-inner">
     <!-- Header -->
     <div class="solo-setup-header">
       <button class="solo-back-btn" id="solo-back">←</button>
-      <div class="solo-setup-title">🎮 Solo Play</div>
+      <div class="solo-setup-title">🎮 Choose Your Game</div>
     </div>
 
-    <!-- Difficulty -->
-    <div>
-      <div class="setup-section-label">1 — Choose Difficulty</div>
-      <div class="solo-diff-row">
-        <button class="solo-diff-btn active" data-diff="easy">
-          <div class="solo-diff-icon">🟢</div>
-          <div class="solo-diff-name">Easy</div>
-          <div class="solo-diff-hint">×1.0 · Simple pieces</div>
-        </button>
-        <button class="solo-diff-btn" data-diff="medium">
-          <div class="solo-diff-icon">🟡</div>
-          <div class="solo-diff-name">Medium <span class="tier-lock" id="lock-medium">🔒</span></div>
-          <div class="solo-diff-hint">×1.3 · 3s speed pieces</div>
-        </button>
-        <button class="solo-diff-btn" data-diff="hard">
-          <div class="solo-diff-icon">🟣</div>
-          <div class="solo-diff-name">Hard <span class="tier-lock" id="lock-hard">🔒</span></div>
-          <div class="solo-diff-hint">×1.8 · Tiles vanish 12s</div>
-        </button>
-        <button class="solo-diff-btn" data-diff="expert">
-          <div class="solo-diff-icon">🔴</div>
-          <div class="solo-diff-name">Expert <span class="tier-lock" id="lock-expert">🔒</span></div>
-          <div class="solo-diff-hint">×2.5 · Frog Stamp</div>
-        </button>
+    <!-- 4 Game Cards (tap to play immediately) -->
+    <div id="solo-game-cards" style="display:flex;flex-direction:column;gap:12px;width:100%;padding:0 4px;box-sizing:border-box;">
+
+      <!-- TADPOLE -->
+      <div class="game-tier-card" data-tier="tadpole" id="gtc-tadpole" style="--tc:#888888">
+        <div class="gtc-left">
+          <div class="gtc-emoji">🥚</div>
+          <div class="gtc-info">
+            <div class="gtc-name">TADPOLE</div>
+            <div class="gtc-sub">Easy · Standard · Clear rows</div>
+            <div class="gtc-badge free-badge">FREE 7 DAYS → £0.99</div>
+          </div>
+        </div>
+        <button class="gtc-play-btn" id="gtc-play-tadpole">▶ PLAY</button>
       </div>
-    </div>
 
-    <!-- Challenge mode -->
-    <div>
-      <div class="setup-section-label">2 — Choose Challenge Mode</div>
-      <div class="challenge-grid">
-        <div class="challenge-card active" data-challenge="standard">
-          <div class="challenge-lock-badge" style="background:rgba(126,211,33,0.7);">FREE</div>
-          <div class="challenge-icon">⭐</div>
-          <div class="challenge-name">Standard</div>
-          <div class="challenge-hint">Classic tile game, no time limit</div>
-          <div class="challenge-desc">Clear rows, no time pressure</div>
+      <!-- TREE FROG -->
+      <div class="game-tier-card" data-tier="treefrog" id="gtc-treefrog" style="--tc:#F5A623">
+        <div class="gtc-left">
+          <div class="gtc-emoji">🐸</div>
+          <div class="gtc-info">
+            <div class="gtc-name">TREE FROG</div>
+            <div class="gtc-sub">Medium · Frenzy · Beat the timer</div>
+            <div class="gtc-badge">Includes Tadpole · £2.99</div>
+          </div>
         </div>
-        <div class="challenge-card" data-challenge="frenzy">
-          <div class="challenge-lock-badge">🔒 Tree Frog</div>
-          <div class="challenge-icon">⚡</div>
-          <div class="challenge-name">Frenzy <span class="tier-lock" id="lock-frenzy">🔒</span></div>
-          <div class="challenge-hint">Clear 3 lines in 25s — keep pushing</div>
-          <div class="challenge-desc">Clear target lines before timer — fail = row ADDED</div>
-          <div class="focus-badge">⚡ BEST FOR FOCUS</div>
-        </div>
-        <div class="challenge-card" data-challenge="survival">
-          <div class="challenge-lock-badge">🔒 Poison Dart</div>
-          <div class="challenge-icon">🛡️</div>
-          <div class="challenge-name">Survival <span class="tier-lock" id="lock-survival">🔒</span></div>
-          <div class="challenge-hint">Keep board under 50% for 60s</div>
-          <div class="challenge-desc">Glitch Frog eats your tiles at 50% board fill</div>
-        </div>
-        <div class="challenge-card" data-challenge="colourrun">
-          <div class="challenge-lock-badge">🔒 Golden Frog</div>
-          <div class="challenge-icon">🎨</div>
-          <div class="challenge-name">Colour Run <span class="tier-lock" id="lock-colourrun">🔒</span></div>
-          <div class="challenge-hint">Match 4 same-colour pieces in a row</div>
-          <div class="challenge-desc">Match 4 same-colour pieces in a row for +300</div>
-        </div>
+        <button class="gtc-play-btn" id="gtc-play-treefrog">▶ PLAY</button>
       </div>
-    </div>
 
-    <!-- Start -->
-    <button id="btn-solo-start">▶ START GAME</button>
+      <!-- POISON DART -->
+      <div class="game-tier-card" data-tier="poisondart" id="gtc-poisondart" style="--tc:#CC1212">
+        <div class="gtc-left">
+          <div class="gtc-emoji">☠️</div>
+          <div class="gtc-info">
+            <div class="gtc-name">POISON DART</div>
+            <div class="gtc-sub">Hard · Survival · Glitch Frog attacks</div>
+            <div class="gtc-badge">Includes above · £4.99</div>
+          </div>
+        </div>
+        <button class="gtc-play-btn" id="gtc-play-poisondart">▶ PLAY</button>
+      </div>
+
+      <!-- GOLDEN FROG -->
+      <div class="game-tier-card" data-tier="goldenfrog" id="gtc-goldenfrog" style="--tc:#F5E000">
+        <div class="gtc-left">
+          <div class="gtc-emoji">🌟</div>
+          <div class="gtc-info">
+            <div class="gtc-name">GOLDEN FROG</div>
+            <div class="gtc-sub">Expert · Colour Run · Frog Stamp</div>
+            <div class="gtc-badge">Includes all · £7.99</div>
+          </div>
+        </div>
+        <button class="gtc-play-btn" id="gtc-play-goldenfrog">▶ PLAY</button>
+      </div>
+
+    </div>
 
     <!-- Shop shortcut -->
-    <button class="btn-frog-shop" id="btn-open-shop-2" style="margin-top:-8px">🐸 &nbsp;FROG EVOLUTION SHOP &nbsp;▾</button>
+    <button class="btn-frog-shop" id="btn-open-shop-2" style="margin-top:8px">🐸 &nbsp;FROG EVOLUTION SHOP &nbsp;▾</button>
   </div>
 </div>
 
@@ -2112,25 +2098,14 @@
       </div>
     </div>
     <div class="mid-zone">
-      <div class="mid-tier-badge" id="mid-tier-badge">🥚 TADPOLE EDITION</div>
       <div class="mid-progress-wrap">
         <div class="mid-progress-label">
-          <span>LEVEL PROGRESS</span>
+          <span id="mid-level-label">LEVEL 1</span>
           <span id="mid-lines-label">0 / 10 LINES</span>
         </div>
         <div class="mid-progress-track">
           <div class="mid-progress-fill" id="mid-progress-fill"></div>
         </div>
-      </div>
-      <div class="mid-art-strip">
-        <span style="background:#CC1212"></span>
-        <span style="background:#F5A623"></span>
-        <span style="background:#F5E000"></span>
-        <span style="background:#7ED321"></span>
-        <span style="background:#1B5FDB"></span>
-        <span style="background:#7B3FBE"></span>
-        <span style="background:#E62298"></span>
-        <span style="background:#00C5CD"></span>
       </div>
     </div>
     <div class="tray-section">
@@ -2358,19 +2333,12 @@
 const TIERS = [
   {
     id: 'tadpole', name: 'TADPOLE', emoji: '🥚', color: '#888888',
-    price: null,
-    desc: 'Free trial. Easy mode + Standard challenge only.',
-    perks: ['Full game access for 7 days','Classic RFBA tile colours','Standard grid','All 22 piece shapes'],
-    gridTheme: { bg: '#111111', gridLine: 'rgba(255,255,255,0.035)', corner: 'rgba(204,18,18,0.45)' },
-    tileStyle: 'classic', powerup: null, powerupCount: 0,
-  },
-  {
-    id: 'froglet', name: 'FROGLET', emoji: '🐟', color: '#7ED321',
     price: 0.99,
-    desc: 'Keep the game forever. Easy mode + Standard challenge.',
-    perks: ['Easy mode — play forever','Standard challenge','Aqua shimmer tile skin','Ocean grid theme','SPLASH power-up (clear fullest row)','3 power-ups per game'],
-    gridTheme: { bg: '#050e1a', gridLine: 'rgba(0,191,255,0.07)', corner: 'rgba(0,191,255,0.35)' },
-    tileStyle: 'aqua', powerup: { id:'splash', label:'SPLASH', icon:'💧', count:3 }, powerupCount: 3,
+    trialDays: 7,
+    desc: 'Free 7 days, then £0.99 forever. Easy · Standard.',
+    perks: ['Free for 7 days','Then £0.99 one-off — keep forever','Easy difficulty · Standard challenge','Classic RFBA tile colours','All 22 piece shapes','SPLASH power-up (clear fullest row)'],
+    gridTheme: { bg: '#111111', gridLine: 'rgba(255,255,255,0.035)', corner: 'rgba(204,18,18,0.45)' },
+    tileStyle: 'classic', powerup: { id:'splash', label:'SPLASH', icon:'💧', count:3 }, powerupCount: 3,
   },
   {
     id: 'treefrog', name: 'TREE FROG', emoji: '🐸', color: '#F5A623',
@@ -2469,7 +2437,7 @@ function saveOwnedTiers() {
 // During trial: yes for everything. After trial: only owned tiers.
 function hasAccess(tierIdRequired) {
   if (trialActive()) return true;
-  const ORDER = ['tadpole','froglet','treefrog','poisondart','goldenfrog','duopack'];
+  const ORDER = ['tadpole','treefrog','poisondart','goldenfrog','duopack'];
   const req = ORDER.indexOf(tierIdRequired);
   // Check if any owned tier is >= required
   return ownedTiers.some(t => ORDER.indexOf(t) >= req);
@@ -2551,7 +2519,7 @@ function updateTrialBanner() {
 // Gate check before starting a game
 function checkAccessBeforeStart() {
   if (trialActive()) return true; // always allowed during trial
-  // Check if they own at least froglet (base paid tier)
+  // Check if they own at least tadpole (base paid tier)
   if (!ownedTiers.some(t => t !== 'tadpole')) {
     showUpgradeModal('Your 7-day free trial has ended. Upgrade from £2.99 to keep playing.');
     return false;
@@ -2615,14 +2583,14 @@ let CELL=44;
 
 function calcLayout(){
   const topH=document.querySelector('.game-topbar')?.offsetHeight||60;
-  // Fixed tray: 140px tray-wrap + ~30px label+gap + padding = 170, plus grid padding 12px
-  const trayH=170+12;
+  // mid-zone: just the progress bar now (~38px), tray: ~160px
+  const trayH=160+38+8;
   const availH=window.innerHeight-topH-trayH;
   // Cap width at 480px on desktop so game stays portrait-friendly
-  const maxW=Math.min(window.innerWidth-16, 480);
+  const maxW=Math.min(window.innerWidth-8, 480);
   const availW=maxW;
   CELL=Math.floor(Math.min(availH/ROWS,availW/COLS));
-  CELL=Math.max(26,Math.min(CELL,60));
+  CELL=Math.max(26,Math.min(CELL,64));
   gridCanvas.width=COLS*CELL;gridCanvas.height=ROWS*CELL;
   particleCanvas.width=window.innerWidth;particleCanvas.height=window.innerHeight;
 }
@@ -3046,6 +3014,8 @@ function updateUI(){
   const range = nextTarget ? nextTarget - prevTarget : 1;
   const progressInLevel = nextTarget ? linesCleared - prevTarget : range;
   const pct = nextTarget ? Math.min(100, Math.round((progressInLevel / range) * 100)) : 100;
+  const levelLbl=document.getElementById('mid-level-label');
+  if(levelLbl)levelLbl.textContent='LEVEL '+currentLevel;
   const fill=document.getElementById('mid-progress-fill');
   const lbl=document.getElementById('mid-lines-label');
   if(fill)fill.style.width=pct+'%';
@@ -3117,9 +3087,10 @@ function buildShopUI(){
     card.className='tier-card'+(isEquipped?' active-tier':'')+(!owned&&tier.price?' locked-card':'');
     card.style.setProperty('--tier-color',tier.color);
 
-    let tagHtml=!tier.price?`<span class="tier-tag free">FREE</span>`:isEquipped?`<span class="tier-tag active">ACTIVE</span>`:owned?`<span class="tier-tag owned">OWNED</span>`:`<span class="tier-tag premium">PREMIUM</span>`;
-    let btnHtml=!tier.price?(isEquipped?`<button class="tier-buy-btn equipped" disabled>EQUIPPED</button>`:`<button class="tier-buy-btn equip" data-equip="${tier.id}">EQUIP</button>`):!owned?`<button class="tier-buy-btn buy" data-buy="${idx}">BUY</button>`:isEquipped?`<button class="tier-buy-btn equipped" disabled>EQUIPPED</button>`:`<button class="tier-buy-btn equip" data-equip="${tier.id}">EQUIP</button>`;
-    const priceHtml=tier.price?tier.subscription?`<div class="tier-price" style="font-size:0.9rem;color:#c084fc">£${tier.price.toFixed(2)}<small style="font-size:0.5rem;opacity:0.7">/mo</small></div>`:`<div class="tier-price">£${tier.price.toFixed(2)}</div>`:`<div class="tier-price free-tag">FREE</div>`;
+    const trialLabel = tier.trialDays ? `<div class="tier-price" style="font-size:0.75rem;color:#7ED321">FREE ${tier.trialDays} DAYS</div><div style="font-size:0.7rem;color:rgba(255,255,255,0.4);margin-top:2px">then £${tier.price.toFixed(2)}</div>` : null;
+    let tagHtml='';
+    let btnHtml=owned ? (isEquipped?`<button class="tier-buy-btn" style="background:#CC1212;color:#fff" data-play="${tier.id}">▶ PLAY</button>`:`<button class="tier-buy-btn equip" data-equip="${tier.id}">EQUIP</button>`) : `<button class="tier-buy-btn buy" data-buy="${idx}">BUY</button>`;
+    const priceHtml=tier.subscription?`<div class="tier-price" style="font-size:0.9rem;color:#c084fc">£${tier.price.toFixed(2)}<small style="font-size:0.5rem;opacity:0.7">/mo</small></div>`:trialLabel||`<div class="tier-price">£${tier.price.toFixed(2)}</div>`;
     const perksHtml=tier.perks.slice(0,3).map(p=>`<span class="tier-perk">${p}</span>`).join('');
 
     card.innerHTML=`<div class="tier-frog-svg">${FROG_SVGS[tier.id]}</div><div class="tier-info"><div class="tier-name-row"><div class="tier-name" style="color:${tier.color}">${tier.name}</div>${tagHtml}</div><div class="tier-desc">${tier.desc}</div><div class="tier-perks">${perksHtml}</div></div><div class="tier-price-col">${priceHtml}${btnHtml}</div>`;
@@ -3127,6 +3098,7 @@ function buildShopUI(){
   });
   path.querySelectorAll('[data-buy]').forEach(btn=>btn.addEventListener('click',()=>openPurchaseModal(parseInt(btn.dataset.buy))));
   path.querySelectorAll('[data-equip]').forEach(btn=>btn.addEventListener('click',()=>equipTier(btn.dataset.equip)));
+  path.querySelectorAll('[data-play]').forEach(btn=>btn.addEventListener('click',()=>{ equipTier(btn.dataset.play); closeShop(); showScreen('screen-solo-setup'); }));
 }
 
 function openShop(){buildShopUI();document.getElementById('shop-overlay').classList.add('open');}
@@ -3159,10 +3131,10 @@ function confirmPurchase(){
 function equipTier(id){equippedTierId=id;updateTierBadge();buildShopUI();}
 function updateTierBadge(){
   const tier=equippedTier();
-  document.getElementById('tier-badge-dot').style.background=tier.color;
-  document.getElementById('tier-badge-name').textContent=tier.name+' EDITION';
-  const midBadge=document.getElementById('mid-tier-badge');
-  if(midBadge)midBadge.textContent=tier.emoji+' '+tier.name.toUpperCase()+' EDITION';
+  const dot=document.getElementById('tier-badge-dot');
+  const nm=document.getElementById('tier-badge-name');
+  if(dot)dot.style.background=tier.color;
+  if(nm)nm.textContent=tier.name+' EDITION';
 }
 
 // ════════════════════════════════════════════════════════════════
@@ -3415,13 +3387,13 @@ function saveStreak(){
 // The existing Frog Evolution shop handles £1.99–£7.99 tiers.
 // This adds paywall logic: certain features only show when premium.
 const PREMIUM_FEATURES = {
-  morphBrick:  { tier:'froglet',    price:'£1.99', desc:'Unlock the MORPH wildcard brick' },
+  morphBrick:  { tier:'tadpole',    price:'£1.99', desc:'Unlock the MORPH wildcard brick' },
   angelBrick:  { tier:'treefrog',   price:'£2.99', desc:'Unlock the ANGEL fill brick' },
   hardMode:    { tier:'poisondart', price:'£4.99', desc:'Unlock HARD difficulty + 1.8× score' },
 };
 
 function isPremiumUnlocked(feature){
-  const tiers = ['tadpole','froglet','treefrog','poisondart','goldenfrog'];
+  const tiers = ['tadpole','treefrog','poisondart','goldenfrog'];
   const req = PREMIUM_FEATURES[feature].tier;
   return tiers.indexOf(equippedTierId) >= tiers.indexOf(req);
 }
@@ -4046,78 +4018,77 @@ function updateLockIcons() {
   setLock('lock-survival', !canPlaySurvival());
   setLock('lock-colourrun',!canPlayColourRun());
 }
-function openSoloSetup() {
-  ensureAudio();
-  showScreen('screen-solo-setup');
-  updateLockIcons();
-  // Sync difficulty buttons to current setting
-  document.querySelectorAll('.solo-diff-btn').forEach(b => {
-    b.classList.toggle('active', b.dataset.diff === currentDiff);
-    if (b.dataset.diff === 'easy')   { b.style.borderColor = b.classList.contains('active') ? 'var(--red)' : ''; }
-    if (b.dataset.diff === 'medium') { b.style.borderColor = b.classList.contains('active') ? '#F5A623' : ''; }
-    if (b.dataset.diff === 'hard')   { b.style.borderColor = b.classList.contains('active') ? '#7B3FBE' : ''; }
-    if (b.dataset.diff === 'expert') { b.style.borderColor = b.classList.contains('active') ? '#F5E000' : ''; }
+// ── Game tier card → difficulty + challenge mapping ──
+const TIER_GAME_MAP = {
+  tadpole:    { diff: 'easy',   challenge: 'standard' },
+  treefrog:   { diff: 'medium', challenge: 'frenzy'   },
+  poisondart: { diff: 'hard',   challenge: 'survival' },
+  goldenfrog: { diff: 'expert', challenge: 'colourrun'},
+};
+
+function buildSoloSetupCards() {
+  // Mark cards as owned/locked
+  ['tadpole','treefrog','poisondart','goldenfrog'].forEach(tid => {
+    const card = document.getElementById('gtc-' + tid);
+    const playBtn = document.getElementById('gtc-play-' + tid);
+    if (!card || !playBtn) return;
+    const owned = tierOwned(tid) || (tid === 'tadpole' && trialActive());
+    if (owned) {
+      card.classList.add('owned');
+      card.classList.remove('locked');
+      playBtn.classList.remove('locked-btn');
+      playBtn.textContent = '▶ PLAY';
+    } else {
+      card.classList.add('locked');
+      card.classList.remove('owned');
+      playBtn.classList.add('locked-btn');
+      playBtn.textContent = '🔒 UNLOCK';
+      // Add lock badge
+      if (!card.querySelector('.gtc-lock-badge')) {
+        const lb = document.createElement('div');
+        lb.className = 'gtc-lock-badge';
+        const priceMap = { treefrog:'£2.99', poisondart:'£4.99', goldenfrog:'£7.99' };
+        lb.textContent = priceMap[tid] || '';
+        card.appendChild(lb);
+      }
+    }
   });
 }
 
-// Solo difficulty selection
-document.querySelectorAll('.solo-diff-btn').forEach(btn => {
-  btn.addEventListener('click', () => {
-    const d = btn.dataset.diff;
-    if (d === 'medium' && !canPlayMedium()) {
-      showUpgradeModal('Medium difficulty requires Tree Frog tier or above.');
-      return;
-    }
-    if (d === 'hard' && !canPlayHard()) {
-      showUpgradeModal('Hard difficulty (1.8× score) requires Poison Dart tier.');
-      return;
-    }
-    if (d === 'expert' && !canPlayExpert()) {
-      showUpgradeModal('Expert difficulty (2.5× score) requires Golden Frog tier.');
-      return;
-    }
-    setDifficulty(d);
-    document.querySelectorAll('.solo-diff-btn').forEach(b => {
-      b.classList.remove('active');
-      b.style.borderColor = '';
-    });
-    btn.classList.add('active');
-    const colors = { easy: 'var(--red)', medium: '#F5A623', hard: '#7B3FBE', expert: '#F5E000' };
-    btn.style.borderColor = colors[d] || '';
-  });
-});
-
-// Challenge card selection
-document.querySelectorAll('.challenge-card').forEach(card => {
-  card.addEventListener('click', () => {
-    const ch = card.dataset.challenge;
-    if (ch === 'frenzy' && !canPlayFrenzy()) {
-      showUpgradeModal('Frenzy challenge requires Tree Frog tier (£4.99).');
-      return;
-    }
-    if (ch === 'survival' && !canPlaySurvival()) {
-      showUpgradeModal('Survival challenge requires Tree Frog tier (£4.99).');
-      return;
-    }
-    if (ch === 'colourrun' && !canPlayColourRun()) {
-      showUpgradeModal('Colour Run challenge requires Poison Dart tier (£7.99).');
-      return;
-    }
-    selectedChallenge = ch;
-    document.querySelectorAll('.challenge-card').forEach(c => c.classList.remove('active'));
-    card.classList.add('active');
-  });
-});
-
-// Solo start
-document.getElementById('btn-solo-start').addEventListener('click', () => {
+function openSoloSetup() {
   ensureAudio();
-  if (!checkAccessBeforeStart()) return;
-  activeChallengeMode = selectedChallenge;
-  localStorage.setItem('ts_last_diff', currentDiff);
-  localStorage.setItem('ts_last_challenge', selectedChallenge);
-  startGame();
-  initChallengeMode();
+  showScreen('screen-solo-setup');
+  buildSoloSetupCards();
+}
+
+// Wire up game card play buttons
+['tadpole','treefrog','poisondart','goldenfrog'].forEach(tid => {
+  const playBtn = document.getElementById('gtc-play-' + tid);
+  if (!playBtn) return;
+  playBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    const owned = tierOwned(tid) || (tid === 'tadpole' && trialActive());
+    if (!owned) {
+      const tierIdx = TIERS.findIndex(t => t.id === tid);
+      if (tierIdx >= 0) openPurchaseModal(tierIdx);
+      return;
+    }
+    // Equip tier and set difficulty+challenge then start
+    equipTier(tid);
+    const map = TIER_GAME_MAP[tid];
+    setDifficulty(map.diff);
+    selectedChallenge = map.challenge;
+    activeChallengeMode = map.challenge;
+    localStorage.setItem('ts_last_diff', map.diff);
+    localStorage.setItem('ts_last_challenge', map.challenge);
+    ensureAudio();
+    if (!checkAccessBeforeStart()) return;
+    startGame();
+    initChallengeMode();
+  });
+  // Also make full card tappable
+  const card = document.getElementById('gtc-' + tid);
+  if (card) card.addEventListener('click', () => playBtn.click());
 });
 
 // Back button
