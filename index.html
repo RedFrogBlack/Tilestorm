@@ -4131,7 +4131,27 @@ function isDuoSubscriber() {
   return true; // TEST MODE — open access
 }
 
+let selectedDuoMode = 'duel'; // default
+
+function selectDuoMode(mode) {
+  selectedDuoMode = mode;
+  document.querySelectorAll('.mode-card').forEach(c => {
+    c.classList.toggle('selected', c.dataset.mode === mode);
+  });
+}
+
 function openDuoLobby() {
+  // Reset lobby UI
+  if (peer) { try { peer.destroy(); } catch(e) {} peer = null; }
+  conn = null;
+  document.getElementById('duo-code-display').innerHTML = '<span class="code-waiting">PRESS CREATE ROOM</span>';
+  document.getElementById('create-status').textContent = 'Share this code with your partner';
+  document.getElementById('create-status').className = 'duo-status waiting';
+  document.getElementById('join-status').textContent = 'Enter the 4-letter code from your partner';
+  document.getElementById('join-status').className = 'duo-status waiting';
+  document.getElementById('join-code-input').value = '';
+  // Select first mode by default
+  selectDuoMode('duel');
   showScreen('screen-duo-lobby');
 }
 
