@@ -2425,24 +2425,24 @@
       <div class="mode-card" data-mode="duel" style="--mode-color:#CC1212">
         <div class="mode-icon">⚔️</div>
         <div class="mode-info">
-          <div class="mode-name">⚔️ LIVE DUEL</div>
-          <div class="mode-desc">Two separate boards. First to clear 10 rows wins. Live score sync.</div>
+          <div class="mode-name">⚔️ RACE</div>
+          <div class="mode-desc">Two boards, one winner. First to clear 10 rows takes the match.</div>
         </div>
         <div class="mode-check"></div>
       </div>
       <div class="mode-card" data-mode="hazard" style="--mode-color:#E62298">
         <div class="mode-icon">💣</div>
         <div class="mode-info">
-          <div class="mode-name">💣 HAZARD WARS</div>
-          <div class="mode-desc">Clear a row and send a tile-glitch attack to your opponent’s board.</div>
+          <div class="mode-name">💣 TILE ATTACK</div>
+          <div class="mode-desc">Clear rows to send tile-glitch attacks straight to your opponent.</div>
         </div>
         <div class="mode-check"></div>
       </div>
       <div class="mode-card" data-mode="coop" style="--mode-color:#00C5CD">
         <div class="mode-icon">🤝</div>
         <div class="mode-info">
-          <div class="mode-name">🤝 CO-OP</div>
-          <div class="mode-desc">One shared board, alternating turns. Survive together as long as possible.</div>
+          <div class="mode-name">🤝 SURVIVAL DUEL</div>
+          <div class="mode-desc">Shared board, alternating turns. Survive together as long as you can.</div>
         </div>
         <div class="mode-check"></div>
       </div>
@@ -2710,9 +2710,9 @@ function updateTrialBanner() {
 // Gate check before starting a game
 function checkAccessBeforeStart() {
   if (trialActive()) return true; // always allowed during trial
-  // Check if they own at least tadpole (base paid tier)
-  if (!ownedTiers.some(t => t !== 'tadpole')) {
-    showUpgradeModal('Your 7-day free trial has ended. Upgrade from £2.99 to keep playing.');
+  // Check the equipped tier is owned
+  if (!ownedTiers.includes(equippedTierId)) {
+    showUpgradeModal('Your 7-day free trial has ended. Tap UNLOCK to purchase this tier.');
     return false;
   }
   return true;
@@ -3250,9 +3250,14 @@ function startGame(){
   document.getElementById('hazard-overlay').classList.remove('flash');
   document.getElementById('bonus-popup').classList.remove('show');
   showScreen('screen-game');
-  // Welcome banner based on difficulty
-  const msgs = { easy:'🟢 EASY MODE — GOOD LUCK!', medium:'🟡 MEDIUM — STAY SHARP!', hard:'🟣 HARD MODE — BRACE YOURSELF!', expert:'🔴 EXPERT — FROG STAMP AWAITS!' };
-  setTimeout(()=>showEventBanner(msgs[currentDiff]||''), 500);
+  // Welcome banner based on tier challenge
+  const msgs = {
+    standard: '🥚 TADPOLE · EASY — CLEAR ROWS!',
+    frenzy:   '🐸 TREE FROG · FRENZY — BEAT THE TIMER!',
+    survival: '☠️ POISON DART · SURVIVAL — GLITCH FROG INCOMING!',
+    colourrun:'🌟 GOLDEN FROG · COLOUR RUN — MATCH 4!'
+  };
+  setTimeout(()=>showEventBanner(msgs[activeChallengeMode]||'🎮 GO!'), 500);
 }
 function triggerGameOver(){
   stopChallengeMode();
@@ -3299,11 +3304,11 @@ function buildShopUI(){
     const m = map[tid] || {diff:'easy',challenge:'standard'};
     setDifficulty(m.diff);
     selectedChallenge = m.challenge;
-    activeChallengeMode = m.challenge;
     localStorage.setItem('ts_last_diff', m.diff);
     localStorage.setItem('ts_last_challenge', m.challenge);
     if (!checkAccessBeforeStart()) return;
     startGame();
+    activeChallengeMode = m.challenge; // set AFTER startGame (stopChallengeMode resets it)
     initChallengeMode();
   }));
 }
@@ -3331,9 +3336,11 @@ function confirmPurchase(){
   equippedTierId=tier.id;
   saveOwnedTiers();
   localStorage.setItem('ts_equipped', equippedTierId);
-  closePurchaseModal();updateTierBadge();buildShopUI();updateTrialBanner();
+  closePurchaseModal();closeShop();updateTierBadge();updateTrialBanner();
   hideUpgradeModal();
   showToast(`${tier.emoji} ${tier.name} UNLOCKED`);
+  // Route straight to solo setup so player can play immediately
+  setTimeout(() => openSoloSetup(), 300);
 }
 function equipTier(id){equippedTierId=id;updateTierBadge();buildShopUI();}
 function updateTierBadge(){
@@ -3984,7 +3991,7 @@ function startDuoGame() {
   showEmojiBar(true);
   // Start the actual game
   startGame();
-  const modeNames = { duel: '⚔️ LIVE DUEL', hazard: '💣 HAZARD WARS', coop: '🤝 CO-OP MODE' };
+  const modeNames = { duel: '🏁 RACE', hazard: '💥 TILE ATTACK', coop: '🛡️ SURVIVAL DUEL' };
   setTimeout(() => showEventBanner(modeNames[duoMode] + ' — GO!'), 800);
 }
 
@@ -4264,9 +4271,9 @@ function buildSoloSetupCards() {
 }
 
 function openSoloSetup() {
-  // Solo setup is now the shop — go straight there
   ensureAudio();
-  openShop();
+  buildSoloSetupCards();
+  showScreen('screen-solo-setup');
 }
 
 // Wire up game card play buttons
@@ -4286,12 +4293,12 @@ function openSoloSetup() {
     const map = TIER_GAME_MAP[tid];
     setDifficulty(map.diff);
     selectedChallenge = map.challenge;
-    activeChallengeMode = map.challenge;
     localStorage.setItem('ts_last_diff', map.diff);
     localStorage.setItem('ts_last_challenge', map.challenge);
     ensureAudio();
     if (!checkAccessBeforeStart()) return;
-    startGame();
+    startGame(); // note: stopChallengeMode() inside startGame resets activeChallengeMode to 'standard'
+    activeChallengeMode = map.challenge; // set AFTER startGame so it isn't wiped
     initChallengeMode();
   });
   // Also make full card tappable
@@ -4547,7 +4554,7 @@ document.getElementById('btn-powerup').addEventListener('click',()=>{ensureAudio
 document.getElementById('btn-sound').addEventListener('click',()=>{soundOn=!soundOn;document.getElementById('btn-sound').style.opacity=soundOn?'1':'0.35';});
 
 // Home screen: Solo & Duo buttons
-document.getElementById('btn-solo').addEventListener('click', () => { ensureAudio(); openShop(); });
+document.getElementById('btn-solo').addEventListener('click', () => { ensureAudio(); openSoloSetup(); });
 document.getElementById('btn-duo-mode').addEventListener('click', () => {
   document.getElementById('duo-modal').classList.remove('hidden');
 });
