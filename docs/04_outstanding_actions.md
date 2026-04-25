@@ -116,3 +116,32 @@ These items are not optional. The game must not accept real payments until all o
 ---
 
 *Last updated: based on full TileStorm project chat history.*
+
+---
+
+## 🌐 Domain & Corporate Structure
+
+### Domains You Already Own
+| Domain | Registrar | Notes |
+|--------|-----------|-------|
+| redfrogblack.com | GoDaddy | Corporate hub — site to be built |
+| redfrogblack.co.uk | GoDaddy | **Renews October 2026 — set auto-renew!** |
+| redfrogblackart.com | — | Art + clothing — stays as-is |
+
+### Domains to Buy This Week
+- [ ] Buy **croakdown.com** at Namecheap (~£10/yr) — use info@redfrogblackart.com
+- [ ] Buy **croakdown.co.uk** at Namecheap (~£8/yr) — same account
+- [ ] Set auto-renew on redfrogblack.co.uk in GoDaddy (expires Oct 2026)
+
+### Corporate Site (redfrogblack.com) — Future Project
+- [ ] Build corporate hub listing all RFBA businesses:
+  - RedFrogBlackArt (art + clothing) → redfrogblackart.com
+  - CROAKDOWN (game) → croakdown.com
+  - GCSE App → own domain TBD
+  - We Work as a Team → own domain TBD
+  - Future products...
+
+### Email Structure
+- Primary for all platforms: **info@redfrogblackart.com**
+- Backup/recovery: **kzitova@windowslive.com**
+- Consider: info@redfrogblack.com for corporate communications (once site is built)
