@@ -4037,6 +4037,10 @@ function isDuoSubscriber() {
   return true; // TEST MODE — open access
 }
 
+function openDuoLobby() {
+  showScreen('screen-duo-lobby');
+}
+
 function startDuoGame() {
   duoGameActive = true;
   myDuoLines = 0; oppScore = 0; oppLines = 0; oppGrid = null;
