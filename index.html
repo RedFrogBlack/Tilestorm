@@ -3521,6 +3521,64 @@ function playGameOver(){[220,165,110].forEach((f,i)=>playSFX(f,0.5,'sawtooth',0.
 function playLevelUp(){[523,659,784,1046].forEach((f,i)=>playSFX(f,0.11,'sine',0.11,i*0.07));}
 function playPowerup(){playSFX(660,0.12,'sine',0.18);playSFX(880,0.17,'sine',0.16,0.1);playSFX(1100,0.22,'sine',0.14,0.2);}
 
+// ── Frog Voice System ───────────────────────────────────────────────
+// Each ribbit is a two-part chirp: attack freq -> drop
+// Synthesised entirely via Web Audio — no assets needed
+function _ribbit(baseFreq, dur, vol, delay) {
+  if (!soundOn || !audioCtx) return;
+  const t = audioCtx.currentTime + delay;
+  // Attack chirp (square grit)
+  const o1 = audioCtx.createOscillator();
+  const g1 = audioCtx.createGain();
+  o1.type = 'square';
+  o1.frequency.setValueAtTime(baseFreq * 1.6, t);
+  o1.frequency.exponentialRampToValueAtTime(baseFreq, t + dur * 0.25);
+  g1.gain.setValueAtTime(0, t);
+  g1.gain.linearRampToValueAtTime(vol, t + 0.008);
+  g1.gain.exponentialRampToValueAtTime(0.001, t + dur * 0.5);
+  o1.connect(g1).connect(audioCtx.destination);
+  o1.start(t); o1.stop(t + dur * 0.55);
+  // Body resonance (sine warmth)
+  const o2 = audioCtx.createOscillator();
+  const g2 = audioCtx.createGain();
+  o2.type = 'sine';
+  o2.frequency.setValueAtTime(baseFreq * 0.5, t + dur * 0.1);
+  o2.frequency.exponentialRampToValueAtTime(baseFreq * 0.3, t + dur);
+  g2.gain.setValueAtTime(0, t + dur * 0.1);
+  g2.gain.linearRampToValueAtTime(vol * 0.6, t + dur * 0.25);
+  g2.gain.exponentialRampToValueAtTime(0.001, t + dur);
+  o2.connect(g2).connect(audioCtx.destination);
+  o2.start(t + dur * 0.1); o2.stop(t + dur + 0.02);
+}
+
+// Ribbit patterns — each is an array of [freqMult, dur, vol, delay]
+// Base red frog: ~180Hz (deep, throaty)
+// Base purple frog: ~260Hz (higher, lighter)
+const RIBBIT_PATTERNS = {
+  // Slow deep warning — danger/struggling (red)
+  slow:    { base: 160, seq: [[1.0,0.32,0.18,0],[1.0,0.28,0.16,0.55]] },
+  // Single deadpan — sarcastic/dry (red)
+  deadpan: { base: 170, seq: [[1.0,0.28,0.14,0]] },
+  // Fast excited triple — cheering (purple)
+  fast:    { base: 260, seq: [[1.0,0.13,0.15,0],[1.05,0.12,0.15,0.17],[1.1,0.11,0.16,0.32]] },
+  // Stuttery panic — board danger (red)
+  panic:   { base: 155, seq: [[1.0,0.09,0.17,0],[1.0,0.09,0.14,0.13],[1.0,0.20,0.18,0.26]] },
+  // Warm double — recovery/rescue (purple)
+  warm:    { base: 240, seq: [[1.0,0.20,0.14,0],[1.15,0.22,0.16,0.28]] },
+  // Long drawn out — clunky hint (red)
+  long:    { base: 150, seq: [[1.0,0.45,0.13,0]] },
+  // Quick combo hype — four fast (purple)
+  hype:    { base: 280, seq: [[1.0,0.10,0.14,0],[1.1,0.10,0.15,0.13],[1.2,0.10,0.16,0.24],[1.35,0.09,0.17,0.34]] },
+};
+
+function playRibbit(patternName) {
+  if (!soundOn || !commentaryOn) return;
+  ensureAudio();
+  const p = RIBBIT_PATTERNS[patternName];
+  if (!p) return;
+  p.seq.forEach(([fm, dur, vol, delay]) => _ribbit(p.base * fm, dur, vol, delay));
+}
+
 // ── Canvas ────────────────────────────────────────────────────────
 const gridCanvas=document.getElementById('grid-canvas');
 const ctx=gridCanvas.getContext('2d');
@@ -4770,7 +4828,7 @@ function schedulePurpleRescue() {
     if (playerIsStruggling()) {
       const r = Math.floor(Math.random() * ROWS);
       spawnJumpingFrog('vanish', r, COLS - 1);
-      showFrogSpeech('purple', _pick(COMMENTARY.purpleRescue));
+      showFrogSpeech('purple', _pick(COMMENTARY.purpleRescue), 'warm');
     }
   }, delay);
 }
@@ -4848,8 +4906,7 @@ const COMMENTARY = {
 function _pick(arr) { return arr[Math.floor(Math.random() * arr.length)]; }
 
 // Show a speech bubble near the frog icon in topbar
-function showFrogSpeech(color, text) {
-  // Reuse the event-banner element with a speech style
+function showFrogSpeech(color, text, ribbitPattern) {
   const banner = document.getElementById('event-banner');
   if (!banner) return;
   banner.innerHTML = text;
@@ -4859,6 +4916,8 @@ function showFrogSpeech(color, text) {
   banner.style.borderColor = color === 'purple' ? '#a855f7' : '#CC1212';
   banner.classList.add('show');
   setTimeout(() => banner.classList.remove('show'), 3500);
+  // Play frog voice
+  if (ribbitPattern) playRibbit(ribbitPattern);
 }
 
 function canShowCommentary() {
@@ -4882,13 +4941,13 @@ function maybeShowCommentary() {
 
   // 1. Recovery: was in danger, now comfortable
   if (_prevFill > 0.70 && fill < 0.45 && lines > 3) {
-    showFrogSpeech('purple', _pick(COMMENTARY.recovery));
+    showFrogSpeech('purple', _pick(COMMENTARY.recovery), 'warm');
     didShowCommentary(); _prevFill = fill; return;
   }
 
   // 2. Danger
   if (fill > 0.78 && Math.random() < 0.7) {
-    showFrogSpeech('red', _pick(COMMENTARY.danger));
+    showFrogSpeech('red', _pick(COMMENTARY.danger), 'panic');
     didShowCommentary();
     schedulePurpleRescue();
     _prevFill = fill; return;
@@ -4896,25 +4955,25 @@ function maybeShowCommentary() {
 
   // 3. Struggling (not quite danger)
   if (playerIsStruggling() && Math.random() < 0.5) {
-    showFrogSpeech('red', _pick(COMMENTARY.struggling));
+    showFrogSpeech('red', _pick(COMMENTARY.struggling), 'slow');
     didShowCommentary(); _prevFill = fill; return;
   }
 
   // 4. Dominating
   if (playerIsDominating() && Math.random() < 0.45) {
-    showFrogSpeech('red', _pick(COMMENTARY.dominating));
+    showFrogSpeech('red', _pick(COMMENTARY.dominating), 'deadpan');
     didShowCommentary(); _prevFill = fill; return;
   }
 
   // 5. Clunky
   if (playerIsClunky() && Math.random() < 0.4) {
-    showFrogSpeech('red', _pick(COMMENTARY.clunky));
+    showFrogSpeech('red', _pick(COMMENTARY.clunky), 'long');
     didShowCommentary(); _prevFill = fill; return;
   }
 
   // 6. Dry spell: many placements, no lines in last 12 pieces
   if (placements > 20 && (lines / placements) < 0.06 && Math.random() < 0.35) {
-    showFrogSpeech('red', _pick(COMMENTARY.dry));
+    showFrogSpeech('red', _pick(COMMENTARY.dry), 'deadpan');
     didShowCommentary(); _prevFill = fill; return;
   }
 
@@ -4926,7 +4985,7 @@ function onComboAchieved(comboCount) {
   beh.combosThisGame++;
   if (comboCount > beh.maxComboThisGame) beh.maxComboThisGame = comboCount;
   if (comboCount >= 2 && canShowCommentary() && Math.random() < 0.55) {
-    showFrogSpeech('purple', _pick(COMMENTARY.combo));
+    showFrogSpeech('purple', _pick(COMMENTARY.combo), comboCount >= 3 ? 'hype' : 'fast');
     didShowCommentary();
   }
 }
