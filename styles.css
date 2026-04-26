@@ -514,8 +514,8 @@ section { padding: 96px 0; position: relative; }
   letter-spacing: 0.04em;
 }
 @media (max-width: 720px) {
-  .play-hint { display: block; }
-  .play-frame { height: calc(100dvh - 48px - 36px); }
+  .play-hint { display: none; }
+  .play-frame { height: calc(100dvh - 48px); }
 }
 
 /* ===== ANIMATIONS ===== */
