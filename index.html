@@ -3211,6 +3211,14 @@
       </div>
       <button id="settings-purple-frog-toggle" onclick="toggleSettingsPurpleFrog()" style="width:52px;height:28px;border-radius:14px;border:none;cursor:pointer;transition:background 0.2s;font-size:0.7rem;font-weight:700;letter-spacing:0.05em;">ON</button>
     </div>
+    <div style="height:1px;background:rgba(255,255,255,0.06);margin:12px 0;"></div>
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:4px 0;">
+      <div>
+        <div style="font-family:var(--font-display);font-size:0.85rem;font-weight:700;letter-spacing:0.08em;color:#F7C948;">💬 Frog Commentary</div>
+        <div style="font-size:0.72rem;color:rgba(255,255,255,0.4);margin-top:3px;">Frogs cheer, warn &amp; react to how you play</div>
+      </div>
+      <button id="settings-commentary-toggle" onclick="toggleSettingsCommentary()" style="width:52px;height:28px;border-radius:14px;border:none;cursor:pointer;transition:background 0.2s;font-size:0.7rem;font-weight:700;letter-spacing:0.05em;">ON</button>
+    </div>
   </div>
 
   <!-- Notifications -->
@@ -4854,6 +4862,7 @@ function showFrogSpeech(color, text) {
 }
 
 function canShowCommentary() {
+  if (!commentaryOn) return false;
   return Date.now() - beh.lastCommentaryAt > beh.commentaryCooldownMs;
 }
 function didShowCommentary() {
@@ -6950,12 +6959,14 @@ function spawnJumpingFrog(type, targetR, targetC) {
 // ── Settings screen ───────────────────────────────────────────────────────────
 const NOTIF_KEY = 'cd_notif';
 const HAPTICS_KEY = 'cd_haptics';
+const COMMENTARY_KEY = 'cd_commentary';
 const THEME_KEY = 'cd_theme';
 const FROGS_KEY      = 'cd_frogs';       // legacy — keep for compat
 const RED_FROG_KEY   = 'cd_red_frog';
 const PURPLE_FROG_KEY= 'cd_purple_frog';
 let notifsOn = localStorage.getItem(NOTIF_KEY) !== '0';
 let hapticsOn = localStorage.getItem(HAPTICS_KEY) !== '0';
+let commentaryOn = localStorage.getItem(COMMENTARY_KEY) !== '0'; // default ON
 let lightModeOn = false; // light mode removed
 localStorage.removeItem(THEME_KEY);
 // Migrate legacy cd_frogs to per-frog keys on first load
@@ -7014,6 +7025,12 @@ function updateSettingsToggles() {
     tBtn.textContent = lightModeOn ? 'ON' : 'OFF';
     tBtn.style.background = lightModeOn ? '#CC1212' : 'rgba(255,255,255,0.1)';
     tBtn.style.color = lightModeOn ? '#fff' : 'rgba(255,255,255,0.4)';
+  }
+  const cmBtn = document.getElementById('settings-commentary-toggle');
+  if (cmBtn) {
+    cmBtn.textContent = commentaryOn ? 'ON' : 'OFF';
+    cmBtn.style.background = commentaryOn ? '#F7C948' : 'rgba(255,255,255,0.1)';
+    cmBtn.style.color = commentaryOn ? '#000' : 'rgba(255,255,255,0.4)';
   }
   const rfBtn = document.getElementById('settings-red-frog-toggle');
   if (rfBtn) {
@@ -7110,6 +7127,17 @@ function toggleSettingsRedFrog() {
 function toggleSettingsPurpleFrog() {
   purpleFrogOn = !purpleFrogOn;
   localStorage.setItem(PURPLE_FROG_KEY, purpleFrogOn ? '1' : '0');
+  updateSettingsToggles();
+}
+function toggleSettingsCommentary() {
+  commentaryOn = !commentaryOn;
+  localStorage.setItem(COMMENTARY_KEY, commentaryOn ? '1' : '0');
+  if (!commentaryOn) {
+    // Hide any currently showing banner immediately
+    const banner = document.getElementById('event-banner');
+    if (banner) banner.classList.remove('show');
+    clearPurpleRescueTimer();
+  }
   updateSettingsToggles();
 }
 
