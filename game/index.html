@@ -3316,98 +3316,200 @@
 </div>
 
 <!-- ════════════ SETTINGS SCREEN ════════════ -->
+<style>
+/* ── iOS-style toggle switch ─────────────────────────── */
+.ios-toggle {
+  position: relative; display: inline-block;
+  width: 51px; height: 31px; flex-shrink: 0; cursor: pointer;
+}
+.ios-toggle input { opacity: 0; width: 0; height: 0; position: absolute; }
+.ios-toggle-track {
+  position: absolute; inset: 0;
+  background: rgba(255,255,255,0.14);
+  border-radius: 31px;
+  transition: background 0.25s cubic-bezier(.4,0,.2,1);
+}
+.ios-toggle input:checked + .ios-toggle-track { background: #34C759; }
+.ios-toggle-thumb {
+  position: absolute;
+  top: 2px; left: 2px;
+  width: 27px; height: 27px;
+  background: #fff;
+  border-radius: 50%;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.35);
+  transition: transform 0.25s cubic-bezier(.4,0,.2,1);
+  pointer-events: none;
+}
+.ios-toggle input:checked ~ .ios-toggle-thumb { transform: translateX(20px); }
+
+/* ── Settings screen layout ──────────────────────────── */
+#screen-settings {
+  align-items: flex-start !important;
+  justify-content: flex-start !important;
+  overflow-y: auto !important;
+  -webkit-overflow-scrolling: touch;
+}
+.settings-inner {
+  padding: 20px 16px 48px;
+  max-width: 480px;
+  margin: 0 auto;
+  width: 100%;
+  box-sizing: border-box;
+  min-height: 100%;
+}
+.settings-group {
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 16px;
+  padding: 0 16px;
+  margin-bottom: 10px;
+  overflow: hidden;
+}
+.settings-group-label {
+  font-family: var(--font-display);
+  font-size: 0.6rem;
+  letter-spacing: 0.22em;
+  color: rgba(255,255,255,0.32);
+  text-transform: uppercase;
+  padding: 14px 0 6px;
+  margin-bottom: 2px;
+}
+.settings-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 13px 0;
+  border-bottom: 1px solid rgba(255,255,255,0.06);
+}
+.settings-row:last-child { border-bottom: none; }
+.settings-row-label { font-family: var(--font-display); font-size: 0.85rem; font-weight: 700; letter-spacing: 0.06em; color: #fff; }
+.settings-row-sub { font-size: 0.7rem; color: rgba(255,255,255,0.38); margin-top: 3px; line-height: 1.4; }
+</style>
+
 <div id="screen-settings" class="screen hidden">
-<div style="padding:20px 16px;max-width:480px;margin:0 auto;width:100%;box-sizing:border-box;">
+<div class="settings-inner">
+
   <!-- Header -->
-  <div style="display:flex;align-items:center;gap:12px;margin-bottom:28px;">
-    <button onclick="closeSettings()" style="background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);border-radius:50%;width:36px;height:36px;color:#fff;font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center;">‹</button>
+  <div style="display:flex;align-items:center;gap:12px;margin-bottom:24px;padding-top:4px;">
+    <button onclick="closeSettings()" style="background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);border-radius:50%;width:36px;height:36px;color:#fff;font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;">‹</button>
     <div style="font-family:var(--font-display);font-size:1rem;font-weight:700;letter-spacing:0.15em;color:#fff;">⚙ SETTINGS</div>
   </div>
 
-  <!-- Sound -->
-  <div style="background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:16px;padding:20px;margin-bottom:12px;">
-    <div style="font-family:var(--font-display);font-size:0.65rem;letter-spacing:0.2em;color:rgba(255,255,255,0.35);text-transform:uppercase;margin-bottom:16px;">AUDIO</div>
-    <div style="display:flex;align-items:center;justify-content:space-between;padding:4px 0;">
-      <div>
-        <div style="font-family:var(--font-display);font-size:0.85rem;font-weight:700;letter-spacing:0.08em;color:#fff;">🔊 Sound Effects</div>
-        <div style="font-size:0.72rem;color:rgba(255,255,255,0.4);margin-top:3px;">Placement, clear & level-up sounds</div>
+  <!-- AUDIO group -->
+  <div class="settings-group">
+    <div class="settings-group-label">Audio</div>
+
+    <div class="settings-row">
+      <div style="flex:1;min-width:0;">
+        <div class="settings-row-label">🔊 Sound Effects</div>
+        <div class="settings-row-sub">Tile placement, clears &amp; level-up tones</div>
       </div>
-      <button id="settings-sound-toggle" onclick="toggleSettingsSound()" style="width:52px;height:28px;border-radius:14px;border:none;cursor:pointer;transition:background 0.2s;font-size:0.7rem;font-weight:700;letter-spacing:0.05em;">ON</button>
+      <label class="ios-toggle">
+        <input type="checkbox" id="settings-sound-toggle" onchange="toggleSettingsSound()">
+        <div class="ios-toggle-track"></div>
+        <div class="ios-toggle-thumb"></div>
+      </label>
     </div>
-    <div style="height:1px;background:rgba(255,255,255,0.06);margin:12px 0;"></div>
-    <div style="display:flex;align-items:center;justify-content:space-between;padding:4px 0;">
-      <div>
-        <div style="font-family:var(--font-display);font-size:0.85rem;font-weight:700;letter-spacing:0.08em;color:#fff;">📳 Vibration</div>
-        <div style="font-size:0.72rem;color:rgba(255,255,255,0.4);margin-top:3px;">Pulses on line clear, level-up &amp; game over</div>
+
+    <div class="settings-row">
+      <div style="flex:1;min-width:0;">
+        <div class="settings-row-label">🐸 Frog Voice &amp; Ribbit</div>
+        <div class="settings-row-sub">Frog chirps, ribbits &amp; in-game commentary</div>
       </div>
-      <button id="settings-haptics-toggle" onclick="toggleSettingsHaptics()" style="width:52px;height:28px;border-radius:14px;border:none;cursor:pointer;transition:background 0.2s;font-size:0.7rem;font-weight:700;letter-spacing:0.05em;">ON</button>
+      <label class="ios-toggle">
+        <input type="checkbox" id="settings-commentary-toggle" onchange="toggleSettingsCommentary()">
+        <div class="ios-toggle-track"></div>
+        <div class="ios-toggle-thumb"></div>
+      </label>
+    </div>
+
+    <div class="settings-row">
+      <div style="flex:1;min-width:0;">
+        <div class="settings-row-label">📳 Vibration</div>
+        <div class="settings-row-sub">Haptic pulse on clear, level-up &amp; game over</div>
+      </div>
+      <label class="ios-toggle">
+        <input type="checkbox" id="settings-haptics-toggle" onchange="toggleSettingsHaptics()">
+        <div class="ios-toggle-track"></div>
+        <div class="ios-toggle-thumb"></div>
+      </label>
     </div>
   </div>
 
-  <!-- Display -->
-  <div style="background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:16px;padding:20px;margin-bottom:12px;">
-    <div style="font-family:var(--font-display);font-size:0.65rem;letter-spacing:0.2em;color:rgba(255,255,255,0.35);text-transform:uppercase;margin-bottom:16px;">DISPLAY</div>
+  <!-- FROGS group -->
+  <div class="settings-group">
+    <div class="settings-group-label">Frogs</div>
 
-    <div style="display:flex;align-items:center;justify-content:space-between;padding:4px 0 10px;">
-      <div>
-        <div style="font-family:var(--font-display);font-size:0.85rem;font-weight:700;letter-spacing:0.08em;color:#CC1212;">🔴 Red Frog</div>
-        <div style="font-size:0.72rem;color:rgba(255,255,255,0.4);margin-top:3px;">Jumps across and adds tiles</div>
+    <div class="settings-row">
+      <div style="flex:1;min-width:0;">
+        <div class="settings-row-label" style="color:#CC1212;">🔴 Red Frog</div>
+        <div class="settings-row-sub">Jumps in and adds tiles — gets trickier the better you play</div>
       </div>
-      <button id="settings-red-frog-toggle" onclick="toggleSettingsRedFrog()" style="width:52px;height:28px;border-radius:14px;border:none;cursor:pointer;transition:background 0.2s;font-size:0.7rem;font-weight:700;letter-spacing:0.05em;">ON</button>
+      <label class="ios-toggle">
+        <input type="checkbox" id="settings-red-frog-toggle" onchange="toggleSettingsRedFrog()">
+        <div class="ios-toggle-track"></div>
+        <div class="ios-toggle-thumb"></div>
+      </label>
     </div>
-    <div style="display:flex;align-items:center;justify-content:space-between;padding:4px 0;">
-      <div>
-        <div style="font-family:var(--font-display);font-size:0.85rem;font-weight:700;letter-spacing:0.08em;color:#9B30FF;">🟣 Purple Frog</div>
-        <div style="font-size:0.72rem;color:rgba(255,255,255,0.4);margin-top:3px;">Hops in and removes tiles</div>
-      </div>
-      <button id="settings-purple-frog-toggle" onclick="toggleSettingsPurpleFrog()" style="width:52px;height:28px;border-radius:14px;border:none;cursor:pointer;transition:background 0.2s;font-size:0.7rem;font-weight:700;letter-spacing:0.05em;">ON</button>
-    </div>
-    <div style="height:1px;background:rgba(255,255,255,0.06);margin:12px 0;"></div>
-    <div style="display:flex;align-items:center;justify-content:space-between;padding:4px 0;">
-      <div>
-        <div style="font-family:var(--font-display);font-size:0.85rem;font-weight:700;letter-spacing:0.08em;color:#F7C948;">💬 Frog Commentary</div>
-        <div style="font-size:0.72rem;color:rgba(255,255,255,0.4);margin-top:3px;">Frogs cheer, warn &amp; react to how you play</div>
-      </div>
-      <button id="settings-commentary-toggle" onclick="toggleSettingsCommentary()" style="width:52px;height:28px;border-radius:14px;border:none;cursor:pointer;transition:background 0.2s;font-size:0.7rem;font-weight:700;letter-spacing:0.05em;">ON</button>
-    </div>
-  </div>
 
-  <!-- Notifications -->
-  <div style="background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:16px;padding:20px;margin-bottom:12px;">
-    <div style="font-family:var(--font-display);font-size:0.65rem;letter-spacing:0.2em;color:rgba(255,255,255,0.35);text-transform:uppercase;margin-bottom:16px;">NOTIFICATIONS</div>
-    <div style="display:flex;align-items:center;justify-content:space-between;padding:4px 0;">
-      <div>
-        <div style="font-family:var(--font-display);font-size:0.85rem;font-weight:700;letter-spacing:0.08em;color:#fff;">🔔 Daily Reminder</div>
-        <div style="font-size:0.72rem;color:rgba(255,255,255,0.4);margin-top:3px;">Reminds you to keep your streak alive</div>
+    <div class="settings-row">
+      <div style="flex:1;min-width:0;">
+        <div class="settings-row-label" style="color:#9B30FF;">🟣 Purple Frog</div>
+        <div class="settings-row-sub">Hops in when you're struggling and clears tiles</div>
       </div>
-      <button id="settings-notif-toggle" onclick="toggleSettingsNotif()" style="width:52px;height:28px;border-radius:14px;border:none;cursor:pointer;transition:background 0.2s;font-size:0.7rem;font-weight:700;letter-spacing:0.05em;">OFF</button>
+      <label class="ios-toggle">
+        <input type="checkbox" id="settings-purple-frog-toggle" onchange="toggleSettingsPurpleFrog()">
+        <div class="ios-toggle-track"></div>
+        <div class="ios-toggle-thumb"></div>
+      </label>
     </div>
   </div>
 
-  <!-- Saved game -->
-  <div style="background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:16px;padding:20px;margin-bottom:12px;">
-    <div style="font-family:var(--font-display);font-size:0.65rem;letter-spacing:0.2em;color:rgba(255,255,255,0.35);text-transform:uppercase;margin-bottom:16px;">SAVED GAME</div>
-    <div id="settings-saved-game-info" style="font-size:0.8rem;color:rgba(255,255,255,0.5);margin-bottom:12px;">No game in progress.</div>
-    <button id="settings-clear-save" onclick="clearSavedGame()" style="background:rgba(204,18,18,0.12);border:1px solid rgba(204,18,18,0.3);border-radius:10px;color:#CC1212;font-family:var(--font-display);font-size:0.75rem;font-weight:700;letter-spacing:0.1em;padding:10px 18px;cursor:pointer;display:none;">CLEAR SAVED GAME</button>
+  <!-- NOTIFICATIONS group -->
+  <div class="settings-group">
+    <div class="settings-group-label">Notifications</div>
+    <div class="settings-row">
+      <div style="flex:1;min-width:0;">
+        <div class="settings-row-label">🔔 Daily Reminder</div>
+        <div class="settings-row-sub">Nudge to keep your daily streak alive</div>
+      </div>
+      <label class="ios-toggle">
+        <input type="checkbox" id="settings-notif-toggle" onchange="toggleSettingsNotif()">
+        <div class="ios-toggle-track"></div>
+        <div class="ios-toggle-thumb"></div>
+      </label>
+    </div>
   </div>
 
-  <!-- Subscription / Unlocks -->
-  <div id="settings-subscription-section" style="background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:16px;padding:20px;margin-bottom:12px;">
-    <div style="font-family:var(--font-display);font-size:0.65rem;letter-spacing:0.2em;color:rgba(255,255,255,0.35);text-transform:uppercase;margin-bottom:16px;">MY GAMES</div>
-    <div id="settings-tier-list" style="display:flex;flex-direction:column;gap:10px;margin-bottom:14px;">
+  <!-- SAVED GAME group -->
+  <div class="settings-group">
+    <div class="settings-group-label">Saved Game</div>
+    <div class="settings-row" style="display:block;padding:12px 0;">
+      <div id="settings-saved-game-info" style="font-size:0.78rem;color:rgba(255,255,255,0.45);margin-bottom:10px;">No game in progress.</div>
+      <button id="settings-clear-save" onclick="clearSavedGame()" style="background:rgba(204,18,18,0.12);border:1px solid rgba(204,18,18,0.3);border-radius:10px;color:#CC1212;font-family:var(--font-display);font-size:0.72rem;font-weight:700;letter-spacing:0.1em;padding:9px 16px;cursor:pointer;display:none;">CLEAR SAVED GAME</button>
+    </div>
+  </div>
+
+  <!-- MY GAMES group -->
+  <div id="settings-subscription-section" class="settings-group">
+    <div class="settings-group-label">My Games</div>
+    <div id="settings-tier-list" style="padding-bottom:4px;">
       <!-- populated by updateSettingsToggles() -->
     </div>
-    <button onclick="openShop();closeSettings();" style="width:100%;background:rgba(204,18,18,0.1);border:1px solid rgba(204,18,18,0.25);border-radius:10px;color:#CC1212;font-family:var(--font-display);font-size:0.75rem;font-weight:700;letter-spacing:0.1em;padding:10px 18px;cursor:pointer;">MANAGE / UPGRADE →</button>
+    <div style="padding:12px 0;">
+      <button onclick="openShop();closeSettings();" style="width:100%;background:rgba(204,18,18,0.1);border:1px solid rgba(204,18,18,0.25);border-radius:10px;color:#CC1212;font-family:var(--font-display);font-size:0.75rem;font-weight:700;letter-spacing:0.1em;padding:11px 18px;cursor:pointer;">MANAGE / UPGRADE →</button>
+    </div>
   </div>
 
-  <!-- Legal links -->
-  <div style="display:flex;justify-content:center;gap:20px;margin-top:20px;margin-bottom:8px;">
-    <a href="https://croakdown.com/privacy" target="_blank" style="font-size:0.65rem;color:rgba(255,255,255,0.25);text-decoration:none;letter-spacing:0.05em;">Privacy Policy</a>
-    <span style="font-size:0.65rem;color:rgba(255,255,255,0.1);">·</span>
-    <a href="https://croakdown.com/terms" target="_blank" style="font-size:0.65rem;color:rgba(255,255,255,0.25);text-decoration:none;letter-spacing:0.05em;">Terms of Use</a>
+  <!-- Legal -->
+  <div style="display:flex;justify-content:center;gap:20px;margin-top:8px;margin-bottom:4px;">
+    <a href="https://croakdown.com/privacy" target="_blank" style="font-size:0.62rem;color:rgba(255,255,255,0.22);text-decoration:none;letter-spacing:0.04em;">Privacy Policy</a>
+    <span style="font-size:0.62rem;color:rgba(255,255,255,0.1);">·</span>
+    <a href="https://croakdown.com/terms" target="_blank" style="font-size:0.62rem;color:rgba(255,255,255,0.22);text-decoration:none;letter-spacing:0.04em;">Terms of Use</a>
   </div>
-  <!-- Version -->
-  <div style="text-align:center;font-size:0.65rem;color:rgba(255,255,255,0.15);margin-bottom:32px;">CROAKDOWN · Red Frog Black Art · v1.0</div>
+  <div style="text-align:center;font-size:0.6rem;color:rgba(255,255,255,0.12);margin-top:8px;">CROAKDOWN · Red Frog Black Art · v1.0</div>
+
 </div>
 </div>
 <script>
@@ -7262,49 +7364,17 @@ function hapticGameOver()   { vibrate([80, 60, 120]); }         // heavy thud
 function hapticTileDrop()   { vibrate(12); }                    // light tick
 function hapticWin()        { vibrate([40,30,40,30,40,30,120]); } // celebration
 
+function _setToggle(id, on) {
+  const el = document.getElementById(id);
+  if (el) el.checked = !!on;
+}
 function updateSettingsToggles() {
-  const sBtn = document.getElementById('settings-sound-toggle');
-  const nBtn = document.getElementById('settings-notif-toggle');
-  const hBtn = document.getElementById('settings-haptics-toggle');
-  const tBtn = document.getElementById('settings-theme-toggle');
-  if (sBtn) {
-    sBtn.textContent = soundOn ? 'ON' : 'OFF';
-    sBtn.style.background = soundOn ? '#CC1212' : 'rgba(255,255,255,0.1)';
-    sBtn.style.color = soundOn ? '#fff' : 'rgba(255,255,255,0.4)';
-  }
-  if (nBtn) {
-    nBtn.textContent = notifsOn ? 'ON' : 'OFF';
-    nBtn.style.background = notifsOn ? '#CC1212' : 'rgba(255,255,255,0.1)';
-    nBtn.style.color = notifsOn ? '#fff' : 'rgba(255,255,255,0.4)';
-  }
-  if (hBtn) {
-    hBtn.textContent = hapticsOn ? 'ON' : 'OFF';
-    hBtn.style.background = hapticsOn ? '#CC1212' : 'rgba(255,255,255,0.1)';
-    hBtn.style.color = hapticsOn ? '#fff' : 'rgba(255,255,255,0.4)';
-  }
-  if (tBtn) {
-    tBtn.textContent = lightModeOn ? 'ON' : 'OFF';
-    tBtn.style.background = lightModeOn ? '#CC1212' : 'rgba(255,255,255,0.1)';
-    tBtn.style.color = lightModeOn ? '#fff' : 'rgba(255,255,255,0.4)';
-  }
-  const cmBtn = document.getElementById('settings-commentary-toggle');
-  if (cmBtn) {
-    cmBtn.textContent = commentaryOn ? 'ON' : 'OFF';
-    cmBtn.style.background = commentaryOn ? '#F7C948' : 'rgba(255,255,255,0.1)';
-    cmBtn.style.color = commentaryOn ? '#000' : 'rgba(255,255,255,0.4)';
-  }
-  const rfBtn = document.getElementById('settings-red-frog-toggle');
-  if (rfBtn) {
-    rfBtn.textContent = redFrogOn ? 'ON' : 'OFF';
-    rfBtn.style.background = redFrogOn ? '#CC1212' : 'rgba(255,255,255,0.1)';
-    rfBtn.style.color = redFrogOn ? '#fff' : 'rgba(255,255,255,0.4)';
-  }
-  const pfBtn = document.getElementById('settings-purple-frog-toggle');
-  if (pfBtn) {
-    pfBtn.textContent = purpleFrogOn ? 'ON' : 'OFF';
-    pfBtn.style.background = purpleFrogOn ? '#9B30FF' : 'rgba(255,255,255,0.1)';
-    pfBtn.style.color = purpleFrogOn ? '#fff' : 'rgba(255,255,255,0.4)';
-  }
+  _setToggle('settings-sound-toggle',      soundOn);
+  _setToggle('settings-commentary-toggle', commentaryOn);
+  _setToggle('settings-haptics-toggle',    hapticsOn);
+  _setToggle('settings-notif-toggle',      notifsOn);
+  _setToggle('settings-red-frog-toggle',   redFrogOn);
+  _setToggle('settings-purple-frog-toggle',purpleFrogOn);
   // Saved game info
   const info = document.getElementById('settings-saved-game-info');
   const clearBtn = document.getElementById('settings-clear-save');
