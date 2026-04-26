@@ -2260,6 +2260,15 @@
       </div>
     </div>
 
+    <!-- Resume banner (shown if saved game exists) -->
+    <div id="resume-game-banner" style="display:none;background:rgba(204,18,18,0.12);border:1.5px solid rgba(204,18,18,0.4);border-radius:14px;padding:14px 18px;margin-bottom:14px;align-items:center;justify-content:space-between;gap:12px;">
+      <div>
+        <div style="font-family:var(--font-display);font-size:0.8rem;font-weight:700;letter-spacing:0.1em;color:#CC1212;margin-bottom:2px;">▶ GAME IN PROGRESS</div>
+        <div id="resume-banner-detail" style="font-size:0.72rem;color:rgba(255,255,255,0.5);">Tap to continue</div>
+      </div>
+      <button onclick="resumeSavedGame()" style="background:#CC1212;border:none;border-radius:10px;color:#fff;font-family:var(--font-display);font-size:0.75rem;font-weight:700;letter-spacing:0.1em;padding:10px 16px;cursor:pointer;white-space:nowrap;">RESUME</button>
+    </div>
+
     <!-- Buttons -->
     <div class="home-btn-stack">
       <button id="btn-solo" class="home-btn-solo">SOLO PLAY</button>
@@ -2379,13 +2388,7 @@
         <span class="pu-count" id="pu-count">3</span>
       </button>
       <button class="icon-btn" id="btn-shop-ingame" title="Shop" style="font-size:1rem">🐸</button>
-      <button class="icon-btn" id="btn-sound" title="Sound">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
-          <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/>
-          <path d="M19.07 4.93a10 10 0 0 1 0 14.14"/>
-          <path d="M15.54 8.46a5 5 0 0 1 0 7.07"/>
-        </svg>
-      </button>
+      <button class="icon-btn" id="btn-sound" title="Sound" style="font-size:1rem">🔊</button>
       <button class="icon-btn" id="btn-menu" title="Menu">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
           <line x1="3" y1="12" x2="21" y2="12"/>
@@ -2694,7 +2697,7 @@ const TIERS = [
     price: 0.99,
     trialDays: 7,
     desc: 'Free 7 days, then £0.99 forever. Easy · Standard.',
-    perks: ['Free for 7 days','Then £0.99 one-off — keep forever','Easy difficulty · Standard challenge','Classic RFBA tile colours','All 22 piece shapes','SPLASH power-up (clear fullest row)'],
+    perks: ['Free for 7 days, then £0.99 one-off','Easy difficulty — relaxed pace','Standard mode — clear rows & columns to score','22 piece shapes to place','SPLASH power-up: clears the fullest row instantly','3 power-ups per game'],
     gridTheme: { bg: '#111111', gridLine: 'rgba(255,255,255,0.035)', corner: 'rgba(204,18,18,0.45)' },
     tileStyle: 'classic', powerup: { id:'splash', label:'SPLASH', icon:'💧', count:3 }, powerupCount: 3,
   },
@@ -2702,7 +2705,7 @@ const TIERS = [
     id: 'treefrog', name: 'TREE FROG', emoji: '🐸', color: '#F5A623',
     price: 2.99,
     desc: 'Medium difficulty + Frenzy challenge unlocked.',
-    perks: ['Everything in Tadpole','Medium difficulty','Frenzy challenge','Neon green tile skin','Jungle canopy grid','BOMB power-up (blast 3×3 area)','3 power-ups per game','Frog mascot on grid'],
+    perks: ['Everything in Tadpole (both unlocked)','Medium difficulty — faster pace','Frenzy mode: you have 3s per piece. Miss the timer? A penalty row is added to the top!','Neon green tile skin','BOMB power-up: blasts a 3×3 area clear','3 power-ups per game'],
     gridTheme: { bg: '#050f05', gridLine: 'rgba(126,211,33,0.07)', corner: 'rgba(126,211,33,0.4)' },
     tileStyle: 'neon', powerup: { id:'bomb', label:'BOMB', icon:'💣', count:3 }, powerupCount: 3,
   },
@@ -2710,7 +2713,7 @@ const TIERS = [
     id: 'poisondart', name: 'POISON DART', emoji: '🦎', color: '#CC1212',
     price: 4.99,
     desc: 'Hard mode + Survival challenge unlocked.',
-    perks: ['Everything in Tree Frog','Hard difficulty (1.8× score)','Survival challenge','Toxic gradient tiles','Volcanic grid','VENOM power-up (wipe one colour)','5 power-ups per game'],
+    perks: ['Everything in Tadpole + Tree Frog (all 3 unlocked)','Hard difficulty — 1.8× score multiplier','Survival mode: tiles vanish after 12s. Board over 50% full? Glitch Frog drops extra tiles on you!','Toxic orange/red tile skin','VENOM power-up: wipes all tiles of one colour','5 power-ups per game'],
     gridTheme: { bg: '#080808', gridLine: 'rgba(245,166,35,0.07)', corner: 'rgba(245,166,35,0.4)' },
     tileStyle: 'toxic', powerup: { id:'venom', label:'VENOM', icon:'☠️', count:5 }, powerupCount: 5,
     bonusMultiplier: 1.5,
@@ -2719,7 +2722,7 @@ const TIERS = [
     id: 'goldenfrog', name: 'GOLDEN FROG', emoji: '✨', color: '#F5E000',
     price: 7.99,
     desc: 'Expert mode + Colour Run. Everything unlocked.',
-    perks: ['Expert difficulty (2.5× score)','Colour Run challenge','Gold holographic tiles','Galaxy grid with starfield','STORM power-up (force-clear 2 lines)','5 power-ups per game','×2 score multiplier','Golden frog mascot'],
+    perks: ['Unlocks ALL 4 games — best value','Expert difficulty — 2.5× score multiplier','Colour Run mode: match 4 tiles of the same colour in a row. Break the streak? Obstacle tiles drop in!','Gold holographic tile skin + starfield grid','STORM power-up: force-clears 2 full lines','5 power-ups per game'],
     gridTheme: { bg: '#06060c', gridLine: 'rgba(255,215,0,0.06)', corner: 'rgba(255,215,0,0.4)' },
     tileStyle: 'gold', powerup: { id:'storm', label:'STORM', icon:'⚡', count:5 }, powerupCount: 5,
     bonusMultiplier: 2.0, starfield: true,
@@ -2729,7 +2732,7 @@ const TIERS = [
     price: 5.00,
     subscription: true,
     desc: 'Play with a friend anywhere. £5/month per player.',
-    perks: ['Live Duel mode — first to 10 rows wins','Hazard Wars — attack your opponent','Co-op — survive together on one board','Room codes to connect worldwide','All 3 multiplayer modes'],
+    perks: ['Race mode — first player to clear 10 lines wins','Tile Attack mode — clearing lines sends hazard tiles to your opponent','Survival Duel — co-op: survive together on one shared board','Connect instantly with a 4-letter room code','No server needed — plays directly phone to phone'],
     gridTheme: { bg: '#0e0518', gridLine: 'rgba(192,132,252,0.06)', corner: 'rgba(192,132,252,0.4)' },
     tileStyle: 'classic', powerup: null, powerupCount: 0,
   },
@@ -3363,7 +3366,7 @@ document.getElementById('btn-pause-upgrade').addEventListener('click', () => {
 });
 document.getElementById('btn-pause-settings').addEventListener('click', () => {
   closePause();
-  openShop(); // no dedicated settings screen yet
+  openSettings('screen-game');
 });
 document.getElementById('btn-pause-profile').addEventListener('click', () => {
   closePause();
@@ -3422,7 +3425,7 @@ function animateParticles(ts){
 }
 
 // ── Screens ───────────────────────────────────────────────────────
-function showScreen(id){document.querySelectorAll('.screen').forEach(s=>s.classList.toggle('hidden',s.id!==id));if(id==='screen-title'){updateTrialBanner();}if(id==='screen-profile'){updateProfileScreen();}}
+function showScreen(id){document.querySelectorAll('.screen').forEach(s=>s.classList.toggle('hidden',s.id!==id));if(id==='screen-title'){updateTrialBanner();checkResumeOnHome();}if(id==='screen-profile'){updateProfileScreen();}}
 
 function startGame(){
   clearVanishTimers();clearSpeedCountdown();stopChallenges();stopChallengeMode();
@@ -4766,7 +4769,13 @@ document.getElementById('btn-confirm-buy').addEventListener('click',confirmPurch
 document.getElementById('btn-cancel-buy').addEventListener('click',closePurchaseModal);
 document.getElementById('purchase-overlay').addEventListener('click',e=>{if(e.target===document.getElementById('purchase-overlay'))closePurchaseModal();});
 document.getElementById('btn-powerup').addEventListener('click',()=>{ensureAudio();activatePowerup();});
-document.getElementById('btn-sound').addEventListener('click',()=>{soundOn=!soundOn;document.getElementById('btn-sound').style.opacity=soundOn?'1':'0.35';});
+document.getElementById('btn-sound').addEventListener('click',()=>{
+  soundOn=!soundOn;
+  const btn=document.getElementById('btn-sound');
+  btn.textContent=soundOn?'🔊':'🔇';
+  btn.style.opacity=soundOn?'1':'0.5';
+  localStorage.setItem('ts_sound',soundOn?'1':'0');
+});
 
 // Home screen: Solo & Duo buttons
 document.getElementById('btn-solo').addEventListener('click', () => { ensureAudio(); openSoloSetup(); });
@@ -4841,8 +4850,7 @@ document.getElementById('join-code-input').addEventListener('keydown', e => {
 
 // Settings button on home screen
 document.getElementById('btn-settings-home').addEventListener('click', () => {
-  // No dedicated settings screen yet — open shop as settings
-  openShop();
+  openSettings('screen-title');
 });
 
 // ── Profile / Stats ──────────────────────────────────────────────
@@ -4925,6 +4933,157 @@ window.addEventListener('resize',()=>{calcLayout();if(gameActive)drawGrid();part
 
 // Boot
 calcLayout();updateTierBadge();loadStreak();requestAnimationFrame(animateParticles);initTrial();updateTrialBanner();updateLockIcons();showScreen('screen-title');
+
+// ── Settings screen ───────────────────────────────────────────────────────────
+const NOTIF_KEY = 'cd_notif';
+let notifsOn = localStorage.getItem(NOTIF_KEY) !== '0';
+let _settingsReturnScreen = 'screen-title';
+
+function updateSettingsToggles() {
+  const sBtn = document.getElementById('settings-sound-toggle');
+  const nBtn = document.getElementById('settings-notif-toggle');
+  if (sBtn) {
+    sBtn.textContent = soundOn ? 'ON' : 'OFF';
+    sBtn.style.background = soundOn ? '#CC1212' : 'rgba(255,255,255,0.1)';
+    sBtn.style.color = soundOn ? '#fff' : 'rgba(255,255,255,0.4)';
+  }
+  if (nBtn) {
+    nBtn.textContent = notifsOn ? 'ON' : 'OFF';
+    nBtn.style.background = notifsOn ? '#CC1212' : 'rgba(255,255,255,0.1)';
+    nBtn.style.color = notifsOn ? '#fff' : 'rgba(255,255,255,0.4)';
+  }
+  // Saved game info
+  const info = document.getElementById('settings-saved-game-info');
+  const clearBtn = document.getElementById('settings-clear-save');
+  const saved = loadSavedGame();
+  if (info && saved) {
+    info.textContent = `Saved: ${saved.mode || 'Standard'} · Score ${(saved.score||0).toLocaleString()} · Level ${saved.level||1} · ${saved.savedAt||''}`;
+    if (clearBtn) clearBtn.style.display = 'inline-block';
+  } else if (info) {
+    info.textContent = 'No game in progress.';
+    if (clearBtn) clearBtn.style.display = 'none';
+  }
+}
+
+function toggleSettingsSound() {
+  soundOn = !soundOn;
+  localStorage.setItem('ts_sound', soundOn ? '1' : '0');
+  // sync in-game button
+  const inGameBtn = document.getElementById('btn-sound');
+  if (inGameBtn) { inGameBtn.textContent = soundOn ? '🔊' : '🔇'; inGameBtn.style.opacity = soundOn ? '1' : '0.5'; }
+  const homeBtn = document.getElementById('btn-sound-home');
+  if (homeBtn) homeBtn.textContent = soundOn ? '🔊' : '🔇';
+  updateSettingsToggles();
+}
+
+function toggleSettingsNotif() {
+  notifsOn = !notifsOn;
+  localStorage.setItem(NOTIF_KEY, notifsOn ? '1' : '0');
+  if (notifsOn && 'Notification' in window) {
+    Notification.requestPermission();
+  }
+  updateSettingsToggles();
+}
+
+function openSettings(returnScreen) {
+  _settingsReturnScreen = returnScreen || 'screen-title';
+  updateSettingsToggles();
+  showScreen('screen-settings');
+}
+
+function closeSettings() {
+  showScreen(_settingsReturnScreen);
+}
+
+// ── Save / Resume game state ───────────────────────────────────────────────────
+const GAME_SAVE_KEY = 'cd_saved_game';
+
+function saveGame() {
+  if (!gameActive && score === 0) return; // nothing to save
+  const state = {
+    grid: grid.map(r => [...r]),
+    score, bestScore, level, linesCleared, combo,
+    trayPieces: trayPieces.map(p => ({ shape: p.shape, color: p.color, special: p.special || null })),
+    trayUsed: [...trayUsed],
+    equippedTierId,
+    activeChallengeMode,
+    currentDiff,
+    powerupsLeft,
+    mode: activeChallengeMode,
+    savedAt: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+  };
+  localStorage.setItem(GAME_SAVE_KEY, JSON.stringify(state));
+}
+
+function loadSavedGame() {
+  try {
+    const raw = localStorage.getItem(GAME_SAVE_KEY);
+    return raw ? JSON.parse(raw) : null;
+  } catch { return null; }
+}
+
+function clearSavedGame() {
+  localStorage.removeItem(GAME_SAVE_KEY);
+  updateSettingsToggles();
+  showToast('Saved game cleared');
+}
+
+function resumeSavedGame() {
+  const state = loadSavedGame();
+  if (!state) return false;
+  // Restore all state
+  equippedTierId = state.equippedTierId || equippedTierId;
+  currentDiff = state.currentDiff || 'easy';
+  activeChallengeMode = state.activeChallengeMode || 'standard';
+  selectedChallenge = activeChallengeMode;
+  calcLayout();
+  initGrid();
+  state.grid.forEach((row, r) => row.forEach((v, c) => grid[r][c] = v));
+  score = state.score || 0;
+  bestScore = Math.max(bestScore, state.bestScore || 0);
+  level = state.level || 1;
+  linesCleared = state.linesCleared || 0;
+  combo = state.combo || 0;
+  trayPieces = state.trayPieces || [];
+  trayUsed = state.trayUsed || [false, false, false];
+  powerupsLeft = state.powerupsLeft || 0;
+  particles = [];
+  gameActive = true;
+  powerupActive = false;
+  updateUI();
+  renderTray();
+  drawGrid();
+  initPowerups();
+  updateTierBadge();
+  updateDiffIndicator();
+  stopChallengeMode();
+  initChallengeMode();
+  showScreen('screen-game');
+  localStorage.removeItem(GAME_SAVE_KEY); // clear after resuming
+  showToast('Game resumed! ▶');
+  return true;
+}
+
+// Auto-save when user leaves / closes the tab
+window.addEventListener('visibilitychange', () => {
+  if (document.hidden && gameActive) saveGame();
+});
+window.addEventListener('pagehide', () => {
+  if (gameActive) saveGame();
+});
+
+// Check for saved game on home screen load — show resume banner if exists
+function checkResumeOnHome() {
+  const saved = loadSavedGame();
+  const banner = document.getElementById('resume-game-banner');
+  const detail = document.getElementById('resume-banner-detail');
+  if (banner) banner.style.display = saved ? 'flex' : 'none';
+  if (saved && detail) {
+    const modeName = (saved.activeChallengeMode || 'standard').toUpperCase();
+    detail.textContent = `${modeName} · Score ${(saved.score||0).toLocaleString()} · Level ${saved.level||1} · Saved ${saved.savedAt||''}`;
+  }
+}
+
 </script>
 
 
@@ -5001,6 +5160,52 @@ calcLayout();updateTierBadge();loadStreak();requestAnimationFrame(animateParticl
   <!-- Buttons -->
   <button id="btn-session-play-again" style="width:min(320px,88vw);background:#CC1212;border:none;border-radius:14px;color:#fff;font-family:var(--font-display);font-size:1rem;font-weight:700;letter-spacing:0.2em;text-transform:uppercase;padding:18px;cursor:pointer;margin-bottom:12px;">PLAY AGAIN</button>
   <button id="btn-session-home" style="width:min(320px,88vw);background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:14px;color:rgba(255,255,255,0.6);font-family:var(--font-display);font-size:1rem;font-weight:700;letter-spacing:0.2em;text-transform:uppercase;padding:18px;cursor:pointer;">HOME</button>
+</div>
+
+
+<!-- ════════════ SETTINGS SCREEN ════════════ -->
+<div id="screen-settings" class="screen hidden">
+<div style="padding:20px 16px;max-width:480px;margin:0 auto;width:100%;box-sizing:border-box;">
+  <!-- Header -->
+  <div style="display:flex;align-items:center;gap:12px;margin-bottom:28px;">
+    <button onclick="closeSettings()" style="background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);border-radius:50%;width:36px;height:36px;color:#fff;font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center;">‹</button>
+    <div style="font-family:var(--font-display);font-size:1rem;font-weight:700;letter-spacing:0.15em;color:#fff;">⚙ SETTINGS</div>
+  </div>
+
+  <!-- Sound -->
+  <div style="background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:16px;padding:20px;margin-bottom:12px;">
+    <div style="font-family:var(--font-display);font-size:0.65rem;letter-spacing:0.2em;color:rgba(255,255,255,0.35);text-transform:uppercase;margin-bottom:16px;">AUDIO</div>
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:4px 0;">
+      <div>
+        <div style="font-family:var(--font-display);font-size:0.85rem;font-weight:700;letter-spacing:0.08em;color:#fff;">🔊 Sound Effects</div>
+        <div style="font-size:0.72rem;color:rgba(255,255,255,0.4);margin-top:3px;">Placement, clear & level-up sounds</div>
+      </div>
+      <button id="settings-sound-toggle" onclick="toggleSettingsSound()" style="width:52px;height:28px;border-radius:14px;border:none;cursor:pointer;transition:background 0.2s;font-size:0.7rem;font-weight:700;letter-spacing:0.05em;">ON</button>
+    </div>
+  </div>
+
+  <!-- Notifications -->
+  <div style="background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:16px;padding:20px;margin-bottom:12px;">
+    <div style="font-family:var(--font-display);font-size:0.65rem;letter-spacing:0.2em;color:rgba(255,255,255,0.35);text-transform:uppercase;margin-bottom:16px;">NOTIFICATIONS</div>
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:4px 0;">
+      <div>
+        <div style="font-family:var(--font-display);font-size:0.85rem;font-weight:700;letter-spacing:0.08em;color:#fff;">🔔 Daily Reminder</div>
+        <div style="font-size:0.72rem;color:rgba(255,255,255,0.4);margin-top:3px;">Reminds you to keep your streak alive</div>
+      </div>
+      <button id="settings-notif-toggle" onclick="toggleSettingsNotif()" style="width:52px;height:28px;border-radius:14px;border:none;cursor:pointer;transition:background 0.2s;font-size:0.7rem;font-weight:700;letter-spacing:0.05em;">OFF</button>
+    </div>
+  </div>
+
+  <!-- Saved game -->
+  <div style="background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:16px;padding:20px;margin-bottom:12px;">
+    <div style="font-family:var(--font-display);font-size:0.65rem;letter-spacing:0.2em;color:rgba(255,255,255,0.35);text-transform:uppercase;margin-bottom:16px;">SAVED GAME</div>
+    <div id="settings-saved-game-info" style="font-size:0.8rem;color:rgba(255,255,255,0.5);margin-bottom:12px;">No game in progress.</div>
+    <button id="settings-clear-save" onclick="clearSavedGame()" style="background:rgba(204,18,18,0.12);border:1px solid rgba(204,18,18,0.3);border-radius:10px;color:#CC1212;font-family:var(--font-display);font-size:0.75rem;font-weight:700;letter-spacing:0.1em;padding:10px 18px;cursor:pointer;display:none;">CLEAR SAVED GAME</button>
+  </div>
+
+  <!-- Version -->
+  <div style="text-align:center;font-size:0.65rem;color:rgba(255,255,255,0.15);margin-top:20px;">CROAKDOWN · Red Frog Black Art · v1.0</div>
+</div>
 </div>
 
 <!-- Quit Game confirmation modal -->
