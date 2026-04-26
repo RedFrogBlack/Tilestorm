@@ -1122,6 +1122,75 @@
     .shop-footer a { color: var(--red); text-decoration: none; }
     .shop-footer a:hover { text-decoration: underline; }
 
+    /* Shop tabs */
+    .shop-tabs {
+      display: flex; gap: 4px; margin-bottom: 20px;
+      background: rgba(255,255,255,0.04);
+      border-radius: 12px; padding: 4px;
+    }
+    .shop-tab {
+      flex: 1; background: transparent; border: none; color: rgba(255,255,255,0.4);
+      font-family: var(--font-display); font-size: 0.72rem; font-weight: 700;
+      letter-spacing: 0.15em; padding: 10px; border-radius: 9px;
+      cursor: pointer; transition: all 0.18s;
+    }
+    .shop-tab.active { background: var(--red); color: #fff; }
+    .shop-tab:not(.active):hover { color: #fff; }
+
+    /* Power shop cards */
+    .power-shop-card {
+      background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 14px; padding: 14px 16px;
+      display: flex; align-items: center; gap: 14px;
+    }
+    .psc-icon {
+      font-size: 1.8rem; width: 44px; height: 44px;
+      background: rgba(204,18,18,0.12); border-radius: 12px;
+      display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+    }
+    .psc-body { flex: 1; min-width: 0; }
+    .psc-name { font-family: var(--font-display); font-size: 0.8rem; font-weight: 700; letter-spacing: 0.1em; color: #fff; margin-bottom: 2px; }
+    .psc-desc { font-size: 0.72rem; color: rgba(255,255,255,0.45); line-height: 1.4; }
+    .psc-count { font-size: 0.65rem; color: #F7C948; margin-top: 3px; font-family: var(--font-display); letter-spacing: 0.06em; }
+    .psc-right { display: flex; flex-direction: column; align-items: flex-end; gap: 6px; flex-shrink: 0; }
+    .psc-price { font-family: var(--font-display); font-size: 0.85rem; color: #F7C948; font-weight: 700; }
+    .psc-buy-btn {
+      background: var(--red); border: none; color: #fff;
+      font-family: var(--font-display); font-size: 0.65rem; font-weight: 700;
+      letter-spacing: 0.12em; padding: 7px 14px; border-radius: 8px; cursor: pointer;
+      transition: background 0.15s;
+    }
+    .psc-buy-btn:hover { background: #e01414; }
+    .psc-buy-btn.free { background: #1a7a1a; }
+    .psc-buy-btn.free:hover { background: #228822; }
+    .psc-buy-btn:disabled { background: rgba(255,255,255,0.1); color: rgba(255,255,255,0.3); cursor: default; }
+
+    /* In-game multi-power bar */
+    #power-bar {
+      display: flex; gap: 6px; align-items: center;
+      flex-wrap: nowrap;
+    }
+    .power-slot {
+      width: 42px; height: 42px; border-radius: 10px;
+      background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1);
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      cursor: pointer; transition: border-color 0.15s, background 0.15s;
+      position: relative; flex-shrink: 0;
+      font-size: 1.1rem;
+    }
+    .power-slot:hover:not(.empty) { border-color: rgba(204,18,18,0.6); background: rgba(204,18,18,0.1); }
+    .power-slot.active-power { border-color: #F7C948; background: rgba(247,201,72,0.12); animation: powerPulse 0.8s ease-in-out infinite; }
+    .power-slot.empty { opacity: 0.3; cursor: default; }
+    .power-slot-count {
+      position: absolute; bottom: 2px; right: 4px;
+      font-family: var(--font-display); font-size: 0.5rem; font-weight: 700;
+      color: #F7C948; line-height: 1;
+    }
+    @keyframes powerPulse {
+      0%,100% { box-shadow: 0 0 0 0 rgba(247,201,72,0.4); }
+      50% { box-shadow: 0 0 0 6px rgba(247,201,72,0); }
+    }
+
     /* ════════════════════════════════════════════════
        PURCHASE MODAL
     ════════════════════════════════════════════════ */
@@ -2232,6 +2301,125 @@
     cursor: pointer;
     transition: opacity 0.15s;
   }
+  .home-btn-howto {
+    background: transparent;
+    border: 1px solid rgba(255,255,255,0.18);
+    border-radius: 14px;
+    color: rgba(255,255,255,0.55);
+    font-family: var(--font-display);
+    font-size: 0.85rem;
+    font-weight: 700;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    padding: 13px;
+    cursor: pointer;
+    transition: border-color 0.15s, color 0.15s;
+  }
+  .home-btn-howto:hover { border-color: rgba(255,255,255,0.35); color: #fff; }
+
+  /* ── How to Play overlay ── */
+  #howto-overlay {
+    position: fixed; inset: 0; z-index: 9999;
+    background: rgba(0,0,0,0.85);
+    display: flex; align-items: flex-end; justify-content: center;
+    padding: 0;
+    opacity: 0; pointer-events: none;
+    transition: opacity 0.25s;
+  }
+  #howto-overlay.open { opacity: 1; pointer-events: all; }
+  #howto-sheet {
+    background: #111;
+    border-radius: 24px 24px 0 0;
+    width: 100%; max-width: 480px;
+    max-height: 88vh;
+    overflow-y: auto;
+    padding: 0 0 40px;
+    transform: translateY(30px);
+    transition: transform 0.28s cubic-bezier(.22,1,.36,1);
+  }
+  #howto-overlay.open #howto-sheet { transform: translateY(0); }
+  .howto-handle {
+    width: 40px; height: 4px; border-radius: 2px;
+    background: rgba(255,255,255,0.15);
+    margin: 14px auto 20px;
+  }
+  .howto-close {
+    position: absolute; top: 16px; right: 20px;
+    background: rgba(255,255,255,0.08); border: none; color: #fff;
+    width: 32px; height: 32px; border-radius: 50%; font-size: 1rem;
+    cursor: pointer; display: flex; align-items: center; justify-content: center;
+  }
+  #howto-sheet { position: relative; }
+  .howto-section {
+    padding: 0 22px; margin-bottom: 24px;
+  }
+  .howto-section-title {
+    font-family: var(--font-display);
+    font-size: 0.6rem; letter-spacing: 0.22em;
+    color: rgba(255,255,255,0.3); text-transform: uppercase;
+    border-bottom: 1px solid rgba(255,255,255,0.06);
+    padding-bottom: 8px; margin-bottom: 14px;
+  }
+  .howto-tier-row {
+    display: flex; align-items: flex-start; gap: 12px;
+    padding: 10px 0; border-bottom: 1px solid rgba(255,255,255,0.04);
+  }
+  .howto-tier-row:last-child { border-bottom: none; }
+  .howto-tier-emoji { font-size: 1.5rem; flex-shrink: 0; width: 32px; text-align: center; }
+  .howto-tier-body { flex: 1; }
+  .howto-tier-name {
+    font-family: var(--font-display); font-size: 0.8rem;
+    font-weight: 700; letter-spacing: 0.1em;
+    color: #fff; margin-bottom: 2px;
+  }
+  .howto-tier-desc { font-size: 0.75rem; color: rgba(255,255,255,0.45); line-height: 1.45; }
+  .howto-frog-row {
+    display: flex; align-items: flex-start; gap: 12px;
+    padding: 10px 0; border-bottom: 1px solid rgba(255,255,255,0.04);
+  }
+  .howto-frog-row:last-child { border-bottom: none; }
+  .howto-frog-dot {
+    width: 14px; height: 14px; border-radius: 50%; flex-shrink: 0; margin-top: 3px;
+  }
+  .howto-frog-body { flex: 1; }
+  .howto-frog-name {
+    font-family: var(--font-display); font-size: 0.8rem;
+    font-weight: 700; letter-spacing: 0.08em; color: #fff; margin-bottom: 2px;
+  }
+  .howto-frog-desc { font-size: 0.75rem; color: rgba(255,255,255,0.45); line-height: 1.45; }
+  .howto-settings-tip {
+    background: rgba(255,255,255,0.04);
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 12px; padding: 12px 16px;
+    font-size: 0.75rem; color: rgba(255,255,255,0.5); line-height: 1.5;
+    margin-top: 10px;
+  }
+  .howto-settings-tip strong { color: rgba(255,255,255,0.75); }
+  .howto-power-row {
+    display: flex; align-items: flex-start; gap: 12px;
+    padding: 9px 0; border-bottom: 1px solid rgba(255,255,255,0.04);
+  }
+  .howto-power-row:last-child { border-bottom: none; }
+  .howto-power-icon { font-size: 1.3rem; flex-shrink: 0; width: 28px; text-align: center; }
+  .howto-power-body { flex: 1; }
+  .howto-power-name {
+    font-family: var(--font-display); font-size: 0.78rem;
+    font-weight: 700; letter-spacing: 0.08em; color: #fff; margin-bottom: 2px;
+  }
+  .howto-power-desc { font-size: 0.73rem; color: rgba(255,255,255,0.45); line-height: 1.4; }
+  .howto-power-tag {
+    font-family: var(--font-display); font-size: 0.55rem; letter-spacing: 0.12em;
+    padding: 2px 8px; border-radius: 8px; margin-top: 4px; display: inline-block;
+  }
+  .htag-solo { background: rgba(204,18,18,0.15); color: #ff6666; border: 1px solid rgba(204,18,18,0.3); }
+  .htag-duo { background: rgba(155,48,255,0.15); color: #cc88ff; border: 1px solid rgba(155,48,255,0.3); }
+  .howto-shop-note {
+    background: rgba(247,201,72,0.07); border: 1px solid rgba(247,201,72,0.2);
+    border-radius: 12px; padding: 12px 16px; margin-top: 10px;
+    font-size: 0.75rem; color: rgba(255,255,255,0.5); line-height: 1.5;
+  }
+  .howto-shop-note strong { color: #F7C948; }
+
   .home-tap-hint {
     font-size: 11px;
     color: #444;
@@ -2371,11 +2559,163 @@
     <div class="home-btn-stack">
       <button id="btn-solo" class="home-btn-solo">SOLO PLAY</button>
       <button id="btn-duo-mode" class="home-btn-duo">DUO MODE</button>
+      <button id="btn-how-to-play" class="home-btn-howto">? HOW TO PLAY</button>
       <p class="home-tap-hint">Tap to learn more</p>
     </div>
 
     <!-- Settings pill -->
     <button id="btn-settings-home" class="home-settings-pill">⚙ SETTINGS</button>
+  </div>
+</div>
+
+<!-- ════════════ HOW TO PLAY OVERLAY ════════════ -->
+<div id="howto-overlay">
+  <div id="howto-sheet">
+    <div class="howto-handle"></div>
+    <button class="howto-close" onclick="closeHowTo()">✕</button>
+
+    <!-- Tiers -->
+    <div class="howto-section">
+      <div class="howto-section-title">🎮 Game Tiers — Tap Solo Play to choose</div>
+
+      <div class="howto-tier-row">
+        <div class="howto-tier-emoji">🥚</div>
+        <div class="howto-tier-body">
+          <div class="howto-tier-name">TADPOLE · Free</div>
+          <div class="howto-tier-desc">Classic tile-placement. Clear lines, beat your best score. A great starting point.</div>
+        </div>
+      </div>
+
+      <div class="howto-tier-row">
+        <div class="howto-tier-emoji">🐸</div>
+        <div class="howto-tier-body">
+          <div class="howto-tier-name">TREE FROG · £0.99</div>
+          <div class="howto-tier-desc">FRENZY mode — race against a countdown timer that adapts to your pace. Frantic, fast, addictive.</div>
+        </div>
+      </div>
+
+      <div class="howto-tier-row">
+        <div class="howto-tier-emoji">☠️</div>
+        <div class="howto-tier-body">
+          <div class="howto-tier-name">POISON DART · £2.99</div>
+          <div class="howto-tier-desc">SURVIVAL mode — survive as long as possible under ever-increasing pressure. Grit required.</div>
+        </div>
+      </div>
+
+      <div class="howto-tier-row">
+        <div class="howto-tier-emoji">✨</div>
+        <div class="howto-tier-body">
+          <div class="howto-tier-name">GOLDEN FROG · £4.99 — All Games Included</div>
+          <div class="howto-tier-desc">COLOUR RUN mode + every tier below it. Place tiles free-style, but complete rows in matching colour or the red frog punishes you. Flip the board to split by colour halves for an extra challenge.</div>
+        </div>
+      </div>
+
+      <div class="howto-tier-row">
+        <div class="howto-tier-emoji">👫</div>
+        <div class="howto-tier-body">
+          <div class="howto-tier-name">DUO MODE · £4.99/month</div>
+          <div class="howto-tier-desc">Race, Tile Attack, and Survival Duel against a friend in real time. Includes all solo tiers.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Frogs -->
+    <div class="howto-section">
+      <div class="howto-section-title">🐸 The Frogs — What They Do</div>
+
+      <div class="howto-frog-row">
+        <div class="howto-frog-dot" style="background:#CC1212;"></div>
+        <div class="howto-frog-body">
+          <div class="howto-frog-name">🔴 Red Frog — Adds Tiles</div>
+          <div class="howto-frog-desc">Jumps across the board and drops extra tiles, making it harder to clear lines. Appears more often as your pace picks up.</div>
+        </div>
+      </div>
+
+      <div class="howto-frog-row">
+        <div class="howto-frog-dot" style="background:#9B30FF;"></div>
+        <div class="howto-frog-body">
+          <div class="howto-frog-name">🟣 Purple Frog — Removes Tiles</div>
+          <div class="howto-frog-desc">Hops in and clears tiles from the board, giving you breathing room. A helpful visitor — don't scare it away.</div>
+        </div>
+      </div>
+
+      <div class="howto-settings-tip">
+        <strong>Want to turn the frogs off?</strong> Go to <strong>⚙ Settings</strong> (bottom of the home screen) → Display section → toggle Red Frog or Purple Frog on/off independently.
+      </div>
+    </div>
+
+    <!-- Powers -->
+    <div class="howto-section">
+      <div class="howto-section-title">⚡ Magic Powers</div>
+
+      <div class="howto-power-row">
+        <div class="howto-power-icon">🔥</div>
+        <div class="howto-power-body">
+          <div class="howto-power-name">Fire Blast</div>
+          <div class="howto-power-desc">Burns away a full row or column instantly.</div>
+          <span class="howto-power-tag htag-solo">SOLO</span>
+        </div>
+      </div>
+
+      <div class="howto-power-row">
+        <div class="howto-power-icon">🧙</div>
+        <div class="howto-power-body">
+          <div class="howto-power-name">Magician</div>
+          <div class="howto-power-desc">Vanishes any row or column you pick — poof.</div>
+          <span class="howto-power-tag htag-solo">SOLO</span>
+        </div>
+      </div>
+
+      <div class="howto-power-row">
+        <div class="howto-power-icon">💣</div>
+        <div class="howto-power-body">
+          <div class="howto-power-name">Bomb</div>
+          <div class="howto-power-desc">Explodes a 3×3 area — great when the board fills up fast.</div>
+          <span class="howto-power-tag htag-solo">SOLO</span>
+        </div>
+      </div>
+
+      <div class="howto-power-row">
+        <div class="howto-power-icon">⭐</div>
+        <div class="howto-power-body">
+          <div class="howto-power-name">Star Clear</div>
+          <div class="howto-power-desc">Wipes every tile of one colour from the board.</div>
+          <span class="howto-power-tag htag-solo">SOLO</span>
+        </div>
+      </div>
+
+      <div class="howto-power-row">
+        <div class="howto-power-icon">🧊</div>
+        <div class="howto-power-body">
+          <div class="howto-power-name">Freeze</div>
+          <div class="howto-power-desc">Pauses frog spawns for 20 seconds. Breathe.</div>
+          <span class="howto-power-tag htag-solo">SOLO</span>
+        </div>
+      </div>
+
+      <div class="howto-power-row">
+        <div class="howto-power-icon">🐸</div>
+        <div class="howto-power-body">
+          <div class="howto-power-name">Frog Bomb</div>
+          <div class="howto-power-desc">Sends a bomb frog to scramble your opponent's board.</div>
+          <span class="howto-power-tag htag-duo">DUO</span>
+        </div>
+      </div>
+
+      <div class="howto-power-row">
+        <div class="howto-power-icon">🌀</div>
+        <div class="howto-power-body">
+          <div class="howto-power-name">Scramble</div>
+          <div class="howto-power-desc">Reshuffles your opponent's tray pieces.</div>
+          <span class="howto-power-tag htag-duo">DUO</span>
+        </div>
+      </div>
+
+      <div class="howto-shop-note">
+        <strong>£0.99 per pack of 3 uses.</strong> Some powers unlock by tier — higher tiers unlock more powerful magic. Buy powers from the Shop on the home screen.
+      </div>
+    </div>
+
   </div>
 </div>
 
@@ -2480,11 +2820,7 @@
     </div>
 
     <div class="topbar-right">
-      <button class="powerup-btn" id="btn-powerup" style="display:none">
-        <span id="pu-icon">💣</span>
-        <span id="pu-label">BOMB</span>
-        <span class="pu-count" id="pu-count">3</span>
-      </button>
+      <div id="power-bar"></div>
       <button class="icon-btn" id="btn-shop-ingame" title="Shop" style="font-size:1rem">🐸</button>
       <button class="icon-btn" id="btn-sound" title="Sound" style="font-size:1rem">🔊</button>
       <button class="icon-btn" id="btn-menu" title="Menu">
@@ -2777,11 +3113,32 @@
 <div id="shop-overlay">
   <div class="shop-modal">
     <button class="shop-close" id="shop-close">✕</button>
-    <div class="shop-header">
-      <h2>FROG <span>EVOLUTION</span></h2>
-      <p>Evolve your frog. Unlock exclusive tile skins, grid themes,<br>and powerful abilities unique to each tier.</p>
+
+    <!-- Shop tabs -->
+    <div class="shop-tabs">
+      <button class="shop-tab active" id="shop-tab-tiers" onclick="switchShopTab('tiers')">TIERS</button>
+      <button class="shop-tab" id="shop-tab-powers" onclick="switchShopTab('powers')">POWERS</button>
     </div>
-    <div class="evolution-path" id="evolution-path"></div>
+
+    <!-- Tiers panel -->
+    <div id="shop-panel-tiers">
+      <div class="shop-header">
+        <h2>FROG <span>EVOLUTION</span></h2>
+        <p>Evolve your frog. Unlock exclusive tile skins, grid themes,<br>and powerful abilities unique to each tier.</p>
+      </div>
+      <div class="evolution-path" id="evolution-path"></div>
+    </div>
+
+    <!-- Powers panel -->
+    <div id="shop-panel-powers" style="display:none">
+      <div class="shop-header">
+        <h2>MAGIC <span>POWERS</span></h2>
+        <p>Use powers during any game to turn the tide.<br>Each pack gives 3 uses. One free power every day.</p>
+      </div>
+      <div id="powers-inventory-bar" style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-bottom:18px;"></div>
+      <div id="shop-powers-list" style="display:flex;flex-direction:column;gap:10px;padding:0 4px;"></div>
+    </div>
+
     <div class="shop-footer">
       Crafted by <a href="https://redfrogblackart.com" target="_blank">RedFrogBlackArt</a> &mdash; art that unleashes your playful side.<br>
       <small>Secure payments via App Store &amp; Google Play &bull; Prices in USD</small>
@@ -2837,12 +3194,19 @@
   <div style="background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:16px;padding:20px;margin-bottom:12px;">
     <div style="font-family:var(--font-display);font-size:0.65rem;letter-spacing:0.2em;color:rgba(255,255,255,0.35);text-transform:uppercase;margin-bottom:16px;">DISPLAY</div>
 
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:4px 0 10px;">
+      <div>
+        <div style="font-family:var(--font-display);font-size:0.85rem;font-weight:700;letter-spacing:0.08em;color:#CC1212;">🔴 Red Frog</div>
+        <div style="font-size:0.72rem;color:rgba(255,255,255,0.4);margin-top:3px;">Jumps across and adds tiles</div>
+      </div>
+      <button id="settings-red-frog-toggle" onclick="toggleSettingsRedFrog()" style="width:52px;height:28px;border-radius:14px;border:none;cursor:pointer;transition:background 0.2s;font-size:0.7rem;font-weight:700;letter-spacing:0.05em;">ON</button>
+    </div>
     <div style="display:flex;align-items:center;justify-content:space-between;padding:4px 0;">
       <div>
-        <div style="font-family:var(--font-display);font-size:0.85rem;font-weight:700;letter-spacing:0.08em;color:#fff;">🐸 Frog Animations</div>
-        <div style="font-size:0.72rem;color:rgba(255,255,255,0.4);margin-top:3px;">Red frog adds tiles · Purple frog removes tiles</div>
+        <div style="font-family:var(--font-display);font-size:0.85rem;font-weight:700;letter-spacing:0.08em;color:#9B30FF;">🟣 Purple Frog</div>
+        <div style="font-size:0.72rem;color:rgba(255,255,255,0.4);margin-top:3px;">Hops in and removes tiles</div>
       </div>
-      <button id="settings-frogs-toggle" onclick="toggleSettingsFrogs()" style="width:52px;height:28px;border-radius:14px;border:none;cursor:pointer;transition:background 0.2s;font-size:0.7rem;font-weight:700;letter-spacing:0.05em;">ON</button>
+      <button id="settings-purple-frog-toggle" onclick="toggleSettingsPurpleFrog()" style="width:52px;height:28px;border-radius:14px;border:none;cursor:pointer;transition:background 0.2s;font-size:0.7rem;font-weight:700;letter-spacing:0.05em;">ON</button>
     </div>
   </div>
 
@@ -3483,20 +3847,11 @@ function endDrag(cx,cy){
 
 // ── Power-ups ─────────────────────────────────────────────────────
 function initPowerups(){
+  // Legacy tier power system — kept for reference; UI now uses multi-slot power bar
   const tier=equippedTier();powerupsLeft=tier.powerupCount||0;powerupActive=false;
-  const btn=document.getElementById('btn-powerup');
-  if(tier.powerup&&powerupsLeft>0){
-    btn.style.display='flex';
-    document.getElementById('pu-icon').textContent=tier.powerup.icon;
-    document.getElementById('pu-label').textContent=tier.powerup.label;
-    document.getElementById('pu-count').textContent=powerupsLeft;
-    btn.disabled=false;
-  }else{btn.style.display='none';}
 }
 function updatePowerupUI(){
-  document.getElementById('pu-count').textContent=powerupsLeft;
-  const btn=document.getElementById('btn-powerup');
-  btn.disabled=(powerupsLeft<=0||powerupActive);btn.style.opacity=powerupActive?'0.5':'1';
+  // no-op — power bar is refreshed via refreshPowerBar()
 }
 function activatePowerup(){
   const tier=equippedTier();if(!tier.powerup||powerupsLeft<=0||powerupActive)return;
@@ -3642,6 +3997,7 @@ function startGame(){
   initGrid();score=0;linesCleared=0;level=1;combo=0;particles=[];gameActive=true;powerupActive=false;
   piecesPlaced=0;bonusEarnedThisGame=0;bonusQueue=[];hazardTimer=0;
   calcLayout();generateTray();updateUI();hideCombo();drawGrid();initPowerups();updateTierBadge();updateDiffIndicator();
+  activePowerId = null; refreshPowerBar(); // new purchasable power bar
   scheduleAdderFrog(); // start pace-adaptive red frog
   document.getElementById('event-banner').classList.remove('show');
   document.getElementById('hazard-overlay').classList.remove('flash');
@@ -3718,9 +4074,345 @@ function buildShopUI(){
   }));
 }
 
-function openShop(){buildShopUI();document.getElementById('shop-overlay').classList.add('open');}
+function openShop(tab){
+  buildShopUI();
+  switchShopTab(tab || 'tiers');
+  document.getElementById('shop-overlay').classList.add('open');
+}
 function closeShop(){document.getElementById('shop-overlay').classList.remove('open');}
 
+function switchShopTab(tab) {
+  const isTiers = tab === 'tiers';
+  document.getElementById('shop-panel-tiers').style.display  = isTiers ? '' : 'none';
+  document.getElementById('shop-panel-powers').style.display = isTiers ? 'none' : '';
+  document.getElementById('shop-tab-tiers').classList.toggle('active', isTiers);
+  document.getElementById('shop-tab-powers').classList.toggle('active', !isTiers);
+  if (!isTiers) buildPowersPanel();
+}
+
+// ──────────────────────────────────────────────────────
+// PURCHASABLE POWER SYSTEM
+// ──────────────────────────────────────────────────────
+const POWER_DEFS = [
+  { id:'fire',    icon:'🔥', name:'FIRE BLAST',  desc:'Burns away the fullest row instantly',         price:0.99, packSize:3 },
+  { id:'magician',icon:'🧙', name:'MAGICIAN',    desc:'Tap any row or column to vanish it — poof',   price:0.99, packSize:3 },
+  { id:'bomb',    icon:'💣', name:'BOMB',        desc:'Tap a cell to explode a 3×3 area',             price:0.99, packSize:3 },
+  { id:'star',    icon:'⭐',  name:'STAR CLEAR',  desc:'Wipes every tile of one colour from the board', price:0.99, packSize:3 },
+  { id:'freeze',  icon:'🧊', name:'FREEZE',      desc:'Pauses frog spawns for 20 seconds',             price:0.99, packSize:3 },
+  { id:'daily',   icon:'🎁', name:'DAILY FREE',  desc:'One free power use — resets every day',        price:0,    packSize:1 },
+];
+
+const POWERS_KEY = 'cd_powers_v1';
+const DAILY_POWER_KEY = 'cd_daily_power';
+
+function loadPowerInventory() {
+  try { return JSON.parse(localStorage.getItem(POWERS_KEY)) || {}; } catch { return {}; }
+}
+function savePowerInventory(inv) {
+  localStorage.setItem(POWERS_KEY, JSON.stringify(inv));
+}
+function getPowerCount(id) {
+  return loadPowerInventory()[id] || 0;
+}
+function addPowers(id, n) {
+  const inv = loadPowerInventory();
+  inv[id] = (inv[id] || 0) + n;
+  savePowerInventory(inv);
+  refreshPowerBar();
+}
+function spendPower(id) {
+  const inv = loadPowerInventory();
+  if (!inv[id] || inv[id] <= 0) return false;
+  inv[id]--;
+  savePowerInventory(inv);
+  refreshPowerBar();
+  return true;
+}
+
+// Daily free power: one per day (any power, we give 'daily' token)
+function claimDailyPower() {
+  const today = new Date().toDateString();
+  const last  = localStorage.getItem(DAILY_POWER_KEY);
+  if (last === today) return false; // already claimed
+  localStorage.setItem(DAILY_POWER_KEY, today);
+  addPowers('daily', 1);
+  return true;
+}
+function dailyPowerAvailable() {
+  const today = new Date().toDateString();
+  return localStorage.getItem(DAILY_POWER_KEY) !== today;
+}
+
+// In-game active power state
+let activePowerId = null; // which power slot is armed
+
+function refreshPowerBar() {
+  const bar = document.getElementById('power-bar');
+  if (!bar) return;
+  bar.innerHTML = '';
+  const inv = loadPowerInventory();
+  // Show up to 4 slots — only powers that have inventory > 0
+  const hasPowers = POWER_DEFS.filter(p => (inv[p.id] || 0) > 0);
+  hasPowers.slice(0, 4).forEach(p => {
+    const slot = document.createElement('div');
+    slot.className = 'power-slot' + (activePowerId === p.id ? ' active-power' : '');
+    slot.title = p.name;
+    slot.innerHTML = p.icon + `<span class="power-slot-count">${inv[p.id]}</span>`;
+    slot.addEventListener('click', () => armPower(p.id));
+    bar.appendChild(slot);
+  });
+  if (hasPowers.length === 0) {
+    // Show faint shop shortcut
+    const hint = document.createElement('div');
+    hint.className = 'power-slot empty';
+    hint.title = 'Buy powers';
+    hint.innerHTML = '⚡';
+    hint.addEventListener('click', () => openShop('powers'));
+    bar.appendChild(hint);
+  }
+}
+
+function armPower(id) {
+  if (!gameActive) return;
+  if (activePowerId === id) {
+    // Tap again to disarm
+    activePowerId = null;
+    gridCanvas.style.cursor = 'default';
+    gridCanvas.removeEventListener('click', _powerGridClick);
+    gridCanvas.removeEventListener('touchend', _powerGridTouch);
+    refreshPowerBar();
+    showToast('Power cancelled');
+    return;
+  }
+  if (getPowerCount(id) <= 0) { showToast('No uses left — buy more in the Shop'); return; }
+
+  activePowerId = id;
+  refreshPowerBar();
+  const p = POWER_DEFS.find(x => x.id === id);
+
+  // Instant powers fire immediately; tap-target powers need grid click
+  if (id === 'fire') {
+    _executePower('fire');
+  } else if (id === 'star') {
+    _executePower('star');
+  } else if (id === 'freeze') {
+    _executePower('freeze');
+  } else {
+    // bomb / magician / daily — need grid tap
+    const label = id === 'magician' ? 'Tap a row or column to vanish it' :
+                  id === 'bomb'     ? 'Tap a cell to detonate' :
+                  id === 'daily'    ? 'Tap a cell to use your free power' : 'Tap the board';
+    showToast('🔥 ' + p.name + ' — ' + label);
+    gridCanvas.style.cursor = 'crosshair';
+    gridCanvas.addEventListener('click',     _powerGridClick);
+    gridCanvas.addEventListener('touchend',  _powerGridTouch, { passive: false });
+  }
+}
+
+function _powerGridClick(e) {
+  const rect = gridCanvas.getBoundingClientRect();
+  _executePowerAtCell(Math.floor((e.clientY - rect.top) / CELL), Math.floor((e.clientX - rect.left) / CELL));
+}
+function _powerGridTouch(e) {
+  e.preventDefault();
+  const t = e.changedTouches[0];
+  const rect = gridCanvas.getBoundingClientRect();
+  _executePowerAtCell(Math.floor((t.clientY - rect.top) / CELL), Math.floor((t.clientX - rect.left) / CELL));
+}
+function _clearPowerListeners() {
+  gridCanvas.removeEventListener('click',    _powerGridClick);
+  gridCanvas.removeEventListener('touchend', _powerGridTouch);
+  gridCanvas.style.cursor = 'default';
+}
+
+function _executePowerAtCell(r, c) {
+  _clearPowerListeners();
+  const id = activePowerId;
+  activePowerId = null;
+
+  if (id === 'bomb' || id === 'daily') {
+    if (!spendPower(id)) return;
+    ensureAudio(); playPowerup();
+    // 3×3 explosion
+    const cleared = new Set();
+    for (let dr = -1; dr <= 1; dr++)
+      for (let dc = -1; dc <= 1; dc++) {
+        const pr = r + dr, pc = c + dc;
+        if (pr >= 0 && pr < ROWS && pc >= 0 && pc < COLS && grid[pr][pc] !== 0) {
+          cleared.add(`${pr},${pc}`); grid[pr][pc] = 0;
+        }
+      }
+    const pts = calcScore(cleared.size, 1, 1);
+    score += pts; if (score > bestScore) bestScore = score;
+    cleared.forEach(key => { const [pr, pc] = key.split(',').map(Number); spawnPlaceParticles([[0,0]], pr, pc, dragColor || 1); });
+    updateUI(); drawGrid();
+    showToast('💣 BOOM! ' + cleared.size + ' tiles destroyed!');
+    checkAndClearLines();
+
+  } else if (id === 'magician') {
+    if (!spendPower(id)) return;
+    ensureAudio(); playPowerup();
+    // Clear the row AND column at the tapped cell, keep whichever clears more tiles
+    const rowTiles = grid[r].filter(v => v !== 0).length;
+    const colTiles = grid.filter(row => row[c] !== 0).length;
+    const cleared = new Set();
+    if (rowTiles >= colTiles) {
+      for (let cc = 0; cc < COLS; cc++) { cleared.add(`${r},${cc}`); grid[r][cc] = 0; }
+      const pts = calcScore(cleared.size, 1, 1); score += pts; linesCleared += 1; level = calcLevel(linesCleared);
+      if (score > bestScore) bestScore = score;
+      spawnClearParticles([r], []);
+      showFloatText('🧙+' + pts, [r], []);
+      showToast('🧙 MAGICIAN — Row vanished!');
+    } else {
+      for (let rr = 0; rr < ROWS; rr++) { cleared.add(`${rr},${c}`); grid[rr][c] = 0; }
+      const pts = calcScore(cleared.size, 1, 1); score += pts; linesCleared += 1; level = calcLevel(linesCleared);
+      if (score > bestScore) bestScore = score;
+      spawnClearParticles([], [c]);
+      showFloatText('🧙+' + pts, [], [c]);
+      showToast('🧙 MAGICIAN — Column vanished!');
+    }
+    updateUI(); drawGrid();
+  }
+  refreshPowerBar();
+}
+
+function _executePower(id) {
+  _clearPowerListeners();
+  activePowerId = null;
+  if (!spendPower(id)) return;
+  ensureAudio(); playPowerup();
+
+  if (id === 'fire') {
+    // Burn fullest row
+    let bestRow = 0, bestFill = 0;
+    for (let r = 0; r < ROWS; r++) {
+      const fill = grid[r].filter(v => v !== 0).length;
+      if (fill > bestFill) { bestFill = fill; bestRow = r; }
+    }
+    if (bestFill > 0) {
+      const cleared = new Set();
+      for (let c = 0; c < COLS; c++) { cleared.add(`${bestRow},${c}`); grid[bestRow][c] = 0; }
+      const pts = calcScore(cleared.size, 1, 1);
+      score += pts; linesCleared += 1; level = calcLevel(linesCleared);
+      if (score > bestScore) bestScore = score;
+      spawnClearParticles([bestRow], []);
+      showFloatText('🔥+' + pts, [bestRow], []);
+    }
+    updateUI(); drawGrid();
+    showToast('🔥 FIRE BLAST — Row burned!');
+
+  } else if (id === 'star') {
+    // Clear most common colour
+    const counts = {};
+    for (let r = 0; r < ROWS; r++)
+      for (let c = 0; c < COLS; c++)
+        if (grid[r][c] !== 0) counts[grid[r][c]] = (counts[grid[r][c]] || 0) + 1;
+    const target = Object.entries(counts).sort((a, b) => b[1] - a[1])[0];
+    if (target) {
+      const tc = parseInt(target[0]);
+      const cleared = new Set();
+      for (let r = 0; r < ROWS; r++)
+        for (let c = 0; c < COLS; c++)
+          if (grid[r][c] === tc) { cleared.add(`${r},${c}`); grid[r][c] = 0; }
+      const pts = calcScore(cleared.size, 1, 1);
+      score += pts; if (score > bestScore) bestScore = score;
+      cleared.forEach(key => { const [r, c] = key.split(',').map(Number); spawnPlaceParticles([[0,0]], r, c, tc); });
+      showFloatText('⭐+' + pts, [4], []);
+      showToast('⭐ STAR CLEAR — ' + cleared.size + ' tiles wiped!');
+      updateUI(); drawGrid();
+    } else {
+      showToast('⭐ STAR CLEAR — Board already empty!');
+    }
+
+  } else if (id === 'freeze') {
+    // Pause frog timers 20s
+    clearAdderFrogTimer();
+    if (typeof vanishTimers !== 'undefined') vanishTimers.forEach((tid) => clearTimeout(tid));
+    showToast('🧊 FREEZE — Frogs frozen for 20s!');
+    setTimeout(() => {
+      if (gameActive) {
+        scheduleAdderFrog();
+        showToast('🧊 Freeze worn off — frogs are back!');
+      }
+    }, 20000);
+  }
+  refreshPowerBar();
+}
+
+// Check-and-clear after power use
+function checkAndClearLines() {
+  const lines = findCompletedLines();
+  if (lines.completedRows.length + lines.completedCols.length > 0) {
+    const cleared = clearLines(lines);
+    const pts = calcScore(cleared.size, lines.completedRows.length + lines.completedCols.length, combo);
+    score += pts; linesCleared += lines.completedRows.length + lines.completedCols.length;
+    level = calcLevel(linesCleared); if (score > bestScore) bestScore = score;
+    spawnClearParticles(lines.completedRows, lines.completedCols);
+    updateUI(); drawGrid();
+  }
+}
+
+function buildPowersPanel() {
+  const inv = loadPowerInventory();
+  // Inventory summary
+  const invBar = document.getElementById('powers-inventory-bar');
+  if (invBar) {
+    invBar.innerHTML = '';
+    POWER_DEFS.filter(p => (inv[p.id] || 0) > 0).forEach(p => {
+      const chip = document.createElement('div');
+      chip.style.cssText = 'background:rgba(204,18,18,0.12);border:1px solid rgba(204,18,18,0.3);border-radius:20px;padding:5px 12px;font-size:0.75rem;color:#fff;display:flex;align-items:center;gap:6px;';
+      chip.innerHTML = `<span>${p.icon}</span><span style="font-family:var(--font-display);font-size:0.65rem;letter-spacing:0.08em;">${p.name}</span><span style="background:#CC1212;color:#fff;border-radius:4px;padding:1px 6px;font-family:var(--font-display);font-size:0.6rem;font-weight:700;">${inv[p.id]}</span>`;
+      invBar.appendChild(chip);
+    });
+    if (Object.values(inv).every(v => !v)) {
+      invBar.innerHTML = '<div style="font-size:0.78rem;color:rgba(255,255,255,0.3);padding:8px 0;">No powers yet — buy your first pack below</div>';
+    }
+  }
+  // Power cards
+  const list = document.getElementById('shop-powers-list');
+  if (!list) return;
+  list.innerHTML = '';
+  POWER_DEFS.forEach(p => {
+    const owned = inv[p.id] || 0;
+    const isDaily = p.id === 'daily';
+    const dailyDone = isDaily && !dailyPowerAvailable();
+    const card = document.createElement('div');
+    card.className = 'power-shop-card';
+    const priceLabel = isDaily ? 'FREE' : `£${p.price.toFixed(2)}`;
+    const btnLabel   = isDaily ? (dailyDone ? 'CLAIMED' : 'CLAIM') : 'BUY PACK';
+    const btnClass   = isDaily ? 'psc-buy-btn free' : 'psc-buy-btn';
+    card.innerHTML = `
+      <div class="psc-icon">${p.icon}</div>
+      <div class="psc-body">
+        <div class="psc-name">${p.name}</div>
+        <div class="psc-desc">${p.desc}</div>
+        <div class="psc-count">${isDaily ? (dailyDone ? 'Come back tomorrow' : 'Ready to claim') : (owned > 0 ? `You have ${owned} use${owned !== 1 ? 's' : ''}` : `3 uses per pack`)}</div>
+      </div>
+      <div class="psc-right">
+        <div class="psc-price">${priceLabel}</div>
+        <button class="${btnClass}" ${dailyDone ? 'disabled' : ''}>${btnLabel}</button>
+      </div>`;
+    const btn = card.querySelector('button');
+    btn.addEventListener('click', () => {
+      if (isDaily) {
+        const claimed = claimDailyPower();
+        if (claimed) { showToast('🎁 Daily power claimed!'); buildPowersPanel(); }
+        else showToast('🎁 Already claimed today — come back tomorrow');
+      } else {
+        // Simulated purchase (real IAP TBD)
+        addPowers(p.id, p.packSize);
+        showToast(`${p.icon} ${p.name} — 3 uses added!`);
+        buildPowersPanel();
+      }
+    });
+    list.appendChild(card);
+  });
+}
+
+// Auto-claim daily power on load and init bar
+(function() { claimDailyPower(); refreshPowerBar(); })();
+
+// ──────────────────────────────────────────────────────
 function openPurchaseModal(idx){
   const tier=TIERS[idx];pendingPurchaseTierIdx=idx;
   document.getElementById('purchase-frog-emoji').textContent=tier.emoji;
@@ -4166,10 +4858,10 @@ function getAdderFrogDelay() {
 
 function scheduleAdderFrog() {
   if (_adderFrogTimer) clearTimeout(_adderFrogTimer);
-  if (!gameActive || !frogsOn) return;
+  if (!gameActive || !redFrogOn) return;
   const delay = getAdderFrogDelay();
   _adderFrogTimer = setTimeout(() => {
-    if (!gameActive || !frogsOn) return;
+    if (!gameActive || !redFrogOn) return;
     // Pick a random row to hop across
     const r = Math.floor(Math.random() * ROWS);
     spawnJumpingFrog('adder', r, 0);
@@ -5360,7 +6052,7 @@ document.getElementById('shop-overlay').addEventListener('click',e=>{if(e.target
 document.getElementById('btn-confirm-buy').addEventListener('click',confirmPurchase);
 document.getElementById('btn-cancel-buy').addEventListener('click',closePurchaseModal);
 document.getElementById('purchase-overlay').addEventListener('click',e=>{if(e.target===document.getElementById('purchase-overlay'))closePurchaseModal();});
-document.getElementById('btn-powerup').addEventListener('click',()=>{ensureAudio();activatePowerup();});
+// btn-powerup removed — replaced by multi-slot power bar
 document.getElementById('btn-sound').addEventListener('click',()=>{
   soundOn=!soundOn;
   const btn=document.getElementById('btn-sound');
@@ -5371,6 +6063,8 @@ document.getElementById('btn-sound').addEventListener('click',()=>{
 
 // Home screen: Solo & Duo buttons
 document.getElementById('btn-solo').addEventListener('click', () => { ensureAudio(); openSoloSetup(); });
+document.getElementById('btn-how-to-play').addEventListener('click', openHowTo);
+document.getElementById('howto-overlay').addEventListener('click', e => { if (e.target === document.getElementById('howto-overlay')) closeHowTo(); });
 document.getElementById('btn-duo-mode').addEventListener('click', () => {
   document.getElementById('duo-modal').classList.remove('hidden');
 });
@@ -5556,9 +6250,10 @@ calcLayout();updateTierBadge();loadStreak();requestAnimationFrame(animateParticl
 
 // ── Jumping Frog Animations ─────────────────────────────────────────────────
 function spawnJumpingFrog(type, targetR, targetC) {
-  // Adder and vanish frogs respect the user's frog animations setting.
+  // Red adder frog respects redFrogOn; purple vanish frog respects purpleFrogOn.
   // Bonus (green, reward) frog always shows regardless.
-  if (!frogsOn && (type === 'adder' || type === 'vanish')) return;
+  if (type === 'adder'  && !redFrogOn)    return;
+  if (type === 'vanish' && !purpleFrogOn) return;
   const rect = gridCanvas ? gridCanvas.getBoundingClientRect() : null;
   const cellY = rect ? rect.top + (targetR + 0.5) * CELL : window.innerHeight * 0.5;
   const cellX = rect ? rect.left + (targetC + 0.5) * CELL : window.innerWidth * 0.5;
@@ -5585,8 +6280,8 @@ function spawnJumpingFrog(type, targetR, targetC) {
 
     if (emptyCells.length === 0) return; // nowhere to hop
 
-    // Pick up to 6 normally; in Frenzy mode max 2 — light touch only
-    const maxHops = activeChallengeMode === 'frenzy' ? 2 : 6;
+    // Max hops: Frenzy=2 (light touch), all others=3 (50% cut from old 6)
+    const maxHops = activeChallengeMode === 'frenzy' ? 2 : 3;
     shuffle(emptyCells);
     const hops = emptyCells.slice(0, Math.min(maxHops, emptyCells.length));
     hops.sort((a, b) => a[1] - b[1] || a[0] - b[0]);
@@ -5650,12 +6345,24 @@ function spawnJumpingFrog(type, targetR, targetC) {
 const NOTIF_KEY = 'cd_notif';
 const HAPTICS_KEY = 'cd_haptics';
 const THEME_KEY = 'cd_theme';
-const FROGS_KEY = 'cd_frogs';
+const FROGS_KEY      = 'cd_frogs';       // legacy — keep for compat
+const RED_FROG_KEY   = 'cd_red_frog';
+const PURPLE_FROG_KEY= 'cd_purple_frog';
 let notifsOn = localStorage.getItem(NOTIF_KEY) !== '0';
 let hapticsOn = localStorage.getItem(HAPTICS_KEY) !== '0';
 let lightModeOn = false; // light mode removed
 localStorage.removeItem(THEME_KEY);
-let frogsOn = localStorage.getItem(FROGS_KEY) !== '0'; // default ON
+// Migrate legacy cd_frogs to per-frog keys on first load
+(function migrateFrogKeys() {
+  const legacy = localStorage.getItem(FROGS_KEY);
+  if (legacy !== null) {
+    if (localStorage.getItem(RED_FROG_KEY) === null)    localStorage.setItem(RED_FROG_KEY,    legacy);
+    if (localStorage.getItem(PURPLE_FROG_KEY) === null) localStorage.setItem(PURPLE_FROG_KEY, legacy);
+  }
+})();
+let frogsOn       = true;  // legacy alias — no longer used directly
+let redFrogOn     = localStorage.getItem(RED_FROG_KEY)    !== '0'; // default ON
+let purpleFrogOn  = localStorage.getItem(PURPLE_FROG_KEY) !== '0'; // default ON
 let _settingsReturnScreen = 'screen-title';
 
 // Apply saved theme immediately on load
@@ -5702,11 +6409,17 @@ function updateSettingsToggles() {
     tBtn.style.background = lightModeOn ? '#CC1212' : 'rgba(255,255,255,0.1)';
     tBtn.style.color = lightModeOn ? '#fff' : 'rgba(255,255,255,0.4)';
   }
-  const fBtn = document.getElementById('settings-frogs-toggle');
-  if (fBtn) {
-    fBtn.textContent = frogsOn ? 'ON' : 'OFF';
-    fBtn.style.background = frogsOn ? '#CC1212' : 'rgba(255,255,255,0.1)';
-    fBtn.style.color = frogsOn ? '#fff' : 'rgba(255,255,255,0.4)';
+  const rfBtn = document.getElementById('settings-red-frog-toggle');
+  if (rfBtn) {
+    rfBtn.textContent = redFrogOn ? 'ON' : 'OFF';
+    rfBtn.style.background = redFrogOn ? '#CC1212' : 'rgba(255,255,255,0.1)';
+    rfBtn.style.color = redFrogOn ? '#fff' : 'rgba(255,255,255,0.4)';
+  }
+  const pfBtn = document.getElementById('settings-purple-frog-toggle');
+  if (pfBtn) {
+    pfBtn.textContent = purpleFrogOn ? 'ON' : 'OFF';
+    pfBtn.style.background = purpleFrogOn ? '#9B30FF' : 'rgba(255,255,255,0.1)';
+    pfBtn.style.color = purpleFrogOn ? '#fff' : 'rgba(255,255,255,0.4)';
   }
   // Saved game info
   const info = document.getElementById('settings-saved-game-info');
@@ -5777,10 +6490,28 @@ function toggleSettingsTheme() {
   updateSettingsToggles();
 }
 
-function toggleSettingsFrogs() {
-  frogsOn = !frogsOn;
-  localStorage.setItem(FROGS_KEY, frogsOn ? '1' : '0');
+function toggleSettingsFrogs() { /* legacy — no-op */ }
+function toggleSettingsRedFrog() {
+  redFrogOn = !redFrogOn;
+  localStorage.setItem(RED_FROG_KEY, redFrogOn ? '1' : '0');
+  // Restart or cancel adder frog immediately
+  if (gameActive) {
+    clearAdderFrogTimer();
+    if (redFrogOn) scheduleAdderFrog();
+  }
   updateSettingsToggles();
+}
+function toggleSettingsPurpleFrog() {
+  purpleFrogOn = !purpleFrogOn;
+  localStorage.setItem(PURPLE_FROG_KEY, purpleFrogOn ? '1' : '0');
+  updateSettingsToggles();
+}
+
+function openHowTo() {
+  document.getElementById('howto-overlay').classList.add('open');
+}
+function closeHowTo() {
+  document.getElementById('howto-overlay').classList.remove('open');
 }
 
 function openSettings(returnScreen) {
