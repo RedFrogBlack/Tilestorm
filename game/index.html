@@ -4088,22 +4088,28 @@ function recordPlacePace() {
 }
 
 function getVanishDelay() {
-  // Scale between 28s (fast player) and 60s (slow player) — pace-adaptive
-  if (_placeTimes.length < 3) return 32000; // default before pace established
+  // Scale between 28s (fast player) and 55s (slow player) — pace-adaptive
+  // Uses just 1 sample so it responds from the very first piece placed
+  if (_placeTimes.length < 1) return 30000; // true cold start only
   const avg = _placeTimes.reduce((a, b) => a + b, 0) / _placeTimes.length;
   // avg ms per piece: <1500 = fast, >6000 = slow
   const clamped = Math.max(1500, Math.min(avg, 6000));
-  const t = 28000 + ((clamped - 1500) / 4500) * 32000; // 28s–60s
+  const t = 28000 + ((clamped - 1500) / 4500) * 27000; // 28s–55s
   return Math.round(t);
 }
 
 function scheduleVanishIfHard(shape, baseR, baseC) {
   if (currentDiff !== 'hard' && currentDiff !== 'expert') return;
-  const delay = getVanishDelay();
-  shape.forEach(([dr, dc]) => {
+  const baseDelay = getVanishDelay();
+  shape.forEach(([dr, dc], pieceIdx) => {
     const r = baseR + dr, c = baseC + dc;
     const key = r + ',' + c;
     if (vanishTimers.has(key)) return;
+    // Each cell in the piece gets its own jitter: ±25% + stagger within the piece
+    // This prevents all tiles in one piece expiring simultaneously
+    const jitter = (Math.random() - 0.5) * 0.5 * baseDelay; // ±25%
+    const stagger = pieceIdx * 2500; // 2.5s apart within same piece
+    const delay = Math.max(15000, baseDelay + jitter + stagger);
     const t = setTimeout(() => {
       // Only vanish if game is still active and row is still incomplete
       if (!gameActive) { vanishTimers.delete(key); return; }
@@ -4113,8 +4119,8 @@ function scheduleVanishIfHard(shape, baseR, baseC) {
           grid[r][c] = 0;
           drawGrid();
           showEventBanner('💨 TILE VANISHED!');
-          spawnJumpingFrog('vanish', r, c); // black frog touches the vanishing tile
-          // Extended grace: wait 1500ms so player can respond; also guard gameActive
+          spawnJumpingFrog('vanish', r, c); // purple frog touches the vanishing tile
+          // Grace period before game-over check
           setTimeout(() => { if(gameActive && checkGameOver()) setTimeout(triggerGameOver, 400); }, 1500);
         }
       }
@@ -5469,51 +5475,63 @@ function spawnJumpingFrog(type, targetR, targetC) {
 
   if (type === 'adder') {
     // Red frog — hops across EMPTY cells left-to-right, stamping a tile on each landing
+    // Get a reliable canvas rect — fall back to re-querying the canvas directly
+    const canvas = gridCanvas || document.getElementById('grid-canvas');
+    const liveRect = canvas ? canvas.getBoundingClientRect() : null;
+    const goodRect = (liveRect && liveRect.width > 0) ? liveRect : null;
+
     // Build list of empty cells sorted left-to-right
     const emptyCells = [];
-    if (grid && rect) {
+    if (grid) {
       for (let c = 0; c < COLS; c++) {
         for (let r = 0; r < ROWS; r++) {
           if (grid[r] && grid[r][c] === 0) emptyCells.push([r, c]);
         }
       }
     }
-    // Pick up to 6 evenly spread across the board
+
+    if (emptyCells.length === 0) return; // nowhere to hop
+
+    // Pick up to 6, spread across the board, sort left → right
     shuffle(emptyCells);
     const hops = emptyCells.slice(0, Math.min(6, emptyCells.length));
-    // Sort by column so frog moves left → right
     hops.sort((a, b) => a[1] - b[1] || a[0] - b[0]);
 
-    const hopDelay = 420; // ms between hops
+    const hopDelay = 400; // ms between hops
     hops.forEach(([hr, hc], i) => {
-      const hx = rect ? rect.left + (hc + 0.5) * CELL : window.innerWidth * 0.5;
-      const hy = rect ? rect.top + (hr + 0.5) * CELL : window.innerHeight * 0.5;
+      // Compute pixel position; if no rect use viewport-centered fallback
+      const hx = goodRect
+        ? goodRect.left + (hc + 0.5) * CELL
+        : (window.innerWidth * 0.1 + hc * (window.innerWidth * 0.8 / COLS));
+      const hy = goodRect
+        ? goodRect.top + (hr + 0.5) * CELL
+        : (window.innerHeight * 0.15 + hr * (window.innerHeight * 0.55 / ROWS));
+
       setTimeout(() => {
-        if (!gameActive) return; // stop if game ended mid-sequence
-        // Create a frog element at this cell
+        if (!gameActive) return;
         const hop = document.createElement('div');
         hop.className = 'frog-jumper adder-hop';
         hop.textContent = '🐸';
         hop.style.cssText = `position:fixed;pointer-events:none;line-height:1;
-          font-size:2.0rem;z-index:9999;
-          left:${hx - 20}px;top:${hy - 50}px;
+          font-size:2.2rem;z-index:9999;
+          left:${hx - 22}px;top:${hy - 55}px;
           filter:drop-shadow(0 0 10px #CC1212) sepia(1) saturate(5) hue-rotate(320deg);
-          animation:adderHopIn 0.35s cubic-bezier(0.22,0.61,0.36,1) forwards;`;
+          animation:adderHopIn 0.38s cubic-bezier(0.22,0.61,0.36,1) forwards;`;
         document.body.appendChild(hop);
-        // Stamp tile on landing
+        // Stamp tile on landing (after animation peaks)
         setTimeout(() => {
           if (!gameActive) return;
           if (grid[hr] && grid[hr][hc] === 0) {
             grid[hr][hc] = Math.floor(Math.random() * 6) + 1;
             drawGrid();
           }
-          hop.style.animation = 'adderHopOut 0.25s ease-in forwards';
-          setTimeout(() => hop.remove(), 280);
-        }, 280);
+          hop.style.animation = 'adderHopOut 0.28s ease-in forwards';
+          setTimeout(() => hop.remove(), 300);
+        }, 300);
       }, i * hopDelay);
     });
 
-    // Remove the dummy el, we handle everything above
+    // The dummy el is not appended for adder type
     return;
   } else if (type === 'vanish') {
     // Dark/black frog — removes tiles — enters from right, touches target cell and exits right
