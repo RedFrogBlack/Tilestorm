@@ -2989,6 +2989,8 @@ function generateTray(){
     trayPieces[slot]={shape:SPECIAL_SHAPES[type],color:8,special:type};
   }
   renderTray();
+  // Check immediately if new tray has any placeable piece
+  if(gameActive && checkGameOver()) setTimeout(triggerGameOver, 500);
 }
 function checkAllUsed(){if(trayUsed.every(u=>u))generateTray();}
 
