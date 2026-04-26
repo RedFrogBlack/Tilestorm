@@ -2843,6 +2843,14 @@
       </div>
       <button id="settings-theme-toggle" onclick="toggleSettingsTheme()" style="width:52px;height:28px;border-radius:14px;border:none;cursor:pointer;transition:background 0.2s;font-size:0.7rem;font-weight:700;letter-spacing:0.05em;">OFF</button>
     </div>
+    <div style="height:1px;background:rgba(255,255,255,0.06);margin:12px 0;"></div>
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:4px 0;">
+      <div>
+        <div style="font-family:var(--font-display);font-size:0.85rem;font-weight:700;letter-spacing:0.08em;color:#fff;">🐸 Frog Animations</div>
+        <div style="font-size:0.72rem;color:rgba(255,255,255,0.4);margin-top:3px;">Red frog adds tiles · Purple frog removes tiles</div>
+      </div>
+      <button id="settings-frogs-toggle" onclick="toggleSettingsFrogs()" style="width:52px;height:28px;border-radius:14px;border:none;cursor:pointer;transition:background 0.2s;font-size:0.7rem;font-weight:700;letter-spacing:0.05em;">ON</button>
+    </div>
   </div>
 
   <!-- Notifications -->
@@ -5466,6 +5474,9 @@ calcLayout();updateTierBadge();loadStreak();requestAnimationFrame(animateParticl
 
 // ── Jumping Frog Animations ─────────────────────────────────────────────────
 function spawnJumpingFrog(type, targetR, targetC) {
+  // Adder and vanish frogs respect the user's frog animations setting.
+  // Bonus (green, reward) frog always shows regardless.
+  if (!frogsOn && (type === 'adder' || type === 'vanish')) return;
   const rect = gridCanvas ? gridCanvas.getBoundingClientRect() : null;
   const cellY = rect ? rect.top + (targetR + 0.5) * CELL : window.innerHeight * 0.5;
   const cellX = rect ? rect.left + (targetC + 0.5) * CELL : window.innerWidth * 0.5;
@@ -5556,9 +5567,11 @@ function spawnJumpingFrog(type, targetR, targetC) {
 const NOTIF_KEY = 'cd_notif';
 const HAPTICS_KEY = 'cd_haptics';
 const THEME_KEY = 'cd_theme';
+const FROGS_KEY = 'cd_frogs';
 let notifsOn = localStorage.getItem(NOTIF_KEY) !== '0';
 let hapticsOn = localStorage.getItem(HAPTICS_KEY) !== '0';
 let lightModeOn = localStorage.getItem(THEME_KEY) === 'light';
+let frogsOn = localStorage.getItem(FROGS_KEY) !== '0'; // default ON
 let _settingsReturnScreen = 'screen-title';
 
 // Apply saved theme immediately on load
@@ -5604,6 +5617,12 @@ function updateSettingsToggles() {
     tBtn.textContent = lightModeOn ? 'ON' : 'OFF';
     tBtn.style.background = lightModeOn ? '#CC1212' : 'rgba(255,255,255,0.1)';
     tBtn.style.color = lightModeOn ? '#fff' : 'rgba(255,255,255,0.4)';
+  }
+  const fBtn = document.getElementById('settings-frogs-toggle');
+  if (fBtn) {
+    fBtn.textContent = frogsOn ? 'ON' : 'OFF';
+    fBtn.style.background = frogsOn ? '#CC1212' : 'rgba(255,255,255,0.1)';
+    fBtn.style.color = frogsOn ? '#fff' : 'rgba(255,255,255,0.4)';
   }
   // Saved game info
   const info = document.getElementById('settings-saved-game-info');
@@ -5671,6 +5690,12 @@ function toggleSettingsTheme() {
   lightModeOn = !lightModeOn;
   localStorage.setItem(THEME_KEY, lightModeOn ? 'light' : 'dark');
   document.body.classList.toggle('light-mode', lightModeOn);
+  updateSettingsToggles();
+}
+
+function toggleSettingsFrogs() {
+  frogsOn = !frogsOn;
+  localStorage.setItem(FROGS_KEY, frogsOn ? '1' : '0');
   updateSettingsToggles();
 }
 
