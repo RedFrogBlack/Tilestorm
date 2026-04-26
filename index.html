@@ -3262,6 +3262,8 @@ function endDrag(cx,cy){
     if(checkGameOver())setTimeout(triggerGameOver,500);
   }
   dragging=false;dragPieceIdx=-1;dragShape=null;hoverCell=null;drawGrid();
+  // If piece snapped back (couldn't place), check if any tray piece fits anywhere
+  if(gameActive && checkGameOver()) setTimeout(triggerGameOver, 500);
 }
 
 // ── Power-ups ─────────────────────────────────────────────────────
