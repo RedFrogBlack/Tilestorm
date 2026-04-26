@@ -403,6 +403,12 @@
       background: rgba(74,222,128,0.12);
       border-color: rgba(74,222,128,0.35);
     }
+    .gtc-badge.gtc-badge-gold {
+      color: #F7C948;
+      background: rgba(247,201,72,0.12);
+      border-color: rgba(247,201,72,0.4);
+      font-size: 0.65rem;
+    }
     .gtc-play-btn {
       flex-shrink: 0;
       background: var(--red);
@@ -2299,7 +2305,7 @@
           <div class="gtc-info">
             <div class="gtc-name">TREE FROG</div>
             <div class="gtc-sub">Medium · Frenzy · Beat the timer</div>
-            <div class="gtc-badge">Includes Tadpole · £2.99</div>
+            <div class="gtc-badge">Unlocks Tadpole too · £2.99</div>
           </div>
         </div>
         <button class="gtc-play-btn" id="gtc-play-treefrog">▶ PLAY</button>
@@ -2312,7 +2318,7 @@
           <div class="gtc-info">
             <div class="gtc-name">POISON DART</div>
             <div class="gtc-sub">Hard · Survival · Glitch Frog attacks</div>
-            <div class="gtc-badge">Includes above · £4.99</div>
+            <div class="gtc-badge">Unlocks Tadpole + Tree Frog too · £4.99</div>
           </div>
         </div>
         <button class="gtc-play-btn" id="gtc-play-poisondart">▶ PLAY</button>
@@ -2325,7 +2331,7 @@
           <div class="gtc-info">
             <div class="gtc-name">GOLDEN FROG</div>
             <div class="gtc-sub">Expert · Colour Run · Frog Stamp</div>
-            <div class="gtc-badge">Includes all · £7.99</div>
+            <div class="gtc-badge gtc-badge-gold">✦ Unlocks ALL 4 games · £7.99</div>
           </div>
         </div>
         <button class="gtc-play-btn" id="gtc-play-goldenfrog">▶ PLAY</button>
@@ -2889,7 +2895,17 @@ let powerupsLeft = 0;
 let powerupActive = false;
 
 const equippedTier  = () => TIERS.find(t => t.id === equippedTierId);
-const tierOwned     = id => ownedTiers.includes(id);
+// If you own a higher tier, you automatically own all tiers below it
+const TIER_ORDER = ['tadpole', 'treefrog', 'poisondart', 'goldenfrog'];
+const tierOwned = id => {
+  const myIdx = TIER_ORDER.indexOf(id);
+  if (myIdx === -1) return ownedTiers.includes(id);
+  // Owned if directly owned, OR if any higher tier is owned
+  return ownedTiers.some(owned => {
+    const ownedIdx = TIER_ORDER.indexOf(owned);
+    return ownedIdx >= myIdx;
+  });
+};
 const getTileColors = () => [null, ...(TILE_PALETTES[equippedTier().tileStyle] || TILE_PALETTES.classic)];
 
 // ── Game vars ─────────────────────────────────────────────────────
@@ -4659,31 +4675,28 @@ function addPenaltyRow() {
 
 let _glitchFrogCooldown = false;
 function glitchFrogAttack() {
-  if (_glitchFrogCooldown) return; // don't spam every second
+  if (_glitchFrogCooldown) return;
   _glitchFrogCooldown = true;
   setTimeout(() => _glitchFrogCooldown = false, 4000);
 
-  const targets = [];
-  for(let r=0; r<ROWS; r++) {
-    const filled = grid[r].filter(v=>v!==0).length;
-    if(filled >= 4 && filled < COLS) targets.push(r);
-  }
-  if(targets.length === 0) return;
-  shuffle(targets);
-  const rowsToHit = targets.slice(0, Math.min(2, targets.length));
-  rowsToHit.forEach(r => {
-    const filled = [];
-    for(let c=0;c<COLS;c++) if(grid[r][c]!==0) filled.push(c);
-    shuffle(filled);
-    const toEat = filled.slice(0, 2 + Math.floor(Math.random()*2));
-    toEat.forEach(c => grid[r][c] = 0);
-  });
+  // Find empty cells and fill them — harder, not easier!
+  const empty = [];
+  for(let r=0; r<ROWS; r++)
+    for(let c=0; c<COLS; c++)
+      if(grid[r][c] === 0) empty.push([r, c]);
+  shuffle(empty);
+  // Drop 4-6 random tiles into empty spaces
+  const toFill = empty.slice(0, 4 + Math.floor(Math.random() * 3));
+  toFill.forEach(([r,c]) => grid[r][c] = Math.floor(Math.random() * 6) + 1);
+
   drawGrid();
   flashHazard();
-  // Show frog head overlay
+  if(checkGameOver()) { setTimeout(triggerGameOver, 400); return; }
+
+  // Show frog overlay
   const el = document.getElementById('glitch-frog-overlay');
   el.classList.remove('show');
-  void el.offsetWidth; // reflow to restart animation
+  void el.offsetWidth;
   el.classList.add('show');
   setTimeout(() => el.classList.remove('show'), 1500);
 }
@@ -4970,7 +4983,7 @@ calcLayout();updateTierBadge();loadStreak();requestAnimationFrame(animateParticl
   <div class="glitch-frog-inner">
     <div class="glitch-frog-emoji">☠️🐸</div>
     <div class="glitch-frog-text">GLITCH FROG ATTACK!</div>
-    <div class="glitch-frog-sub">Board over 50% — tiles eaten!</div>
+    <div class="glitch-frog-sub">Board over 50% — tiles added!</div>
   </div>
 </div>
 </body>
