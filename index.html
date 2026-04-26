@@ -1348,7 +1348,7 @@
 
     /* In-game bonus event banner */
     #event-banner {
-      position: absolute; top: 68px; left: 50%;
+      position: absolute; top: 109px; left: 50%;
       transform: translateX(-50%) translateY(-60px);
       background: linear-gradient(135deg, #1a0a00, #2a1500);
       border: 1px solid #F5A623;
@@ -1845,7 +1845,7 @@
        DUO GAME SCREEN EXTRAS
     ════════════════════════════════════════════════ */
     #opp-mini-board {
-      position: fixed; top: 68px; right: 8px;
+      position: fixed; top: 109px; right: 8px;
       width: 80px;
       background: var(--black2);
       border: 1px solid var(--border-strong);
@@ -1876,7 +1876,7 @@
 
     /* Coop turn indicator */
     #coop-turn-banner {
-      position: fixed; top: 68px; left: 50%;
+      position: fixed; top: 109px; left: 50%;
       transform: translateX(-50%);
       background: var(--black2);
       border: 1.5px solid var(--art-teal);
@@ -3726,6 +3726,15 @@ function calcLayout(){
   CELL=Math.max(26,Math.min(CELL,64));
   gridCanvas.width=COLS*CELL;gridCanvas.height=ROWS*CELL;
   particleCanvas.width=window.innerWidth;particleCanvas.height=window.innerHeight;
+  // Update fixed-position overlays to sit below topbar + power strip
+  const fixedTop = topH + powerStripH + 4;
+  const fixedTopPx = fixedTop + 'px';
+  const opp = document.getElementById('opp-mini-board');
+  if (opp) opp.style.top = fixedTopPx;
+  const coopBanner = document.getElementById('coop-turn-banner');
+  if (coopBanner) coopBanner.style.top = fixedTopPx;
+  const eventBanner = document.getElementById('event-banner');
+  if (eventBanner) eventBanner.style.top = fixedTopPx;
 }
 
 // ── Grid helpers ──────────────────────────────────────────────────
@@ -4262,6 +4271,7 @@ function startGame(){
   _stopPowerWindow(); _powersUsedThisGame = 0; // reset rolling window each game
   resetBehaviourGame(); _prevFill = 0; clearPurpleRescueTimer();
   refreshPowerBar();
+  calcLayout(); // recalc after power strip shown so fixed overlays get correct top
   scheduleAdderFrog(); // start pace-adaptive red frog (behaviour-adaptive below)
   document.getElementById('event-banner').classList.remove('show');
   document.getElementById('hazard-overlay').classList.remove('flash');
@@ -6126,11 +6136,13 @@ function startVsFrog() {
   showScreen('screen-game');
   startGame();
 
+  // Override the auto welcome banner immediately after startGame fires it
+  // (startGame shows a challenge-mode banner at t=500ms — we replace it at t=600ms)
+  setTimeout(() => showEventBanner('🐸 VS FROG — RACE TO 5 LINES!'), 600);
   // Start AI after a short delay (let player see the board first)
   setTimeout(() => {
-    showEventBanner('🐸 THE FROG IS READY — GO!');
     _vsFrogScheduleMove();
-  }, 1200);
+  }, 1400);
 }
 
 function stopVsFrog() {
