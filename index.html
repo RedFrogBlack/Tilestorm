@@ -579,7 +579,8 @@
       flex-direction: column;
       align-items: center;
       justify-content: flex-start;
-      overflow: hidden;
+      overflow-x: hidden;
+      overflow-y: hidden;
     }
     /* On desktop, cap game content to 480px and centre it */
     @media (min-width: 500px) {
@@ -605,14 +606,15 @@
       width: 100%;
       background: var(--black2);
       border-bottom: 3px solid var(--red);
-      padding: 0 14px;
-      height: 60px;
+      padding: 0 10px;
+      height: 56px;
       display: flex;
       align-items: center;
       justify-content: space-between;
-      gap: 10px;
+      gap: 6px;
       flex-shrink: 0;
       position: relative; z-index: 1;
+      overflow: hidden;
     }
 
     .topbar-brand {
@@ -631,14 +633,15 @@
     .topbar-brand-name em { color: var(--red); font-style: normal; }
 
     /* Stat pills — flat, no border radius curves */
-    .stat-row { display: flex; gap: 5px; align-items: center; }
+    .stat-row { display: flex; gap: 4px; align-items: center; flex-shrink: 1; }
     .stat-pill {
       background: var(--black3);
       border: 1px solid var(--border);
       border-radius: var(--radius-sm);
-      padding: 4px 8px;
+      padding: 4px 6px;
       text-align: center;
-      min-width: 44px;
+      min-width: 38px;
+      flex-shrink: 1;
     }
     .stat-pill .s-label {
       font-family: var(--font-display);
@@ -661,7 +664,7 @@
     }
     .stat-pill .s-val.red { color: var(--red); }
 
-    .topbar-right { display: flex; gap: 5px; align-items: center; }
+    .topbar-right { display: flex; gap: 5px; align-items: center; flex-shrink: 0; }
 
     /* Combo badge */
     .combo-badge {
@@ -685,8 +688,8 @@
       background: var(--black3);
       border: 1px solid var(--border);
       border-radius: var(--radius-sm);
-      width: 44px; height: 44px;
-      min-width: 44px; min-height: 44px;
+      width: 40px; height: 40px;
+      min-width: 40px; min-height: 40px;
       display: flex; align-items: center; justify-content: center;
       cursor: pointer; color: var(--muted);
       transition: color var(--t), border-color var(--t), background var(--t);
@@ -1165,18 +1168,35 @@
     .psc-buy-btn.free:hover { background: #228822; }
     .psc-buy-btn:disabled { background: rgba(255,255,255,0.1); color: rgba(255,255,255,0.3); cursor: default; }
 
+    /* Power bar strip — full-width row below topbar */
+    #power-bar-strip {
+      width: 100%;
+      background: rgba(0,0,0,0.6);
+      border-bottom: 1px solid rgba(255,255,255,0.07);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 5px 12px;
+      box-sizing: border-box;
+      flex-shrink: 0;
+      min-height: 0;
+    }
+    /* Hidden when power bar is empty (no owned powers) */
+    #power-bar-strip:empty,
+    #power-bar-strip:has(#power-bar:empty) { display: none; }
+
     /* In-game multi-power bar */
     #power-bar {
       display: flex; gap: 6px; align-items: center;
       flex-wrap: nowrap;
     }
     .power-slot {
-      width: 42px; height: 42px; border-radius: 10px;
+      width: 38px; height: 38px; border-radius: 10px;
       background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1);
       display: flex; flex-direction: column; align-items: center; justify-content: center;
       cursor: pointer; transition: border-color 0.15s, background 0.15s;
       position: relative; flex-shrink: 0;
-      font-size: 1.1rem;
+      font-size: 1rem;
     }
     .power-slot:hover:not(.empty) { border-color: rgba(204,18,18,0.6); background: rgba(204,18,18,0.1); }
     .power-slot.active-power { border-color: #F7C948; background: rgba(247,201,72,0.12); animation: powerPulse 0.8s ease-in-out infinite; }
@@ -2351,31 +2371,82 @@
   }
   #howto-sheet { position: relative; }
   .howto-section {
-    padding: 0 22px; margin-bottom: 24px;
+    padding: 0 16px; margin-bottom: 20px;
   }
+  /* Section headers — bright, readable */
   .howto-section-title {
     font-family: var(--font-display);
-    font-size: 0.6rem; letter-spacing: 0.22em;
-    color: rgba(255,255,255,0.3); text-transform: uppercase;
-    border-bottom: 1px solid rgba(255,255,255,0.06);
-    padding-bottom: 8px; margin-bottom: 14px;
+    font-size: 0.65rem; letter-spacing: 0.2em;
+    color: #fff; text-transform: uppercase;
+    border-bottom: 1px solid rgba(255,255,255,0.12);
+    padding-bottom: 10px; margin-bottom: 14px;
+    display: flex; align-items: center; gap: 8px;
   }
-  .howto-tier-row {
-    display: flex; align-items: flex-start; gap: 12px;
-    padding: 10px 0; border-bottom: 1px solid rgba(255,255,255,0.04);
+  .howto-section-title .hst-accent {
+    display: inline-block; width: 3px; height: 14px;
+    border-radius: 2px; flex-shrink: 0;
   }
-  .howto-tier-row:last-child { border-bottom: none; }
-  .howto-tier-emoji { font-size: 1.5rem; flex-shrink: 0; width: 32px; text-align: center; }
-  .howto-tier-body { flex: 1; }
+
+  /* Tier tile cards */
+  .howto-tier-card {
+    display: flex; align-items: center; gap: 12px;
+    background: rgba(255,255,255,0.04);
+    border: 1px solid rgba(255,255,255,0.07);
+    border-radius: 14px; padding: 12px 14px;
+    margin-bottom: 8px;
+    position: relative; overflow: hidden;
+  }
+  .howto-tier-card::before {
+    content: ''; position: absolute; left: 0; top: 0; bottom: 0;
+    width: 3px; border-radius: 3px 0 0 3px;
+    background: var(--tc, #888);
+  }
+  .howto-tier-emoji {
+    font-size: 1.6rem; flex-shrink: 0; width: 34px; text-align: center;
+  }
+  .howto-tier-body { flex: 1; min-width: 0; }
   .howto-tier-name {
-    font-family: var(--font-display); font-size: 0.8rem;
-    font-weight: 700; letter-spacing: 0.1em;
-    color: #fff; margin-bottom: 2px;
+    font-family: var(--font-display); font-size: 0.78rem;
+    font-weight: 700; letter-spacing: 0.08em;
+    color: #fff; margin-bottom: 3px;
   }
-  .howto-tier-desc { font-size: 0.75rem; color: rgba(255,255,255,0.45); line-height: 1.45; }
+  .howto-tier-desc { font-size: 0.72rem; color: rgba(255,255,255,0.5); line-height: 1.4; }
+  .howto-tier-price {
+    font-family: var(--font-display); font-size: 0.75rem;
+    font-weight: 700; flex-shrink: 0; text-align: right;
+    color: var(--tc, #888); letter-spacing: 0.04em;
+  }
+  /* Duo card — purple, stands out */
+  .howto-duo-card {
+    background: rgba(155,48,255,0.10);
+    border: 1px solid rgba(155,48,255,0.35);
+    border-radius: 14px; padding: 14px 16px;
+    margin-top: 6px;
+  }
+  .howto-duo-header {
+    display: flex; align-items: center; justify-content: space-between;
+    margin-bottom: 6px;
+  }
+  .howto-duo-name {
+    font-family: var(--font-display); font-size: 0.85rem;
+    font-weight: 700; letter-spacing: 0.1em; color: #c084fc;
+  }
+  .howto-duo-price {
+    font-family: var(--font-display); font-size: 0.75rem;
+    color: #c084fc; font-weight: 700;
+  }
+  .howto-duo-desc { font-size: 0.73rem; color: rgba(255,255,255,0.5); line-height: 1.4; margin-bottom: 6px; }
+  .howto-duo-tag {
+    font-family: var(--font-display); font-size: 0.58rem; letter-spacing: 0.1em;
+    background: rgba(155,48,255,0.2); color: #c084fc;
+    border: 1px solid rgba(155,48,255,0.4);
+    border-radius: 8px; padding: 2px 8px; display: inline-block;
+  }
+
+  /* Frog rows */
   .howto-frog-row {
     display: flex; align-items: flex-start; gap: 12px;
-    padding: 10px 0; border-bottom: 1px solid rgba(255,255,255,0.04);
+    padding: 10px 0; border-bottom: 1px solid rgba(255,255,255,0.05);
   }
   .howto-frog-row:last-child { border-bottom: none; }
   .howto-frog-dot {
@@ -2391,32 +2462,43 @@
     background: rgba(255,255,255,0.04);
     border: 1px solid rgba(255,255,255,0.08);
     border-radius: 12px; padding: 12px 16px;
-    font-size: 0.75rem; color: rgba(255,255,255,0.5); line-height: 1.5;
+    font-size: 0.73rem; color: rgba(255,255,255,0.5); line-height: 1.5;
     margin-top: 10px;
   }
-  .howto-settings-tip strong { color: rgba(255,255,255,0.75); }
+  .howto-settings-tip strong { color: rgba(255,255,255,0.8); }
+
+  /* Power rows */
   .howto-power-row {
-    display: flex; align-items: flex-start; gap: 12px;
-    padding: 9px 0; border-bottom: 1px solid rgba(255,255,255,0.04);
+    display: flex; align-items: center; gap: 12px;
+    padding: 10px 0; border-bottom: 1px solid rgba(255,255,255,0.05);
   }
   .howto-power-row:last-child { border-bottom: none; }
-  .howto-power-icon { font-size: 1.3rem; flex-shrink: 0; width: 28px; text-align: center; }
-  .howto-power-body { flex: 1; }
+  .howto-power-icon {
+    font-size: 1.4rem; flex-shrink: 0; width: 32px; text-align: center;
+  }
+  .howto-power-body { flex: 1; min-width: 0; }
   .howto-power-name {
     font-family: var(--font-display); font-size: 0.78rem;
-    font-weight: 700; letter-spacing: 0.08em; color: #fff; margin-bottom: 2px;
+    font-weight: 700; letter-spacing: 0.08em; color: #fff; margin-bottom: 1px;
   }
-  .howto-power-desc { font-size: 0.73rem; color: rgba(255,255,255,0.45); line-height: 1.4; }
+  .howto-power-desc { font-size: 0.71rem; color: rgba(255,255,255,0.45); line-height: 1.35; }
+  .howto-power-right {
+    display: flex; flex-direction: column; align-items: flex-end; gap: 4px; flex-shrink: 0;
+  }
+  .howto-power-price {
+    font-family: var(--font-display); font-size: 0.72rem;
+    font-weight: 700; color: #F7C948; letter-spacing: 0.04em;
+  }
   .howto-power-tag {
     font-family: var(--font-display); font-size: 0.55rem; letter-spacing: 0.12em;
-    padding: 2px 8px; border-radius: 8px; margin-top: 4px; display: inline-block;
+    padding: 2px 8px; border-radius: 8px; display: inline-block;
   }
   .htag-solo { background: rgba(204,18,18,0.15); color: #ff6666; border: 1px solid rgba(204,18,18,0.3); }
-  .htag-duo { background: rgba(155,48,255,0.15); color: #cc88ff; border: 1px solid rgba(155,48,255,0.3); }
+  .htag-duo  { background: rgba(155,48,255,0.15); color: #c084fc; border: 1px solid rgba(155,48,255,0.3); }
   .howto-shop-note {
     background: rgba(247,201,72,0.07); border: 1px solid rgba(247,201,72,0.2);
     border-radius: 12px; padding: 12px 16px; margin-top: 10px;
-    font-size: 0.75rem; color: rgba(255,255,255,0.5); line-height: 1.5;
+    font-size: 0.73rem; color: rgba(255,255,255,0.5); line-height: 1.5;
   }
   .howto-shop-note strong { color: #F7C948; }
 
@@ -2576,58 +2658,70 @@
 
     <!-- Tiers -->
     <div class="howto-section">
-      <div class="howto-section-title">🎮 Game Tiers — Tap Solo Play to choose</div>
+      <div class="howto-section-title">
+        <span class="hst-accent" style="background:#CC1212"></span>
+        🎮 Solo Tiers
+      </div>
 
-      <div class="howto-tier-row">
+      <div class="howto-tier-card" style="--tc:#888888">
         <div class="howto-tier-emoji">🥚</div>
         <div class="howto-tier-body">
-          <div class="howto-tier-name">TADPOLE · Free</div>
-          <div class="howto-tier-desc">Classic tile-placement. Clear lines, beat your best score. A great starting point.</div>
+          <div class="howto-tier-name">TADPOLE</div>
+          <div class="howto-tier-desc">Classic tile-placement. Clear lines, beat your best score.</div>
         </div>
+        <div class="howto-tier-price">FREE</div>
       </div>
 
-      <div class="howto-tier-row">
+      <div class="howto-tier-card" style="--tc:#F5A623">
         <div class="howto-tier-emoji">🐸</div>
         <div class="howto-tier-body">
-          <div class="howto-tier-name">TREE FROG · £0.99</div>
-          <div class="howto-tier-desc">FRENZY mode — race against a countdown timer that adapts to your pace. Frantic, fast, addictive.</div>
+          <div class="howto-tier-name">TREE FROG</div>
+          <div class="howto-tier-desc">FRENZY mode — race a countdown timer. Frantic and addictive.</div>
         </div>
+        <div class="howto-tier-price">£0.99<br><span style="font-size:0.55rem;opacity:0.6">/yr</span></div>
       </div>
 
-      <div class="howto-tier-row">
-        <div class="howto-tier-emoji">☠️</div>
+      <div class="howto-tier-card" style="--tc:#CC1212">
+        <div class="howto-tier-emoji">🦎</div>
         <div class="howto-tier-body">
-          <div class="howto-tier-name">POISON DART · £2.99</div>
-          <div class="howto-tier-desc">SURVIVAL mode — survive as long as possible under ever-increasing pressure. Grit required.</div>
+          <div class="howto-tier-name">POISON DART</div>
+          <div class="howto-tier-desc">SURVIVAL mode — tiles vanish. How long can you last?</div>
         </div>
+        <div class="howto-tier-price">£2.99<br><span style="font-size:0.55rem;opacity:0.6">/yr</span></div>
       </div>
 
-      <div class="howto-tier-row">
+      <div class="howto-tier-card" style="--tc:#F5E000">
         <div class="howto-tier-emoji">✨</div>
         <div class="howto-tier-body">
-          <div class="howto-tier-name">GOLDEN FROG · £4.99 — All Games Included</div>
-          <div class="howto-tier-desc">COLOUR RUN mode + every tier below it. Place tiles free-style, but complete rows in matching colour or the red frog punishes you. Flip the board to split by colour halves for an extra challenge.</div>
+          <div class="howto-tier-name">GOLDEN FROG</div>
+          <div class="howto-tier-desc">COLOUR RUN + all modes. Best value — everything unlocked.</div>
         </div>
+        <div class="howto-tier-price">£7.99<br><span style="font-size:0.55rem;opacity:0.6">/yr</span></div>
       </div>
 
-      <div class="howto-tier-row">
-        <div class="howto-tier-emoji">👫</div>
-        <div class="howto-tier-body">
-          <div class="howto-tier-name">DUO MODE · £4.99/month</div>
-          <div class="howto-tier-desc">Race, Tile Attack, and Survival Duel against a friend in real time. Includes all solo tiers.</div>
+      <!-- Duo — stands out in purple -->
+      <div class="howto-duo-card">
+        <div class="howto-duo-header">
+          <div class="howto-duo-name">👫 DUO MODE</div>
+          <div class="howto-duo-price">£4.99/mo</div>
         </div>
+        <div class="howto-duo-desc">Play against a friend in real time — Race, Tile Attack, Survival Duel. Includes all solo tiers. You can also use your Magic Powers in Duo games.</div>
+        <span class="howto-duo-tag">⚡ MAGIC POWERS WORK IN DUO</span>
       </div>
     </div>
 
     <!-- Frogs -->
     <div class="howto-section">
-      <div class="howto-section-title">🐸 The Frogs — What They Do</div>
+      <div class="howto-section-title">
+        <span class="hst-accent" style="background:#CC1212"></span>
+        🐸 The Frogs
+      </div>
 
       <div class="howto-frog-row">
         <div class="howto-frog-dot" style="background:#CC1212;"></div>
         <div class="howto-frog-body">
           <div class="howto-frog-name">🔴 Red Frog — Adds Tiles</div>
-          <div class="howto-frog-desc">Jumps across the board and drops extra tiles, making it harder to clear lines. Appears more often as your pace picks up.</div>
+          <div class="howto-frog-desc">Jumps across and drops extra tiles. Gets more aggressive the faster and better you play.</div>
         </div>
       </div>
 
@@ -2635,24 +2729,30 @@
         <div class="howto-frog-dot" style="background:#9B30FF;"></div>
         <div class="howto-frog-body">
           <div class="howto-frog-name">🟣 Purple Frog — Removes Tiles</div>
-          <div class="howto-frog-desc">Hops in and clears tiles from the board, giving you breathing room. A helpful visitor — don't scare it away.</div>
+          <div class="howto-frog-desc">Hops in when you’re struggling and clears tiles. A helpful visitor — shows up when you need it most.</div>
         </div>
       </div>
 
       <div class="howto-settings-tip">
-        <strong>Want to turn the frogs off?</strong> Go to <strong>⚙ Settings</strong> (bottom of the home screen) → Display section → toggle Red Frog or Purple Frog on/off independently.
+        <strong>Toggle them independently</strong> in ⚙ Settings → Red Frog / Purple Frog / Frog Commentary — each has its own switch.
       </div>
     </div>
 
     <!-- Powers -->
     <div class="howto-section">
-      <div class="howto-section-title">⚡ Magic Powers</div>
+      <div class="howto-section-title">
+        <span class="hst-accent" style="background:#F7C948"></span>
+        ⚡ Magic Powers
+      </div>
 
       <div class="howto-power-row">
         <div class="howto-power-icon">🔥</div>
         <div class="howto-power-body">
           <div class="howto-power-name">Fire Blast</div>
-          <div class="howto-power-desc">Burns away a full row or column instantly.</div>
+          <div class="howto-power-desc">Burns away the fullest row instantly.</div>
+        </div>
+        <div class="howto-power-right">
+          <div class="howto-power-price">£0.99/yr</div>
           <span class="howto-power-tag htag-solo">SOLO</span>
         </div>
       </div>
@@ -2661,7 +2761,10 @@
         <div class="howto-power-icon">🧙</div>
         <div class="howto-power-body">
           <div class="howto-power-name">Magician</div>
-          <div class="howto-power-desc">Vanishes any row or column you pick — poof.</div>
+          <div class="howto-power-desc">Tap a row or column to vanish it — poof.</div>
+        </div>
+        <div class="howto-power-right">
+          <div class="howto-power-price">£0.99/yr</div>
           <span class="howto-power-tag htag-solo">SOLO</span>
         </div>
       </div>
@@ -2670,7 +2773,10 @@
         <div class="howto-power-icon">💣</div>
         <div class="howto-power-body">
           <div class="howto-power-name">Bomb</div>
-          <div class="howto-power-desc">Explodes a 3×3 area — great when the board fills up fast.</div>
+          <div class="howto-power-desc">Tap a cell to blast a 3×3 area.</div>
+        </div>
+        <div class="howto-power-right">
+          <div class="howto-power-price">£0.99/yr</div>
           <span class="howto-power-tag htag-solo">SOLO</span>
         </div>
       </div>
@@ -2680,6 +2786,9 @@
         <div class="howto-power-body">
           <div class="howto-power-name">Star Clear</div>
           <div class="howto-power-desc">Wipes every tile of one colour from the board.</div>
+        </div>
+        <div class="howto-power-right">
+          <div class="howto-power-price">£0.99/yr</div>
           <span class="howto-power-tag htag-solo">SOLO</span>
         </div>
       </div>
@@ -2688,7 +2797,10 @@
         <div class="howto-power-icon">🧊</div>
         <div class="howto-power-body">
           <div class="howto-power-name">Freeze</div>
-          <div class="howto-power-desc">Pauses frog spawns for 20 seconds. Breathe.</div>
+          <div class="howto-power-desc">Pauses frog spawns for 20 seconds.</div>
+        </div>
+        <div class="howto-power-right">
+          <div class="howto-power-price">£0.99/yr</div>
           <span class="howto-power-tag htag-solo">SOLO</span>
         </div>
       </div>
@@ -2697,7 +2809,10 @@
         <div class="howto-power-icon">🐸</div>
         <div class="howto-power-body">
           <div class="howto-power-name">Frog Bomb</div>
-          <div class="howto-power-desc">Sends a bomb frog to scramble your opponent's board.</div>
+          <div class="howto-power-desc">Scrambles your opponent’s board.</div>
+        </div>
+        <div class="howto-power-right">
+          <div class="howto-power-price">£0.99/yr</div>
           <span class="howto-power-tag htag-duo">DUO</span>
         </div>
       </div>
@@ -2706,13 +2821,16 @@
         <div class="howto-power-icon">🌀</div>
         <div class="howto-power-body">
           <div class="howto-power-name">Scramble</div>
-          <div class="howto-power-desc">Reshuffles your opponent's tray pieces.</div>
+          <div class="howto-power-desc">Reshuffles your opponent’s tray pieces.</div>
+        </div>
+        <div class="howto-power-right">
+          <div class="howto-power-price">£0.99/yr</div>
           <span class="howto-power-tag htag-duo">DUO</span>
         </div>
       </div>
 
       <div class="howto-shop-note">
-        <strong>£0.99 per pack of 3 uses.</strong> Some powers unlock by tier — higher tiers unlock more powerful magic. Buy powers from the Shop on the home screen.
+        <strong>£0.99/year per power — unlimited use.</strong> You get 3 uses every 30 seconds while playing. Buy from the Shop on the home screen. One free power use resets daily.
       </div>
     </div>
 
@@ -2820,7 +2938,6 @@
     </div>
 
     <div class="topbar-right">
-      <div id="power-bar"></div>
       <button class="icon-btn" id="btn-shop-ingame" title="Shop" style="font-size:1rem">🐸</button>
       <button class="icon-btn" id="btn-sound" title="Sound" style="font-size:1rem">🔊</button>
       <button class="icon-btn" id="btn-menu" title="Menu">
@@ -2831,6 +2948,11 @@
         </svg>
       </button>
     </div>
+  </div>
+
+  <!-- Power bar strip — sits between topbar and level progress -->
+  <div id="power-bar-strip" style="display:none">
+    <div id="power-bar"></div>
   </div>
 
   <div id="level-progress-bar">
@@ -3590,11 +3712,15 @@ let CELL=44;
 
 function calcLayout(){
   const topH=document.querySelector('.game-topbar')?.offsetHeight||60;
+  const powerStripH=document.getElementById('power-bar-strip')?.offsetHeight||0;
+  const levelBarH=document.getElementById('level-progress-bar')?.offsetHeight||20;
+  const challengeHudH=(document.getElementById('challenge-hud')?.offsetHeight||0)*(gameActive?1:0);
   // tray only (mid-zone removed)
   const trayH=155+8;
-  const availH=window.innerHeight-topH-trayH;
-  // Cap width at 480px on desktop so game stays portrait-friendly
-  const maxW=Math.min(window.innerWidth-8, 480);
+  const availH=window.innerHeight-topH-powerStripH-levelBarH-challengeHudH-trayH;
+  // Cap width at 480px on desktop, subtract safe margins on mobile
+  const safeMargin = window.innerWidth < 500 ? 16 : 8;
+  const maxW=Math.min(window.innerWidth-safeMargin, 480);
   const availW=maxW;
   CELL=Math.floor(Math.min(availH/ROWS,availW/COLS));
   CELL=Math.max(26,Math.min(CELL,64));
@@ -4355,6 +4481,7 @@ let activePowerId = null; // which power slot is armed
 
 function refreshPowerBar() {
   const bar = document.getElementById('power-bar');
+  const strip = document.getElementById('power-bar-strip');
   if (!bar) return;
   bar.innerHTML = '';
 
@@ -4365,14 +4492,13 @@ function refreshPowerBar() {
   });
 
   if (ownedPowers.length === 0) {
-    const hint = document.createElement('div');
-    hint.className = 'power-slot empty';
-    hint.title = 'Buy powers';
-    hint.innerHTML = '⚡';
-    hint.addEventListener('click', () => openShop('powers'));
-    bar.appendChild(hint);
+    // Hide strip when no powers — saves vertical space
+    if (strip) strip.style.display = 'none';
     return;
   }
+  // Show strip when powers exist
+  if (strip) strip.style.display = '';
+  calcLayout();
 
   // Window info: uses left + countdown
   const usesLeft  = Math.max(0, POWER_WINDOW_MAX - _powerWindowUsed);
