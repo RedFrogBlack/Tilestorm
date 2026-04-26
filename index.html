@@ -5130,72 +5130,104 @@ function clearPurpleRescueTimer() {
 // Frogs speak based on player state. Never too often.
 // ════════════════════════════════════════════════════════════════
 
+// Each entry: [displayText, audioKey]
 const COMMENTARY = {
-  // Player doing well — red frog cheers sarcastically / purple frog claps
   dominating: [
-    '🔥 Not bad... for a human.',
-    '⭐ Ok ok, I see you!',
-    '🐸 Oi. You\'re actually good at this.',
-    '🏆 Smooth. Very smooth.',
-    '💪 Alright, keep going — don\'t let it go to your head.',
-    '🔥 Someone\'s in the zone!',
+    ['🔥 Not bad... for a human.', 'dom_0'],
+    ['⭐ Ok ok, I see you!', 'dom_1'],
+    ['🐸 Oi. You\'re actually good at this.', 'dom_2'],
+    ['🏆 Smooth. Very smooth.', 'dom_3'],
+    ['💪 Alright, keep going — don\'t let it go to your head.', 'dom_4'],
+    ['🔥 Someone\'s in the zone!', 'dom_5'],
   ],
-  // Nice combo
   combo: [
-    '⚡ Double clear! Now we\'re talking!',
-    '🎯 Back to back — clean!',
-    '🐸 Combo king!',
-    '💥 Did you just... yeah you did.',
+    ['⚡ Double clear! Now we\'re talking!', 'combo_0'],
+    ['🎯 Back to back — clean!', 'combo_1'],
+    ['🐸 Combo king!', 'combo_2'],
+    ['💥 Did you just... yeah you did.', 'combo_3'],
   ],
-  // Player is struggling (high fill, slow)
   struggling: [
-    '😬 Hey... u good?',
-    '🐸 Don\'t panic. Breathe. Place.',
-    '😅 It\'s getting cosy in there...',
-    '🟡 Focus — one row at a time!',
-    '🐸 You got this. Probably.',
+    ['😬 Hey... u good?', 'str_0'],
+    ['🐸 Don\'t panic. Breathe. Place.', 'str_1'],
+    ['😅 It\'s getting cosy in there...', 'str_2'],
+    ['🟡 Focus — one row at a time!', 'str_3'],
+    ['🐸 You got this. Probably.', 'str_4'],
   ],
-  // Board is nearly full — danger
   danger: [
-    '🚨 Oof. That board is looking full...',
-    '😨 Red frog is absolutely loving this.',
-    '🆘 HELLO?? Anyone home??',
-    '🐸 This is fine. This is completely fine.',
-    '💀 Ok I\'m not worried. You should be.',
+    ['🚨 Oof. That board is looking full...', 'dng_0'],
+    ['😨 Red frog is absolutely loving this.', 'dng_1'],
+    ['🆘 HELLO?? Anyone home??', 'dng_2'],
+    ['🐸 This is fine. This is completely fine.', 'dng_3'],
+    ['💀 Ok I\'m not worried. You should be.', 'dng_4'],
   ],
-  // Clunky placer — lots of pieces, few lines
   clunky: [
-    '🤔 Hmm. Maybe try clearing a row?',
-    '🐸 You\'re placing a lot... but not clearing much.',
-    '👀 A little focus goes a long way, just saying.',
-    '🧩 Try filling a full row — you\'ll feel better.',
+    ['🤔 Hmm. Maybe try clearing a row?', 'clk_0'],
+    ['🐸 You\'re placing a lot... but not clearing much.', 'clk_1'],
+    ['👀 A little focus goes a long way, just saying.', 'clk_2'],
+    ['🧩 Try filling a full row — you\'ll feel better.', 'clk_3'],
   ],
-  // Recovery — was struggling, board fill dropped
   recovery: [
-    '😌 There we go! That\'s more like it.',
-    '🐸 Comeback mode ACTIVATED.',
-    '💚 See? You had it in you.',
-    '✅ Breathe. You\'re back in it.',
+    ['😌 There we go! That\'s more like it.', 'rec_0'],
+    ['🐸 Comeback mode ACTIVATED.', 'rec_1'],
+    ['💚 See? You had it in you.', 'rec_2'],
+    ['✅ Breathe. You\'re back in it.', 'rec_3'],
   ],
-  // Purple frog rescue messages
   purpleRescue: [
-    '💜 Purple frog to the rescue~',
-    '🟣 I got you. This time.',
-    '💜 Don\'t say I never do anything for you.',
-    '🫧 Poof. Breathe now.',
+    ['💜 Purple frog to the rescue~', 'pur_0'],
+    ['🟣 I got you. This time.', 'pur_1'],
+    ['💜 Don\'t say I never do anything for you.', 'pur_2'],
+    ['🫧 Poof. Breathe now.', 'pur_3'],
   ],
-  // Long time no lines
   dry: [
-    '🐸 Been a while since a clear...',
-    '⏳ Still waiting on that row...',
-    '😐 Just saying. The grid isn\'t getting smaller.',
+    ['🐸 Been a while since a clear...', 'dry_0'],
+    ['⏳ Still waiting on that row...', 'dry_1'],
+    ['😐 Just saying. The grid isn\'t getting smaller.', 'dry_2'],
   ],
 };
 
 function _pick(arr) { return arr[Math.floor(Math.random() * arr.length)]; }
 
+// ── Frog Voice Audio Player ───────────────────────────────────────────
+// Audio files are hosted at /game/audio/<key>.mp3 on gh-pages
+// We cache decoded AudioBuffers so each clip only downloads once
+const _frogAudioCache = {};
+let _frogAudioNode = null; // only one frog voice at a time
+const _AUDIO_BASE = (()=>{
+  // Detect whether we're at /game/ (gh-pages) or root (local dev)
+  const p = window.location.pathname;
+  if (p.startsWith('/game')) return '/game/audio/';
+  if (p.startsWith('/play')) return '/game/audio/'; // play wrapper loads /game/
+  return '/audio/'; // local dev
+})();
+
+function _playFrogVoice(key) {
+  if (!soundOn || !commentaryOn) return;
+  ensureAudio().then(() => {
+    if (!audioCtx || audioCtx.state !== 'running') return;
+    // Stop any currently playing voice
+    if (_frogAudioNode) { try { _frogAudioNode.stop(); } catch(e){} _frogAudioNode = null; }
+    const play = (buf) => {
+      const src = audioCtx.createBufferSource();
+      const gain = audioCtx.createGain();
+      gain.gain.value = 0.92;
+      src.buffer = buf;
+      src.connect(gain).connect(audioCtx.destination);
+      src.start(0);
+      _frogAudioNode = src;
+    };
+    if (_frogAudioCache[key]) { play(_frogAudioCache[key]); return; }
+    fetch(_AUDIO_BASE + key + '.mp3')
+      .then(r => r.arrayBuffer())
+      .then(ab => audioCtx.decodeAudioData(ab))
+      .then(buf => { _frogAudioCache[key] = buf; play(buf); })
+      .catch(() => {});
+  });
+}
+
 // Show a speech bubble near the frog icon in topbar
-function showFrogSpeech(color, text, ribbitPattern) {
+// entry is now [text, audioKey] pair from COMMENTARY arrays
+function showFrogSpeech(color, entry, ribbitPattern) {
+  const [text, audioKey] = Array.isArray(entry) ? entry : [entry, null];
   const banner = document.getElementById('event-banner');
   if (!banner) return;
   banner.innerHTML = text;
@@ -5205,7 +5237,8 @@ function showFrogSpeech(color, text, ribbitPattern) {
   banner.style.borderColor = color === 'purple' ? '#a855f7' : '#CC1212';
   banner.classList.add('show');
   setTimeout(() => banner.classList.remove('show'), 3500);
-  // Play frog voice
+  // Play frog voice (real TTS audio) + synth ribbit
+  if (audioKey) _playFrogVoice(audioKey);
   if (ribbitPattern) playRibbit(ribbitPattern);
 }
 
