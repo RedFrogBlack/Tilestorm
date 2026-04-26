@@ -8205,14 +8205,19 @@ function checkResumeOnHome() {
   </div>
 </div>
   <script>
-  /* ── Move fixed overlays to <body> to escape any parser nesting ────────── */
+  /* ── Move ALL screens & overlays to <body> to escape parser nesting bug ── */
   (function() {
-    var ids = ['shop-overlay','purchase-overlay','screen-settings','screen-profile',
-               'screen-session-result','screen-gameover','screen-duo-lobby',
-               'upgrade-overlay','pause-overlay','levelup-overlay','duo-modal',
-               'bonus-popup','quit-confirm-overlay','glitch-frog-overlay'];
+    var ids = [
+      // All screens
+      'screen-solo-setup','screen-game','screen-gameover','screen-duo-lobby',
+      'screen-settings','screen-profile','screen-session-result',
+      // All overlays & modals
+      'shop-overlay','purchase-overlay','upgrade-overlay','upgrade-modal',
+      'pause-overlay','levelup-overlay','duo-modal','bonus-popup',
+      'quit-confirm-overlay','glitch-frog-overlay','attack-overlay',
+      'hazard-overlay','howto-overlay'
+    ];
     ids.forEach(function(id) {
-      // Use querySelectorAll to catch duplicate IDs
       document.querySelectorAll('#' + id).forEach(function(el) {
         if (el.parentElement !== document.body) {
           document.body.appendChild(el);
