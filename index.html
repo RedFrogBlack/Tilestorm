@@ -3766,24 +3766,24 @@ let particles=[];
 
 // ── Audio ─────────────────────────────────────────────────────────
 let audioCtx=null;
-let _audioResuming=false;
+// Returns a Promise that resolves once the AudioContext is running.
+// If it's already running the promise resolves synchronously (microtask).
 function ensureAudio(){
   if(!audioCtx)audioCtx=new(window.AudioContext||window.webkitAudioContext)();
-  if(audioCtx.state==='suspended'&&!_audioResuming){
-    _audioResuming=true;
-    audioCtx.resume().then(()=>{_audioResuming=false;}).catch(()=>{_audioResuming=false;});
-  }
+  if(audioCtx.state==='running')return Promise.resolve();
+  return audioCtx.resume().catch(()=>{});
 }
 function playSFX(freq,dur,type='sine',vol=0.14,delay=0){
   if(!soundOn)return;
-  ensureAudio();
-  if(!audioCtx||audioCtx.state==='suspended')return;
-  const o=audioCtx.createOscillator(),g=audioCtx.createGain();
-  o.type=type;o.frequency.value=freq;
-  g.gain.setValueAtTime(vol,audioCtx.currentTime+delay);
-  g.gain.exponentialRampToValueAtTime(0.001,audioCtx.currentTime+delay+dur);
-  o.connect(g).connect(audioCtx.destination);
-  o.start(audioCtx.currentTime+delay);o.stop(audioCtx.currentTime+delay+dur+0.01);
+  ensureAudio().then(()=>{
+    if(!audioCtx||audioCtx.state!=='running')return;
+    const o=audioCtx.createOscillator(),g=audioCtx.createGain();
+    o.type=type;o.frequency.value=freq;
+    g.gain.setValueAtTime(vol,audioCtx.currentTime+delay);
+    g.gain.exponentialRampToValueAtTime(0.001,audioCtx.currentTime+delay+dur);
+    o.connect(g).connect(audioCtx.destination);
+    o.start(audioCtx.currentTime+delay);o.stop(audioCtx.currentTime+delay+dur+0.01);
+  });
 }
 function playPlace(){playSFX(200,0.04,'square',0.09);playSFX(300,0.06,'sine',0.07,0.04);}
 function playClear(n){[440,523,659,784].slice(0,n).forEach((f,i)=>playSFX(f,0.18,'sine',0.13,i*0.09));}
@@ -3797,8 +3797,8 @@ function playPowerup(){playSFX(660,0.12,'sine',0.18);playSFX(880,0.17,'sine',0.1
 // Synthesised entirely via Web Audio — no assets needed
 function _ribbit(baseFreq, dur, vol, delay) {
   if (!soundOn) return;
-  ensureAudio();
-  if (!audioCtx || audioCtx.state === 'suspended') return;
+  ensureAudio().then(() => {
+  if (!audioCtx || audioCtx.state !== 'running') return;
   const t = audioCtx.currentTime + delay;
   // Attack chirp (square grit)
   const o1 = audioCtx.createOscillator();
@@ -3822,6 +3822,7 @@ function _ribbit(baseFreq, dur, vol, delay) {
   g2.gain.exponentialRampToValueAtTime(0.001, t + dur);
   o2.connect(g2).connect(audioCtx.destination);
   o2.start(t + dur * 0.1); o2.stop(t + dur + 0.02);
+  }); // end ensureAudio().then
 }
 
 // Ribbit patterns — each is an array of [freqMult, dur, vol, delay]
@@ -7222,7 +7223,7 @@ calcLayout();updateTierBadge();loadStreak();requestAnimationFrame(animateParticl
     if (btn) btn.addEventListener('click', _earlyAudioUnlock, { once: false });
   }
   _unlockOnBtn('btn-solo');
-  _unlockOnBtn('btn-duo');
+  _unlockOnBtn('btn-duo-mode');
   _unlockOnBtn('btn-restart');
 })();
 
