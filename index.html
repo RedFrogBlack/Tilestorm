@@ -4153,7 +4153,7 @@ let _adderFrogTimer = null;
 function getAdderFrogDelay() {
   // Base: 15s (fast player) → 35s (slow player)
   // Easy gets longer gaps so the frog feels like a fun visit, not pressure
-  const diffMult = currentDiff === 'easy' ? 2.2 : currentDiff === 'medium' ? 1.4 : 1.0;
+  const diffMult = currentDiff === 'easy' ? 1.4 : currentDiff === 'medium' ? 1.15 : 1.0;
   if (_placeTimes.length < 1) return Math.round(25000 * diffMult);
   const avg = _placeTimes.reduce((a, b) => a + b, 0) / _placeTimes.length;
   const clamped = Math.max(1500, Math.min(avg, 6000));
