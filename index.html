@@ -1262,6 +1262,42 @@
       60%  { opacity:0.6; }
       100% { opacity:0; border-color:transparent; }
     }
+
+    /* ── Jumping Frog Animations ── */
+    .frog-jumper {
+      position: fixed;
+      font-size: 2.8rem;
+      z-index: 1100;
+      pointer-events: none;
+      line-height: 1;
+      filter: drop-shadow(0 4px 12px rgba(0,0,0,0.6));
+    }
+    /* Poison frog: enters from left, jumps across, exits right */
+    @keyframes poisonFrogJump {
+      0%   { transform: translateX(-80px) translateY(0) scaleX(-1) rotate(0deg); opacity: 0; }
+      8%   { opacity: 1; }
+      30%  { transform: translateX(60px) translateY(-60px) scaleX(-1) rotate(-15deg); }
+      50%  { transform: translateX(140px) translateY(0px) scaleX(-1) rotate(5deg); opacity: 1; }
+      70%  { transform: translateX(220px) translateY(-40px) scaleX(-1) rotate(-10deg); }
+      88%  { opacity: 1; }
+      100% { transform: translateX(320px) translateY(0) scaleX(-1) rotate(0); opacity: 0; }
+    }
+    .frog-jumper.poison {
+      animation: poisonFrogJump 1.4s cubic-bezier(0.4,0,0.2,1) forwards;
+    }
+    /* Bonus frog: drops from top, eats, bounces away upward */
+    @keyframes bonusFrogDrop {
+      0%   { transform: translateY(-80px) rotate(10deg); opacity: 0; }
+      20%  { transform: translateY(0) rotate(-8deg); opacity: 1; }
+      40%  { transform: translateY(-20px) rotate(5deg) scale(1.2); }
+      60%  { transform: translateY(0) rotate(0) scale(1); }
+      75%  { transform: translateY(-10px) scale(1.1); opacity: 1; }
+      100% { transform: translateY(-100px) scale(0.5); opacity: 0; }
+    }
+    .frog-jumper.bonus {
+      animation: bonusFrogDrop 1.3s cubic-bezier(0.4,0,0.2,1) forwards;
+    }
+
     /* ── Glitch Frog visual overlay (Survival mode) ── */
     #glitch-frog-overlay {
       position: fixed; inset: 0; z-index: 999;
@@ -3237,6 +3273,7 @@ function endDrag(cx,cy){
     document.querySelector(`.tray-piece[data-idx="${dragPieceIdx}"]`)?.classList.add('used');
     playPlace();spawnPlaceParticles(dragShape,hoverCell.r,hoverCell.c,dragColor);
     piecesPlaced++;
+    recordPlacePace();
     // New system hooks (vanish, speed, challenge, duo)
     scheduleVanishIfHard(_placedShape,_placedCell.r,_placedCell.c);
     if(_wasSpeedPiece&&speedPiecePending){speedPiecePending=false;clearInterval(speedCountdownInterval);document.getElementById('speed-countdown').classList.remove('show','urgent');speedPieceSlot=-1;showEventBanner('⚡ SPEED PIECE! +BONUS!');score+=150*(currentDiff==='hard'?2:1);if(score>bestScore)bestScore=score;updateUI();}
@@ -3257,6 +3294,12 @@ function endDrag(cx,cy){
         playClear(total);if(combo>1)playCombo(combo);if(level>prevLevel){playLevelUp();flashLevel();showLevelUp(level);}
         showCombo(combo);spawnClearParticles(lines.completedRows,lines.completedCols);
         showFloatText('+'+pts.toLocaleString(),lines.completedRows,lines.completedCols);
+        // Spawn bonus green frog on a cleared cell
+        if(lines.completedRows.length > 0){
+          const rr = lines.completedRows[0];
+          const cc = Math.floor(Math.random() * COLS);
+          setTimeout(() => spawnJumpingFrog('bonus', rr, cc), 100);
+        }
       }else{combo=0;hideCombo();}
     }
 
@@ -3862,8 +3905,32 @@ function updateDiffIndicator(){
 // ════════════════════════════════════════════════════════════════
 const vanishTimers = new Map(); // key: 'r,c' -> timeout
 
+// Pace tracking — measure how fast the player places pieces
+let _placeTimes = [];
+let _lastPlaceTimestamp = 0;
+
+function recordPlacePace() {
+  const now = Date.now();
+  if (_lastPlaceTimestamp > 0) {
+    _placeTimes.push(now - _lastPlaceTimestamp);
+    if (_placeTimes.length > 8) _placeTimes.shift(); // keep last 8
+  }
+  _lastPlaceTimestamp = now;
+}
+
+function getVanishDelay() {
+  // Default: 22s. Scale between 18s (fast player) and 45s (slow player)
+  if (_placeTimes.length < 3) return 22000;
+  const avg = _placeTimes.reduce((a, b) => a + b, 0) / _placeTimes.length;
+  // avg ms per piece: <1500 = fast, >6000 = slow
+  const clamped = Math.max(1500, Math.min(avg, 6000));
+  const t = 18000 + ((clamped - 1500) / 4500) * 27000; // 18s–45s
+  return Math.round(t);
+}
+
 function scheduleVanishIfHard(shape, baseR, baseC) {
   if (currentDiff !== 'hard' && currentDiff !== 'expert') return;
+  const delay = getVanishDelay();
   shape.forEach(([dr, dc]) => {
     const r = baseR + dr, c = baseC + dc;
     const key = r + ',' + c;
@@ -3880,7 +3947,7 @@ function scheduleVanishIfHard(shape, baseR, baseC) {
         }
       }
       vanishTimers.delete(key);
-    }, 12000);
+    }, delay);
     vanishTimers.set(key, t);
   });
 }
@@ -4699,6 +4766,14 @@ function glitchFrogAttack() {
   flashHazard();
   if(checkGameOver()) { setTimeout(triggerGameOver, 400); return; }
 
+  // Spawn poison frog animation at a random filled cell
+  const filled2 = [];
+  for(let r=0;r<ROWS;r++) for(let c=0;c<COLS;c++) if(grid[r][c]!==0) filled2.push([r,c]);
+  if(filled2.length > 0) {
+    const [fr, fc] = filled2[Math.floor(Math.random()*filled2.length)];
+    spawnJumpingFrog('poison', fr, fc);
+  }
+
   // Show frog overlay
   const el = document.getElementById('glitch-frog-overlay');
   el.classList.remove('show');
@@ -4933,6 +5008,35 @@ window.addEventListener('resize',()=>{calcLayout();if(gameActive)drawGrid();part
 
 // Boot
 calcLayout();updateTierBadge();loadStreak();requestAnimationFrame(animateParticles);initTrial();updateTrialBanner();updateLockIcons();showScreen('screen-title');
+
+// ── Jumping Frog Animations ─────────────────────────────────────────────────
+function spawnJumpingFrog(type, targetR, targetC) {
+  // Get approximate screen position of target cell
+  const rect = gridCanvas ? gridCanvas.getBoundingClientRect() : null;
+  let x = window.innerWidth * 0.2;
+  let y = rect ? rect.top + (targetR + 0.5) * CELL : window.innerHeight * 0.5;
+
+  const el = document.createElement('div');
+  el.className = 'frog-jumper ' + type;
+
+  if (type === 'poison') {
+    // Poison frog: red/dark, enters from left at the target row height
+    el.textContent = '🦎'; // lizard = poison dart frog feel
+    el.style.left = '0px';
+    el.style.top = (y - 24) + 'px';
+    el.style.fontSize = '2.2rem';
+    el.style.filter = 'drop-shadow(0 0 8px #CC1212) hue-rotate(300deg)';
+  } else {
+    // Bonus frog: green, drops from top onto a random filled cell
+    el.textContent = '🐸';
+    el.style.left = (rect ? rect.left + (targetC + 0.5) * CELL - 20 : window.innerWidth * 0.5) + 'px';
+    el.style.top = (rect ? rect.top - 30 : 80) + 'px';
+    el.style.filter = 'drop-shadow(0 0 8px #7ED321)';
+  }
+
+  document.body.appendChild(el);
+  el.addEventListener('animationend', () => el.remove());
+}
 
 // ── Settings screen ───────────────────────────────────────────────────────────
 const NOTIF_KEY = 'cd_notif';
