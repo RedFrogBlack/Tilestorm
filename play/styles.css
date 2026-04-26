@@ -1,0 +1,64 @@
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+html, body {
+  height: 100%;
+  width: 100%;
+  background: #080808;
+  font-family: 'DM Sans', sans-serif;
+  overflow: hidden;
+}
+
+.play-body {
+  display: flex;
+  flex-direction: column;
+  height: 100dvh; /* dynamic viewport height — handles mobile chrome bar */
+  height: 100vh;  /* fallback */
+}
+
+.play-bar {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  padding: 8px 14px;
+  background: #080808;
+  border-bottom: 1px solid rgba(204,18,18,0.25);
+  z-index: 10;
+}
+
+.play-bar a {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #CC1212;
+  text-decoration: none;
+  font-family: 'Oswald', sans-serif;
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  opacity: 0.8;
+}
+
+.play-bar img {
+  width: 22px;
+  height: 22px;
+  border-radius: 4px;
+  object-fit: contain;
+}
+
+.play-frame {
+  flex: 1 1 0;
+  width: 100%;
+  border: none;
+  display: block;
+  background: #080808;
+  min-height: 0; /* crucial for flex child to shrink */
+}
+
+.play-hint {
+  flex: 0 0 auto;
+  text-align: center;
+  font-size: 0.65rem;
+  color: rgba(255,255,255,0.2);
+  padding: 5px 0 env(safe-area-inset-bottom, 5px);
+  background: #080808;
+}
