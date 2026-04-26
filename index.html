@@ -4869,16 +4869,34 @@ document.getElementById('topbar-brand-logo').addEventListener('click', () => {
   if (!gameActive) return;
   gameActive = false; // pause ticks
   const ov = document.getElementById('quit-confirm-overlay');
-  ov.style.display = 'flex';
+  if (ov) ov.style.display = 'flex';
 });
-document.getElementById('btn-quit-yes').addEventListener('click', () => {
-  document.getElementById('quit-confirm-overlay').style.display = 'none';
+const _quitYes = document.getElementById('btn-quit-yes');
+if (_quitYes) _quitYes.addEventListener('click', () => {
+  const _qov = document.getElementById('quit-confirm-overlay');
+  if (_qov) _qov.style.display = 'none';
   stopChallengeMode();
   showScreen('screen-title');
 });
-document.getElementById('btn-quit-no').addEventListener('click', () => {
-  document.getElementById('quit-confirm-overlay').style.display = 'none';
+const _quitNo = document.getElementById('btn-quit-no');
+if (_quitNo) _quitNo.addEventListener('click', () => {
+  const _qov = document.getElementById('quit-confirm-overlay');
+  if (_qov) _qov.style.display = 'none';
   gameActive = true;
+});
+// Wire quit buttons via delegation as fallback (handles post-script DOM)
+document.addEventListener('click', (e) => {
+  if (e.target && e.target.id === 'btn-quit-yes') {
+    const _qov = document.getElementById('quit-confirm-overlay');
+    if (_qov) _qov.style.display = 'none';
+    stopChallengeMode();
+    showScreen('screen-title');
+  }
+  if (e.target && e.target.id === 'btn-quit-no') {
+    const _qov = document.getElementById('quit-confirm-overlay');
+    if (_qov) _qov.style.display = 'none';
+    gameActive = true;
+  }
 });
 // Shop button removed from home screen (now lives in Solo Setup only)
 document.getElementById('btn-shop-ingame').addEventListener('click',openShop);
@@ -4924,15 +4942,18 @@ document.getElementById('upgrade-close').addEventListener('click', hideUpgradeMo
 // ── Sound toggle on home screen ──────────────────────────────
 const soundHomeBtn = document.getElementById('btn-sound-home');
 function updateSoundHomeBtn() {
+  if (!soundHomeBtn) return;
   soundHomeBtn.textContent = soundOn ? '🔊' : '🔇';
   soundHomeBtn.title = soundOn ? 'Mute sound' : 'Unmute sound';
 }
-soundHomeBtn.addEventListener('click', () => {
-  ensureAudio();
-  soundOn = !soundOn;
-  localStorage.setItem('ts_sound', soundOn ? '1' : '0');
-  updateSoundHomeBtn();
-});
+if (soundHomeBtn) {
+  soundHomeBtn.addEventListener('click', () => {
+    ensureAudio();
+    soundOn = !soundOn;
+    localStorage.setItem('ts_sound', soundOn ? '1' : '0');
+    updateSoundHomeBtn();
+  });
+}
 // Sync on show home
 const _origShowScreen = showScreen;
 
