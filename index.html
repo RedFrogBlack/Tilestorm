@@ -2678,7 +2678,7 @@
           <div class="howto-tier-name">TREE FROG</div>
           <div class="howto-tier-desc">FRENZY mode — race a countdown timer. Frantic and addictive.</div>
         </div>
-        <div class="howto-tier-price">£0.99<br><span style="font-size:0.55rem;opacity:0.6">/yr</span></div>
+        <div class="howto-tier-price">£2.99<br><span style="font-size:0.55rem;opacity:0.6">/yr</span></div>
       </div>
 
       <div class="howto-tier-card" style="--tc:#CC1212">
@@ -2687,7 +2687,7 @@
           <div class="howto-tier-name">POISON DART</div>
           <div class="howto-tier-desc">SURVIVAL mode — tiles vanish. How long can you last?</div>
         </div>
-        <div class="howto-tier-price">£2.99<br><span style="font-size:0.55rem;opacity:0.6">/yr</span></div>
+        <div class="howto-tier-price">£4.99<br><span style="font-size:0.55rem;opacity:0.6">/yr</span></div>
       </div>
 
       <div class="howto-tier-card" style="--tc:#F5E000">
@@ -2899,7 +2899,7 @@
           <div class="gtc-info">
             <div class="gtc-name">TREE FROG</div>
             <div class="gtc-sub">Medium · Frenzy · Beat the timer</div>
-            <div class="gtc-badge">Unlocks Tadpole too · £0.99/yr</div>
+            <div class="gtc-badge">Unlocks Tadpole too · £2.99/yr</div>
           </div>
         </div>
         <button class="gtc-play-btn" id="gtc-play-treefrog">▶ PLAY</button>
@@ -2912,7 +2912,7 @@
           <div class="gtc-info">
             <div class="gtc-name">POISON DART</div>
             <div class="gtc-sub">Hard · Survival · Glitch Frog attacks</div>
-            <div class="gtc-badge">Unlocks all below · £2.99/yr</div>
+            <div class="gtc-badge">Unlocks all below · £4.99/yr</div>
           </div>
         </div>
         <button class="gtc-play-btn" id="gtc-play-poisondart">▶ PLAY</button>
@@ -3531,19 +3531,19 @@ const TIERS = [
   },
   {
     id: 'treefrog', name: 'TREE FROG', emoji: '🐸', color: '#F5A623',
-    price: 0.99,
+    price: 2.99,
     annual: true,
     desc: 'Medium difficulty + Frenzy challenge unlocked.',
-    perks: ['Everything in Tadpole (both unlocked) · £0.99/year','Medium difficulty — faster pace','Frenzy mode: you have 3s per piece. Miss the timer? A penalty row is added to the top!','Neon green tile skin','BOMB power-up: blasts a 3×3 area clear','3 power-ups per game'],
+    perks: ['Everything in Tadpole (both unlocked) · £2.99/year','Medium difficulty — faster pace','Frenzy mode: you have 3s per piece. Miss the timer? A penalty row is added to the top!','Neon green tile skin','BOMB power-up: blasts a 3×3 area clear','3 power-ups per game'],
     gridTheme: { bg: '#050f05', gridLine: 'rgba(126,211,33,0.07)', corner: 'rgba(126,211,33,0.4)' },
     tileStyle: 'neon', powerup: { id:'bomb', label:'BOMB', icon:'💣', count:3 }, powerupCount: 3,
   },
   {
     id: 'poisondart', name: 'POISON DART', emoji: '🦎', color: '#CC1212',
-    price: 2.99,
+    price: 4.99,
     annual: true,
     desc: 'Hard mode + Survival challenge unlocked.',
-    perks: ['Everything in Tadpole + Tree Frog (all 3 unlocked) · £2.99/year','Hard difficulty — 1.8× score multiplier','Survival mode: tiles vanish after 12s. Board over 50% full? Glitch Frog drops extra tiles on you!','Toxic orange/red tile skin','VENOM power-up: wipes all tiles of one colour','5 power-ups per game'],
+    perks: ['Everything in Tadpole + Tree Frog (all 3 unlocked) · £4.99/year','Hard difficulty — 1.8× score multiplier','Survival mode: tiles vanish after 12s. Board over 50% full? Glitch Frog drops extra tiles on you!','Toxic orange/red tile skin','VENOM power-up: wipes all tiles of one colour','5 power-ups per game'],
     gridTheme: { bg: '#080808', gridLine: 'rgba(245,166,35,0.07)', corner: 'rgba(245,166,35,0.4)' },
     tileStyle: 'toxic', powerup: { id:'venom', label:'VENOM', icon:'☠️', count:5 }, powerupCount: 5,
     bonusMultiplier: 1.5,
@@ -3697,7 +3697,7 @@ function updateTrialBanner() {
     banner.style.display = 'flex';
   } else if (ownedTiers.length <= 1) {
     // Trial expired, nothing owned
-    banner.innerHTML = '🔒 <strong>Free trial ended</strong> — upgrade from £0.99/yr to keep playing';
+    banner.innerHTML = '🔒 <strong>Free trial ended</strong> — upgrade from £2.99/yr to keep playing';
     banner.style.display = 'flex';
     banner.style.background = 'rgba(204,18,18,0.18)';
     banner.style.borderColor = 'rgba(204,18,18,0.5)';
@@ -5563,12 +5563,12 @@ function saveStreak(){
 // ════════════════════════════════════════════════════════════════
 //  PREMIUM PAYWALL — in-game upgrade prompts
 // ════════════════════════════════════════════════════════════════
-// The existing Frog Evolution shop handles £1.99–£7.99 tiers.
+// The existing Frog Evolution shop handles £2.99–£7.99 tiers.
 // This adds paywall logic: certain features only show when premium.
 const PREMIUM_FEATURES = {
   morphBrick:  { tier:'tadpole',    price:'£1.99', desc:'Unlock the MORPH wildcard brick' },
-  angelBrick:  { tier:'treefrog',   price:'£0.99/yr', desc:'Unlock the ANGEL fill brick' },
-  hardMode:    { tier:'poisondart', price:'£2.99/yr', desc:'Unlock HARD difficulty + 1.8× score' },
+  angelBrick:  { tier:'treefrog',   price:'£2.99/yr', desc:'Unlock the ANGEL fill brick' },
+  hardMode:    { tier:'poisondart', price:'£4.99/yr', desc:'Unlock HARD difficulty + 1.8× score' },
 };
 
 function isPremiumUnlocked(feature){
@@ -5613,11 +5613,11 @@ function maybeGrantBonusSafe(){
 // ════════════════════════════════════════════════════════════════
 function trySetDifficulty(d){
   if(d === 'medium' && !canPlayMedium()){
-    showUpgradeModal('Medium difficulty requires Tree Frog tier (£0.99/yr).');
+    showUpgradeModal('Medium difficulty requires Tree Frog tier (£2.99/yr).');
     return;
   }
   if(d === 'hard' && !canPlayHard()){
-    showUpgradeModal('Hard difficulty (1.8× score) requires Poison Dart tier (£2.99/yr).');
+    showUpgradeModal('Hard difficulty (1.8× score) requires Poison Dart tier (£4.99/yr).');
     return;
   }
   if(d === 'expert' && !canPlayExpert()){
@@ -6566,7 +6566,7 @@ function buildSoloSetupCards() {
         const lb = document.createElement('div');
         lb.className = 'gtc-lock-badge';
         lb.style.cssText = 'position:absolute;top:8px;right:58px;font-size:0.58rem;letter-spacing:0.08em;color:#F7C948;background:rgba(247,201,72,0.12);border:1px solid rgba(247,201,72,0.25);border-radius:6px;padding:2px 6px;';
-        const priceMap = { treefrog:'£0.99/yr', poisondart:'£2.99/yr', goldenfrog:'£7.99/yr' };
+        const priceMap = { treefrog:'£2.99/yr', poisondart:'£4.99/yr', goldenfrog:'£7.99/yr' };
         lb.textContent = priceMap[tid] || '';
         card.appendChild(lb);
       }
