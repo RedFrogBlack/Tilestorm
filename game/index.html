@@ -3656,15 +3656,33 @@ const PIECES = [
 ];
 
 let grid, score, bestScore=0, level, linesCleared, combo;
-let trayPieces, trayUsed, gameActive=false, soundOn=true;
+let trayPieces, trayUsed, gameActive=false;
+let soundOn = localStorage.getItem('ts_sound') !== '0'; // default ON, persisted
 let dragging=false, dragPieceIdx=-1, dragShape=null, dragColor=0;
 let dragOffsetX=0, dragOffsetY=0, hoverCell=null;
 let particles=[];
 
 // ── Audio ─────────────────────────────────────────────────────────
 let audioCtx=null;
-function ensureAudio(){if(!audioCtx)audioCtx=new(window.AudioContext||window.webkitAudioContext)();if(audioCtx.state==='suspended')audioCtx.resume();}
-function playSFX(freq,dur,type='sine',vol=0.14,delay=0){if(!soundOn||!audioCtx)return;const o=audioCtx.createOscillator(),g=audioCtx.createGain();o.type=type;o.frequency.value=freq;g.gain.setValueAtTime(vol,audioCtx.currentTime+delay);g.gain.exponentialRampToValueAtTime(0.001,audioCtx.currentTime+delay+dur);o.connect(g).connect(audioCtx.destination);o.start(audioCtx.currentTime+delay);o.stop(audioCtx.currentTime+delay+dur+0.01);}
+let _audioResuming=false;
+function ensureAudio(){
+  if(!audioCtx)audioCtx=new(window.AudioContext||window.webkitAudioContext)();
+  if(audioCtx.state==='suspended'&&!_audioResuming){
+    _audioResuming=true;
+    audioCtx.resume().then(()=>{_audioResuming=false;}).catch(()=>{_audioResuming=false;});
+  }
+}
+function playSFX(freq,dur,type='sine',vol=0.14,delay=0){
+  if(!soundOn)return;
+  ensureAudio();
+  if(!audioCtx||audioCtx.state==='suspended')return;
+  const o=audioCtx.createOscillator(),g=audioCtx.createGain();
+  o.type=type;o.frequency.value=freq;
+  g.gain.setValueAtTime(vol,audioCtx.currentTime+delay);
+  g.gain.exponentialRampToValueAtTime(0.001,audioCtx.currentTime+delay+dur);
+  o.connect(g).connect(audioCtx.destination);
+  o.start(audioCtx.currentTime+delay);o.stop(audioCtx.currentTime+delay+dur+0.01);
+}
 function playPlace(){playSFX(200,0.04,'square',0.09);playSFX(300,0.06,'sine',0.07,0.04);}
 function playClear(n){[440,523,659,784].slice(0,n).forEach((f,i)=>playSFX(f,0.18,'sine',0.13,i*0.09));}
 function playCombo(n){playSFX(300+n*80,0.22,'sine',0.17);playSFX(420+n*100,0.18,'sine',0.13,0.12);}
@@ -3676,7 +3694,9 @@ function playPowerup(){playSFX(660,0.12,'sine',0.18);playSFX(880,0.17,'sine',0.1
 // Each ribbit is a two-part chirp: attack freq -> drop
 // Synthesised entirely via Web Audio — no assets needed
 function _ribbit(baseFreq, dur, vol, delay) {
-  if (!soundOn || !audioCtx) return;
+  if (!soundOn) return;
+  ensureAudio();
+  if (!audioCtx || audioCtx.state === 'suspended') return;
   const t = audioCtx.currentTime + delay;
   // Attack chirp (square grit)
   const o1 = audioCtx.createOscillator();
@@ -4292,6 +4312,7 @@ function animateParticles(ts){
 function showScreen(id){document.querySelectorAll('.screen').forEach(s=>s.classList.toggle('hidden',s.id!==id));if(id==='screen-title'){updateTrialBanner();checkResumeOnHome();}if(id==='screen-profile'){updateProfileScreen();}}
 
 function startGame(){
+  ensureAudio(); // guarantee audio context is running before any game sounds fire
   clearVanishTimers();clearAdderFrogTimer();clearSpeedCountdown();stopChallenges();stopChallengeMode();
   initGrid();score=0;linesCleared=0;level=1;combo=0;particles=[];gameActive=true;powerupActive=false;
   piecesPlaced=0;bonusEarnedThisGame=0;bonusQueue=[];hazardTimer=0;
@@ -7066,27 +7087,41 @@ calcLayout();updateTierBadge();loadStreak();requestAnimationFrame(animateParticl
 
 // ── Early audio unlock ──────────────────────────────────────────────────────
 // iOS/mobile browsers suspend AudioContext until a user gesture.
-// We unlock it on the very first touch anywhere on the title screen so
-// it's fully running by the time the game starts — no quiet first sounds.
+// We unlock on every touch/click until audio is confirmed running,
+// so it's fully ready by the time the game starts — no quiet first sounds.
 (function() {
   function _earlyAudioUnlock() {
     if (!audioCtx) {
       audioCtx = new (window.AudioContext || window.webkitAudioContext)();
     }
     if (audioCtx.state === 'suspended') {
-      audioCtx.resume();
+      audioCtx.resume().catch(()=>{});
     }
-    // Play a silent buffer to fully unblock iOS
-    const buf = audioCtx.createBuffer(1, 1, 22050);
-    const src = audioCtx.createBufferSource();
-    src.buffer = buf;
-    src.connect(audioCtx.destination);
-    src.start(0);
-    document.removeEventListener('touchstart', _earlyAudioUnlock, true);
-    document.removeEventListener('mousedown',  _earlyAudioUnlock, true);
+    // Play a silent buffer to fully unblock iOS audio policy
+    try {
+      const buf = audioCtx.createBuffer(1, 1, 22050);
+      const src = audioCtx.createBufferSource();
+      src.buffer = buf;
+      src.connect(audioCtx.destination);
+      src.start(0);
+    } catch(e) {}
+    // Once running, remove the listeners — audio is unlocked
+    if (audioCtx.state === 'running') {
+      document.removeEventListener('touchstart', _earlyAudioUnlock, true);
+      document.removeEventListener('mousedown',  _earlyAudioUnlock, true);
+    }
   }
   document.addEventListener('touchstart', _earlyAudioUnlock, true);
   document.addEventListener('mousedown',  _earlyAudioUnlock, true);
+
+  // Also explicitly unlock on the main CTA buttons (belt + braces)
+  function _unlockOnBtn(id) {
+    const btn = document.getElementById(id);
+    if (btn) btn.addEventListener('click', _earlyAudioUnlock, { once: false });
+  }
+  _unlockOnBtn('btn-solo');
+  _unlockOnBtn('btn-duo');
+  _unlockOnBtn('btn-restart');
 })();
 
 // ── Jumping Frog Animations ─────────────────────────────────────────────────
