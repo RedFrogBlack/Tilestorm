@@ -1273,18 +1273,17 @@
       filter: drop-shadow(0 4px 12px rgba(0,0,0,0.6));
     }
     /* Adder frog (RED): enters from left, hops across board, exits right — adds tiles */
+    /* Adder frog (RED): single arc jump left→right, lands once, exits */
     @keyframes adderFrogJump {
-      0%   { transform: translateX(0) translateY(0) rotate(0deg); opacity: 0; }
-      6%   { opacity: 1; }
-      25%  { transform: translateX(80px) translateY(-55px) rotate(-12deg); }
-      40%  { transform: translateX(160px) translateY(0px) rotate(8deg); }
-      58%  { transform: translateX(240px) translateY(-45px) rotate(-10deg); }
-      72%  { transform: translateX(310px) translateY(0) rotate(5deg); opacity: 1; }
-      88%  { opacity: 0.6; }
-      100% { transform: translateX(400px) translateY(-20px) rotate(0); opacity: 0; }
+      0%   { transform: translateX(0) translateY(0) rotate(-8deg); opacity: 0; }
+      8%   { opacity: 1; }
+      45%  { transform: translateX(160px) translateY(-70px) rotate(0deg); opacity: 1; }
+      80%  { transform: translateX(300px) translateY(0) rotate(10deg); opacity: 1; }
+      90%  { transform: translateX(320px) translateY(-12px) rotate(5deg); opacity: 0.7; }
+      100% { transform: translateX(370px) translateY(0) rotate(0); opacity: 0; }
     }
     .frog-jumper.adder {
-      animation: adderFrogJump 1.6s cubic-bezier(0.4,0,0.2,1) forwards;
+      animation: adderFrogJump 1.4s cubic-bezier(0.25,0.46,0.45,0.94) forwards;
     }
     /* Vanish frog (BLACK): appears at tile, taps it, hops away right */
     @keyframes vanishFrogHop {
@@ -3593,6 +3592,8 @@ function startGame(){
 function triggerGameOver(){
   stopChallengeMode();
   gameActive=false;playGameOver();hapticGameOver();
+  // Kill any in-flight frog animations so they don't bleed over the game-over screen
+  document.querySelectorAll('.frog-jumper').forEach(el => el.remove());
   // VS Frog: player lost, frog wins
   if (vsFrogActive) {
     setTimeout(() => _endVsFrogGame('player_gameover'), 400);
@@ -4043,7 +4044,8 @@ function scheduleVanishIfHard(shape, baseR, baseC) {
     const key = r + ',' + c;
     if (vanishTimers.has(key)) return;
     const t = setTimeout(() => {
-      // Only vanish if row is still incomplete
+      // Only vanish if game is still active and row is still incomplete
+      if (!gameActive) { vanishTimers.delete(key); return; }
       if (grid[r] && grid[r][c] !== 0) {
         const rowFull = grid[r].every(v => v !== 0);
         if (!rowFull) {
@@ -4051,7 +4053,8 @@ function scheduleVanishIfHard(shape, baseR, baseC) {
           drawGrid();
           showEventBanner('💨 TILE VANISHED!');
           spawnJumpingFrog('vanish', r, c); // black frog touches the vanishing tile
-          setTimeout(() => { if(gameActive && checkGameOver()) setTimeout(triggerGameOver, 400); }, 600);
+          // Extended grace: wait 1500ms so player can respond; also guard gameActive
+          setTimeout(() => { if(gameActive && checkGameOver()) setTimeout(triggerGameOver, 400); }, 1500);
         }
       }
       vanishTimers.delete(key);
@@ -5416,7 +5419,7 @@ function spawnJumpingFrog(type, targetR, targetC) {
     el.style.left = (cellX - 20) + 'px';
     el.style.top = (cellY - 24) + 'px';
     el.style.fontSize = '2.0rem';
-    el.style.filter = 'drop-shadow(0 0 10px #333) brightness(0.15) contrast(2)';
+    el.style.filter = 'hue-rotate(270deg) saturate(4) brightness(0.55) drop-shadow(0 0 10px #CC1212) drop-shadow(0 0 4px #9B30FF)';
   } else {
     // Bonus frog — green — drops from top onto cleared cell
     el.textContent = '🐸';
