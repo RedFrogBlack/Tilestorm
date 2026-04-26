@@ -3868,6 +3868,7 @@ function endDrag(cx,cy){
     playPlace();spawnPlaceParticles(dragShape,hoverCell.r,hoverCell.c,dragColor);
     piecesPlaced++;
     recordPlacePace();
+    updateBehaviour(); // behaviour engine
     // New system hooks (vanish, speed, challenge, duo)
     scheduleVanishIfHard(_placedShape,_placedCell.r,_placedCell.c);
     if(_wasSpeedPiece&&speedPiecePending){speedPiecePending=false;clearInterval(speedCountdownInterval);document.getElementById('speed-countdown').classList.remove('show','urgent');speedPieceSlot=-1;showEventBanner('⚡ SPEED PIECE! +BONUS!');score+=150*(currentDiff==='hard'?2:1);if(score>bestScore)bestScore=score;updateUI();}
@@ -3891,6 +3892,7 @@ function endDrag(cx,cy){
         if(score>bestScore)bestScore=score;
         playClear(total);if(combo>1)playCombo(combo);if(level>prevLevel){playLevelUp();flashLevel();showLevelUp(level);hapticLevelUp();}
         showCombo(combo);spawnClearParticles(lines.completedRows,lines.completedCols);
+        if(combo>1)onComboAchieved(combo); // behaviour commentary
         showFloatText('+'+pts.toLocaleString(),lines.completedRows,lines.completedCols);
         // Spawn bonus green frog on a cleared cell
         if(lines.completedRows.length > 0){
@@ -4064,8 +4066,11 @@ function startGame(){
   initGrid();score=0;linesCleared=0;level=1;combo=0;particles=[];gameActive=true;powerupActive=false;
   piecesPlaced=0;bonusEarnedThisGame=0;bonusQueue=[];hazardTimer=0;
   calcLayout();generateTray();updateUI();hideCombo();drawGrid();initPowerups();updateTierBadge();updateDiffIndicator();
-  activePowerId = null; refreshPowerBar(); // new purchasable power bar
-  scheduleAdderFrog(); // start pace-adaptive red frog
+  activePowerId = null;
+  _stopPowerWindow(); _powersUsedThisGame = 0; // reset rolling window each game
+  resetBehaviourGame(); _prevFill = 0; clearPurpleRescueTimer();
+  refreshPowerBar();
+  scheduleAdderFrog(); // start pace-adaptive red frog (behaviour-adaptive below)
   document.getElementById('event-banner').classList.remove('show');
   document.getElementById('hazard-overlay').classList.remove('flash');
   document.getElementById('bonus-popup').classList.remove('show');
@@ -4082,6 +4087,8 @@ function startGame(){
 function triggerGameOver(){
   stopChallengeMode();
   clearAdderFrogTimer();
+  clearPurpleRescueTimer();
+  finaliseBehaviour(score > 0 && beh.recentScores.length > 0 && score > (beh.recentScores[beh.recentScores.length-1]||0));
   gameActive=false;playGameOver();hapticGameOver();
   // Kill any in-flight frog animations so they don't bleed over the game-over screen
   document.querySelectorAll('.frog-jumper').forEach(el => el.remove());
@@ -4162,53 +4169,119 @@ function switchShopTab(tab) {
 // PURCHASABLE POWER SYSTEM
 // ──────────────────────────────────────────────────────
 const POWER_DEFS = [
-  { id:'fire',    icon:'🔥', name:'FIRE BLAST',  desc:'Burns away the fullest row instantly',         price:0.99, packSize:3 },
-  { id:'magician',icon:'🧙', name:'MAGICIAN',    desc:'Tap any row or column to vanish it — poof',   price:0.99, packSize:3 },
-  { id:'bomb',    icon:'💣', name:'BOMB',        desc:'Tap a cell to explode a 3×3 area',             price:0.99, packSize:3 },
-  { id:'star',    icon:'⭐',  name:'STAR CLEAR',  desc:'Wipes every tile of one colour from the board', price:0.99, packSize:3 },
-  { id:'freeze',  icon:'🧊', name:'FREEZE',      desc:'Pauses frog spawns for 20 seconds',             price:0.99, packSize:3 },
-  { id:'daily',   icon:'🎁', name:'DAILY FREE',  desc:'One free power use — resets every day',        price:0,    packSize:1 },
+  { id:'fire',    icon:'🔥', name:'FIRE BLAST',  desc:'Burns away the fullest row instantly',          price:0.99, annual:true },
+  { id:'magician',icon:'🧙', name:'MAGICIAN',    desc:'Tap any row or column to vanish it — poof',    price:0.99, annual:true },
+  { id:'bomb',    icon:'💣', name:'BOMB',        desc:'Tap a cell to explode a 3×3 area',              price:0.99, annual:true },
+  { id:'star',    icon:'⭐',  name:'STAR CLEAR',  desc:'Wipes every tile of one colour from the board', price:0.99, annual:true },
+  { id:'freeze',  icon:'🧊', name:'FREEZE',      desc:'Pauses frog spawns for 20 seconds',              price:0.99, annual:true },
+  { id:'daily',   icon:'🎁', name:'DAILY FREE',  desc:'One free bonus use — resets every day',         price:0,    annual:false },
 ];
+// Powers are year-long unlocks — not charge packs.
+// POWERS_OWNED_KEY: { powerId: expiryTimestamp (ms) } — 0 = daily token
+const POWERS_OWNED_KEY = 'cd_powers_owned_v2';
 
-const POWERS_KEY = 'cd_powers_v1';
+const POWERS_KEY = 'cd_powers_v1'; // legacy — kept for migration
 const DAILY_POWER_KEY = 'cd_daily_power';
 
-function loadPowerInventory() {
-  try { return JSON.parse(localStorage.getItem(POWERS_KEY)) || {}; } catch { return {}; }
+// ── Ownership helpers ─────────────────────────────────────────────
+function loadPowerOwned() {
+  try { return JSON.parse(localStorage.getItem(POWERS_OWNED_KEY)) || {}; } catch { return {}; }
 }
-function savePowerInventory(inv) {
-  localStorage.setItem(POWERS_KEY, JSON.stringify(inv));
+function savePowerOwned(o) { localStorage.setItem(POWERS_OWNED_KEY, JSON.stringify(o)); }
+
+function isPowerOwned(id) {
+  if (id === 'daily') return true; // always available
+  const o = loadPowerOwned();
+  return o[id] && o[id] > Date.now();
 }
-function getPowerCount(id) {
-  return loadPowerInventory()[id] || 0;
+function getPowerExpiry(id) {
+  const o = loadPowerOwned(); return o[id] || 0;
 }
-function addPowers(id, n) {
-  const inv = loadPowerInventory();
-  inv[id] = (inv[id] || 0) + n;
-  savePowerInventory(inv);
+function grantPowerYear(id) {
+  const o = loadPowerOwned();
+  // Extend from now or current expiry, whichever is later
+  const base = Math.max(Date.now(), o[id] || 0);
+  o[id] = base + 365 * 24 * 60 * 60 * 1000;
+  savePowerOwned(o);
   refreshPowerBar();
 }
-function spendPower(id) {
-  const inv = loadPowerInventory();
-  if (!inv[id] || inv[id] <= 0) return false;
-  inv[id]--;
-  savePowerInventory(inv);
+
+// ── Rolling 30-sec window (3 uses per window) ─────────────────────
+const POWER_WINDOW_MS   = 30000; // 30 seconds
+const POWER_WINDOW_MAX  = 3;     // uses per window
+let _powerWindowUsed    = 0;     // uses consumed this window
+let _powerWindowResetAt = 0;     // timestamp when window resets
+let _powerWindowTimer   = null;  // setInterval id
+let _powersUsedThisGame = 0;     // for adaptive frog ramp
+
+function _startPowerWindow() {
+  _powerWindowUsed = 0;
+  _powerWindowResetAt = Date.now() + POWER_WINDOW_MS;
+  if (_powerWindowTimer) clearInterval(_powerWindowTimer);
+  _powerWindowTimer = setInterval(() => {
+    _powerWindowUsed = 0;
+    _powerWindowResetAt = Date.now() + POWER_WINDOW_MS;
+    refreshPowerBar();
+  }, POWER_WINDOW_MS);
+  refreshPowerBar();
+}
+function _stopPowerWindow() {
+  if (_powerWindowTimer) { clearInterval(_powerWindowTimer); _powerWindowTimer = null; }
+  _powerWindowUsed = 0; _powerWindowResetAt = 0;
+}
+function powerWindowRemaining() {
+  // seconds left in current window (0 = not running)
+  if (!_powerWindowResetAt) return 0;
+  return Math.max(0, Math.ceil((_powerWindowResetAt - Date.now()) / 1000));
+}
+function canUsePower() {
+  return _powerWindowUsed < POWER_WINDOW_MAX;
+}
+function consumePowerSlot() {
+  if (!canUsePower()) return false;
+  _powerWindowUsed++;
+  _powersUsedThisGame++;
+  // Adaptive frog: reschedule with tighter interval
+  if (gameActive && redFrogOn) {
+    clearAdderFrogTimer();
+    scheduleAdderFrog();
+  }
   refreshPowerBar();
   return true;
 }
 
-// Daily free power: one per day (any power, we give 'daily' token)
+// Legacy shim — still used in a few call sites below
+function getPowerCount(id) { return isPowerOwned(id) ? Math.max(0, POWER_WINDOW_MAX - _powerWindowUsed) : 0; }
+function spendPower(id) {
+  if (!isPowerOwned(id)) { showToast('Power not unlocked — buy in Shop'); return false; }
+  return consumePowerSlot();
+}
+// addPowers is now grantPowerYear for purchased powers — shim kept for daily
+function addPowers(id, n) {
+  if (id === 'daily') {
+    const o = loadPowerOwned(); o['daily_token'] = true; savePowerOwned(o);
+  } else { grantPowerYear(id); }
+  refreshPowerBar();
+}
+
+// Daily free power: one bonus use per day
 function claimDailyPower() {
   const today = new Date().toDateString();
   const last  = localStorage.getItem(DAILY_POWER_KEY);
-  if (last === today) return false; // already claimed
+  if (last === today) return false;
   localStorage.setItem(DAILY_POWER_KEY, today);
-  addPowers('daily', 1);
+  const o = loadPowerOwned(); o['daily_token'] = true; savePowerOwned(o);
   return true;
 }
 function dailyPowerAvailable() {
   const today = new Date().toDateString();
   return localStorage.getItem(DAILY_POWER_KEY) !== today;
+}
+function hasDailyToken() {
+  const o = loadPowerOwned(); return !!o['daily_token'];
+}
+function spendDailyToken() {
+  const o = loadPowerOwned(); o['daily_token'] = false; savePowerOwned(o);
 }
 
 // In-game active power state
@@ -4218,26 +4291,43 @@ function refreshPowerBar() {
   const bar = document.getElementById('power-bar');
   if (!bar) return;
   bar.innerHTML = '';
-  const inv = loadPowerInventory();
-  // Show up to 4 slots — only powers that have inventory > 0
-  const hasPowers = POWER_DEFS.filter(p => (inv[p.id] || 0) > 0);
-  hasPowers.slice(0, 4).forEach(p => {
-    const slot = document.createElement('div');
-    slot.className = 'power-slot' + (activePowerId === p.id ? ' active-power' : '');
-    slot.title = p.name;
-    slot.innerHTML = p.icon + `<span class="power-slot-count">${inv[p.id]}</span>`;
-    slot.addEventListener('click', () => armPower(p.id));
-    bar.appendChild(slot);
+
+  // Owned powers (year-access) + daily if token available
+  const ownedPowers = POWER_DEFS.filter(p => {
+    if (p.id === 'daily') return hasDailyToken();
+    return isPowerOwned(p.id);
   });
-  if (hasPowers.length === 0) {
-    // Show faint shop shortcut
+
+  if (ownedPowers.length === 0) {
     const hint = document.createElement('div');
     hint.className = 'power-slot empty';
     hint.title = 'Buy powers';
     hint.innerHTML = '⚡';
     hint.addEventListener('click', () => openShop('powers'));
     bar.appendChild(hint);
+    return;
   }
+
+  // Window info: uses left + countdown
+  const usesLeft  = Math.max(0, POWER_WINDOW_MAX - _powerWindowUsed);
+  const secLeft   = powerWindowRemaining();
+  const windowEl  = document.createElement('div');
+  windowEl.style.cssText = 'display:flex;flex-direction:column;align-items:center;justify-content:center;min-width:28px;margin-right:2px;';
+  windowEl.innerHTML =
+    `<span style="font-family:var(--font-display);font-size:0.65rem;letter-spacing:0.06em;color:${usesLeft>0?'#F7C948':'#888'};line-height:1">${usesLeft}/${POWER_WINDOW_MAX}</span>` +
+    (secLeft > 0 ? `<span style="font-size:0.52rem;color:rgba(255,255,255,0.35);line-height:1;margin-top:2px">${secLeft}s</span>` : '');
+  bar.appendChild(windowEl);
+
+  ownedPowers.slice(0, 4).forEach(p => {
+    const slot = document.createElement('div');
+    const armed = activePowerId === p.id;
+    const exhausted = !canUsePower() && p.id !== 'daily';
+    slot.className = 'power-slot' + (armed ? ' active-power' : '') + (exhausted ? ' power-exhausted' : '');
+    slot.title = p.name + (exhausted ? ' (⏳ refilling in ' + secLeft + 's)' : '');
+    slot.innerHTML = p.icon;
+    slot.addEventListener('click', () => armPower(p.id));
+    bar.appendChild(slot);
+  });
 }
 
 function armPower(id) {
@@ -4252,7 +4342,17 @@ function armPower(id) {
     showToast('Power cancelled');
     return;
   }
-  if (getPowerCount(id) <= 0) { showToast('No uses left — buy more in the Shop'); return; }
+  // Check ownership
+  if (id !== 'daily' && !isPowerOwned(id)) { showToast('🔒 Unlock in Shop — £0.99/yr'); openShop('powers'); return; }
+  if (id === 'daily' && !hasDailyToken()) { showToast('🎁 No daily use left — come back tomorrow'); return; }
+  // Check rolling window (daily token bypasses window cap)
+  if (id !== 'daily' && !canUsePower()) {
+    const sec = powerWindowRemaining();
+    showToast('⏳ Power window full — refills in ' + sec + 's (' + _powerWindowUsed + '/' + POWER_WINDOW_MAX + ' used)');
+    return;
+  }
+  // Start window timer on first power use in a game
+  if (id !== 'daily' && !_powerWindowTimer) _startPowerWindow();
 
   activePowerId = id;
   refreshPowerBar();
@@ -4299,7 +4399,12 @@ function _executePowerAtCell(r, c) {
   activePowerId = null;
 
   if (id === 'bomb' || id === 'daily') {
-    if (!spendPower(id)) return;
+    if (id === 'daily') {
+      if (!hasDailyToken()) { showToast('🎁 No daily use left'); return; }
+      spendDailyToken();
+    } else {
+      if (!consumePowerSlot()) { showToast('⏳ Window full — refills in ' + powerWindowRemaining() + 's'); return; }
+    }
     ensureAudio(); playPowerup();
     // 3×3 explosion
     const cleared = new Set();
@@ -4318,7 +4423,7 @@ function _executePowerAtCell(r, c) {
     checkAndClearLines();
 
   } else if (id === 'magician') {
-    if (!spendPower(id)) return;
+    if (!consumePowerSlot()) { showToast('⏳ Window full — refills in ' + powerWindowRemaining() + 's'); return; }
     ensureAudio(); playPowerup();
     // Clear the row AND column at the tapped cell, keep whichever clears more tiles
     const rowTiles = grid[r].filter(v => v !== 0).length;
@@ -4347,7 +4452,7 @@ function _executePowerAtCell(r, c) {
 function _executePower(id) {
   _clearPowerListeners();
   activePowerId = null;
-  if (!spendPower(id)) return;
+  if (!consumePowerSlot()) { showToast('⏳ Window full — refills in ' + powerWindowRemaining() + 's'); return; }
   ensureAudio(); playPowerup();
 
   if (id === 'fire') {
@@ -4421,19 +4526,22 @@ function checkAndClearLines() {
 }
 
 function buildPowersPanel() {
-  const inv = loadPowerInventory();
-  // Inventory summary
+  // Inventory summary bar
   const invBar = document.getElementById('powers-inventory-bar');
   if (invBar) {
     invBar.innerHTML = '';
-    POWER_DEFS.filter(p => (inv[p.id] || 0) > 0).forEach(p => {
-      const chip = document.createElement('div');
-      chip.style.cssText = 'background:rgba(204,18,18,0.12);border:1px solid rgba(204,18,18,0.3);border-radius:20px;padding:5px 12px;font-size:0.75rem;color:#fff;display:flex;align-items:center;gap:6px;';
-      chip.innerHTML = `<span>${p.icon}</span><span style="font-family:var(--font-display);font-size:0.65rem;letter-spacing:0.08em;">${p.name}</span><span style="background:#CC1212;color:#fff;border-radius:4px;padding:1px 6px;font-family:var(--font-display);font-size:0.6rem;font-weight:700;">${inv[p.id]}</span>`;
-      invBar.appendChild(chip);
-    });
-    if (Object.values(inv).every(v => !v)) {
-      invBar.innerHTML = '<div style="font-size:0.78rem;color:rgba(255,255,255,0.3);padding:8px 0;">No powers yet — buy your first pack below</div>';
+    const owned = POWER_DEFS.filter(p => p.id !== 'daily' && isPowerOwned(p.id));
+    if (owned.length === 0) {
+      invBar.innerHTML = '<div style="font-size:0.78rem;color:rgba(255,255,255,0.3);padding:8px 0;">No powers yet — unlock your first below</div>';
+    } else {
+      owned.forEach(p => {
+        const exp = getPowerExpiry(p.id);
+        const daysLeft = Math.max(0, Math.ceil((exp - Date.now()) / 86400000));
+        const chip = document.createElement('div');
+        chip.style.cssText = 'background:rgba(204,18,18,0.12);border:1px solid rgba(204,18,18,0.3);border-radius:20px;padding:5px 12px;font-size:0.75rem;color:#fff;display:flex;align-items:center;gap:6px;';
+        chip.innerHTML = `<span>${p.icon}</span><span style="font-family:var(--font-display);font-size:0.65rem;letter-spacing:0.08em;">${p.name}</span><span style="background:#CC1212;color:#fff;border-radius:4px;padding:1px 6px;font-family:var(--font-display);font-size:0.6rem;font-weight:700;">${daysLeft}d</span>`;
+        invBar.appendChild(chip);
+      });
     }
   }
   // Power cards
@@ -4441,20 +4549,31 @@ function buildPowersPanel() {
   if (!list) return;
   list.innerHTML = '';
   POWER_DEFS.forEach(p => {
-    const owned = inv[p.id] || 0;
     const isDaily = p.id === 'daily';
     const dailyDone = isDaily && !dailyPowerAvailable();
+    const owned = !isDaily && isPowerOwned(p.id);
+    const exp = owned ? getPowerExpiry(p.id) : 0;
+    const daysLeft = owned ? Math.max(0, Math.ceil((exp - Date.now()) / 86400000)) : 0;
     const card = document.createElement('div');
-    card.className = 'power-shop-card';
-    const priceLabel = isDaily ? 'FREE' : `£${p.price.toFixed(2)}`;
-    const btnLabel   = isDaily ? (dailyDone ? 'CLAIMED' : 'CLAIM') : 'BUY PACK';
-    const btnClass   = isDaily ? 'psc-buy-btn free' : 'psc-buy-btn';
+    card.className = 'power-shop-card' + (owned ? ' psc-owned' : '');
+
+    // Labels
+    const priceLabel = isDaily ? 'FREE' : (owned ? `£${p.price.toFixed(2)}/yr` : `£${p.price.toFixed(2)}/yr`);
+    const btnLabel   = isDaily ? (dailyDone ? 'CLAIMED' : 'CLAIM') :
+                       owned ? 'RENEW' : 'UNLOCK';
+    const btnClass   = isDaily ? 'psc-buy-btn free' : owned ? 'psc-buy-btn renew' : 'psc-buy-btn';
+    const subtext    = isDaily
+      ? (dailyDone ? 'Come back tomorrow' : 'Ready to claim')
+      : owned
+        ? `Active — ${daysLeft} days left · 3 uses per 30s in-game`
+        : '3 uses every 30 seconds while playing';
+
     card.innerHTML = `
       <div class="psc-icon">${p.icon}</div>
       <div class="psc-body">
-        <div class="psc-name">${p.name}</div>
+        <div class="psc-name">${p.name}${owned ? ' <span style="color:#7ED321;font-size:0.6rem;font-family:var(--font-display)">✓ ACTIVE</span>' : ''}</div>
         <div class="psc-desc">${p.desc}</div>
-        <div class="psc-count">${isDaily ? (dailyDone ? 'Come back tomorrow' : 'Ready to claim') : (owned > 0 ? `You have ${owned} use${owned !== 1 ? 's' : ''}` : `3 uses per pack`)}</div>
+        <div class="psc-count">${subtext}</div>
       </div>
       <div class="psc-right">
         <div class="psc-price">${priceLabel}</div>
@@ -4467,9 +4586,9 @@ function buildPowersPanel() {
         if (claimed) { showToast('🎁 Daily power claimed!'); buildPowersPanel(); }
         else showToast('🎁 Already claimed today — come back tomorrow');
       } else {
-        // Simulated purchase (real IAP TBD)
-        addPowers(p.id, p.packSize);
-        showToast(`${p.icon} ${p.name} — 3 uses added!`);
+        // Simulated purchase (real IAP TBD) — grants 1 year
+        grantPowerYear(p.id);
+        showToast(`${p.icon} ${p.name} — unlocked for 1 year!`);
         buildPowersPanel();
       }
     });
@@ -4479,6 +4598,329 @@ function buildPowersPanel() {
 
 // Auto-claim daily power on load and init bar
 (function() { claimDailyPower(); refreshPowerBar(); })();
+
+// ════════════════════════════════════════════════════════════════
+// BEHAVIOUR ENGINE
+// Tracks player signals every game and across sessions.
+// Drives: red frog pace, purple frog rescue, frog commentary.
+// ════════════════════════════════════════════════════════════════
+
+const BEHAVIOUR_KEY = 'cd_behaviour_v1';
+
+// Per-game live counters (reset on startGame)
+let beh = {
+  // Live this game
+  combosThisGame:     0,   // consecutive multi-line clears
+  maxComboThisGame:   0,
+  powersThisGame:     0,   // power uses (same as _powersUsedThisGame)
+  placementsThisGame: 0,   // pieces placed
+  linesThisGame:      0,   // lines cleared this game
+  panicMoments:       0,   // times board fill >75%
+  closeCallsSurvived: 0,   // times recovered from >80% fill
+  peakFill:           0,   // highest board fill% seen this game
+  lastFill:           0,   // current fill % (updated each placement)
+  // Commentary throttle
+  lastCommentaryAt:   0,   // Date.now() of last comment shown
+  commentaryCooldownMs: 18000, // never show two comments within 18s
+  // Cross-session (loaded from storage)
+  totalGames:         0,
+  totalWins:          0,   // games with score > bestScore at time
+  recentScores:       [],  // last 5 scores
+  recentFills:        [],  // last 5 peak fills (lower = better)
+  powerReliance:      0,   // ewma of (powers/placements) ratio, 0-1
+  paceProfile:        0,   // ewma ms/piece: low=fast, high=slow
+};
+
+function loadBehaviour() {
+  try {
+    const saved = JSON.parse(localStorage.getItem(BEHAVIOUR_KEY)) || {};
+    beh.totalGames     = saved.totalGames     || 0;
+    beh.totalWins      = saved.totalWins      || 0;
+    beh.recentScores   = saved.recentScores   || [];
+    beh.recentFills    = saved.recentFills    || [];
+    beh.powerReliance  = saved.powerReliance  || 0;
+    beh.paceProfile    = saved.paceProfile    || 3000; // start neutral
+  } catch {}
+}
+function saveBehaviour() {
+  localStorage.setItem(BEHAVIOUR_KEY, JSON.stringify({
+    totalGames:    beh.totalGames,
+    totalWins:     beh.totalWins,
+    recentScores:  beh.recentScores.slice(-5),
+    recentFills:   beh.recentFills.slice(-5),
+    powerReliance: beh.powerReliance,
+    paceProfile:   beh.paceProfile,
+  }));
+}
+function resetBehaviourGame() {
+  beh.combosThisGame     = 0;
+  beh.maxComboThisGame   = 0;
+  beh.powersThisGame     = 0;
+  beh.placementsThisGame = 0;
+  beh.linesThisGame      = 0;
+  beh.panicMoments       = 0;
+  beh.closeCallsSurvived = 0;
+  beh.peakFill           = 0;
+  beh.lastFill           = 0;
+  beh.lastCommentaryAt   = 0;
+}
+loadBehaviour();
+
+// Called after every piece placement
+function updateBehaviour() {
+  beh.placementsThisGame++;
+  beh.linesThisGame = linesCleared;
+
+  // Board fill %
+  let filled = 0;
+  for (let r = 0; r < ROWS; r++)
+    for (let c = 0; c < COLS; c++)
+      if (grid[r][c] !== 0) filled++;
+  const fill = filled / (ROWS * COLS);
+  beh.lastFill = fill;
+  if (fill > beh.peakFill) beh.peakFill = fill;
+  if (fill > 0.75) beh.panicMoments++;
+
+  // Trigger commentary check
+  maybeShowCommentary();
+}
+
+// Called at game over to finalise cross-session stats
+function finaliseBehaviour(didWin) {
+  beh.totalGames++;
+  if (didWin) beh.totalWins++;
+  beh.recentScores.push(score);
+  if (beh.recentScores.length > 5) beh.recentScores.shift();
+  beh.recentFills.push(Math.round(beh.peakFill * 100));
+  if (beh.recentFills.length > 5) beh.recentFills.shift();
+
+  // Update pace profile (ewma)
+  if (_placeTimes.length > 0) {
+    const avgPace = _placeTimes.reduce((a, b) => a + b, 0) / _placeTimes.length;
+    beh.paceProfile = beh.paceProfile * 0.7 + avgPace * 0.3; // ewma
+  }
+  // Update power reliance (ewma)
+  if (beh.placementsThisGame > 0) {
+    const ratio = Math.min(1, beh.powersThisGame / beh.placementsThisGame * 10);
+    beh.powerReliance = beh.powerReliance * 0.6 + ratio * 0.4;
+  }
+  saveBehaviour();
+}
+
+// ── Derived signals ───────────────────────────────────────────────
+function playerIsStruggling() {
+  // High fill, slow pace, lots of panic moments
+  return beh.lastFill > 0.65 || beh.panicMoments > 3;
+}
+function playerIsDominating() {
+  // Fast, consistent clears, low fill, good combos
+  return beh.lastFill < 0.30 && beh.combosThisGame >= 2 && beh.linesThisGame > 5;
+}
+function playerIsClunky() {
+  // Slow + no combos + lots of placements with few lines
+  const ratio = beh.linesThisGame / Math.max(1, beh.placementsThisGame);
+  return ratio < 0.08 && beh.placementsThisGame > 15;
+}
+function boardDanger() {
+  return beh.lastFill > 0.72;
+}
+function boardComfortable() {
+  return beh.lastFill < 0.25;
+}
+
+// ── Adaptive Red Frog multiplier ──────────────────────────────────
+// Returns 0.5 (half interval = faster frog) to 1.5 (slower frog)
+function behaviourRedFrogMult() {
+  let mult = 1.0;
+  // Struggling player → ease off (mult > 1 = longer gaps)
+  if (beh.lastFill > 0.70) mult += 0.25;
+  if (beh.lastFill > 0.80) mult += 0.20;
+  // Dominating → tighten (mult < 1 = shorter gaps)
+  if (boardComfortable() && beh.linesThisGame > 8) mult -= 0.20;
+  if (beh.maxComboThisGame >= 3) mult -= 0.10;
+  // Power reliance penalty — power users get faster frog
+  mult -= beh.powerReliance * 0.30;
+  // Per-game power use: each power use this game tightens by 4%
+  mult -= _powersUsedThisGame * 0.04;
+  // Clamp 0.45 – 1.6
+  return Math.max(0.45, Math.min(1.6, mult));
+}
+
+// ── Adaptive Purple Frog ─────────────────────────────────────────
+// Purple frog (vanisher) already appears on survival tile vanish.
+// Here we schedule an *extra* rescue visit when player is in danger.
+let _purpleRescueTimer = null;
+function schedulePurpleRescue() {
+  if (_purpleRescueTimer) return; // already pending
+  if (!gameActive || !purpleFrogOn) return;
+  // Base rescue delay: 12s if critical, 20s if just struggling
+  const delay = beh.lastFill > 0.80 ? 12000 : 20000;
+  _purpleRescueTimer = setTimeout(() => {
+    _purpleRescueTimer = null;
+    if (!gameActive || !purpleFrogOn) return;
+    // Only rescue if still struggling
+    if (playerIsStruggling()) {
+      const r = Math.floor(Math.random() * ROWS);
+      spawnJumpingFrog('vanish', r, COLS - 1);
+      showFrogSpeech('purple', _pick(COMMENTARY.purpleRescue));
+    }
+  }, delay);
+}
+function clearPurpleRescueTimer() {
+  if (_purpleRescueTimer) { clearTimeout(_purpleRescueTimer); _purpleRescueTimer = null; }
+}
+
+// ════════════════════════════════════════════════════════════════
+// FROG COMMENTARY SYSTEM
+// Frogs speak based on player state. Never too often.
+// ════════════════════════════════════════════════════════════════
+
+const COMMENTARY = {
+  // Player doing well — red frog cheers sarcastically / purple frog claps
+  dominating: [
+    '🔥 Not bad... for a human.',
+    '⭐ Ok ok, I see you!',
+    '🐸 Oi. You\'re actually good at this.',
+    '🏆 Smooth. Very smooth.',
+    '💪 Alright, keep going — don\'t let it go to your head.',
+    '🔥 Someone\'s in the zone!',
+  ],
+  // Nice combo
+  combo: [
+    '⚡ Double clear! Now we\'re talking!',
+    '🎯 Back to back — clean!',
+    '🐸 Combo king!',
+    '💥 Did you just... yeah you did.',
+  ],
+  // Player is struggling (high fill, slow)
+  struggling: [
+    '😬 Hey... u good?',
+    '🐸 Don\'t panic. Breathe. Place.',
+    '😅 It\'s getting cosy in there...',
+    '🟡 Focus — one row at a time!',
+    '🐸 You got this. Probably.',
+  ],
+  // Board is nearly full — danger
+  danger: [
+    '🚨 Oof. That board is looking full...',
+    '😨 Red frog is absolutely loving this.',
+    '🆘 HELLO?? Anyone home??',
+    '🐸 This is fine. This is completely fine.',
+    '💀 Ok I\'m not worried. You should be.',
+  ],
+  // Clunky placer — lots of pieces, few lines
+  clunky: [
+    '🤔 Hmm. Maybe try clearing a row?',
+    '🐸 You\'re placing a lot... but not clearing much.',
+    '👀 A little focus goes a long way, just saying.',
+    '🧩 Try filling a full row — you\'ll feel better.',
+  ],
+  // Recovery — was struggling, board fill dropped
+  recovery: [
+    '😌 There we go! That\'s more like it.',
+    '🐸 Comeback mode ACTIVATED.',
+    '💚 See? You had it in you.',
+    '✅ Breathe. You\'re back in it.',
+  ],
+  // Purple frog rescue messages
+  purpleRescue: [
+    '💜 Purple frog to the rescue~',
+    '🟣 I got you. This time.',
+    '💜 Don\'t say I never do anything for you.',
+    '🫧 Poof. Breathe now.',
+  ],
+  // Long time no lines
+  dry: [
+    '🐸 Been a while since a clear...',
+    '⏳ Still waiting on that row...',
+    '😐 Just saying. The grid isn\'t getting smaller.',
+  ],
+};
+
+function _pick(arr) { return arr[Math.floor(Math.random() * arr.length)]; }
+
+// Show a speech bubble near the frog icon in topbar
+function showFrogSpeech(color, text) {
+  // Reuse the event-banner element with a speech style
+  const banner = document.getElementById('event-banner');
+  if (!banner) return;
+  banner.innerHTML = text;
+  banner.style.background = color === 'purple'
+    ? 'linear-gradient(135deg,#4a1d8c,#7c3aed)'
+    : 'linear-gradient(135deg,#8B0000,#CC1212)';
+  banner.style.borderColor = color === 'purple' ? '#a855f7' : '#CC1212';
+  banner.classList.add('show');
+  setTimeout(() => banner.classList.remove('show'), 3500);
+}
+
+function canShowCommentary() {
+  return Date.now() - beh.lastCommentaryAt > beh.commentaryCooldownMs;
+}
+function didShowCommentary() {
+  beh.lastCommentaryAt = Date.now();
+}
+
+let _prevFill = 0; // track fill change for recovery detection
+
+function maybeShowCommentary() {
+  if (!gameActive) return;
+  if (!canShowCommentary()) return;
+  if (beh.placementsThisGame < 5) return; // too early in the game
+
+  const fill = beh.lastFill;
+  const lines = beh.linesThisGame;
+  const placements = beh.placementsThisGame;
+
+  // 1. Recovery: was in danger, now comfortable
+  if (_prevFill > 0.70 && fill < 0.45 && lines > 3) {
+    showFrogSpeech('purple', _pick(COMMENTARY.recovery));
+    didShowCommentary(); _prevFill = fill; return;
+  }
+
+  // 2. Danger
+  if (fill > 0.78 && Math.random() < 0.7) {
+    showFrogSpeech('red', _pick(COMMENTARY.danger));
+    didShowCommentary();
+    schedulePurpleRescue();
+    _prevFill = fill; return;
+  }
+
+  // 3. Struggling (not quite danger)
+  if (playerIsStruggling() && Math.random() < 0.5) {
+    showFrogSpeech('red', _pick(COMMENTARY.struggling));
+    didShowCommentary(); _prevFill = fill; return;
+  }
+
+  // 4. Dominating
+  if (playerIsDominating() && Math.random() < 0.45) {
+    showFrogSpeech('red', _pick(COMMENTARY.dominating));
+    didShowCommentary(); _prevFill = fill; return;
+  }
+
+  // 5. Clunky
+  if (playerIsClunky() && Math.random() < 0.4) {
+    showFrogSpeech('red', _pick(COMMENTARY.clunky));
+    didShowCommentary(); _prevFill = fill; return;
+  }
+
+  // 6. Dry spell: many placements, no lines in last 12 pieces
+  if (placements > 20 && (lines / placements) < 0.06 && Math.random() < 0.35) {
+    showFrogSpeech('red', _pick(COMMENTARY.dry));
+    didShowCommentary(); _prevFill = fill; return;
+  }
+
+  _prevFill = fill;
+}
+
+// Called from clearLines when combo happens
+function onComboAchieved(comboCount) {
+  beh.combosThisGame++;
+  if (comboCount > beh.maxComboThisGame) beh.maxComboThisGame = comboCount;
+  if (comboCount >= 2 && canShowCommentary() && Math.random() < 0.55) {
+    showFrogSpeech('purple', _pick(COMMENTARY.combo));
+    didShowCommentary();
+  }
+}
 
 // ──────────────────────────────────────────────────────
 function openPurchaseModal(idx){
@@ -4922,7 +5364,9 @@ function getAdderFrogDelay() {
   if (_placeTimes.length < 1) return Math.round(25000 * diffMult);
   const avg = _placeTimes.reduce((a, b) => a + b, 0) / _placeTimes.length;
   const clamped = Math.max(1500, Math.min(avg, 6000));
-  return Math.round((15000 + ((clamped - 1500) / 4500) * 20000) * diffMult);
+  // Apply behaviour engine multiplier (tighten for power users/dominators, ease for strugglers)
+  const behMult = (typeof behaviourRedFrogMult === 'function') ? behaviourRedFrogMult() : 1.0;
+  return Math.round((15000 + ((clamped - 1500) / 4500) * 20000) * diffMult * behMult);
 }
 
 function scheduleAdderFrog() {
