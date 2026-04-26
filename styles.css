@@ -505,8 +505,9 @@ section { padding: 96px 0; position: relative; }
   display: none;
   position: fixed;
   bottom: 0; left: 0; right: 0;
-  background: rgba(204,18,18,0.92);
-  color: #fff;
+  background: rgba(8,8,8,0.95);
+  border-top: 1px solid rgba(255,255,255,0.08);
+  color: rgba(255,255,255,0.55);
   text-align: center;
   padding: 8px 12px;
   font-size: 0.82rem;
