@@ -2711,7 +2711,7 @@ const TIERS = [
     price: 4.99,
     desc: 'Hard mode + Survival challenge unlocked.',
     perks: ['Everything in Tree Frog','Hard difficulty (1.8× score)','Survival challenge','Toxic gradient tiles','Volcanic grid','VENOM power-up (wipe one colour)','5 power-ups per game'],
-    gridTheme: { bg: '#100500', gridLine: 'rgba(245,166,35,0.07)', corner: 'rgba(245,166,35,0.4)' },
+    gridTheme: { bg: '#080808', gridLine: 'rgba(245,166,35,0.07)', corner: 'rgba(245,166,35,0.4)' },
     tileStyle: 'toxic', powerup: { id:'venom', label:'VENOM', icon:'☠️', count:5 }, powerupCount: 5,
     bonusMultiplier: 1.5,
   },
@@ -3071,9 +3071,11 @@ function drawGrid(){
   ctx.fillStyle=theme.bg;
   ctx.beginPath();ctx.roundRect(0,0,W,H,10);ctx.fill();
 
-  // Centre glow — subtle warmth
+  // Centre glow — uses tier accent colour, very subtle
+  const tierColor=tier.color||'#CC1212';
+  const rgb=tierColor.replace('#','').match(/../g).map(x=>parseInt(x,16));
   const grd=ctx.createRadialGradient(W/2,H/2,0,W/2,H/2,Math.max(W,H)*0.65);
-  grd.addColorStop(0,'rgba(204,18,18,0.06)');
+  grd.addColorStop(0,`rgba(${rgb[0]},${rgb[1]},${rgb[2]},0.04)`);
   grd.addColorStop(1,'rgba(0,0,0,0)');
   ctx.save();ctx.beginPath();ctx.roundRect(0,0,W,H,10);ctx.clip();
   ctx.fillStyle=grd;ctx.fill();
