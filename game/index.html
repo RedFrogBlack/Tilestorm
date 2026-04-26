@@ -5070,7 +5070,18 @@ function initChallengeMode() {
 
   if (activeChallengeMode === 'frenzy') {
     const target = currentDiff === 'hard' ? 4 : currentDiff === 'medium' ? 3 : 2;
-    const seconds = currentDiff === 'hard' ? 20 : currentDiff === 'medium' ? 25 : 30;
+    // Pace-adaptive timer: base on how fast the player is placing pieces.
+    // Fast player (<2s/piece) → tighter; slow player (>5s/piece) → more generous.
+    // First frenzy always gets a generous amount so it never feels unfair.
+    const baseSeconds = currentDiff === 'hard' ? 22 : currentDiff === 'medium' ? 28 : 35;
+    let seconds = baseSeconds;
+    if (_placeTimes.length >= 2) {
+      const avg = _placeTimes.reduce((a, b) => a + b, 0) / _placeTimes.length;
+      const clamped = Math.max(1500, Math.min(avg, 6000));
+      // Scale: fast (1500ms/piece) → -6s, slow (6000ms/piece) → +10s
+      const adjust = Math.round(((clamped - 1500) / 4500) * 16 - 6);
+      seconds = Math.max(15, Math.min(baseSeconds + adjust, 60));
+    }
     cm_linesAtStart = linesCleared;
     cm_secsLeft = seconds;
     hud.classList.add('active');
@@ -5090,6 +5101,14 @@ function initChallengeMode() {
           score += 200; updateUI();
         }
         cm_linesAtStart = linesCleared;
+        // Recalculate pace-adaptive timer for next round
+        if (_placeTimes.length >= 2) {
+          const baseSeconds = currentDiff === 'hard' ? 22 : currentDiff === 'medium' ? 28 : 35;
+          const avg = _placeTimes.reduce((a, b) => a + b, 0) / _placeTimes.length;
+          const clamped = Math.max(1500, Math.min(avg, 6000));
+          const adjust = Math.round(((clamped - 1500) / 4500) * 16 - 6);
+          seconds = Math.max(15, Math.min(baseSeconds + adjust, 60));
+        }
         cm_secsLeft = seconds;
       }
     }, 1000);
