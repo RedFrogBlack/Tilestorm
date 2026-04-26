@@ -2797,7 +2797,7 @@
     <div id="upgrade-title">🐸 UNLOCK MORE</div>
     <div id="upgrade-reason">Upgrade to access this feature</div>
     <div id="upgrade-tiers-list"></div>
-    <p class="upgrade-free-note">One-off payment · No subscription required (except Duo)</p>
+    <p class="upgrade-free-note">Annual subscription · Magic powers are yours forever · Duo billed monthly</p>
   </div>
 </div>
 
@@ -3261,25 +3261,28 @@ const TIERS = [
   {
     id: 'tadpole', name: 'TADPOLE', emoji: '🥚', color: '#888888',
     price: 0.99,
+    annual: true,
     trialDays: 7,
-    desc: 'Free 7 days, then £0.99 forever. Easy · Standard.',
-    perks: ['Free for 7 days, then £0.99 one-off','Easy difficulty — relaxed pace','Standard mode — clear rows & columns to score','22 piece shapes to place','SPLASH power-up: clears the fullest row instantly','3 power-ups per game'],
+    desc: 'Free 7 days, then £0.99/year. Easy · Standard.',
+    perks: ['Free for 7 days, then £0.99/year','Easy difficulty — relaxed pace','Standard mode — clear rows & columns to score','22 piece shapes to place','SPLASH power-up: clears the fullest row instantly','3 power-ups per game'],
     gridTheme: { bg: '#111111', gridLine: 'rgba(255,255,255,0.035)', corner: 'rgba(204,18,18,0.45)' },
     tileStyle: 'classic', powerup: { id:'splash', label:'SPLASH', icon:'💧', count:3 }, powerupCount: 3,
   },
   {
     id: 'treefrog', name: 'TREE FROG', emoji: '🐸', color: '#F5A623',
     price: 2.99,
+    annual: true,
     desc: 'Medium difficulty + Frenzy challenge unlocked.',
-    perks: ['Everything in Tadpole (both unlocked)','Medium difficulty — faster pace','Frenzy mode: you have 3s per piece. Miss the timer? A penalty row is added to the top!','Neon green tile skin','BOMB power-up: blasts a 3×3 area clear','3 power-ups per game'],
+    perks: ['Everything in Tadpole (both unlocked) · £2.99/year','Medium difficulty — faster pace','Frenzy mode: you have 3s per piece. Miss the timer? A penalty row is added to the top!','Neon green tile skin','BOMB power-up: blasts a 3×3 area clear','3 power-ups per game'],
     gridTheme: { bg: '#050f05', gridLine: 'rgba(126,211,33,0.07)', corner: 'rgba(126,211,33,0.4)' },
     tileStyle: 'neon', powerup: { id:'bomb', label:'BOMB', icon:'💣', count:3 }, powerupCount: 3,
   },
   {
     id: 'poisondart', name: 'POISON DART', emoji: '🦎', color: '#CC1212',
     price: 4.99,
+    annual: true,
     desc: 'Hard mode + Survival challenge unlocked.',
-    perks: ['Everything in Tadpole + Tree Frog (all 3 unlocked)','Hard difficulty — 1.8× score multiplier','Survival mode: tiles vanish after 12s. Board over 50% full? Glitch Frog drops extra tiles on you!','Toxic orange/red tile skin','VENOM power-up: wipes all tiles of one colour','5 power-ups per game'],
+    perks: ['Everything in Tadpole + Tree Frog (all 3 unlocked) · £4.99/year','Hard difficulty — 1.8× score multiplier','Survival mode: tiles vanish after 12s. Board over 50% full? Glitch Frog drops extra tiles on you!','Toxic orange/red tile skin','VENOM power-up: wipes all tiles of one colour','5 power-ups per game'],
     gridTheme: { bg: '#080808', gridLine: 'rgba(245,166,35,0.07)', corner: 'rgba(245,166,35,0.4)' },
     tileStyle: 'toxic', powerup: { id:'venom', label:'VENOM', icon:'☠️', count:5 }, powerupCount: 5,
     bonusMultiplier: 1.5,
@@ -3287,8 +3290,9 @@ const TIERS = [
   {
     id: 'goldenfrog', name: 'GOLDEN FROG', emoji: '✨', color: '#F5E000',
     price: 7.99,
+    annual: true,
     desc: 'Expert mode + Colour Run. Everything unlocked.',
-    perks: ['Unlocks ALL 4 games — best value','Expert difficulty — 2.5× score multiplier','Colour Run mode: match 4 tiles of the same colour in a row. Break the streak? Obstacle tiles drop in!','Gold holographic tile skin + starfield grid','STORM power-up: force-clears 2 full lines','5 power-ups per game'],
+    perks: ['Unlocks ALL 4 games — best value · £7.99/year','Expert difficulty — 2.5× score multiplier','Colour Run mode: match 4 tiles of the same colour in a row. Break the streak? Obstacle tiles drop in!','Gold holographic tile skin + starfield grid','STORM power-up: force-clears 2 full lines','5 power-ups per game'],
     gridTheme: { bg: '#06060c', gridLine: 'rgba(255,215,0,0.06)', corner: 'rgba(255,215,0,0.4)' },
     tileStyle: 'gold', powerup: { id:'storm', label:'STORM', icon:'⚡', count:5 }, powerupCount: 5,
     bonusMultiplier: 2.0, starfield: true,
@@ -3404,7 +3408,7 @@ function renderUpgradeTiers() {
       </div>
       ${owned
         ? '<div class="upgrade-owned-badge">OWNED ✓</div>'
-        : `<button class="upgrade-buy-btn" onclick="purchaseFromModal(${TIERS.indexOf(t)})">£${priceStr}</button>`
+        : `<button class="upgrade-buy-btn" onclick="purchaseFromModal(${TIERS.indexOf(t)})">£${priceStr}${t.annual ? '/yr' : t.subscription ? '/mo' : ''}</button>`
       }
     </div>`;
   }).join('');
@@ -4108,10 +4112,11 @@ function buildShopUI(){
     card.className='tier-card'+(isEquipped?' active-tier':'')+(!owned&&tier.price?' locked-card':''); if(!owned&&tier.price){card.style.setProperty('--lock-color','#F7C948');}
     card.style.setProperty('--tier-color',tier.color);
 
-    const trialLabel = tier.trialDays ? `<div class="tier-price" style="font-size:0.75rem;color:#7ED321">FREE ${tier.trialDays} DAYS</div><div style="font-size:0.7rem;color:rgba(255,255,255,0.4);margin-top:2px">then £${tier.price.toFixed(2)}</div>` : null;
+    const annualSuffix = tier.annual ? '/yr' : '';
+    const trialLabel = tier.trialDays ? `<div class="tier-price" style="font-size:0.75rem;color:#7ED321">FREE ${tier.trialDays} DAYS</div><div style="font-size:0.7rem;color:rgba(255,255,255,0.4);margin-top:2px">then £${tier.price.toFixed(2)}${annualSuffix}</div>` : null;
     let tagHtml='';
     let btnHtml=owned ? (isEquipped?`<button class="tier-buy-btn" style="background:#CC1212;color:#fff" data-play="${tier.id}">▶ PLAY</button>`:`<button class="tier-buy-btn equip" data-equip="${tier.id}">EQUIP</button>`) : `<button class="tier-buy-btn buy" data-buy="${idx}">BUY</button>`;
-    const priceHtml=tier.subscription?`<div class="tier-price" style="font-size:0.9rem;color:#c084fc">£${tier.price.toFixed(2)}<small style="font-size:0.5rem;opacity:0.7">/mo</small></div>`:trialLabel||`<div class="tier-price">£${tier.price.toFixed(2)}</div>`;
+    const priceHtml=tier.subscription?`<div class="tier-price" style="font-size:0.9rem;color:#c084fc">£${tier.price.toFixed(2)}<small style="font-size:0.5rem;opacity:0.7">/mo</small></div>`:tier.annual?trialLabel||`<div class="tier-price">£${tier.price.toFixed(2)}<small style="font-size:0.5rem;opacity:0.7">/yr</small></div>`:trialLabel||`<div class="tier-price">£${tier.price.toFixed(2)}</div>`;
     const perksHtml=tier.perks.slice(0,3).map(p=>`<span class="tier-perk">${p}</span>`).join('');
 
     card.innerHTML=`<div class="tier-frog-svg">${FROG_SVGS[tier.id]}</div><div class="tier-info"><div class="tier-name-row"><div class="tier-name" style="color:${tier.color}">${tier.name}</div>${tagHtml}</div><div class="tier-desc">${tier.desc}</div><div class="tier-perks">${perksHtml}</div></div><div class="tier-price-col">${priceHtml}${btnHtml}</div>`;
@@ -4481,7 +4486,8 @@ function openPurchaseModal(idx){
   document.getElementById('purchase-frog-emoji').textContent=tier.emoji;
   document.getElementById('purchase-tier-name').textContent=tier.name;
   document.getElementById('purchase-desc').textContent=tier.desc;
-  document.getElementById('purchase-price-display').innerHTML=`<small>$</small>${tier.price.toFixed(2)}`;
+  const _priceSuffix = tier.annual ? '<small style="font-size:1rem;opacity:0.6">/yr</small>' : tier.subscription ? '<small style="font-size:1rem;opacity:0.6">/mo</small>' : '';
+  document.getElementById('purchase-price-display').innerHTML=`<small>£</small>${tier.price.toFixed(2)}${_priceSuffix}`;
   const list=document.getElementById('purchase-perks-list');
   list.innerHTML=`<div class="pp-title">WHAT YOU GET</div>`;
   tier.perks.forEach(p=>{const el=document.createElement('div');el.className='purchase-perk-item';el.innerHTML=`<span class="pp-check">✓</span> ${p}`;list.appendChild(el);});
