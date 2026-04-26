@@ -8205,6 +8205,22 @@ function checkResumeOnHome() {
   </div>
 </div>
   <script>
+  /* ── Move fixed overlays to <body> to escape any parser nesting ────────── */
+  (function() {
+    var ids = ['shop-overlay','purchase-overlay','screen-settings','screen-profile',
+               'screen-session-result','screen-gameover','screen-duo-lobby',
+               'upgrade-overlay','pause-overlay','levelup-overlay','duo-modal',
+               'bonus-popup','quit-confirm-overlay','glitch-frog-overlay'];
+    ids.forEach(function(id) {
+      // Use querySelectorAll to catch duplicate IDs
+      document.querySelectorAll('#' + id).forEach(function(el) {
+        if (el.parentElement !== document.body) {
+          document.body.appendChild(el);
+        }
+      });
+    });
+  })();
+
   /* ── Power carousel: drag-to-scroll + dot indicators ──────────────────── */
   (function() {
     var el = document.getElementById('power-carousel');
