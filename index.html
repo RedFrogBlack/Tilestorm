@@ -2358,7 +2358,7 @@
   <div id="event-banner"></div>
 
   <div class="game-topbar">
-    <div class="topbar-brand">
+    <div class="topbar-brand" id="topbar-brand-logo" style="cursor:pointer;" title="Quit game">
       <img src="./rfba-logo.png" alt="RFBA" />
       <div class="topbar-brand-name">CROAK<em>DOWN</em></div>
       <span id="diff-indicator">EASY</span>
@@ -3367,7 +3367,7 @@ document.getElementById('btn-pause-settings').addEventListener('click', () => {
 });
 document.getElementById('btn-pause-profile').addEventListener('click', () => {
   closePause();
-  openProfile();
+  openProfile('screen-game');
 });
 function showFloatText(text,rows,cols){
   const r=rows[0]??0;const rect=gridCanvas.getBoundingClientRect();
@@ -4741,6 +4741,23 @@ function frogStamp() {
 document.getElementById('btn-restart').addEventListener('click',()=>{ensureAudio();activeChallengeMode='standard';selectedChallenge='standard';startGame();});
 document.getElementById('btn-go-menu').addEventListener('click',()=>{stopChallengeMode();showScreen('screen-title');});
 document.getElementById('btn-menu').addEventListener('click',()=>{ openPause(); });
+
+// Logo tap — quit confirmation
+document.getElementById('topbar-brand-logo').addEventListener('click', () => {
+  if (!gameActive) return;
+  gameActive = false; // pause ticks
+  const ov = document.getElementById('quit-confirm-overlay');
+  ov.style.display = 'flex';
+});
+document.getElementById('btn-quit-yes').addEventListener('click', () => {
+  document.getElementById('quit-confirm-overlay').style.display = 'none';
+  stopChallengeMode();
+  showScreen('screen-title');
+});
+document.getElementById('btn-quit-no').addEventListener('click', () => {
+  document.getElementById('quit-confirm-overlay').style.display = 'none';
+  gameActive = true;
+});
 // Shop button removed from home screen (now lives in Solo Setup only)
 document.getElementById('btn-shop-ingame').addEventListener('click',openShop);
 document.getElementById('shop-close').addEventListener('click',closeShop);
@@ -4875,9 +4892,14 @@ function updateProfileScreen() {
   }
 }
 
-function openProfile() {
+let _profileReturnScreen = 'screen-title';
+function openProfile(returnScreen) {
+  _profileReturnScreen = returnScreen || 'screen-title';
   updateProfileScreen();
   showScreen('screen-profile');
+}
+function closeProfile() {
+  showScreen(_profileReturnScreen);
 }
 
 function showSessionResult(matchResults, myWins, oppWins) {
@@ -4911,7 +4933,7 @@ calcLayout();updateTierBadge();loadStreak();requestAnimationFrame(animateParticl
 <div style="padding:16px;max-width:480px;margin:0 auto;width:100%;box-sizing:border-box;overflow-y:auto;max-height:100vh;">
   <!-- Header -->
   <div style="display:flex;align-items:center;gap:12px;margin-bottom:24px;">
-    <button onclick="showScreen('screen-game')" style="background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);border-radius:50%;width:36px;height:36px;color:#fff;font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center;">‹</button>
+    <button onclick="closeProfile()" style="background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);border-radius:50%;width:36px;height:36px;color:#fff;font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center;">‹</button>
     <div style="font-family:var(--font-display);font-size:1rem;font-weight:700;letter-spacing:0.15em;color:rgba(255,255,255,0.9);">MY PROFILE</div>
   </div>
   <!-- Avatar + name -->
@@ -4979,6 +5001,17 @@ calcLayout();updateTierBadge();loadStreak();requestAnimationFrame(animateParticl
   <!-- Buttons -->
   <button id="btn-session-play-again" style="width:min(320px,88vw);background:#CC1212;border:none;border-radius:14px;color:#fff;font-family:var(--font-display);font-size:1rem;font-weight:700;letter-spacing:0.2em;text-transform:uppercase;padding:18px;cursor:pointer;margin-bottom:12px;">PLAY AGAIN</button>
   <button id="btn-session-home" style="width:min(320px,88vw);background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:14px;color:rgba(255,255,255,0.6);font-family:var(--font-display);font-size:1rem;font-weight:700;letter-spacing:0.2em;text-transform:uppercase;padding:18px;cursor:pointer;">HOME</button>
+</div>
+
+<!-- Quit Game confirmation modal -->
+<div id="quit-confirm-overlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.75);z-index:1200;align-items:center;justify-content:center;">
+  <div style="background:#111;border:1.5px solid rgba(204,18,18,0.5);border-radius:20px;padding:28px 24px;width:min(300px,88vw);text-align:center;">
+    <div style="font-size:2rem;margin-bottom:10px;">🐸</div>
+    <div style="font-family:var(--font-display);font-size:1rem;font-weight:700;letter-spacing:0.15em;color:#fff;margin-bottom:8px;">QUIT GAME?</div>
+    <div style="font-size:0.8rem;color:rgba(255,255,255,0.45);margin-bottom:24px;line-height:1.5;">Your current progress will be lost.</div>
+    <button id="btn-quit-yes" style="width:100%;background:#CC1212;border:none;border-radius:12px;color:#fff;font-family:var(--font-display);font-size:0.9rem;font-weight:700;letter-spacing:0.15em;padding:14px;cursor:pointer;margin-bottom:10px;">YES, QUIT</button>
+    <button id="btn-quit-no" style="width:100%;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:12px;color:rgba(255,255,255,0.6);font-family:var(--font-display);font-size:0.9rem;letter-spacing:0.12em;padding:14px;cursor:pointer;">RESUME GAME</button>
+  </div>
 </div>
 
 <!-- Glitch Frog overlay — fixed position, always on top -->
