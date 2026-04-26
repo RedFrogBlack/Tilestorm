@@ -4110,7 +4110,9 @@ function scheduleVanishIfHard(shape, baseR, baseC) {
   // so it's a rare surprise rather than a constant threat.
   const baseDelay = getVanishDelay();
   // Difficulty multiplier: easy 3×, medium 1.7×, hard/expert 1×
-  const diffMult = currentDiff === 'easy' ? 3.0 : currentDiff === 'medium' ? 1.7 : 1.0;
+  // Frenzy: much rarer — player is already racing the clock
+  const frenzyMult = activeChallengeMode === 'frenzy' ? 2.5 : 1.0;
+  const diffMult = (currentDiff === 'easy' ? 3.0 : currentDiff === 'medium' ? 1.7 : 1.0) * frenzyMult;
   shape.forEach(([dr, dc], pieceIdx) => {
     const r = baseR + dr, c = baseC + dc;
     const key = r + ',' + c;
@@ -4153,7 +4155,9 @@ let _adderFrogTimer = null;
 function getAdderFrogDelay() {
   // Base: 15s (fast player) → 35s (slow player)
   // Easy gets longer gaps so the frog feels like a fun visit, not pressure
-  const diffMult = currentDiff === 'easy' ? 1.4 : currentDiff === 'medium' ? 1.15 : 1.0;
+  // Frenzy mode: much longer gaps — the timed challenge is hard enough already
+  const frenzyMult = activeChallengeMode === 'frenzy' ? 2.5 : 1.0;
+  const diffMult = (currentDiff === 'easy' ? 1.4 : currentDiff === 'medium' ? 1.15 : 1.0) * frenzyMult;
   if (_placeTimes.length < 1) return Math.round(25000 * diffMult);
   const avg = _placeTimes.reduce((a, b) => a + b, 0) / _placeTimes.length;
   const clamped = Math.max(1500, Math.min(avg, 6000));
@@ -5556,9 +5560,10 @@ function spawnJumpingFrog(type, targetR, targetC) {
 
     if (emptyCells.length === 0) return; // nowhere to hop
 
-    // Pick up to 6, spread across the board, sort left → right
+    // Pick up to 6 normally; in Frenzy mode max 2 — light touch only
+    const maxHops = activeChallengeMode === 'frenzy' ? 2 : 6;
     shuffle(emptyCells);
-    const hops = emptyCells.slice(0, Math.min(6, emptyCells.length));
+    const hops = emptyCells.slice(0, Math.min(maxHops, emptyCells.length));
     hops.sort((a, b) => a[1] - b[1] || a[0] - b[0]);
 
     const hopDelay = 400; // ms between hops
