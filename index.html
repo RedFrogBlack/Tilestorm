@@ -72,6 +72,43 @@
       -webkit-user-select: none;
     }
 
+    /* ── Light Mode ── */
+    body.light-mode {
+      --black:        #F5F0E8;
+      --black2:       #EDE8DF;
+      --black3:       #E3DDD2;
+      --black4:       #D6CFBF;
+      --white:        #1A1208;
+      --muted:        rgba(26,18,8,0.5);
+      --border:       rgba(26,18,8,0.1);
+      --border-strong:rgba(26,18,8,0.2);
+      --red-glow:     rgba(204,18,18,0.2);
+      background: #F5F0E8;
+      color: #1A1208;
+    }
+    body.light-mode .title-art-bg {
+      background-color: #EDE8DF !important;
+      background-image:
+        radial-gradient(ellipse 80% 60% at 50% 30%, rgba(204,18,18,0.08) 0%, transparent 65%),
+        radial-gradient(ellipse 60% 40% at 50% 80%, rgba(200,190,170,0.4) 0%, transparent 70%) !important;
+    }
+    body.light-mode #screen-game,
+    body.light-mode #screen-gameover,
+    body.light-mode #screen-title,
+    body.light-mode #screen-settings,
+    body.light-mode #screen-shop,
+    body.light-mode .screen {
+      background: #F5F0E8;
+    }
+    body.light-mode .topbar {
+      background: rgba(245,240,232,0.95) !important;
+      border-bottom: 1px solid rgba(26,18,8,0.1) !important;
+    }
+    body.light-mode .topbar * { color: #1A1208 !important; }
+    body.light-mode #screen-gameover {
+      background: #F5F0E8 !important;
+    }
+
     /* ── Screens ── */
     .screen {
       position: fixed; inset: 0;
@@ -1272,8 +1309,20 @@
       line-height: 1;
       filter: drop-shadow(0 4px 12px rgba(0,0,0,0.6));
     }
-    /* Adder frog (RED): enters from left, hops across board, exits right — adds tiles */
-    /* Adder frog (RED): single arc jump left→right, lands once, exits */
+    /* Adder hop-in: drops from above onto empty cell, squash on landing */
+    @keyframes adderHopIn {
+      0%   { transform: translateY(-60px) scale(0.6) rotate(-10deg); opacity: 0; }
+      60%  { transform: translateY(6px) scale(1.2,0.85) rotate(5deg); opacity: 1; }
+      80%  { transform: translateY(-4px) scale(0.95,1.05) rotate(-2deg); opacity: 1; }
+      100% { transform: translateY(0) scale(1) rotate(0); opacity: 1; }
+    }
+    /* Adder hop-out: leaps away upward */
+    @keyframes adderHopOut {
+      0%   { transform: translateY(0) scale(1); opacity: 1; }
+      40%  { transform: translateY(-28px) scale(1.1) rotate(8deg); opacity: 0.9; }
+      100% { transform: translateY(-80px) scale(0.4) rotate(20deg); opacity: 0; }
+    }
+    /* Adder frog (RED): legacy single-arc — kept, no longer used by default */
     @keyframes adderFrogJump {
       0%   { transform: translateX(0) translateY(0) rotate(-8deg); opacity: 0; }
       8%   { opacity: 1; }
@@ -2784,6 +2833,18 @@
     </div>
   </div>
 
+  <!-- Display -->
+  <div style="background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:16px;padding:20px;margin-bottom:12px;">
+    <div style="font-family:var(--font-display);font-size:0.65rem;letter-spacing:0.2em;color:rgba(255,255,255,0.35);text-transform:uppercase;margin-bottom:16px;">DISPLAY</div>
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:4px 0;">
+      <div>
+        <div style="font-family:var(--font-display);font-size:0.85rem;font-weight:700;letter-spacing:0.08em;color:#fff;">☀️ Light Mode</div>
+        <div style="font-size:0.72rem;color:rgba(255,255,255,0.4);margin-top:3px;">Switch to a warm light theme</div>
+      </div>
+      <button id="settings-theme-toggle" onclick="toggleSettingsTheme()" style="width:52px;height:28px;border-radius:14px;border:none;cursor:pointer;transition:background 0.2s;font-size:0.7rem;font-weight:700;letter-spacing:0.05em;">OFF</button>
+    </div>
+  </div>
+
   <!-- Notifications -->
   <div style="background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:16px;padding:20px;margin-bottom:12px;">
     <div style="font-family:var(--font-display);font-size:0.65rem;letter-spacing:0.2em;color:rgba(255,255,255,0.35);text-transform:uppercase;margin-bottom:16px;">NOTIFICATIONS</div>
@@ -4027,12 +4088,12 @@ function recordPlacePace() {
 }
 
 function getVanishDelay() {
-  // Default: 22s. Scale between 18s (fast player) and 45s (slow player)
-  if (_placeTimes.length < 3) return 22000;
+  // Scale between 28s (fast player) and 60s (slow player) — pace-adaptive
+  if (_placeTimes.length < 3) return 32000; // default before pace established
   const avg = _placeTimes.reduce((a, b) => a + b, 0) / _placeTimes.length;
   // avg ms per piece: <1500 = fast, >6000 = slow
   const clamped = Math.max(1500, Math.min(avg, 6000));
-  const t = 18000 + ((clamped - 1500) / 4500) * 27000; // 18s–45s
+  const t = 28000 + ((clamped - 1500) / 4500) * 32000; // 28s–60s
   return Math.round(t);
 }
 
@@ -5407,12 +5468,53 @@ function spawnJumpingFrog(type, targetR, targetC) {
   el.className = 'frog-jumper ' + type;
 
   if (type === 'adder') {
-    // Red frog — adds tiles — enters from left, hops across to target
-    el.textContent = '🐸';
-    el.style.left = '-60px';
-    el.style.top = (cellY - 24) + 'px';
-    el.style.fontSize = '2.2rem';
-    el.style.filter = 'drop-shadow(0 0 10px #CC1212) sepia(1) saturate(5) hue-rotate(320deg)';
+    // Red frog — hops across EMPTY cells left-to-right, stamping a tile on each landing
+    // Build list of empty cells sorted left-to-right
+    const emptyCells = [];
+    if (grid && rect) {
+      for (let c = 0; c < COLS; c++) {
+        for (let r = 0; r < ROWS; r++) {
+          if (grid[r] && grid[r][c] === 0) emptyCells.push([r, c]);
+        }
+      }
+    }
+    // Pick up to 6 evenly spread across the board
+    shuffle(emptyCells);
+    const hops = emptyCells.slice(0, Math.min(6, emptyCells.length));
+    // Sort by column so frog moves left → right
+    hops.sort((a, b) => a[1] - b[1] || a[0] - b[0]);
+
+    const hopDelay = 420; // ms between hops
+    hops.forEach(([hr, hc], i) => {
+      const hx = rect ? rect.left + (hc + 0.5) * CELL : window.innerWidth * 0.5;
+      const hy = rect ? rect.top + (hr + 0.5) * CELL : window.innerHeight * 0.5;
+      setTimeout(() => {
+        if (!gameActive) return; // stop if game ended mid-sequence
+        // Create a frog element at this cell
+        const hop = document.createElement('div');
+        hop.className = 'frog-jumper adder-hop';
+        hop.textContent = '🐸';
+        hop.style.cssText = `position:fixed;pointer-events:none;line-height:1;
+          font-size:2.0rem;z-index:9999;
+          left:${hx - 20}px;top:${hy - 50}px;
+          filter:drop-shadow(0 0 10px #CC1212) sepia(1) saturate(5) hue-rotate(320deg);
+          animation:adderHopIn 0.35s cubic-bezier(0.22,0.61,0.36,1) forwards;`;
+        document.body.appendChild(hop);
+        // Stamp tile on landing
+        setTimeout(() => {
+          if (!gameActive) return;
+          if (grid[hr] && grid[hr][hc] === 0) {
+            grid[hr][hc] = Math.floor(Math.random() * 6) + 1;
+            drawGrid();
+          }
+          hop.style.animation = 'adderHopOut 0.25s ease-in forwards';
+          setTimeout(() => hop.remove(), 280);
+        }, 280);
+      }, i * hopDelay);
+    });
+
+    // Remove the dummy el, we handle everything above
+    return;
   } else if (type === 'vanish') {
     // Dark/black frog — removes tiles — enters from right, touches target cell and exits right
     el.textContent = '🐸';
@@ -5435,9 +5537,16 @@ function spawnJumpingFrog(type, targetR, targetC) {
 // ── Settings screen ───────────────────────────────────────────────────────────
 const NOTIF_KEY = 'cd_notif';
 const HAPTICS_KEY = 'cd_haptics';
+const THEME_KEY = 'cd_theme';
 let notifsOn = localStorage.getItem(NOTIF_KEY) !== '0';
 let hapticsOn = localStorage.getItem(HAPTICS_KEY) !== '0';
+let lightModeOn = localStorage.getItem(THEME_KEY) === 'light';
 let _settingsReturnScreen = 'screen-title';
+
+// Apply saved theme immediately on load
+(function applyTheme() {
+  if (lightModeOn) document.body.classList.add('light-mode');
+})();
 
 // ── Haptic feedback helper ─────────────────────────────────────
 function vibrate(pattern) {
@@ -5457,6 +5566,7 @@ function updateSettingsToggles() {
   const sBtn = document.getElementById('settings-sound-toggle');
   const nBtn = document.getElementById('settings-notif-toggle');
   const hBtn = document.getElementById('settings-haptics-toggle');
+  const tBtn = document.getElementById('settings-theme-toggle');
   if (sBtn) {
     sBtn.textContent = soundOn ? 'ON' : 'OFF';
     sBtn.style.background = soundOn ? '#CC1212' : 'rgba(255,255,255,0.1)';
@@ -5471,6 +5581,11 @@ function updateSettingsToggles() {
     hBtn.textContent = hapticsOn ? 'ON' : 'OFF';
     hBtn.style.background = hapticsOn ? '#CC1212' : 'rgba(255,255,255,0.1)';
     hBtn.style.color = hapticsOn ? '#fff' : 'rgba(255,255,255,0.4)';
+  }
+  if (tBtn) {
+    tBtn.textContent = lightModeOn ? 'ON' : 'OFF';
+    tBtn.style.background = lightModeOn ? '#CC1212' : 'rgba(255,255,255,0.1)';
+    tBtn.style.color = lightModeOn ? '#fff' : 'rgba(255,255,255,0.4)';
   }
   // Saved game info
   const info = document.getElementById('settings-saved-game-info');
@@ -5531,6 +5646,13 @@ function toggleSettingsHaptics() {
   hapticsOn = !hapticsOn;
   localStorage.setItem(HAPTICS_KEY, hapticsOn ? '1' : '0');
   if (hapticsOn) vibrate([30, 20, 30]); // preview pulse when turning ON
+  updateSettingsToggles();
+}
+
+function toggleSettingsTheme() {
+  lightModeOn = !lightModeOn;
+  localStorage.setItem(THEME_KEY, lightModeOn ? 'light' : 'dark');
+  document.body.classList.toggle('light-mode', lightModeOn);
   updateSettingsToggles();
 }
 
