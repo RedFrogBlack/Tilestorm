@@ -5529,6 +5529,31 @@ window.addEventListener('resize',()=>{calcLayout();if(gameActive)drawGrid();part
 // Boot
 calcLayout();updateTierBadge();loadStreak();requestAnimationFrame(animateParticles);initTrial();updateTrialBanner();updateLockIcons();showScreen('screen-title');
 
+// ── Early audio unlock ──────────────────────────────────────────────────────
+// iOS/mobile browsers suspend AudioContext until a user gesture.
+// We unlock it on the very first touch anywhere on the title screen so
+// it's fully running by the time the game starts — no quiet first sounds.
+(function() {
+  function _earlyAudioUnlock() {
+    if (!audioCtx) {
+      audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    }
+    if (audioCtx.state === 'suspended') {
+      audioCtx.resume();
+    }
+    // Play a silent buffer to fully unblock iOS
+    const buf = audioCtx.createBuffer(1, 1, 22050);
+    const src = audioCtx.createBufferSource();
+    src.buffer = buf;
+    src.connect(audioCtx.destination);
+    src.start(0);
+    document.removeEventListener('touchstart', _earlyAudioUnlock, true);
+    document.removeEventListener('mousedown',  _earlyAudioUnlock, true);
+  }
+  document.addEventListener('touchstart', _earlyAudioUnlock, true);
+  document.addEventListener('mousedown',  _earlyAudioUnlock, true);
+})();
+
 // ── Jumping Frog Animations ─────────────────────────────────────────────────
 function spawnJumpingFrog(type, targetR, targetC) {
   // Adder and vanish frogs respect the user's frog animations setting.
