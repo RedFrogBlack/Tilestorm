@@ -72,8 +72,8 @@
       -webkit-user-select: none;
     }
 
-    /* ── Light Mode ── */
-    body.light-mode {
+    /* ── Light Mode (removed) ── */
+    body.light-mode-disabled {
       --black:        #F5F0E8;
       --black2:       #EDE8DF;
       --black3:       #E3DDD2;
@@ -86,26 +86,26 @@
       background: #F5F0E8;
       color: #1A1208;
     }
-    body.light-mode .title-art-bg {
+    body.light-mode-disabled .title-art-bg {
       background-color: #EDE8DF !important;
       background-image:
         radial-gradient(ellipse 80% 60% at 50% 30%, rgba(204,18,18,0.08) 0%, transparent 65%),
         radial-gradient(ellipse 60% 40% at 50% 80%, rgba(200,190,170,0.4) 0%, transparent 70%) !important;
     }
-    body.light-mode #screen-game,
-    body.light-mode #screen-gameover,
-    body.light-mode #screen-title,
-    body.light-mode #screen-settings,
-    body.light-mode #screen-shop,
-    body.light-mode .screen {
+    body.light-mode-disabled #screen-game,
+    body.light-mode-disabled #screen-gameover,
+    body.light-mode-disabled #screen-title,
+    body.light-mode-disabled #screen-settings,
+    body.light-mode-disabled #screen-shop,
+    body.light-mode-disabled .screen {
       background: #F5F0E8;
     }
-    body.light-mode .topbar {
+    body.light-mode-disabled .topbar {
       background: rgba(245,240,232,0.95) !important;
       border-bottom: 1px solid rgba(26,18,8,0.1) !important;
     }
-    body.light-mode .topbar * { color: #1A1208 !important; }
-    body.light-mode #screen-gameover {
+    body.light-mode-disabled .topbar * { color: #1A1208 !important; }
+    body.light-mode-disabled #screen-gameover {
       background: #F5F0E8 !important;
     }
 
@@ -2836,14 +2836,7 @@
   <!-- Display -->
   <div style="background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:16px;padding:20px;margin-bottom:12px;">
     <div style="font-family:var(--font-display);font-size:0.65rem;letter-spacing:0.2em;color:rgba(255,255,255,0.35);text-transform:uppercase;margin-bottom:16px;">DISPLAY</div>
-    <div style="display:flex;align-items:center;justify-content:space-between;padding:4px 0;">
-      <div>
-        <div style="font-family:var(--font-display);font-size:0.85rem;font-weight:700;letter-spacing:0.08em;color:#fff;">☀️ Light Mode</div>
-        <div style="font-size:0.72rem;color:rgba(255,255,255,0.4);margin-top:3px;">Switch to a warm light theme</div>
-      </div>
-      <button id="settings-theme-toggle" onclick="toggleSettingsTheme()" style="width:52px;height:28px;border-radius:14px;border:none;cursor:pointer;transition:background 0.2s;font-size:0.7rem;font-weight:700;letter-spacing:0.05em;">OFF</button>
-    </div>
-    <div style="height:1px;background:rgba(255,255,255,0.06);margin:12px 0;"></div>
+
     <div style="display:flex;align-items:center;justify-content:space-between;padding:4px 0;">
       <div>
         <div style="font-family:var(--font-display);font-size:0.85rem;font-weight:700;letter-spacing:0.08em;color:#fff;">🐸 Frog Animations</div>
@@ -4141,6 +4134,37 @@ function scheduleVanishIfHard(shape, baseR, baseC) {
 function clearVanishTimers() {
   vanishTimers.forEach(t => clearTimeout(t));
   vanishTimers.clear();
+}
+
+// ── Adder Frog Scheduler (pace-adaptive) ─────────────────────────────────────
+// The red frog visits periodically to add tiles. Frequency scales with player
+// pace: fast player → appears every ~15s, slow player → every ~35s.
+let _adderFrogTimer = null;
+
+function getAdderFrogDelay() {
+  // 15s (fast player) → 35s (slow player), based on same pace samples as vanish
+  if (_placeTimes.length < 1) return 25000;
+  const avg = _placeTimes.reduce((a, b) => a + b, 0) / _placeTimes.length;
+  const clamped = Math.max(1500, Math.min(avg, 6000));
+  // map 1500→15s, 6000→35s
+  return Math.round(15000 + ((clamped - 1500) / 4500) * 20000);
+}
+
+function scheduleAdderFrog() {
+  if (_adderFrogTimer) clearTimeout(_adderFrogTimer);
+  if (!gameActive || !frogsOn) return;
+  const delay = getAdderFrogDelay();
+  _adderFrogTimer = setTimeout(() => {
+    if (!gameActive || !frogsOn) return;
+    // Pick a random row to hop across
+    const r = Math.floor(Math.random() * ROWS);
+    spawnJumpingFrog('adder', r, 0);
+    scheduleAdderFrog(); // reschedule
+  }, delay);
+}
+
+function clearAdderFrogTimer() {
+  if (_adderFrogTimer) { clearTimeout(_adderFrogTimer); _adderFrogTimer = null; }
 }
 
 // ════════════════════════════════════════════════════════════════
@@ -5570,7 +5594,8 @@ const THEME_KEY = 'cd_theme';
 const FROGS_KEY = 'cd_frogs';
 let notifsOn = localStorage.getItem(NOTIF_KEY) !== '0';
 let hapticsOn = localStorage.getItem(HAPTICS_KEY) !== '0';
-let lightModeOn = localStorage.getItem(THEME_KEY) === 'light';
+let lightModeOn = false; // light mode removed
+localStorage.removeItem(THEME_KEY);
 let frogsOn = localStorage.getItem(FROGS_KEY) !== '0'; // default ON
 let _settingsReturnScreen = 'screen-title';
 
