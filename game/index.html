@@ -2382,165 +2382,200 @@
     padding: 0 16px; margin-bottom: 20px;
   }
 
-  /* ── Apple editorial HTP style ──────────────────────────────────────────── */
+  /* ── Apple App Store editorial HTP ─────────────────────────────────────── */
+
+  /* Sheet is pure black like App Store */
   #howto-sheet {
     background: #000;
   }
 
-  /* Top hero — full bleed dark with colour accent */
-  .htp-hero {
-    padding: 28px 24px 32px;
-    background: linear-gradient(180deg, rgba(204,18,18,0.18) 0%, transparent 100%);
-    border-bottom: 1px solid rgba(255,255,255,0.06);
-    margin-bottom: 0;
+  /* Full-bleed hero artwork area */
+  .htp-artwork {
+    width: 100%;
+    aspect-ratio: 4/3;
+    background: linear-gradient(160deg, #1a0000 0%, #0d0d0d 40%, #080808 100%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    overflow: hidden;
   }
-  .htp-hero-label {
-    font-size: 0.62rem;
-    letter-spacing: 0.18em;
-    text-transform: uppercase;
-    color: #CC1212;
-    font-family: var(--font-display);
-    font-weight: 700;
-    margin-bottom: 10px;
+  .htp-artwork-inner {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0;
+    width: 100%;
+    height: 100%;
+    position: relative;
   }
-  .htp-hero-title {
-    font-family: var(--font-display);
-    font-size: 2.2rem;
-    font-weight: 700;
-    line-height: 1.05;
-    letter-spacing: -0.02em;
-    color: #fff;
-    margin-bottom: 14px;
+  /* Big frog artwork composite */
+  .htp-artwork-frog {
+    position: absolute;
+    bottom: 0;
   }
-  .htp-hero-body {
-    font-size: 0.96rem;
-    line-height: 1.6;
-    color: rgba(255,255,255,0.65);
+  .htp-artwork-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0;
+    width: 100%;
+    height: 100%;
+  }
+  .htp-artwork-cell {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 5rem;
+    opacity: 0.9;
   }
 
-  /* Feature sections — alternating background tint */
-  .htp-feature {
-    padding: 32px 24px;
-    border-bottom: 1px solid rgba(255,255,255,0.06);
+  /* Intro text — below artwork, big and editorial */
+  .htp-intro {
+    padding: 28px 20px 32px;
   }
-  .htp-feature:last-child {
-    border-bottom: none;
-    padding-bottom: 48px;
-  }
-  .htp-feature-label {
-    font-size: 0.6rem;
-    letter-spacing: 0.2em;
-    text-transform: uppercase;
-    font-family: var(--font-display);
-    font-weight: 700;
+  .htp-intro-kicker {
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: #CC1212;
+    letter-spacing: 0.04em;
     margin-bottom: 8px;
-    color: rgba(255,255,255,0.3);
+    font-family: var(--font-body);
   }
-  .htp-feature-title {
-    font-family: var(--font-display);
-    font-size: 1.8rem;
+  .htp-intro-headline {
+    font-family: var(--font-body);
+    font-size: 1.55rem;
     font-weight: 700;
-    line-height: 1.08;
+    line-height: 1.18;
+    color: #fff;
+    margin-bottom: 14px;
+    letter-spacing: -0.02em;
+  }
+  .htp-intro-body {
+    font-family: var(--font-body);
+    font-size: 1rem;
+    line-height: 1.65;
+    color: rgba(255,255,255,0.75);
+  }
+
+  /* Section — Apple style: heading then prose then visual */
+  .htp-section {
+    padding: 32px 20px;
+    border-top: 1px solid rgba(255,255,255,0.07);
+  }
+  .htp-section-headline {
+    font-family: var(--font-body);
+    font-size: 1.45rem;
+    font-weight: 700;
+    line-height: 1.2;
     letter-spacing: -0.02em;
     color: #fff;
     margin-bottom: 12px;
   }
-  .htp-feature-body {
-    font-size: 0.95rem;
-    line-height: 1.6;
-    color: rgba(255,255,255,0.55);
+  .htp-section-body {
+    font-family: var(--font-body);
+    font-size: 0.97rem;
+    line-height: 1.65;
+    color: rgba(255,255,255,0.65);
+    margin-bottom: 0;
+  }
+  .htp-section-body + .htp-section-body {
+    margin-top: 12px;
   }
 
-  /* Inline list rows — Apple-style clean rows */
-  .htp-list {
-    margin-top: 22px;
+  /* Full-bleed mid-section visual */
+  .htp-mid-visual {
+    margin: 24px -0px 0;
+    width: 100%;
+    background: rgba(255,255,255,0.03);
+    border-top: 1px solid rgba(255,255,255,0.06);
+    border-bottom: 1px solid rgba(255,255,255,0.06);
+    padding: 24px 20px;
     display: flex;
-    flex-direction: column;
-    gap: 0;
-    border-radius: 14px;
-    overflow: hidden;
-    border: 1px solid rgba(255,255,255,0.07);
+    gap: 20px;
+    align-items: center;
   }
-  .htp-list-row {
+  .htp-mid-visual + .htp-section-body {
+    margin-top: 20px;
+  }
+  .htp-mid-frog {
+    flex-shrink: 0;
+  }
+  .htp-mid-text {}
+  .htp-mid-name {
+    font-family: var(--font-body);
+    font-size: 1rem;
+    font-weight: 700;
+    color: #fff;
+    margin-bottom: 4px;
+    letter-spacing: -0.01em;
+  }
+  .htp-mid-sub {
+    font-family: var(--font-body);
+    font-size: 0.88rem;
+    color: rgba(255,255,255,0.5);
+    line-height: 1.5;
+  }
+
+  /* Caption under a visual */
+  .htp-caption {
+    font-family: var(--font-body);
+    font-size: 0.82rem;
+    color: rgba(255,255,255,0.35);
+    line-height: 1.5;
+    margin-top: 10px;
+    font-style: italic;
+  }
+
+  /* Inline power rows — no boxes, just clean rows with dividers */
+  .htp-power-group-label {
+    font-family: var(--font-body);
+    font-size: 0.78rem;
+    font-weight: 700;
+    color: rgba(255,255,255,0.35);
+    margin: 20px 0 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    font-size: 0.72rem;
+  }
+  .htp-power-row {
     display: flex;
     align-items: center;
     gap: 14px;
-    padding: 14px 16px;
-    background: rgba(255,255,255,0.03);
-    border-bottom: 1px solid rgba(255,255,255,0.05);
+    padding: 11px 0;
+    border-bottom: 1px solid rgba(255,255,255,0.06);
   }
-  .htp-list-row:last-child { border-bottom: none; }
-  .htp-list-icon {
-    font-size: 1.6rem;
-    flex-shrink: 0;
-    width: 38px;
-    text-align: center;
-  }
-  .htp-list-body { flex: 1; min-width: 0; }
-  .htp-list-name {
-    font-family: var(--font-display);
-    font-size: 0.82rem;
-    font-weight: 700;
-    letter-spacing: 0.04em;
+  .htp-power-row:last-child { border-bottom: none; }
+  .htp-power-emoji { font-size: 1.5rem; flex-shrink: 0; width: 32px; text-align: center; }
+  .htp-power-info { flex: 1; }
+  .htp-power-name {
+    font-family: var(--font-body);
+    font-size: 0.93rem;
+    font-weight: 600;
     color: #fff;
-    margin-bottom: 2px;
+    margin-bottom: 1px;
+    letter-spacing: -0.01em;
   }
-  .htp-list-sub {
-    font-size: 0.78rem;
-    color: rgba(255,255,255,0.42);
-    line-height: 1.4;
-  }
-  .htp-list-price {
-    font-family: var(--font-display);
-    font-size: 0.7rem;
-    color: rgba(255,255,255,0.3);
-    flex-shrink: 0;
-    text-align: right;
-    line-height: 1.3;
-  }
-
-  /* Frog card rows — side by side with big visual */
-  .htp-frog-card {
-    margin-top: 20px;
-    border-radius: 16px;
-    overflow: hidden;
-    border: 1px solid rgba(255,255,255,0.07);
-    background: rgba(255,255,255,0.03);
-    padding: 18px 18px;
-    display: flex;
-    gap: 16px;
-    align-items: center;
-  }
-  .htp-frog-card + .htp-frog-card { margin-top: 10px; }
-  .htp-frog-svg { flex-shrink: 0; }
-  .htp-frog-text { flex: 1; }
-  .htp-frog-name {
-    font-family: var(--font-display);
-    font-size: 0.88rem;
-    font-weight: 700;
-    letter-spacing: 0.04em;
-    color: #fff;
-    margin-bottom: 4px;
-  }
-  .htp-frog-desc {
-    font-size: 0.82rem;
-    color: rgba(255,255,255,0.5);
-    line-height: 1.45;
-  }
-
-  .htp-tip {
-    margin-top: 16px;
-    background: rgba(255,255,255,0.04);
-    border: 1px solid rgba(255,255,255,0.08);
-    border-radius: 12px;
-    padding: 13px 16px;
+  .htp-power-desc {
+    font-family: var(--font-body);
     font-size: 0.82rem;
     color: rgba(255,255,255,0.45);
-    line-height: 1.5;
+    line-height: 1.35;
   }
-  .htp-tip strong { color: rgba(255,255,255,0.8); }
+  .htp-power-pill {
+    font-family: var(--font-display);
+    font-size: 0.48rem;
+    letter-spacing: 0.12em;
+    padding: 2px 7px;
+    border-radius: 20px;
+    flex-shrink: 0;
+  }
+  .htp-pill-solo { background:rgba(204,18,18,0.15); color:#ff6b6b; border:1px solid rgba(204,18,18,0.3); }
+  .htp-pill-duo  { background:rgba(155,48,255,0.15); color:#c084fc; border:1px solid rgba(155,48,255,0.3); }
 
-  /* Solo/Duo screen powers section */
+  /* Last section extra bottom padding for the scroll */
+  .htp-section:last-child { padding-bottom: 52px; }
+
+    /* Solo/Duo screen powers section */
   .screen-powers-section {
     padding: 18px 16px 0;
     width: 100%;
@@ -2930,72 +2965,96 @@
     <div class="howto-handle"></div>
     <button class="howto-close" onclick="closeHowTo()">✕</button>
 
-    <!-- ── HERO ───────────────────────────────────────────────────── -->
-    <div class="htp-hero">
-      <div class="htp-hero-label">Croakdown</div>
-      <div class="htp-hero-title">Drop tiles.<br>Clear rows.<br>Survive.</div>
-      <div class="htp-hero-body">Drag pieces from your tray onto the board. Fill a complete row or column to clear it. The frogs are watching — and they're not rooting for you.</div>
+    <!-- Full-bleed hero artwork -->
+    <div class="htp-artwork" style="padding:0;margin:0;">
+      <svg viewBox="0 0 390 292" width="390" height="292" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Dark background -->
+  <rect width="390" height="292" fill="#0a0000"/>
+  <!-- Gradient overlay bottom -->
+  <defs>
+    <linearGradient id="hg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#000" stop-opacity="0"/>
+      <stop offset="100%" stop-color="#000" stop-opacity="0.95"/>
+    </linearGradient>
+    <linearGradient id="rg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#CC1212" stop-opacity="0.25"/>
+      <stop offset="100%" stop-color="#000" stop-opacity="0"/>
+    </linearGradient>
+  </defs>
+  <!-- Red glow top left -->
+  <rect width="390" height="292" fill="url(#rg)"/>
+  <!-- Grid of tiles — scattered, colourful -->
+  <!-- Row 1 -->
+  <rect x="12" y="14" width="48" height="48" rx="10" fill="#CC1212" opacity="0.85"/>
+  <rect x="68" y="14" width="48" height="48" rx="10" fill="#1a1a1a" opacity="0.6"/>
+  <rect x="124" y="14" width="48" height="48" rx="10" fill="#F5A623" opacity="0.8"/>
+  <rect x="180" y="14" width="48" height="48" rx="10" fill="#1a1a1a" opacity="0.6"/>
+  <rect x="236" y="14" width="48" height="48" rx="10" fill="#CC1212" opacity="0.7"/>
+  <rect x="292" y="14" width="48" height="48" rx="10" fill="#F5E000" opacity="0.75"/>
+  <rect x="348" y="14" width="36" height="48" rx="10" fill="#1a1a1a" opacity="0.5"/>
+  <!-- Row 2 -->
+  <rect x="12" y="70" width="48" height="48" rx="10" fill="#1a1a1a" opacity="0.5"/>
+  <rect x="68" y="70" width="48" height="48" rx="10" fill="#CC1212" opacity="0.9"/>
+  <rect x="124" y="70" width="48" height="48" rx="10" fill="#1a1a1a" opacity="0.6"/>
+  <rect x="180" y="70" width="48" height="48" rx="10" fill="#F5E000" opacity="0.8"/>
+  <rect x="236" y="70" width="48" height="48" rx="10" fill="#1a1a1a" opacity="0.5"/>
+  <rect x="292" y="70" width="48" height="48" rx="10" fill="#F5A623" opacity="0.7"/>
+  <rect x="348" y="70" width="36" height="48" rx="10" fill="#CC1212" opacity="0.6"/>
+  <!-- Row 3 -->
+  <rect x="12" y="126" width="48" height="48" rx="10" fill="#F5A623" opacity="0.75"/>
+  <rect x="68" y="126" width="48" height="48" rx="10" fill="#1a1a1a" opacity="0.6"/>
+  <rect x="124" y="126" width="48" height="48" rx="10" fill="#CC1212" opacity="0.8"/>
+  <rect x="180" y="126" width="48" height="48" rx="10" fill="#1a1a1a" opacity="0.5"/>
+  <rect x="236" y="126" width="48" height="48" rx="10" fill="#CC1212" opacity="0.7"/>
+  <rect x="292" y="126" width="48" height="48" rx="10" fill="#1a1a1a" opacity="0.6"/>
+  <rect x="348" y="126" width="36" height="48" rx="10" fill="#F5E000" opacity="0.65"/>
+  <!-- Row 4 (fading) -->
+  <rect x="12" y="182" width="48" height="48" rx="10" fill="#1a1a1a" opacity="0.3"/>
+  <rect x="68" y="182" width="48" height="48" rx="10" fill="#CC1212" opacity="0.4"/>
+  <rect x="124" y="182" width="48" height="48" rx="10" fill="#1a1a1a" opacity="0.25"/>
+  <rect x="180" y="182" width="48" height="48" rx="10" fill="#F5A623" opacity="0.35"/>
+  <rect x="236" y="182" width="48" height="48" rx="10" fill="#1a1a1a" opacity="0.2"/>
+  <rect x="292" y="182" width="48" height="48" rx="10" fill="#CC1212" opacity="0.3"/>
+  <!-- Row clear flash — red line across row 2 -->
+  <rect x="0" y="70" width="390" height="48" rx="0" fill="#CC1212" opacity="0.12"/>
+  <rect x="0" y="70" width="390" height="2" fill="#CC1212" opacity="0.6"/>
+  <rect x="0" y="116" width="390" height="2" fill="#CC1212" opacity="0.6"/>
+  <!-- Gradient overlay bottom -->
+  <rect width="390" height="292" fill="url(#hg)"/>
+  <!-- "ROW CLEAR" label on the flash row -->
+  <text x="195" y="101" text-anchor="middle" font-family="sans-serif" font-size="11" font-weight="700" letter-spacing="3" fill="#CC1212" opacity="0.9">ROW CLEAR</text>
+</svg>
     </div>
 
-    <!-- ── CHOOSE YOUR GAME ───────────────────────────────────────── -->
-    <div class="htp-feature">
-      <div class="htp-feature-label">Solo Play</div>
-      <div class="htp-feature-title">Four ways<br>to play.</div>
-      <div class="htp-feature-body">Start free with Tadpole. Unlock faster, wilder modes as you level up.</div>
-
-      <div class="htp-list">
-        <div class="htp-list-row">
-          <div class="htp-list-icon">🥚</div>
-          <div class="htp-list-body">
-            <div class="htp-list-name" style="color:#999">Tadpole</div>
-            <div class="htp-list-sub">Classic. Clear rows, beat your best score.</div>
-          </div>
-          <div class="htp-list-price">Free 7 days<br>→ £0.99/yr</div>
-        </div>
-        <div class="htp-list-row">
-          <div class="htp-list-icon">🐸</div>
-          <div class="htp-list-body">
-            <div class="htp-list-name" style="color:#F5A623">Tree Frog</div>
-            <div class="htp-list-sub">Frenzy — race a countdown timer.</div>
-          </div>
-          <div class="htp-list-price">£2.99/yr</div>
-        </div>
-        <div class="htp-list-row">
-          <div class="htp-list-icon">☠️</div>
-          <div class="htp-list-body">
-            <div class="htp-list-name" style="color:#CC1212">Poison Dart</div>
-            <div class="htp-list-sub">Survival — tiles vanish. How long can you last?</div>
-          </div>
-          <div class="htp-list-price">£4.99/yr</div>
-        </div>
-        <div class="htp-list-row">
-          <div class="htp-list-icon">🌟</div>
-          <div class="htp-list-body">
-            <div class="htp-list-name" style="color:#F5E000">Golden Frog</div>
-            <div class="htp-list-sub">Colour Run + all modes. Everything unlocked.</div>
-          </div>
-          <div class="htp-list-price">£7.99/yr</div>
-        </div>
-        <div class="htp-list-row" style="background:rgba(155,48,255,0.06);">
-          <div class="htp-list-icon">👫</div>
-          <div class="htp-list-body">
-            <div class="htp-list-name" style="color:#c084fc">Duo Mode</div>
-            <div class="htp-list-sub">Play a friend live — Race, Tile Attack, Survival Duel.</div>
-          </div>
-          <div class="htp-list-price" style="color:#c084fc;">£4.99/mo</div>
-        </div>
-      </div>
+    <!-- Intro editorial text -->
+    <div class="htp-intro">
+      <div class="htp-intro-kicker">How to Play</div>
+      <div class="htp-intro-headline">Croakdown is a tile-dropping puzzle game where every move matters.</div>
+      <div class="htp-intro-body">Drag pieces from your tray onto the board. Fill a complete row or column and it clears — scoring you points and buying you space. Run out of room and it's over. The frogs make sure of that.</div>
     </div>
 
-    <!-- ── THE FROGS ──────────────────────────────────────────────── -->
-    <div class="htp-feature">
-      <div class="htp-feature-label">The Frogs</div>
-      <div class="htp-feature-title">They're here<br>to keep you honest.</div>
-      <div class="htp-feature-body">Two frogs visit during your game. One makes life harder. One helps when you need it most.</div>
+    <!-- ── SECTION: The Modes ───────────────────────────────────── -->
+    <div class="htp-section">
+      <div class="htp-section-headline">Four modes, one obsession.</div>
+      <div class="htp-section-body">Start with <strong style="color:#fff">Tadpole</strong> — the free classic. Clear rows at your own pace and chase your best score. When you're ready for more, unlock <strong style="color:#F5A623">Tree Frog</strong> and race a countdown in Frenzy mode. Things get frantic fast.</div>
+      <div class="htp-section-body"><strong style="color:#CC1212">Poison Dart</strong> flips the board on you — tiles vanish over time whether you clear them or not. Survival is the only goal. And if you want everything, <strong style="color:#F5E000">Golden Frog</strong> unlocks all four modes including Colour Run, where matching colours chain into massive clears.</div>
+    </div>
 
-      <div class="htp-frog-card">
-        <div class="htp-frog-svg">
-          <svg viewBox="0 0 40 40" width="64" height="64" fill="none">
+    <!-- ── SECTION: Duo ─────────────────────────────────────────── -->
+    <div class="htp-section">
+      <div class="htp-section-headline">Better with a rival.</div>
+      <div class="htp-section-body">Duo Mode lets you play against a friend in real time — from anywhere in the world. Pick your battleground: a straight <strong style="color:#fff">Race</strong> to 10 cleared rows, a brutal <strong style="color:#E62298">Tile Attack</strong> where clearing rows sends glitch tiles straight to their board, or a <strong style="color:#00C5CD">Survival Duel</strong> on a shared board where you take turns.</div>
+      <div class="htp-section-body" style="color:rgba(255,255,255,0.4);font-size:0.88rem;">Duo Pack · £4.99/month per player</div>
+    </div>
+
+    <!-- ── SECTION: The Frogs ───────────────────────────────────── -->
+    <div class="htp-section">
+      <div class="htp-section-headline">The frogs aren't just decoration.</div>
+      <div class="htp-section-body">Two frogs visit while you play. You don't control when they show up — that's the point.</div>
+
+      <div class="htp-mid-visual">
+        <div class="htp-mid-frog">
+          <svg viewBox="0 0 40 40" width="72" height="72" fill="none">
             <ellipse cx="20" cy="28" rx="13" ry="9" fill="#CC1212"/>
             <ellipse cx="20" cy="19" rx="12" ry="8" fill="#E02020"/>
             <ellipse cx="20" cy="28" rx="9" ry="6" fill="#FF4444" opacity="0.35"/>
@@ -3012,15 +3071,15 @@
             <path d="M32 31 Q35 34 37 33" stroke="#CC1212" stroke-width="2.5" stroke-linecap="round"/>
           </svg>
         </div>
-        <div class="htp-frog-text">
-          <div class="htp-frog-name" style="color:#CC1212">Red Frog</div>
-          <div class="htp-frog-desc">Jumps across and drops extra tiles. Gets more aggressive the better you play.</div>
+        <div class="htp-mid-text">
+          <div class="htp-mid-name" style="color:#CC1212">Red Frog</div>
+          <div class="htp-mid-sub">Hops across and drops extra tiles onto your board. The better you play, the more it punishes you.</div>
         </div>
       </div>
 
-      <div class="htp-frog-card">
-        <div class="htp-frog-svg">
-          <svg viewBox="0 0 40 40" width="64" height="64" fill="none">
+      <div class="htp-mid-visual">
+        <div class="htp-mid-frog">
+          <svg viewBox="0 0 40 40" width="72" height="72" fill="none">
             <ellipse cx="20" cy="28" rx="13" ry="9" fill="#7B2FBE"/>
             <ellipse cx="20" cy="19" rx="12" ry="8" fill="#9B30FF"/>
             <ellipse cx="20" cy="28" rx="9" ry="6" fill="#C084FC" opacity="0.3"/>
@@ -3039,92 +3098,60 @@
             <circle cx="34" cy="22" r="0.8" fill="#C084FC" opacity="0.5"/>
           </svg>
         </div>
-        <div class="htp-frog-text">
-          <div class="htp-frog-name" style="color:#9B30FF">Purple Frog</div>
-          <div class="htp-frog-desc">Hops in when you're struggling and clears tiles. Shows up when you need it most.</div>
+        <div class="htp-mid-text">
+          <div class="htp-mid-name" style="color:#9B30FF">Purple Frog</div>
+          <div class="htp-mid-sub">Visits when you're struggling. Clears a cluster of tiles and disappears. Don't get too comfortable.</div>
         </div>
       </div>
 
-      <div class="htp-tip">
-        <strong>Toggle in Settings</strong> — Red Frog, Purple Frog, and Frog Commentary each have their own switch.
-      </div>
+      <div class="htp-caption">Toggle both frogs — and their commentary — independently in ⚙ Settings.</div>
     </div>
 
-    <!-- ── MAGIC POWERS ───────────────────────────────────────────── -->
-    <div class="htp-feature">
-      <div class="htp-feature-label">Magic Powers</div>
-      <div class="htp-feature-title">Supercharge<br>your game.</div>
-      <div class="htp-feature-body">Five solo powers and two Duo-only powers. Unlock any for £0.99/yr — each usable up to 3 times per 30 seconds, then auto-refills.</div>
+    <!-- ── SECTION: Magic Powers ────────────────────────────────── -->
+    <div class="htp-section">
+      <div class="htp-section-headline">Magic Powers give you an edge — when you need one most.</div>
+      <div class="htp-section-body">Unlock any power for £0.99/yr. During a game, tap the power button to activate. Each refills automatically after 30 seconds, and you get up to 3 uses per window.</div>
 
-      <!-- SOLO header -->
-      <div style="font-family:var(--font-display);font-size:0.58rem;letter-spacing:0.18em;text-transform:uppercase;color:rgba(204,18,18,0.7);margin:18px 0 6px;font-weight:700;">Solo Powers</div>
-      <div class="htp-list">
-        <div class="htp-list-row">
-          <div class="htp-list-icon">🔥</div>
-          <div class="htp-list-body">
-            <div class="htp-list-name">Fire Blast</div>
-            <div class="htp-list-sub">Burns away the fullest row instantly.</div>
-          </div>
-          <div style="font-family:var(--font-display);font-size:0.5rem;letter-spacing:0.1em;padding:2px 7px;border-radius:20px;background:rgba(204,18,18,0.15);color:#ff6b6b;border:1px solid rgba(204,18,18,0.3);flex-shrink:0;">SOLO</div>
-        </div>
-        <div class="htp-list-row">
-          <div class="htp-list-icon">🧙</div>
-          <div class="htp-list-body">
-            <div class="htp-list-name">Magician</div>
-            <div class="htp-list-sub">Tap any row or column to vanish it.</div>
-          </div>
-          <div style="font-family:var(--font-display);font-size:0.5rem;letter-spacing:0.1em;padding:2px 7px;border-radius:20px;background:rgba(204,18,18,0.15);color:#ff6b6b;border:1px solid rgba(204,18,18,0.3);flex-shrink:0;">SOLO</div>
-        </div>
-        <div class="htp-list-row">
-          <div class="htp-list-icon">💣</div>
-          <div class="htp-list-body">
-            <div class="htp-list-name">Bomb</div>
-            <div class="htp-list-sub">Blast a 3×3 area around any tile.</div>
-          </div>
-          <div style="font-family:var(--font-display);font-size:0.5rem;letter-spacing:0.1em;padding:2px 7px;border-radius:20px;background:rgba(204,18,18,0.15);color:#ff6b6b;border:1px solid rgba(204,18,18,0.3);flex-shrink:0;">SOLO</div>
-        </div>
-        <div class="htp-list-row">
-          <div class="htp-list-icon">⭐</div>
-          <div class="htp-list-body">
-            <div class="htp-list-name">Star Clear</div>
-            <div class="htp-list-sub">Wipes every tile of one colour.</div>
-          </div>
-          <div style="font-family:var(--font-display);font-size:0.5rem;letter-spacing:0.1em;padding:2px 7px;border-radius:20px;background:rgba(204,18,18,0.15);color:#ff6b6b;border:1px solid rgba(204,18,18,0.3);flex-shrink:0;">SOLO</div>
-        </div>
-        <div class="htp-list-row">
-          <div class="htp-list-icon">🧊</div>
-          <div class="htp-list-body">
-            <div class="htp-list-name">Freeze</div>
-            <div class="htp-list-sub">Pauses frog spawns for 20 seconds.</div>
-          </div>
-          <div style="font-family:var(--font-display);font-size:0.5rem;letter-spacing:0.1em;padding:2px 7px;border-radius:20px;background:rgba(204,18,18,0.15);color:#ff6b6b;border:1px solid rgba(204,18,18,0.3);flex-shrink:0;">SOLO</div>
-        </div>
+      <div class="htp-power-group-label" style="color:rgba(255,100,100,0.7);">Solo Powers</div>
+      <div class="htp-power-row">
+        <div class="htp-power-emoji">🔥</div>
+        <div class="htp-power-info"><div class="htp-power-name">Fire Blast</div><div class="htp-power-desc">Burns away the fullest row instantly.</div></div>
+        <div class="htp-power-pill htp-pill-solo">SOLO</div>
+      </div>
+      <div class="htp-power-row">
+        <div class="htp-power-emoji">🧙</div>
+        <div class="htp-power-info"><div class="htp-power-name">Magician</div><div class="htp-power-desc">Tap any row or column to vanish it.</div></div>
+        <div class="htp-power-pill htp-pill-solo">SOLO</div>
+      </div>
+      <div class="htp-power-row">
+        <div class="htp-power-emoji">💣</div>
+        <div class="htp-power-info"><div class="htp-power-name">Bomb</div><div class="htp-power-desc">Blast a 3×3 area around any tile.</div></div>
+        <div class="htp-power-pill htp-pill-solo">SOLO</div>
+      </div>
+      <div class="htp-power-row">
+        <div class="htp-power-emoji">⭐</div>
+        <div class="htp-power-info"><div class="htp-power-name">Star Clear</div><div class="htp-power-desc">Wipes every tile of one colour from the board.</div></div>
+        <div class="htp-power-pill htp-pill-solo">SOLO</div>
+      </div>
+      <div class="htp-power-row">
+        <div class="htp-power-emoji">🧊</div>
+        <div class="htp-power-info"><div class="htp-power-name">Freeze</div><div class="htp-power-desc">Pauses frog spawns for 20 seconds.</div></div>
+        <div class="htp-power-pill htp-pill-solo">SOLO</div>
       </div>
 
-      <!-- DUO header -->
-      <div style="font-family:var(--font-display);font-size:0.58rem;letter-spacing:0.18em;text-transform:uppercase;color:rgba(155,48,255,0.8);margin:14px 0 6px;font-weight:700;">Duo Powers</div>
-      <div class="htp-list">
-        <div class="htp-list-row" style="background:rgba(155,48,255,0.05);">
-          <div class="htp-list-icon">🐸</div>
-          <div class="htp-list-body">
-            <div class="htp-list-name" style="color:#c084fc">Frog Bomb</div>
-            <div class="htp-list-sub">Scrambles your opponent's board.</div>
-          </div>
-          <div style="font-family:var(--font-display);font-size:0.5rem;letter-spacing:0.1em;padding:2px 7px;border-radius:20px;background:rgba(155,48,255,0.15);color:#c084fc;border:1px solid rgba(155,48,255,0.3);flex-shrink:0;">DUO</div>
-        </div>
-        <div class="htp-list-row" style="background:rgba(155,48,255,0.05);">
-          <div class="htp-list-icon">🌀</div>
-          <div class="htp-list-body">
-            <div class="htp-list-name" style="color:#c084fc">Scramble</div>
-            <div class="htp-list-sub">Reshuffles your opponent's tray pieces.</div>
-          </div>
-          <div style="font-family:var(--font-display);font-size:0.5rem;letter-spacing:0.1em;padding:2px 7px;border-radius:20px;background:rgba(155,48,255,0.15);color:#c084fc;border:1px solid rgba(155,48,255,0.3);flex-shrink:0;">DUO</div>
-        </div>
+      <div class="htp-power-group-label" style="color:rgba(192,132,252,0.8);margin-top:24px;">Duo Powers</div>
+      <div class="htp-power-row">
+        <div class="htp-power-emoji">🐸</div>
+        <div class="htp-power-info"><div class="htp-power-name">Frog Bomb</div><div class="htp-power-desc">Scrambles your opponent's board.</div></div>
+        <div class="htp-power-pill htp-pill-duo">DUO</div>
+      </div>
+      <div class="htp-power-row">
+        <div class="htp-power-emoji">🌀</div>
+        <div class="htp-power-info"><div class="htp-power-name">Scramble</div><div class="htp-power-desc">Reshuffles your opponent's tray pieces.</div></div>
+        <div class="htp-power-pill htp-pill-duo">DUO</div>
       </div>
 
-      <div class="htp-tip">
-        Tap <strong>🛒 Shop</strong> on the home screen to browse and unlock powers. £0.99/yr each.
-      </div>
+      <div class="htp-caption" style="margin-top:16px;">Tap 🛒 Shop on the home screen to unlock any power.</div>
     </div>
 
   </div>
