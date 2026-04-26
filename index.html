@@ -992,6 +992,7 @@
       background: var(--black2);
       border: 1px solid var(--border-strong);
       border-top: 3px solid var(--red);
+      -webkit-overflow-scrolling: touch;
       border-radius: var(--radius);
       width: min(500px, 95vw);
       max-height: 88vh;
@@ -2340,35 +2341,42 @@
   /* ── How to Play overlay ── */
   #howto-overlay {
     position: fixed; inset: 0; z-index: 9999;
-    background: rgba(0,0,0,0.85);
+    background: rgba(0,0,0,0.7);
+    -webkit-backdrop-filter: blur(8px);
+    backdrop-filter: blur(8px);
     display: flex; align-items: flex-end; justify-content: center;
     padding: 0;
     opacity: 0; pointer-events: none;
-    transition: opacity 0.25s;
+    transition: opacity 0.28s;
   }
   #howto-overlay.open { opacity: 1; pointer-events: all; }
   #howto-sheet {
     background: #111;
-    border-radius: 24px 24px 0 0;
+    border-radius: 28px 28px 0 0;
     width: 100%; max-width: 480px;
-    max-height: 88vh;
+    max-height: 90vh;
     overflow-y: auto;
-    padding: 0 0 40px;
-    transform: translateY(30px);
-    transition: transform 0.28s cubic-bezier(.22,1,.36,1);
+    -webkit-overflow-scrolling: touch;
+    padding: 0 0 48px;
+    transform: translateY(40px);
+    transition: transform 0.32s cubic-bezier(.22,1,.36,1);
+    box-shadow: 0 -4px 40px rgba(0,0,0,0.6);
   }
   #howto-overlay.open #howto-sheet { transform: translateY(0); }
   .howto-handle {
-    width: 40px; height: 4px; border-radius: 2px;
-    background: rgba(255,255,255,0.15);
-    margin: 14px auto 20px;
+    width: 36px; height: 5px; border-radius: 3px;
+    background: rgba(255,255,255,0.22);
+    margin: 12px auto 22px;
   }
   .howto-close {
-    position: absolute; top: 16px; right: 20px;
-    background: rgba(255,255,255,0.08); border: none; color: #fff;
-    width: 32px; height: 32px; border-radius: 50%; font-size: 1rem;
+    position: absolute; top: 16px; right: 18px;
+    background: rgba(255,255,255,0.10);
+    border: none; color: rgba(255,255,255,0.75);
+    width: 30px; height: 30px; border-radius: 50%; font-size: 0.9rem;
     cursor: pointer; display: flex; align-items: center; justify-content: center;
+    transition: background 0.15s;
   }
+  .howto-close:hover { background: rgba(255,255,255,0.18); }
   #howto-sheet { position: relative; }
   .howto-section {
     padding: 0 16px; margin-bottom: 20px;
@@ -2376,10 +2384,10 @@
   /* Section headers — bright, readable */
   .howto-section-title {
     font-family: var(--font-display);
-    font-size: 0.65rem; letter-spacing: 0.2em;
-    color: #fff; text-transform: uppercase;
-    border-bottom: 1px solid rgba(255,255,255,0.12);
-    padding-bottom: 10px; margin-bottom: 14px;
+    font-size: 0.6rem; letter-spacing: 0.22em;
+    color: rgba(255,255,255,0.55); text-transform: uppercase;
+    border-bottom: 1px solid rgba(255,255,255,0.08);
+    padding-bottom: 9px; margin-bottom: 14px;
     display: flex; align-items: center; gap: 8px;
   }
   .howto-section-title .hst-accent {
@@ -2467,37 +2475,120 @@
   }
   .howto-settings-tip strong { color: rgba(255,255,255,0.8); }
 
-  /* Power rows */
-  .howto-power-row {
-    display: flex; align-items: center; gap: 12px;
-    padding: 10px 0; border-bottom: 1px solid rgba(255,255,255,0.05);
+  /* ── Power carousel ─────────────────────────────────────────────────────── */
+  .power-carousel-wrap {
+    position: relative;
+    margin: 0 -4px;
   }
-  .howto-power-row:last-child { border-bottom: none; }
-  .howto-power-icon {
-    font-size: 1.4rem; flex-shrink: 0; width: 32px; text-align: center;
+  .power-carousel {
+    display: flex;
+    gap: 10px;
+    overflow-x: auto;
+    overflow-y: hidden;
+    scroll-snap-type: x mandatory;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    padding: 4px 4px 10px;
+    cursor: grab;
   }
-  .howto-power-body { flex: 1; min-width: 0; }
-  .howto-power-name {
-    font-family: var(--font-display); font-size: 0.78rem;
-    font-weight: 700; letter-spacing: 0.08em; color: #fff; margin-bottom: 1px;
+  .power-carousel:active { cursor: grabbing; }
+  .power-carousel::-webkit-scrollbar { display: none; }
+  .power-card {
+    flex: 0 0 148px;
+    scroll-snap-align: start;
+    background: rgba(255,255,255,0.04);
+    border: 1.5px solid color-mix(in srgb, var(--pc,#888) 35%, transparent);
+    border-radius: 18px;
+    padding: 14px 12px 12px;
+    position: relative;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    transition: border-color 0.15s;
+    /* iOS-style card depth */
+    box-shadow: 0 2px 12px rgba(0,0,0,0.35), inset 0 0 0 0.5px rgba(255,255,255,0.06);
   }
-  .howto-power-desc { font-size: 0.71rem; color: rgba(255,255,255,0.45); line-height: 1.35; }
-  .howto-power-right {
-    display: flex; flex-direction: column; align-items: flex-end; gap: 4px; flex-shrink: 0;
+  .power-card::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(145deg, color-mix(in srgb, var(--pc,#888) 14%, transparent) 0%, transparent 55%);
+    border-radius: inherit;
+    pointer-events: none;
   }
-  .howto-power-price {
-    font-family: var(--font-display); font-size: 0.72rem;
-    font-weight: 700; color: #F7C948; letter-spacing: 0.04em;
+  .power-card-icon {
+    font-size: 2rem;
+    line-height: 1;
+    margin-bottom: 2px;
   }
-  .howto-power-tag {
-    font-family: var(--font-display); font-size: 0.55rem; letter-spacing: 0.12em;
-    padding: 2px 8px; border-radius: 8px; display: inline-block;
+  .power-card-name {
+    font-family: var(--font-display);
+    font-size: 0.76rem;
+    font-weight: 700;
+    letter-spacing: 0.07em;
+    color: #fff;
+    line-height: 1.1;
+  }
+  .power-card-desc {
+    font-size: 0.67rem;
+    color: rgba(255,255,255,0.48);
+    line-height: 1.38;
+    flex: 1;
+  }
+  .power-card-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-top: 2px;
+  }
+  .power-card-price {
+    font-family: var(--font-display);
+    font-size: 0.68rem;
+    font-weight: 700;
+    color: #F7C948;
+    letter-spacing: 0.03em;
+  }
+  .power-card-tag {
+    font-family: var(--font-display);
+    font-size: 0.5rem;
+    letter-spacing: 0.12em;
+    padding: 2px 7px;
+    border-radius: 20px;
+    display: inline-block;
+  }
+  .ptag-solo {
+    background: rgba(204,18,18,0.18);
+    color: #ff6b6b;
+    border: 1px solid rgba(204,18,18,0.35);
+  }
+  .ptag-duo {
+    background: rgba(155,48,255,0.18);
+    color: #c084fc;
+    border: 1px solid rgba(155,48,255,0.35);
+  }
+  /* scroll dots */
+  .power-carousel-dots {
+    display: flex;
+    justify-content: center;
+    gap: 5px;
+    margin-top: 2px;
+  }
+  .pcd {
+    width: 5px; height: 5px;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.15);
+    transition: background 0.2s, transform 0.2s;
+  }
+  .pcd.active {
+    background: #F7C948;
+    transform: scale(1.2);
   }
   .htag-solo { background: rgba(204,18,18,0.15); color: #ff6666; border: 1px solid rgba(204,18,18,0.3); }
   .htag-duo  { background: rgba(155,48,255,0.15); color: #c084fc; border: 1px solid rgba(155,48,255,0.3); }
   .howto-shop-note {
     background: rgba(247,201,72,0.07); border: 1px solid rgba(247,201,72,0.2);
-    border-radius: 12px; padding: 12px 16px; margin-top: 10px;
+    border-radius: 14px; padding: 12px 16px; margin-top: 10px;
     font-size: 0.73rem; color: rgba(255,255,255,0.5); line-height: 1.5;
   }
   .howto-shop-note strong { color: #F7C948; }
@@ -2642,6 +2733,7 @@
       <button id="btn-solo" class="home-btn-solo">SOLO PLAY</button>
       <button id="btn-duo-mode" class="home-btn-duo">DUO MODE</button>
       <button id="btn-how-to-play" class="home-btn-howto">? HOW TO PLAY</button>
+      <button id="btn-shop-home" class="home-btn-howto" style="border-color:rgba(247,201,72,0.5);color:#F7C948;">🛒 SHOP — MAGIC POWERS</button>
       <p class="home-tap-hint">Tap to learn more</p>
     </div>
 
@@ -2774,92 +2866,100 @@
         ⚡ Magic Powers
       </div>
 
-      <div class="howto-power-row">
-        <div class="howto-power-icon">🔥</div>
-        <div class="howto-power-body">
-          <div class="howto-power-name">Fire Blast</div>
-          <div class="howto-power-desc">Burns away the fullest row instantly.</div>
-        </div>
-        <div class="howto-power-right">
-          <div class="howto-power-price">£0.99/yr</div>
-          <span class="howto-power-tag htag-solo">SOLO</span>
-        </div>
-      </div>
+      <div class="power-carousel-wrap">
+        <div class="power-carousel" id="power-carousel">
 
-      <div class="howto-power-row">
-        <div class="howto-power-icon">🧙</div>
-        <div class="howto-power-body">
-          <div class="howto-power-name">Magician</div>
-          <div class="howto-power-desc">Tap a row or column to vanish it — poof.</div>
-        </div>
-        <div class="howto-power-right">
-          <div class="howto-power-price">£0.99/yr</div>
-          <span class="howto-power-tag htag-solo">SOLO</span>
-        </div>
-      </div>
+          <!-- Fire Blast -->
+          <div class="power-card" style="--pc:#FF6B2B">
+            <div class="power-card-icon">🔥</div>
+            <div class="power-card-name">Fire Blast</div>
+            <div class="power-card-desc">Burns away the fullest row instantly.</div>
+            <div class="power-card-footer">
+              <span class="power-card-price">£0.99/yr</span>
+              <span class="power-card-tag ptag-solo">SOLO</span>
+            </div>
+          </div>
 
-      <div class="howto-power-row">
-        <div class="howto-power-icon">💣</div>
-        <div class="howto-power-body">
-          <div class="howto-power-name">Bomb</div>
-          <div class="howto-power-desc">Tap a cell to blast a 3×3 area.</div>
-        </div>
-        <div class="howto-power-right">
-          <div class="howto-power-price">£0.99/yr</div>
-          <span class="howto-power-tag htag-solo">SOLO</span>
-        </div>
-      </div>
+          <!-- Magician -->
+          <div class="power-card" style="--pc:#A78BFA">
+            <div class="power-card-icon">🧙</div>
+            <div class="power-card-name">Magician</div>
+            <div class="power-card-desc">Tap a row or column to vanish it — poof.</div>
+            <div class="power-card-footer">
+              <span class="power-card-price">£0.99/yr</span>
+              <span class="power-card-tag ptag-solo">SOLO</span>
+            </div>
+          </div>
 
-      <div class="howto-power-row">
-        <div class="howto-power-icon">⭐</div>
-        <div class="howto-power-body">
-          <div class="howto-power-name">Star Clear</div>
-          <div class="howto-power-desc">Wipes every tile of one colour from the board.</div>
-        </div>
-        <div class="howto-power-right">
-          <div class="howto-power-price">£0.99/yr</div>
-          <span class="howto-power-tag htag-solo">SOLO</span>
-        </div>
-      </div>
+          <!-- Bomb -->
+          <div class="power-card" style="--pc:#F87171">
+            <div class="power-card-icon">💣</div>
+            <div class="power-card-name">Bomb</div>
+            <div class="power-card-desc">Tap a cell to blast a 3×3 area.</div>
+            <div class="power-card-footer">
+              <span class="power-card-price">£0.99/yr</span>
+              <span class="power-card-tag ptag-solo">SOLO</span>
+            </div>
+          </div>
 
-      <div class="howto-power-row">
-        <div class="howto-power-icon">🧊</div>
-        <div class="howto-power-body">
-          <div class="howto-power-name">Freeze</div>
-          <div class="howto-power-desc">Pauses frog spawns for 20 seconds.</div>
-        </div>
-        <div class="howto-power-right">
-          <div class="howto-power-price">£0.99/yr</div>
-          <span class="howto-power-tag htag-solo">SOLO</span>
-        </div>
-      </div>
+          <!-- Star Clear -->
+          <div class="power-card" style="--pc:#FBBF24">
+            <div class="power-card-icon">⭐</div>
+            <div class="power-card-name">Star Clear</div>
+            <div class="power-card-desc">Wipes every tile of one colour from the board.</div>
+            <div class="power-card-footer">
+              <span class="power-card-price">£0.99/yr</span>
+              <span class="power-card-tag ptag-solo">SOLO</span>
+            </div>
+          </div>
 
-      <div class="howto-power-row">
-        <div class="howto-power-icon">🐸</div>
-        <div class="howto-power-body">
-          <div class="howto-power-name">Frog Bomb</div>
-          <div class="howto-power-desc">Scrambles your opponent’s board.</div>
-        </div>
-        <div class="howto-power-right">
-          <div class="howto-power-price">£0.99/yr</div>
-          <span class="howto-power-tag htag-duo">DUO</span>
-        </div>
-      </div>
+          <!-- Freeze -->
+          <div class="power-card" style="--pc:#38BDF8">
+            <div class="power-card-icon">🧊</div>
+            <div class="power-card-name">Freeze</div>
+            <div class="power-card-desc">Pauses frog spawns for 20 seconds.</div>
+            <div class="power-card-footer">
+              <span class="power-card-price">£0.99/yr</span>
+              <span class="power-card-tag ptag-solo">SOLO</span>
+            </div>
+          </div>
 
-      <div class="howto-power-row">
-        <div class="howto-power-icon">🌀</div>
-        <div class="howto-power-body">
-          <div class="howto-power-name">Scramble</div>
-          <div class="howto-power-desc">Reshuffles your opponent’s tray pieces.</div>
+          <!-- Frog Bomb -->
+          <div class="power-card" style="--pc:#34D399">
+            <div class="power-card-icon">🐸</div>
+            <div class="power-card-name">Frog Bomb</div>
+            <div class="power-card-desc">Scrambles your opponent's board.</div>
+            <div class="power-card-footer">
+              <span class="power-card-price">£0.99/yr</span>
+              <span class="power-card-tag ptag-duo">DUO</span>
+            </div>
+          </div>
+
+          <!-- Scramble -->
+          <div class="power-card" style="--pc:#C084FC">
+            <div class="power-card-icon">🌀</div>
+            <div class="power-card-name">Scramble</div>
+            <div class="power-card-desc">Reshuffles your opponent's tray pieces.</div>
+            <div class="power-card-footer">
+              <span class="power-card-price">£0.99/yr</span>
+              <span class="power-card-tag ptag-duo">DUO</span>
+            </div>
+          </div>
+
+        </div><!-- /power-carousel -->
+        <div class="power-carousel-dots" id="power-carousel-dots">
+          <div class="pcd active"></div>
+          <div class="pcd"></div>
+          <div class="pcd"></div>
+          <div class="pcd"></div>
+          <div class="pcd"></div>
+          <div class="pcd"></div>
+          <div class="pcd"></div>
         </div>
-        <div class="howto-power-right">
-          <div class="howto-power-price">£0.99/yr</div>
-          <span class="howto-power-tag htag-duo">DUO</span>
-        </div>
-      </div>
+      </div><!-- /power-carousel-wrap -->
 
       <div class="howto-shop-note">
-        <strong>£0.99/year per power — unlimited use.</strong> Each power unlocks for a full year. While playing, you can use each power up to 3 times per 30-second window — then it refills automatically. One free bonus use resets daily. Buy from the Shop on the home screen.
+        <strong>£0.99/year per power — unlimited use.</strong> Each power unlocks for a full year. While playing, you can use each power up to 3 times per 30-second window — then it refills automatically. One free bonus use resets daily. Buy from the 🛒 Shop on the home screen.
       </div>
     </div>
 
@@ -7787,5 +7887,41 @@ function checkResumeOnHome() {
     <div class="glitch-frog-sub">Board over 50% — tiles added!</div>
   </div>
 </div>
+  <script>
+  /* ── Power carousel: drag-to-scroll + dot indicators ──────────────────── */
+  (function() {
+    var el = document.getElementById('power-carousel');
+    var dots = document.querySelectorAll('#power-carousel-dots .pcd');
+    if (!el) return;
+
+    // Dot sync
+    function updateDots() {
+      var cardW = 148 + 10; // card width + gap
+      var idx = Math.round(el.scrollLeft / cardW);
+      idx = Math.max(0, Math.min(idx, dots.length - 1));
+      dots.forEach(function(d, i) { d.classList.toggle('active', i === idx); });
+    }
+    el.addEventListener('scroll', updateDots, { passive: true });
+
+    // Drag to scroll (mouse)
+    var isDown = false, startX, scrollLeft;
+    el.addEventListener('mousedown', function(e) {
+      isDown = true;
+      el.style.cursor = 'grabbing';
+      startX = e.pageX - el.offsetLeft;
+      scrollLeft = el.scrollLeft;
+    });
+    document.addEventListener('mouseup', function() {
+      isDown = false;
+      if (el) el.style.cursor = 'grab';
+    });
+    el.addEventListener('mousemove', function(e) {
+      if (!isDown) return;
+      e.preventDefault();
+      var x = e.pageX - el.offsetLeft;
+      el.scrollLeft = scrollLeft - (x - startX) * 1.1;
+    });
+  })();
+  </script>
 </body>
 </html>
