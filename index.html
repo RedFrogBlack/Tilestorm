@@ -2701,6 +2701,27 @@
       </div>
       <div class="duo-status waiting" id="join-status">Enter the 4-letter code from your partner</div>
     </div>
+
+    <!-- OR divider before VS Frog -->
+    <div style="display:flex;align-items:center;gap:12px;width:100%;margin:6px 0;">
+      <div style="flex:1;height:1px;background:var(--border);"></div>
+      <div style="font-family:var(--font-display);font-size:0.6rem;letter-spacing:0.16em;color:var(--muted);">OR</div>
+      <div style="flex:1;height:1px;background:var(--border);"></div>
+    </div>
+
+    <!-- Play vs Frog (AI) panel -->
+    <div class="duo-panel" style="border-color:rgba(126,211,33,0.3);background:rgba(126,211,33,0.04);">
+      <div style="display:flex;align-items:center;gap:12px;margin-bottom:10px;">
+        <div style="width:44px;height:44px;background:rgba(126,211,33,0.12);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:1.6rem;border:1.5px solid rgba(126,211,33,0.3);">🐸</div>
+        <div>
+          <div style="font-family:var(--font-display);font-size:0.85rem;font-weight:700;letter-spacing:0.1em;color:#7ED321;">PLAY WITH A FROG</div>
+          <div style="font-size:0.65rem;color:rgba(255,255,255,0.35);margin-top:2px;">No partner needed</div>
+        </div>
+      </div>
+      <div style="font-size:0.72rem;color:rgba(255,255,255,0.4);line-height:1.5;margin-bottom:14px;">The Frog plays by itself and adapts to your pace &mdash; play faster and it keeps up, slow down and it gives you breathing room.</div>
+      <button onclick="startVsFrog()" style="width:100%;background:rgba(126,211,33,0.12);border:1.5px solid rgba(126,211,33,0.4);border-radius:12px;color:#7ED321;font-family:var(--font-display);font-size:0.9rem;font-weight:700;letter-spacing:0.15em;padding:14px;cursor:pointer;transition:background 0.2s;" onmouseover="this.style.background='rgba(126,211,33,0.22)'" onmouseout="this.style.background='rgba(126,211,33,0.12)'">🐸 CHALLENGE THE FROG</button>
+    </div>
+
   </div>
 </div>
 
@@ -3572,6 +3593,11 @@ function startGame(){
 function triggerGameOver(){
   stopChallengeMode();
   gameActive=false;playGameOver();hapticGameOver();
+  // VS Frog: player lost, frog wins
+  if (vsFrogActive) {
+    setTimeout(() => _endVsFrogGame('player_gameover'), 400);
+    return;
+  }
   recordGameEnd();
   document.getElementById('go-score-val').textContent=score.toLocaleString();
   const best=score>=bestScore&&score>0;
@@ -4373,10 +4399,264 @@ function endDuoGame(result) {
   showScreen('screen-gameover');
 }
 
+// ════════════════════════════════════════════════════════════════
+//  VS FROG — Adaptive AI Opponent
+//  Difficulty auto-adjusts to mirror the player's pace.
+//  Uses the same _placeTimes array that the vanish timer uses.
+// ════════════════════════════════════════════════════════════════
+
+let vsFrogActive = false;
+let _vsFrogGrid = [];          // AI's own 10×10 grid
+let _vsFrogLines = 0;          // AI's cleared lines
+let _vsFrogScore = 0;          // AI's score
+let _vsFrogTimer = null;       // setTimeout handle for next AI move
+let _vsFrogTray = [];          // AI's current 3 pieces
+let _vsFrogTrayUsed = [];
+
+const VS_FROG_WIN_LINES = 10;  // first to 10 lines wins (Race mode)
+
+// Get AI think-time in ms based on player pace
+function _vsFrogDelay() {
+  if (_placeTimes.length < 2) return 2800; // default: relaxed
+  const avg = _placeTimes.reduce((a,b) => a+b, 0) / _placeTimes.length;
+  // avg ms per piece: fast <1200, slow >5000
+  // AI delay: fast player → 900ms–1500ms, slow player → 2500ms–4500ms
+  const clamped = Math.max(1200, Math.min(avg, 5000));
+  const t = 900 + ((clamped - 1200) / 3800) * 3600;
+  // Add ±20% jitter so it feels natural
+  return Math.round(t * (0.8 + Math.random() * 0.4));
+}
+
+// AI difficulty: how smart is the placement choice
+function _vsFrogSmartness() {
+  if (_placeTimes.length < 2) return 0.4;
+  const avg = _placeTimes.reduce((a,b) => a+b, 0) / _placeTimes.length;
+  // fast player (<1500ms avg) → smartness 0.85, slow (>5000ms) → 0.25
+  const clamped = Math.max(1500, Math.min(avg, 5000));
+  return 0.85 - ((clamped - 1500) / 3500) * 0.6;
+}
+
+// Score a placement: how many neighbours are filled (higher = better packing)
+function _vsFrogScorePlacement(g, shape, r, c) {
+  let neighbours = 0;
+  shape.forEach(([dr, dc]) => {
+    const nr = r + dr, nc = c + dc;
+    [[1,0],[-1,0],[0,1],[0,-1]].forEach(([er, ec]) => {
+      const rr = nr+er, cc = nc+ec;
+      if (rr < 0 || rr >= ROWS || cc < 0 || cc >= COLS) { neighbours += 2; return; } // prefer edges
+      if (g[rr] && g[rr][cc] !== 0) neighbours++;
+    });
+  });
+  return neighbours;
+}
+
+function _vsFrogCanPlace(g, shape, r, c) {
+  return shape.every(([dr,dc]) => {
+    const nr=r+dr, nc=c+dc;
+    return nr>=0 && nr<ROWS && nc>=0 && nc<COLS && g[nr][nc]===0;
+  });
+}
+
+function _vsFrogPlaceShape(g, shape, r, c) {
+  shape.forEach(([dr,dc]) => { g[r+dr][c+dc] = Math.floor(Math.random()*6)+1; });
+}
+
+function _vsFrogClearLines(g) {
+  let cleared = 0;
+  // Rows
+  for (let r = ROWS-1; r >= 0; r--) {
+    if (g[r].every(v => v !== 0)) { g.splice(r,1); g.unshift(new Array(COLS).fill(0)); cleared++; r++; }
+  }
+  // Cols
+  for (let c = COLS-1; c >= 0; c--) {
+    if (g.every(row => row[c] !== 0)) { g.forEach(row => { row[c]=0; }); cleared++; }
+  }
+  return cleared;
+}
+
+function _vsFrogCheckGameOver(g, tray, used) {
+  for (let i=0; i<3; i++) {
+    if (used[i]) continue;
+    for (let r=0; r<ROWS; r++)
+      for (let c=0; c<COLS; c++)
+        if (_vsFrogCanPlace(g, tray[i].shape, r, c)) return false;
+  }
+  return true;
+}
+
+function _vsFrogGenerateTray() {
+  _vsFrogTray = [
+    {shape: randomPieceDiff()},
+    {shape: randomPieceDiff()},
+    {shape: randomPieceDiff()},
+  ];
+  _vsFrogTrayUsed = [false, false, false];
+}
+
+function _vsFrogDoMove() {
+  if (!vsFrogActive || !gameActive) return;
+
+  // Pick a piece to play
+  const available = [0,1,2].filter(i => !_vsFrogTrayUsed[i]);
+  if (available.length === 0) { _vsFrogGenerateTray(); }
+
+  const pieceIdx = available[Math.floor(Math.random() * available.length)];
+  const shape = _vsFrogTray[pieceIdx].shape;
+
+  // Find all valid placements
+  const valid = [];
+  for (let r=0; r<ROWS; r++)
+    for (let c=0; c<COLS; c++)
+      if (_vsFrogCanPlace(_vsFrogGrid, shape, r, c))
+        valid.push({ r, c, score: _vsFrogScorePlacement(_vsFrogGrid, shape, r, c) });
+
+  if (valid.length === 0) {
+    // This piece can't go anywhere — skip it
+    _vsFrogTrayUsed[pieceIdx] = true;
+    if (_vsFrogCheckGameOver(_vsFrogGrid, _vsFrogTray, _vsFrogTrayUsed)) {
+      _endVsFrogGame('player_wins');
+      return;
+    }
+    _vsFrogScheduleMove();
+    return;
+  }
+
+  // Smart vs random: based on player pace
+  const smartness = _vsFrogSmartness();
+  let chosen;
+  if (Math.random() < smartness) {
+    // Pick best-scoring placement
+    valid.sort((a,b) => b.score - a.score);
+    chosen = valid[0];
+  } else {
+    // Random placement
+    chosen = valid[Math.floor(Math.random() * valid.length)];
+  }
+
+  _vsFrogPlaceShape(_vsFrogGrid, shape, chosen.r, chosen.c);
+  _vsFrogTrayUsed[pieceIdx] = true;
+  const linesNow = _vsFrogClearLines(_vsFrogGrid);
+  _vsFrogLines += linesNow;
+  _vsFrogScore += linesNow * 120;
+
+  // Update opponent mini-board display
+  _vsFrogUpdateDisplay();
+
+  // Check win condition
+  if (_vsFrogLines >= VS_FROG_WIN_LINES) {
+    _endVsFrogGame('frog_wins');
+    return;
+  }
+
+  // Refill tray if all used
+  if (_vsFrogTrayUsed.every(u => u)) _vsFrogGenerateTray();
+
+  // Schedule next move
+  _vsFrogScheduleMove();
+}
+
+function _vsFrogScheduleMove() {
+  if (!vsFrogActive) return;
+  const delay = _vsFrogDelay();
+  _vsFrogTimer = setTimeout(_vsFrogDoMove, delay);
+}
+
+function _vsFrogUpdateDisplay() {
+  // Render frog's grid into the opponent mini-board
+  const opp = document.getElementById('opp-mini-board');
+  if (!opp) return;
+  // Score/lines display
+  const oppScoreEl = document.getElementById('opp-score');
+  const oppLinesEl = document.getElementById('opp-lines');
+  if (oppScoreEl) oppScoreEl.textContent = _vsFrogScore.toLocaleString();
+  if (oppLinesEl) oppLinesEl.textContent = _vsFrogLines + ' lines';
+  // Draw frog grid on canvas if present
+  const canvas = document.getElementById('opp-canvas');
+  if (!canvas) return;
+  const ctx2 = canvas.getContext('2d');
+  const cw = canvas.width / COLS, ch = canvas.height / ROWS;
+  ctx2.clearRect(0,0,canvas.width,canvas.height);
+  _vsFrogGrid.forEach((row,r) => row.forEach((v,c) => {
+    if (v) {
+      ctx2.fillStyle = getTileColor(v);
+      ctx2.fillRect(c*cw+1, r*ch+1, cw-2, ch-2);
+    }
+  }));
+}
+
+function startVsFrog() {
+  // Reset AI state
+  vsFrogActive = false;
+  clearTimeout(_vsFrogTimer);
+  _vsFrogGrid = Array.from({length:ROWS}, () => new Array(COLS).fill(0));
+  _vsFrogLines = 0;
+  _vsFrogScore = 0;
+  _vsFrogGenerateTray();
+
+  // Set duo context so the game knows it's in a duo-style race
+  duoGameActive = true;
+  duoMode = 'duel';
+  myDuoLines = 0;
+
+  // Show opponent board
+  const opp = document.getElementById('opp-mini-board');
+  if (opp) {
+    opp.classList.add('visible');
+    // Replace opponent name with Frog branding
+    const label = opp.querySelector('.opp-label');
+    if (label) label.textContent = '🐸 THE FROG';
+  }
+
+  vsFrogActive = true;
+  showScreen('screen-game');
+  startGame();
+
+  // Start AI after a short delay (let player see the board first)
+  setTimeout(() => {
+    showEventBanner('🐸 THE FROG IS READY — GO!');
+    _vsFrogScheduleMove();
+  }, 1200);
+}
+
+function stopVsFrog() {
+  vsFrogActive = false;
+  clearTimeout(_vsFrogTimer);
+  duoGameActive = false;
+  document.getElementById('opp-mini-board')?.classList.remove('visible');
+}
+
+function _endVsFrogGame(result) {
+  vsFrogActive = false;
+  clearTimeout(_vsFrogTimer);
+  duoGameActive = false;
+  gameActive = false;
+  document.getElementById('opp-mini-board')?.classList.remove('visible');
+
+  const msgs = {
+    player_wins: '🏆 YOU BEAT THE FROG!',
+    frog_wins:   '🐸 THE FROG WINS!',
+    player_gameover: '🐸 THE FROG OUTLASTED YOU!',
+  };
+  document.getElementById('go-score-val').textContent = score.toLocaleString();
+  document.getElementById('go-best-msg').textContent = msgs[result] || 'GAME OVER';
+  showScreen('screen-gameover');
+}
+
+// Hook into the existing duel win-check so VS Frog also ends on 10 lines
+const _origSendDuoUpdate_vsfrog = null; // handled via vsFrogActive flag in main update
+
 // Send updates to opponent during play
 function sendDuoUpdate() {
   if (!duoGameActive) return;
   wsSend({ type: 'update', score, lines: linesCleared, grid: grid.map(r => [...r]) });
+  // VS Frog: skip PeerJS, handle directly
+  if (vsFrogActive) {
+    if (linesCleared - myDuoLines >= VS_FROG_WIN_LINES) {
+      showEventBanner('🏆 YOU BEAT THE FROG!');
+      setTimeout(() => _endVsFrogGame('player_wins'), 1200);
+    }
+    return;
+  }
   // Duel win check for self
   if (duoMode === 'duel' && linesCleared - myDuoLines >= DUEL_WIN_LINES) {
     showEventBanner('🏆 YOU WIN! 10 ROWS CLEARED!');
@@ -4808,6 +5088,7 @@ function stopChallengeMode() {
 
 // ── Pause menu ───────────────────────────────────────────────────
 function openPause() {
+  if (vsFrogActive) clearTimeout(_vsFrogTimer); // pause frog AI
   gameActive = false;
   document.getElementById('pause-score-val').textContent = score.toLocaleString();
   document.getElementById('pause-level-val').textContent = level;
@@ -4817,6 +5098,7 @@ function openPause() {
 function closePause() {
   document.getElementById('pause-overlay').classList.add('hidden');
   gameActive = true;
+  if (vsFrogActive) _vsFrogScheduleMove(); // resume frog AI
 }
 
 // ── Penalty / Glitch functions ────────────────────────────────────
@@ -4913,6 +5195,7 @@ if (_quitYes) _quitYes.addEventListener('click', () => {
   const _qov = document.getElementById('quit-confirm-overlay');
   if (_qov) _qov.style.display = 'none';
   stopChallengeMode();
+  stopVsFrog();
   showScreen('screen-title');
 });
 const _quitNo = document.getElementById('btn-quit-no');
