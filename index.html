@@ -4106,8 +4106,11 @@ function getVanishDelay() {
 }
 
 function scheduleVanishIfHard(shape, baseR, baseC) {
-  if (currentDiff !== 'hard' && currentDiff !== 'expert') return;
+  // All difficulties get the vanish frog — easy/medium just get much longer delays
+  // so it's a rare surprise rather than a constant threat.
   const baseDelay = getVanishDelay();
+  // Difficulty multiplier: easy 3×, medium 1.7×, hard/expert 1×
+  const diffMult = currentDiff === 'easy' ? 3.0 : currentDiff === 'medium' ? 1.7 : 1.0;
   shape.forEach(([dr, dc], pieceIdx) => {
     const r = baseR + dr, c = baseC + dc;
     const key = r + ',' + c;
@@ -4116,7 +4119,7 @@ function scheduleVanishIfHard(shape, baseR, baseC) {
     // This prevents all tiles in one piece expiring simultaneously
     const jitter = (Math.random() - 0.5) * 0.5 * baseDelay; // ±25%
     const stagger = pieceIdx * 2500; // 2.5s apart within same piece
-    const delay = Math.max(15000, baseDelay + jitter + stagger);
+    const delay = Math.max(15000, (baseDelay + jitter + stagger) * diffMult);
     const t = setTimeout(() => {
       // Only vanish if game is still active and row is still incomplete
       if (!gameActive) { vanishTimers.delete(key); return; }
@@ -4148,12 +4151,13 @@ function clearVanishTimers() {
 let _adderFrogTimer = null;
 
 function getAdderFrogDelay() {
-  // 15s (fast player) → 35s (slow player), based on same pace samples as vanish
-  if (_placeTimes.length < 1) return 25000;
+  // Base: 15s (fast player) → 35s (slow player)
+  // Easy gets longer gaps so the frog feels like a fun visit, not pressure
+  const diffMult = currentDiff === 'easy' ? 2.2 : currentDiff === 'medium' ? 1.4 : 1.0;
+  if (_placeTimes.length < 1) return Math.round(25000 * diffMult);
   const avg = _placeTimes.reduce((a, b) => a + b, 0) / _placeTimes.length;
   const clamped = Math.max(1500, Math.min(avg, 6000));
-  // map 1500→15s, 6000→35s
-  return Math.round(15000 + ((clamped - 1500) / 4500) * 20000);
+  return Math.round((15000 + ((clamped - 1500) / 4500) * 20000) * diffMult);
 }
 
 function scheduleAdderFrog() {
