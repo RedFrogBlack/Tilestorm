@@ -3681,16 +3681,16 @@ function maybeHazard(){
   // Only trigger if grid is fairly full (player doing well)
   const totalFilled = grid.flat().filter(v=>v!==0).length;
   if(totalFilled < 20) return; // don't punish when barely started
-  // Eat 4–8 random tiles — not too many, just enough tension
-  const numEat = Math.floor(3 + Math.random() * 4);
-  const filled = [];
-  for(let r=0;r<ROWS;r++) for(let c=0;c<COLS;c++) if(grid[r][c]!==0) filled.push([r,c]);
-  shuffle(filled);
-  const toEat = filled.slice(0,numEat);
-  toEat.forEach(([r,c])=>grid[r][c]=0);
+  // Add 3-6 random tiles to empty spaces — makes it harder, not easier
+  const numAdd = Math.floor(3 + Math.random() * 4);
+  const empty = [];
+  for(let r=0;r<ROWS;r++) for(let c=0;c<COLS;c++) if(grid[r][c]===0) empty.push([r,c]);
+  shuffle(empty);
+  empty.slice(0, numAdd).forEach(([r,c]) => grid[r][c] = Math.floor(Math.random()*6)+1);
   flashHazard();
-  showEventBanner('👾  TILE GLITCH!');
+  showEventBanner('☠️  GLITCH FROG STRIKES!');
   drawGrid();
+  if(checkGameOver()) setTimeout(triggerGameOver, 400);
 }
 
 function shuffle(arr){
