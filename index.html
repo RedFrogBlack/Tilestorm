@@ -2849,7 +2849,10 @@
       <div id="challenge-hud-title"><span id="challenge-hud-icon">⚡</span> <span id="challenge-hud-text">FRENZY · CLEAR 2 LINES</span></div>
       <div id="challenge-hud-sub">1 / 2 cleared</div>
     </div>
-    <div id="challenge-hud-timer">25s</div>
+    <div style="display:flex;align-items:center;gap:8px;">
+      <button id="cr-flip-btn" onclick="toggleColourRunSplit()" style="display:none;background:rgba(247,201,72,0.12);border:1px solid rgba(247,201,72,0.4);border-radius:8px;color:#F7C948;font-family:var(--font-display);font-size:0.6rem;font-weight:700;letter-spacing:0.1em;padding:5px 10px;cursor:pointer;transition:all 0.15s;white-space:nowrap;">SPLIT 🗳</button>
+      <div id="challenge-hud-timer">25s</div>
+    </div>
   </div>
 
   <div class="game-area">
@@ -3671,6 +3674,53 @@ function drawGrid(){
     ctx.beginPath();ctx.moveTo(c*CELL,0);ctx.lineTo(c*CELL,H);ctx.stroke();
   }
 
+  // Colour Run split-board divider overlay
+  if (activeChallengeMode === 'colourrun' && cm_splitMode) {
+    const splitX = CR_SPLIT_COL * CELL;
+    // Glowing divider line
+    ctx.save();
+    ctx.strokeStyle = '#F7C948';
+    ctx.lineWidth = 2.5;
+    ctx.setLineDash([6, 4]);
+    ctx.globalAlpha = 0.55;
+    ctx.beginPath();
+    ctx.moveTo(splitX, 0);
+    ctx.lineTo(splitX, H);
+    ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.globalAlpha = 1;
+    // Left half tint
+    if (cm_splitLeftColor) {
+      const lc = getTileColor(cm_splitLeftColor);
+      const lcRgb = lc.replace('#','').match(/../g)?.map(x=>parseInt(x,16)) || [200,50,50];
+      ctx.fillStyle = `rgba(${lcRgb[0]},${lcRgb[1]},${lcRgb[2]},0.06)`;
+      ctx.beginPath(); ctx.roundRect(0, 0, splitX, H, 0); ctx.fill();
+      // Label
+      ctx.font = `bold ${CELL * 0.38}px var(--font-display, sans-serif)`;
+      ctx.fillStyle = lc;
+      ctx.globalAlpha = 0.45;
+      ctx.textAlign = 'center';
+      ctx.fillText((COLOR_NAMES[cm_splitLeftColor] || '').toUpperCase(), splitX / 2, H - CELL * 0.3);
+    }
+    // Right half tint
+    if (cm_splitRightColor) {
+      const rc = getTileColor(cm_splitRightColor);
+      const rcRgb = rc.replace('#','').match(/../g)?.map(x=>parseInt(x,16)) || [50,100,200];
+      ctx.globalAlpha = 0.06;
+      ctx.fillStyle = `rgba(${rcRgb[0]},${rcRgb[1]},${rcRgb[2]},1)`;
+      ctx.beginPath(); ctx.roundRect(splitX, 0, W - splitX, H, 0); ctx.fill();
+      // Label
+      ctx.font = `bold ${CELL * 0.38}px var(--font-display, sans-serif)`;
+      ctx.fillStyle = rc;
+      ctx.globalAlpha = 0.45;
+      ctx.textAlign = 'center';
+      ctx.fillText((COLOR_NAMES[cm_splitRightColor] || '').toUpperCase(), splitX + (W - splitX) / 2, H - CELL * 0.3);
+    }
+    ctx.globalAlpha = 1;
+    ctx.textAlign = 'left';
+    ctx.restore();
+  }
+
   // Bold corner bracket accents — tier colour
   const bLen=CELL*0.9, bW=2.5;
   ctx.strokeStyle=theme.corner;ctx.lineWidth=bW;ctx.lineCap='square';
@@ -3684,7 +3734,16 @@ function drawGrid(){
   if(dragging&&dragShape&&hoverCell){
     const{r,c}=hoverCell;
     const ok=canPlace(dragShape,r,c);
-    dragShape.forEach(([dr,dc])=>{const pr=r+dr,pc=c+dc;if(pr>=0&&pr<ROWS&&pc>=0&&pc<COLS)drawTile(pr,pc,ok?getTileColor(dragColor):'#CC1212',ok?0.42:0.18,ok,isGold);});
+    // In colour run split mode, also flag if colour is wrong for the half
+    let crWrongHalf = false;
+    if (ok && activeChallengeMode === 'colourrun' && cm_splitMode && (cm_splitLeftColor || cm_splitRightColor)) {
+      for (const [dr, dc] of dragShape) {
+        const pc = c + dc;
+        if (pc < CR_SPLIT_COL && cm_splitLeftColor && dragColor !== cm_splitLeftColor) { crWrongHalf = true; break; }
+        if (pc >= CR_SPLIT_COL && cm_splitRightColor && dragColor !== cm_splitRightColor) { crWrongHalf = true; break; }
+      }
+    }
+    dragShape.forEach(([dr,dc])=>{const pr=r+dr,pc=c+dc;if(pr>=0&&pr<ROWS&&pc>=0&&pc<COLS)drawTile(pr,pc,(ok&&!crWrongHalf)?getTileColor(dragColor):'#CC1212',(ok&&!crWrongHalf)?0.42:0.18,(ok&&!crWrongHalf),isGold);});
   }
 
   if(powerupActive&&hoverCell&&equippedTier().powerup?.id==='bomb'){
@@ -3810,7 +3869,9 @@ function endDrag(cx,cy){
     if(_wasSpeedPiece&&speedPiecePending){speedPiecePending=false;clearInterval(speedCountdownInterval);document.getElementById('speed-countdown').classList.remove('show','urgent');speedPieceSlot=-1;showEventBanner('⚡ SPEED PIECE! +BONUS!');score+=150*(currentDiff==='hard'?2:1);if(score>bestScore)bestScore=score;updateUI();}
     maybeSpeedPiece();maybeStartChallenge();
     if(duoGameActive){sendDuoUpdate();if(duoMode==='coop'&&coopMyTurn){coopMyTurn=false;updateCoopTurnBanner();sendCoopPlace(_placedShape,_placedCell.r,_placedCell.c,trayPieces[_placedIdx]?.color||1);}}
-    onColourRunPlace(dragColor);
+    // Pass actual placed absolute cells to colour run (for split-mode half-check)
+    const _placedAbsolute = _placedShape.map(([dr, dc]) => [_placedCell.r + dr, _placedCell.c + dc]);
+    onColourRunPlace(dragColor, _placedAbsolute);
 
     if(specialType){
       // Special brick: apply effect, skip normal scoring for now
@@ -3818,6 +3879,8 @@ function endDrag(cx,cy){
     } else {
       const lines=findCompletedLines();const total=lines.completedRows.length+lines.completedCols.length;
       if(total>0){
+        // Colour Run row check BEFORE clearing (grid still has tile values)
+        lines.completedRows.forEach(rowIdx => checkColourRunRow(rowIdx));
         combo++;hapticLineClear();const cleared=clearLines(lines);
         const pts=Math.round(calcScore(cleared.size,total,1+(combo-1)*0.5)*getDiff().scoreMultiplier);
         score+=pts;linesCleared+=total;const prevLevel=level;level=calcLevel(linesCleared);
@@ -5756,6 +5819,11 @@ let cm_colourStreak = 0;
 let cm_lastColor = null;
 let cm_colourPenaltyTimer = null;
 let cm_colourPenaltySecs = 30;
+// Colour Run split-board state
+let cm_splitMode = false;          // false = free-place, true = left/right split
+let cm_splitLeftColor  = null;     // colour assigned to left half
+let cm_splitRightColor = null;     // colour assigned to right half
+const CR_SPLIT_COL = 5;            // columns 0-4 = left, 5-9 = right
 
 function initChallengeMode() {
   // Clear any previous timers
@@ -5843,8 +5911,12 @@ function initChallengeMode() {
 
   if (activeChallengeMode === 'colourrun') {
     cm_colourStreak = 0; cm_lastColor = null; cm_colourPenaltySecs = 30;
+    cm_splitMode = false; cm_splitLeftColor = null; cm_splitRightColor = null;
     hud.classList.add('active');
     document.getElementById('challenge-hud-icon').textContent = '🎨';
+    // Show flip button
+    const flipBtn = document.getElementById('cr-flip-btn');
+    if (flipBtn) { flipBtn.style.display = 'inline-block'; flipBtn.textContent = 'SPLIT ⏶'; }
     updateColourRunHUD();
     cm_colourPenaltyTimer = setInterval(() => {
       if(!gameActive) return;
@@ -5877,30 +5949,111 @@ function updateSurvivalHUD() {
 }
 
 function updateColourRunHUD() {
-  const dots = Array.from({length:4}, (_,i) => i < cm_colourStreak ? '●' : '○').join(' ');
-  document.getElementById('challenge-hud-text').textContent = 'COLOUR RUN';
+  const modeLabel = cm_splitMode ? 'SPLIT MODE ⏶' : 'FREE PLACE';
+  document.getElementById('challenge-hud-text').textContent = '🎨 COLOUR RUN · ' + modeLabel;
   const sub = document.getElementById('challenge-hud-sub');
-  if(sub) sub.textContent = dots + ' · Penalty ' + cm_colourPenaltySecs + 's';
+  if (cm_splitMode && cm_splitLeftColor && cm_splitRightColor) {
+    const lName = COLOR_NAMES[cm_splitLeftColor] || 'Colour ' + cm_splitLeftColor;
+    const rName = COLOR_NAMES[cm_splitRightColor] || 'Colour ' + cm_splitRightColor;
+    if (sub) sub.textContent = '◀ ' + lName + '  |  ' + rName + ' ▶  · Penalty ' + cm_colourPenaltySecs + 's';
+  } else {
+    if (sub) sub.textContent = 'Complete rows in one colour or get punished · ' + cm_colourPenaltySecs + 's';
+  }
   const timerEl = document.getElementById('challenge-hud-timer');
   timerEl.textContent = cm_colourPenaltySecs + 's';
   timerEl.classList.toggle('urgent', cm_colourPenaltySecs < 8);
 }
 
-function onColourRunPlace(color) {
+// Colour name lookup for HUD display
+const COLOR_NAMES = { 1:'Red', 2:'Blue', 3:'Green', 4:'Yellow', 5:'Purple', 6:'Orange' };
+
+function toggleColourRunSplit() {
   if (activeChallengeMode !== 'colourrun') return;
-  if (color === cm_lastColor) {
-    cm_colourStreak++;
-    if (cm_colourStreak >= 4) {
-      score += 300;
-      showEventBanner('🎨 COLOUR RUN! +300!');
-      updateUI();
-      cm_colourStreak = 0;
-      cm_colourPenaltySecs = 30; // reset penalty timer on success
+  cm_splitMode = !cm_splitMode;
+  const flipBtn = document.getElementById('cr-flip-btn');
+
+  if (cm_splitMode) {
+    // Assign the two most common colours on the board to each half
+    const counts = {};
+    for (let r = 0; r < ROWS; r++)
+      for (let c = 0; c < COLS; c++)
+        if (grid[r][c] !== 0) counts[grid[r][c]] = (counts[grid[r][c]] || 0) + 1;
+    const sorted = Object.entries(counts).sort((a, b) => b[1] - a[1]);
+    cm_splitLeftColor  = sorted[0] ? parseInt(sorted[0][0]) : 1;
+    cm_splitRightColor = sorted[1] ? parseInt(sorted[1][0]) : 2;
+    if (flipBtn) { flipBtn.textContent = 'FREE ⏷'; flipBtn.style.background = 'rgba(247,201,72,0.22)'; }
+    showEventBanner('🎨 SPLIT MODE — Keep colours on their side!');
+  } else {
+    cm_splitLeftColor = null; cm_splitRightColor = null;
+    if (flipBtn) { flipBtn.textContent = 'SPLIT ⏶'; flipBtn.style.background = 'rgba(247,201,72,0.12)'; }
+    showEventBanner('🎨 FREE PLACE — Match full rows in one colour!');
+  }
+  updateColourRunHUD();
+  drawGrid();
+}
+
+function onColourRunPlace(color, placedCells) {
+  if (activeChallengeMode !== 'colourrun') return;
+
+  if (cm_splitMode) {
+    // Split mode: check each placed cell is in the correct half
+    let wrongHalf = false;
+    if (placedCells && (cm_splitLeftColor || cm_splitRightColor)) {
+      for (const [dr, dc] of placedCells) {
+        const col = dc; // column index
+        if (col < CR_SPLIT_COL && cm_splitLeftColor && color !== cm_splitLeftColor) { wrongHalf = true; break; }
+        if (col >= CR_SPLIT_COL && cm_splitRightColor && color !== cm_splitRightColor) { wrongHalf = true; break; }
+      }
+    }
+    if (wrongHalf) {
+      cm_colourPenaltySecs = Math.max(0, cm_colourPenaltySecs - 10);
+      showEventBanner('🎨 WRONG HALF — Red frog incoming!');
+      const midR = Math.floor(ROWS / 2);
+      spawnJumpingFrog('adder', midR, 0);
+    } else {
+      // Reward for placing correctly
+      cm_colourStreak++;
+      if (cm_colourStreak >= 4) {
+        score += 400; showEventBanner('🎨 PERFECT SPLIT! +400!'); updateUI();
+        cm_colourStreak = 0; cm_colourPenaltySecs = Math.min(30, cm_colourPenaltySecs + 8);
+      }
     }
   } else {
-    cm_colourStreak = 1;
+    // Free-place mode: reward streaks of same colour, rows checked after placement
+    if (color === cm_lastColor) {
+      cm_colourStreak++;
+      if (cm_colourStreak >= 4) {
+        score += 300; showEventBanner('🎨 COLOUR RUN! +300!'); updateUI();
+        cm_colourStreak = 0; cm_colourPenaltySecs = 30;
+      }
+    } else {
+      cm_colourStreak = 1;
+    }
+    cm_lastColor = color;
   }
-  cm_lastColor = color;
+  updateColourRunHUD();
+}
+
+// Called after a row completes in free-place colour run — check all tiles match
+function checkColourRunRow(rowIdx) {
+  if (activeChallengeMode !== 'colourrun' || cm_splitMode) return;
+  const row = grid[rowIdx];
+  // Row is about to be cleared — check if all tiles were same colour
+  const colours = row.filter(v => v !== 0);
+  if (colours.length === 0) return;
+  const allSame = colours.every(v => v === colours[0]);
+  if (!allSame) {
+    // Mismatch penalty: summon red frog + cut timer
+    cm_colourPenaltySecs = Math.max(0, cm_colourPenaltySecs - 12);
+    showEventBanner('🎨 MIXED ROW — Red frog incoming!');
+    const midR = Math.floor(ROWS / 2);
+    spawnJumpingFrog('adder', midR, 0);
+  } else {
+    // Reward: bonus points + timer top-up
+    score += 150; updateUI();
+    cm_colourPenaltySecs = Math.min(30, cm_colourPenaltySecs + 5);
+    showFloatText('🎨+150', [rowIdx], []);
+  }
   updateColourRunHUD();
 }
 
@@ -5910,6 +6063,9 @@ function stopChallengeMode() {
   if (cm_colourPenaltyTimer) { clearInterval(cm_colourPenaltyTimer); cm_colourPenaltyTimer = null; }
   document.getElementById('challenge-hud').classList.remove('active');
   document.getElementById('survival-bar-wrap').classList.remove('active');
+  const flipBtn = document.getElementById('cr-flip-btn');
+  if (flipBtn) flipBtn.style.display = 'none';
+  cm_splitMode = false; cm_splitLeftColor = null; cm_splitRightColor = null;
   activeChallengeMode = 'standard';
 }
 
