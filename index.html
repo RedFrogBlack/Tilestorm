@@ -2696,10 +2696,12 @@
     display: flex;
     flex-direction: column;
     gap: 6px;
-    transition: border-color 0.15s;
+    transition: border-color 0.15s, transform 0.1s;
+    cursor: pointer;
     /* iOS-style card depth */
     box-shadow: 0 2px 12px rgba(0,0,0,0.35), inset 0 0 0 0.5px rgba(255,255,255,0.06);
   }
+  .power-card:active { transform: scale(0.96); }
   .power-card::before {
     content: '';
     position: absolute;
@@ -3286,31 +3288,31 @@
     <div class="screen-powers-section" id="solo-powers-section">
       <div class="screen-powers-label">⚡ Magic Powers · £0.99/yr each</div>
       <div class="power-carousel" id="power-carousel-solo" style="padding-bottom:12px;">
-        <div class="power-card" style="--pc:#FF6B2B">
+        <div class="power-card" style="--pc:#FF6B2B" onclick="openShop('powers')">
           <div class="power-card-icon">🔥</div>
           <div class="power-card-name">Fire Blast</div>
           <div class="power-card-desc">Burns away the fullest row instantly.</div>
           <div class="power-card-footer"><span class="power-card-price">£0.99/yr</span><span class="power-card-tag ptag-solo">SOLO</span></div>
         </div>
-        <div class="power-card" style="--pc:#A78BFA">
+        <div class="power-card" style="--pc:#A78BFA" onclick="openShop('powers')">
           <div class="power-card-icon">🧙</div>
           <div class="power-card-name">Magician</div>
           <div class="power-card-desc">Tap a row or column to vanish it.</div>
           <div class="power-card-footer"><span class="power-card-price">£0.99/yr</span><span class="power-card-tag ptag-solo">SOLO</span></div>
         </div>
-        <div class="power-card" style="--pc:#F87171">
+        <div class="power-card" style="--pc:#F87171" onclick="openShop('powers')">
           <div class="power-card-icon">💣</div>
           <div class="power-card-name">Bomb</div>
           <div class="power-card-desc">Tap a cell to blast a 3×3 area.</div>
           <div class="power-card-footer"><span class="power-card-price">£0.99/yr</span><span class="power-card-tag ptag-solo">SOLO</span></div>
         </div>
-        <div class="power-card" style="--pc:#FBBF24">
+        <div class="power-card" style="--pc:#FBBF24" onclick="openShop('powers')">
           <div class="power-card-icon">⭐</div>
           <div class="power-card-name">Star Clear</div>
           <div class="power-card-desc">Wipes every tile of one colour.</div>
           <div class="power-card-footer"><span class="power-card-price">£0.99/yr</span><span class="power-card-tag ptag-solo">SOLO</span></div>
         </div>
-        <div class="power-card" style="--pc:#38BDF8">
+        <div class="power-card" style="--pc:#38BDF8" onclick="openShop('powers')">
           <div class="power-card-icon">🧊</div>
           <div class="power-card-name">Freeze</div>
           <div class="power-card-desc">Pauses frog spawns for 20 seconds.</div>
@@ -3597,25 +3599,25 @@
     <div class="screen-powers-section" style="padding-top:20px;">
       <div class="screen-powers-label">⚡ Duo Magic Powers · £0.99/yr each</div>
       <div class="power-carousel" id="power-carousel-duo" style="padding-bottom:4px;">
-        <div class="power-card" style="--pc:#34D399">
+        <div class="power-card" style="--pc:#34D399" onclick="openShop('powers')">
           <div class="power-card-icon">🐸</div>
           <div class="power-card-name">Frog Bomb</div>
           <div class="power-card-desc">Scrambles your opponent's board.</div>
           <div class="power-card-footer"><span class="power-card-price">£0.99/yr</span><span class="power-card-tag ptag-duo">DUO</span></div>
         </div>
-        <div class="power-card" style="--pc:#C084FC">
+        <div class="power-card" style="--pc:#C084FC" onclick="openShop('powers')">
           <div class="power-card-icon">🌀</div>
           <div class="power-card-name">Scramble</div>
           <div class="power-card-desc">Reshuffles your opponent's tray pieces.</div>
           <div class="power-card-footer"><span class="power-card-price">£0.99/yr</span><span class="power-card-tag ptag-duo">DUO</span></div>
         </div>
-        <div class="power-card" style="--pc:#FF6B2B">
+        <div class="power-card" style="--pc:#FF6B2B" onclick="openShop('powers')">
           <div class="power-card-icon">🔥</div>
           <div class="power-card-name">Fire Blast</div>
           <div class="power-card-desc">Burns away your fullest row instantly.</div>
           <div class="power-card-footer"><span class="power-card-price">£0.99/yr</span><span class="power-card-tag ptag-solo">SOLO</span></div>
         </div>
-        <div class="power-card" style="--pc:#38BDF8">
+        <div class="power-card" style="--pc:#38BDF8" onclick="openShop('powers')">
           <div class="power-card-icon">🧊</div>
           <div class="power-card-name">Freeze</div>
           <div class="power-card-desc">Pauses frog spawns for 20 seconds.</div>
@@ -8212,7 +8214,7 @@ function checkResumeOnHome() {
       'screen-solo-setup','screen-game','screen-gameover','screen-duo-lobby',
       'screen-settings','screen-profile','screen-session-result',
       // All overlays & modals
-      'shop-overlay','purchase-overlay','upgrade-overlay','upgrade-modal',
+      'shop-overlay','purchase-overlay','upgrade-overlay',
       'pause-overlay','levelup-overlay','duo-modal','bonus-popup',
       'quit-confirm-overlay','glitch-frog-overlay','attack-overlay',
       'hazard-overlay','howto-overlay'
