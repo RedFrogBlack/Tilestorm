@@ -11,7 +11,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <!-- Oswald (condensed caps display) + DM Sans (clean body) -->
-  <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
+  <!-- PeerJS loaded lazily on Duo lobby entry — see loadPeerJS() -->
   <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600;700&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet" />
 
   <style>
@@ -33,7 +33,7 @@
       --black4:       #222222;
       --white:        #FFFFFF;
       --cream:        #F7F4EE;   /* warm off-white from site */
-      --muted:        rgba(255,255,255,0.45);
+      --muted:        rgba(255,255,255,0.65);
       --border:       rgba(255,255,255,0.06);
       --border-strong:rgba(255,255,255,0.12);
 
@@ -57,7 +57,7 @@
 
       --radius:    8px;
       --radius-sm: 4px;
-      --t:         180ms cubic-bezier(0.16,1,0.3,1);
+      --t:         200ms cubic-bezier(0.16,1,0.3,1);
     }
 
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -117,6 +117,21 @@
       transition: opacity 0.3s ease, transform 0.3s ease;
     }
     .screen.hidden { display: none !important; }
+
+    /* ── Reduced Motion — accessibility ── */
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+      }
+      .title-badge-circle { animation: none !important; box-shadow: 0 0 0 2px rgba(255,255,255,0.08), 0 30px 80px rgba(204,18,18,0.5); }
+      .title-logo-img { animation: none !important; }
+      .purchase-frog { animation: none !important; }
+      .power-slot.active-power { animation: none !important; }
+      #glitch-frog-overlay.show { animation: none !important; opacity: 1; }
+      .frog-jumper { animation: none !important; }
+    }
 
     /* ════════════════════════════════════════════════
        TITLE SCREEN — Art collage hero + red circle badge
@@ -688,8 +703,8 @@
       background: var(--black3);
       border: 1px solid var(--border);
       border-radius: var(--radius-sm);
-      width: 40px; height: 40px;
-      min-width: 40px; min-height: 40px;
+      width: 44px; height: 44px;
+      min-width: 44px; min-height: 44px;
       display: flex; align-items: center; justify-content: center;
       cursor: pointer; color: var(--muted);
       transition: color var(--t), border-color var(--t), background var(--t);
@@ -1004,9 +1019,9 @@
     .shop-modal::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.08); border-radius: 3px; }
 
     .shop-close {
-      position: absolute; top: 14px; right: 14px;
+      position: absolute; top: 10px; right: 10px;
       background: rgba(255,255,255,0.05); border: none; border-radius: var(--radius-sm);
-      width: 28px; height: 28px; cursor: pointer; color: var(--muted);
+      width: 44px; height: 44px; cursor: pointer; color: var(--muted);
       display: flex; align-items: center; justify-content: center;
       font-family: var(--font-body); font-size: 0.85rem;
       transition: background var(--t), color var(--t);
@@ -2879,7 +2894,7 @@
   </div>
   <div class="title-bottom-bar"></div>
 
-  <button id="btn-sound-home" title="Toggle sound">🔊</button>
+  <button id="btn-sound-home" title="Toggle sound" aria-label="Toggle sound">🔊</button>
 
   <div class="title-inner">
     <!-- Small logo circle -->
@@ -2890,6 +2905,7 @@
     <!-- Big title below circle -->
     <div class="home-title">CROAKDOWN</div>
     <div class="home-tagline">REDFROGBLACK</div>
+    <div style="font-family:var(--font-body);font-size:0.68rem;font-weight:500;letter-spacing:0.12em;color:rgba(255,255,255,0.55);text-transform:uppercase;text-align:center;margin-top:2px;">The tile puzzle where the frogs play back</div>
 
     <!-- Hidden for JS -->
     <span id="streak-val" style="display:none;">0</span>
@@ -2918,20 +2934,20 @@
         <div style="font-family:var(--font-display);font-size:0.8rem;font-weight:700;letter-spacing:0.1em;color:#CC1212;margin-bottom:2px;">▶ GAME IN PROGRESS</div>
         <div id="resume-banner-detail" style="font-size:0.72rem;color:rgba(255,255,255,0.5);">Tap to continue</div>
       </div>
-      <button onclick="resumeSavedGame()" style="background:#CC1212;border:none;border-radius:10px;color:#fff;font-family:var(--font-display);font-size:0.75rem;font-weight:700;letter-spacing:0.1em;padding:10px 16px;cursor:pointer;white-space:nowrap;">RESUME</button>
+      <button onclick="resumeSavedGame()" aria-label="Resume saved game" style="background:#CC1212;border:none;border-radius:10px;color:#fff;font-family:var(--font-display);font-size:0.75rem;font-weight:700;letter-spacing:0.1em;padding:10px 16px;cursor:pointer;white-space:nowrap;">RESUME</button>
     </div>
 
     <!-- Buttons -->
     <div class="home-btn-stack">
-      <button id="btn-solo" class="home-btn-solo">SOLO PLAY</button>
-      <button id="btn-duo-mode" class="home-btn-duo">DUO MODE</button>
-      <button id="btn-how-to-play" class="home-btn-howto">? HOW TO PLAY</button>
-      <button id="btn-shop-home" class="home-btn-howto" style="border-color:rgba(247,201,72,0.5);color:#F7C948;">🛒 SHOP — MAGIC POWERS</button>
+      <button id="btn-solo" class="home-btn-solo" aria-label="Start solo play">SOLO PLAY</button>
+      <button id="btn-duo-mode" class="home-btn-duo" aria-label="Open duo multiplayer mode">DUO MODE</button>
+      <button id="btn-how-to-play" class="home-btn-howto" aria-label="How to play Croakdown">? HOW TO PLAY</button>
+      <button id="btn-shop-home" class="home-btn-howto" aria-label="Open magic powers shop" style="border-color:rgba(247,201,72,0.5);color:#F7C948;">🛒 SHOP — MAGIC POWERS</button>
       <p class="home-tap-hint">Tap to learn more</p>
     </div>
 
     <!-- Settings pill -->
-    <button id="btn-settings-home" class="home-settings-pill">⚙ SETTINGS</button>
+    <button id="btn-settings-home" class="home-settings-pill" aria-label="Open settings">⚙ SETTINGS</button>
   </div>
 </div>
 
@@ -2939,7 +2955,7 @@
 <div id="howto-overlay">
   <div id="howto-sheet">
     <div class="howto-handle"></div>
-    <button class="howto-close" onclick="closeHowTo()">✕</button>
+    <button class="howto-close" onclick="closeHowTo()" aria-label="Close how to play">✕</button>
 
     <!-- HERO -->
     <div class="htp-hero-wrap">
@@ -3224,7 +3240,7 @@
   <div class="solo-setup-inner">
     <!-- Header -->
     <div class="solo-setup-header">
-      <button class="solo-back-btn" id="solo-back">←</button>
+      <button class="solo-back-btn" id="solo-back" aria-label="Back to home">←</button>
       <div class="solo-setup-title">🎮 Choose Your Game</div>
     </div>
 
@@ -3241,7 +3257,7 @@
             <div class="gtc-badge free-badge">FREE 7 DAYS → £0.99</div>
           </div>
         </div>
-        <button class="gtc-play-btn" id="gtc-play-tadpole">▶ PLAY</button>
+        <button class="gtc-play-btn" id="gtc-play-tadpole" aria-label="Play Tadpole mode">▶ PLAY</button>
       </div>
 
       <!-- TREE FROG -->
@@ -3254,7 +3270,7 @@
             <div class="gtc-badge">Unlocks Tadpole too · £2.99/yr</div>
           </div>
         </div>
-        <button class="gtc-play-btn" id="gtc-play-treefrog">▶ PLAY</button>
+        <button class="gtc-play-btn" id="gtc-play-treefrog" aria-label="Play Tree Frog mode">▶ PLAY</button>
       </div>
 
       <!-- POISON DART -->
@@ -3267,7 +3283,7 @@
             <div class="gtc-badge">Unlocks all below · £4.99/yr</div>
           </div>
         </div>
-        <button class="gtc-play-btn" id="gtc-play-poisondart">▶ PLAY</button>
+        <button class="gtc-play-btn" id="gtc-play-poisondart" aria-label="Play Poison Dart mode">▶ PLAY</button>
       </div>
 
       <!-- GOLDEN FROG -->
@@ -3280,7 +3296,7 @@
             <div class="gtc-badge gtc-badge-gold">✦ Unlocks ALL 4 games · £7.99</div>
           </div>
         </div>
-        <button class="gtc-play-btn" id="gtc-play-goldenfrog">▶ PLAY</button>
+        <button class="gtc-play-btn" id="gtc-play-goldenfrog" aria-label="Play Golden Frog mode">▶ PLAY</button>
       </div>
 
 
@@ -3328,7 +3344,7 @@
 <!-- ════════════ UPGRADE MODAL ════════════ -->
 <div id="upgrade-overlay" class="hidden">
   <div id="upgrade-modal">
-    <button id="upgrade-close">✕</button>
+    <button id="upgrade-close" aria-label="Close upgrade offer">✕</button>
     <div id="upgrade-title">🐸 UNLOCK MORE</div>
     <div id="upgrade-reason">Upgrade to access this feature</div>
     <div id="upgrade-tiers-list"></div>
@@ -3355,9 +3371,9 @@
     </div>
 
     <div class="topbar-right">
-      <button class="icon-btn" id="btn-shop-ingame" title="Shop" style="font-size:1rem">🐸</button>
-      <button class="icon-btn" id="btn-sound" title="Sound" style="font-size:1rem">🔊</button>
-      <button class="icon-btn" id="btn-menu" title="Menu">
+      <button class="icon-btn" id="btn-shop-ingame" title="Shop" aria-label="Open shop" style="font-size:1rem">🐸</button>
+      <button class="icon-btn" id="btn-sound" title="Sound" aria-label="Toggle sound" style="font-size:1rem">🔊</button>
+      <button class="icon-btn" id="btn-menu" title="Menu" aria-label="Open pause menu">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
           <line x1="3" y1="12" x2="21" y2="12"/>
           <line x1="3" y1="6"  x2="21" y2="6"/>
@@ -3414,14 +3430,14 @@
   <!-- Duo emoji reaction bar (visible only during duo play) -->
   <div id="emoji-bar">
     <div id="emoji-tray">
-      <button class="emoji-btn" data-emoji="🔥" title="Fire!">🔥</button>
-      <button class="emoji-btn" data-emoji="💀" title="Skull!">💀</button>
-      <button class="emoji-btn" data-emoji="👑" title="Crown!">👑</button>
-      <button class="emoji-btn" data-emoji="😤" title="Grr!">😤</button>
-      <button class="emoji-btn" data-emoji="😂" title="Haha!">😂</button>
-      <button class="emoji-btn" data-emoji="🐸" title="Frog!">🐸</button>
+      <button class="emoji-btn" data-emoji="🔥" title="Fire!" aria-label="Send fire reaction">🔥</button>
+      <button class="emoji-btn" data-emoji="💀" title="Skull!" aria-label="Send skull reaction">💀</button>
+      <button class="emoji-btn" data-emoji="👑" title="Crown!" aria-label="Send crown reaction">👑</button>
+      <button class="emoji-btn" data-emoji="😤" title="Grr!" aria-label="Send grr reaction">😤</button>
+      <button class="emoji-btn" data-emoji="😂" title="Haha!" aria-label="Send laugh reaction">😂</button>
+      <button class="emoji-btn" data-emoji="🐸" title="Frog!" aria-label="Send frog reaction">🐸</button>
     </div>
-    <button id="emoji-bar-toggle" title="React">😊</button>
+    <button id="emoji-bar-toggle" title="React" aria-label="Open emoji reactions">😊</button>
   </div>
 
   <!-- Incoming emoji reaction display -->
@@ -3493,17 +3509,17 @@
         </div>
       </div>
       <!-- Menu items -->
-      <button id="btn-pause-resume" style="width:100%;background:#CC1212;border:none;border-radius:12px;color:#fff;font-family:var(--font-display);font-size:1rem;font-weight:700;letter-spacing:0.15em;text-transform:uppercase;padding:16px;cursor:pointer;margin-bottom:10px;display:flex;align-items:center;justify-content:center;gap:10px;">▶ RESUME</button>
-      <button id="btn-pause-profile" style="width:100%;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.1);border-radius:12px;color:#fff;font-family:var(--font-display);font-size:0.9rem;letter-spacing:0.12em;text-transform:uppercase;padding:14px;cursor:pointer;margin-bottom:8px;display:flex;align-items:center;justify-content:space-between;">
+      <button id="btn-pause-resume" aria-label="Resume game" style="width:100%;background:#CC1212;border:none;border-radius:12px;color:#fff;font-family:var(--font-display);font-size:1rem;font-weight:700;letter-spacing:0.15em;text-transform:uppercase;padding:16px;cursor:pointer;margin-bottom:10px;display:flex;align-items:center;justify-content:center;gap:10px;">▶ RESUME</button>
+      <button id="btn-pause-profile" aria-label="View my profile" style="width:100%;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.1);border-radius:12px;color:#fff;font-family:var(--font-display);font-size:0.9rem;letter-spacing:0.12em;text-transform:uppercase;padding:14px;cursor:pointer;margin-bottom:8px;display:flex;align-items:center;justify-content:space-between;">
         <span>👤 MY PROFILE</span><span style="color:rgba(255,255,255,0.3);">›</span>
       </button>
-      <button id="btn-pause-upgrade" style="width:100%;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.1);border-radius:12px;color:#fff;font-family:var(--font-display);font-size:0.9rem;letter-spacing:0.12em;text-transform:uppercase;padding:14px;cursor:pointer;margin-bottom:8px;display:flex;align-items:center;justify-content:space-between;">
+      <button id="btn-pause-upgrade" aria-label="Upgrade tier" style="width:100%;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.1);border-radius:12px;color:#fff;font-family:var(--font-display);font-size:0.9rem;letter-spacing:0.12em;text-transform:uppercase;padding:14px;cursor:pointer;margin-bottom:8px;display:flex;align-items:center;justify-content:space-between;">
         <span>🐸 UPGRADE TIER</span><span style="color:rgba(255,255,255,0.3);">›</span>
       </button>
-      <button id="btn-pause-settings" style="width:100%;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.1);border-radius:12px;color:#fff;font-family:var(--font-display);font-size:0.9rem;letter-spacing:0.12em;text-transform:uppercase;padding:14px;cursor:pointer;margin-bottom:8px;display:flex;align-items:center;justify-content:space-between;">
+      <button id="btn-pause-settings" aria-label="Open settings" style="width:100%;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.1);border-radius:12px;color:#fff;font-family:var(--font-display);font-size:0.9rem;letter-spacing:0.12em;text-transform:uppercase;padding:14px;cursor:pointer;margin-bottom:8px;display:flex;align-items:center;justify-content:space-between;">
         <span>⚙ SETTINGS</span><span style="color:rgba(255,255,255,0.3);">›</span>
       </button>
-      <button id="btn-pause-home" style="width:100%;background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.06);border-radius:12px;color:rgba(255,255,255,0.4);font-family:var(--font-display);font-size:0.9rem;letter-spacing:0.12em;text-transform:uppercase;padding:14px;cursor:pointer;display:flex;align-items:center;justify-content:space-between;">
+      <button id="btn-pause-home" aria-label="Quit to home screen" style="width:100%;background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.06);border-radius:12px;color:rgba(255,255,255,0.4);font-family:var(--font-display);font-size:0.9rem;letter-spacing:0.12em;text-transform:uppercase;padding:14px;cursor:pointer;display:flex;align-items:center;justify-content:space-between;">
         <span>🏠 EXIT TO HOME</span><span style="color:rgba(255,255,255,0.15);">›</span>
       </button>
     </div>
@@ -3515,7 +3531,7 @@
   <div style="font-family:var(--font-mono);font-size:13px;letter-spacing:4px;color:#CC1212;">LEVEL UP</div>
   <div id="levelup-number" style="font-family:var(--font-mono);font-size:72px;font-weight:900;color:#fff;line-height:1;">5</div>
   <div id="levelup-changes" style="display:flex;flex-direction:column;gap:6px;width:min(280px,88vw);margin:12px 0;"></div>
-  <button id="btn-levelup-continue" style="background:#CC1212;border:none;border-radius:12px;color:#fff;font-family:var(--font-display);font-size:1rem;letter-spacing:3px;padding:14px 32px;cursor:pointer;">KEEP PLAYING</button>
+  <button id="btn-levelup-continue" aria-label="Keep playing" style="background:#CC1212;border:none;border-radius:12px;color:#fff;font-family:var(--font-display);font-size:1rem;letter-spacing:3px;padding:14px 32px;cursor:pointer;">KEEP PLAYING</button>
 </div>
 
 <!-- ════════════ GAME OVER ════════════ -->
@@ -3529,8 +3545,8 @@
   </div>
   <div class="go-best" id="go-best-msg"></div>
   <div class="go-btns">
-    <button class="btn-red" id="btn-restart">Play Again</button>
-    <button class="btn-outline" id="btn-go-menu">Menu</button>
+    <button class="btn-red" id="btn-restart" aria-label="Play again">Play Again</button>
+    <button class="btn-outline" id="btn-go-menu" aria-label="Return to main menu">Menu</button>
   </div>
 </div>
 
@@ -3543,8 +3559,8 @@
       <p style="font-size:0.9rem;color:rgba(255,255,255,0.55);margin:0 0 24px;line-height:1.5;">Play with a friend anywhere in the world.<br>Create a room, share the code, and compete live.</p>
       <div style="font-family:var(--font-display);font-size:2.2rem;font-weight:900;color:#CC1212;margin-bottom:6px;">£5 / month</div>
       <div style="font-size:0.72rem;color:rgba(255,255,255,0.35);letter-spacing:0.15em;margin-bottom:24px;">Each player pays separately</div>
-      <button id="duo-modal-play" style="width:100%;background:#CC1212;border:none;border-radius:14px;color:#fff;font-family:var(--font-display);font-size:1rem;font-weight:700;letter-spacing:0.2em;text-transform:uppercase;padding:16px;cursor:pointer;margin-bottom:12px;">SUBSCRIBE &amp; PLAY</button>
-      <button id="duo-modal-close" style="background:none;border:none;color:rgba(255,255,255,0.3);font-family:var(--font-display);font-size:0.75rem;letter-spacing:0.2em;text-transform:uppercase;cursor:pointer;padding:8px;">MAYBE LATER</button>
+      <button id="duo-modal-play" aria-label="Subscribe to Duo Pack and play" style="width:100%;background:#CC1212;border:none;border-radius:14px;color:#fff;font-family:var(--font-display);font-size:1rem;font-weight:700;letter-spacing:0.2em;text-transform:uppercase;padding:16px;cursor:pointer;margin-bottom:12px;">SUBSCRIBE &amp; PLAY</button>
+      <button id="duo-modal-close" aria-label="Maybe later" style="background:none;border:none;color:rgba(255,255,255,0.3);font-family:var(--font-display);font-size:0.75rem;letter-spacing:0.2em;text-transform:uppercase;cursor:pointer;padding:8px;">MAYBE LATER</button>
     </div>
   </div>
 </div>
@@ -3552,7 +3568,7 @@
 <!-- ════════════ DUO LOBBY ════════════ -->
 <div id="screen-duo-lobby" class="screen hidden">
   <div class="duo-lobby-inner">
-    <button class="duo-back-btn" id="duo-back">← BACK</button>
+    <button class="duo-back-btn" id="duo-back" aria-label="Back to home">← BACK</button>
 
     <!-- Paid Feature Banner -->
     <div style="width:100%;background:linear-gradient(135deg,rgba(123,63,190,0.25),rgba(90,30,160,0.18));border:1.5px solid rgba(123,63,190,0.6);border-radius:14px;padding:16px 18px;margin-bottom:20px;text-align:center;">
@@ -3639,7 +3655,7 @@
         <span class="code-waiting">PRESS CREATE ROOM</span>
       </div>
       <div class="duo-status waiting" id="create-status">Share this code with your partner</div>
-      <button class="btn-red" id="btn-create-room" style="width:100%;margin-top:14px;">CREATE ROOM</button>
+      <button class="btn-red" id="btn-create-room" aria-label="Create a duo room" style="width:100%;margin-top:14px;">CREATE ROOM</button>
     </div>
 
     <!-- OR divider -->
@@ -3653,8 +3669,8 @@
     <div class="duo-panel">
       <div class="duo-panel-title">🔗 JOIN A ROOM</div>
       <div class="duo-join-row">
-        <input class="duo-code-input" id="join-code-input" maxlength="4" placeholder="ABCD" />
-        <button class="btn-red" id="btn-join-room">JOIN</button>
+        <input class="duo-code-input" id="join-code-input" maxlength="4" placeholder="ABCD" aria-label="Enter room code" />
+        <button class="btn-red" id="btn-join-room" aria-label="Join room with code">JOIN</button>
       </div>
       <div class="duo-status waiting" id="join-status">Enter the 4-letter code from your partner</div>
     </div>
@@ -3685,12 +3701,12 @@
 <!-- ════════════ FROG SHOP ════════════ -->
 <div id="shop-overlay">
   <div class="shop-modal">
-    <button class="shop-close" id="shop-close">✕</button>
+    <button class="shop-close" id="shop-close" aria-label="Close shop">✕</button>
 
     <!-- Shop tabs -->
     <div class="shop-tabs">
-      <button class="shop-tab active" id="shop-tab-tiers" onclick="switchShopTab('tiers')">TIERS</button>
-      <button class="shop-tab" id="shop-tab-powers" onclick="switchShopTab('powers')">POWERS</button>
+      <button class="shop-tab active" id="shop-tab-tiers" onclick="switchShopTab('tiers')" aria-label="Tiers tab">TIERS</button>
+      <button class="shop-tab" id="shop-tab-powers" onclick="switchShopTab('powers')" aria-label="Powers tab">POWERS</button>
     </div>
 
     <!-- Tiers panel -->
@@ -3725,11 +3741,11 @@
     <div class="purchase-frog" id="purchase-frog-emoji">🐸</div>
     <div class="purchase-title">UNLOCK <span class="purchase-tier-name" id="purchase-tier-name">TREE FROG</span></div>
     <div class="purchase-desc" id="purchase-desc"></div>
-    <div class="purchase-price-display" id="purchase-price-display"><small>$</small>2.99</div>
+    <div class="purchase-price-display" id="purchase-price-display"></div>
     <div class="purchase-perks" id="purchase-perks-list"><div class="pp-title">WHAT YOU GET</div></div>
     <div class="purchase-btns">
-      <button class="btn-purchase-confirm" id="btn-confirm-buy">BUY NOW</button>
-      <button class="btn-purchase-cancel" id="btn-cancel-buy">CANCEL</button>
+      <button class="btn-purchase-confirm" id="btn-confirm-buy" aria-label="Confirm purchase">BUY NOW</button>
+      <button class="btn-purchase-cancel" id="btn-cancel-buy" aria-label="Cancel purchase">CANCEL</button>
     </div>
   </div>
 </div>
@@ -3811,7 +3827,7 @@
 
   <!-- Header -->
   <div style="display:flex;align-items:center;gap:12px;margin-bottom:24px;padding-top:4px;">
-    <button onclick="closeSettings()" style="background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);border-radius:50%;width:36px;height:36px;color:#fff;font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;">‹</button>
+    <button onclick="closeSettings()" aria-label="Back from settings" style="background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);border-radius:50%;width:44px;height:44px;color:#fff;font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;">‹</button>
     <div style="font-family:var(--font-display);font-size:1rem;font-weight:700;letter-spacing:0.15em;color:#fff;">⚙ SETTINGS</div>
   </div>
 
@@ -6369,12 +6385,34 @@ function onConnOpen() {
   });
 }
 
+// ── Lazy PeerJS loader — only loads the script when Duo lobby is used ──
+function loadPeerJS(callback) {
+  if (typeof Peer !== 'undefined') { callback(); return; }
+  var s = document.createElement('script');
+  s.src = 'https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js';
+  s.onload = callback;
+  s.onerror = function() { showToast('❌ Could not load multiplayer — check your connection'); };
+  document.head.appendChild(s);
+}
+
 function doCreateRoom() {
   if (!isDuoSubscriber()) {
     document.getElementById('create-status').textContent = '🔒 Duo Pack required';
     document.getElementById('create-status').className = 'duo-status error';
     return;
   }
+  // Show connecting state while PeerJS loads lazily
+  var btn = document.getElementById('btn-create-room');
+  btn.disabled = true; btn.textContent = 'CONNECTING…';
+  document.getElementById('create-status').textContent = '⧗ Setting up multiplayer…';
+  document.getElementById('create-status').className = 'duo-status waiting';
+  loadPeerJS(function() {
+    btn.disabled = false; btn.textContent = 'CREATE ROOM';
+    _doCreateRoomCore();
+  });
+}
+
+function _doCreateRoomCore() {
   duoMode = selectedDuoMode;
   duoPlayer = 0;
   if (peer) { try { peer.destroy(); } catch(e) {} peer = null; }
@@ -6423,6 +6461,17 @@ function doJoinRoom() {
     document.getElementById('join-status').className = 'duo-status error';
     return;
   }
+  var joinBtn = document.getElementById('btn-join-room');
+  joinBtn.disabled = true; joinBtn.textContent = '⧗';
+  document.getElementById('join-status').textContent = '⧗ Connecting to room…';
+  document.getElementById('join-status').className = 'duo-status waiting';
+  loadPeerJS(function() {
+    joinBtn.disabled = false; joinBtn.textContent = 'JOIN';
+    _doJoinRoomCore(code);
+  });
+}
+
+function _doJoinRoomCore(code) {
   duoMode = selectedDuoMode;
   duoPlayer = 1;
   duoRoomCode = code;
@@ -6456,7 +6505,7 @@ function doJoinRoom() {
 const DUEL_WIN_LINES = 10;
 
 function isDuoSubscriber() {
-  return true; // TEST MODE — open access
+  return tierOwned('duopack');
 }
 
 let selectedDuoMode = 'duel'; // default
@@ -8039,14 +8088,14 @@ function checkResumeOnHome() {
 <div style="padding:16px;max-width:480px;margin:0 auto;width:100%;box-sizing:border-box;overflow-y:auto;max-height:100vh;">
   <!-- Header -->
   <div style="display:flex;align-items:center;gap:12px;margin-bottom:24px;">
-    <button onclick="closeProfile()" style="background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);border-radius:50%;width:36px;height:36px;color:#fff;font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center;">‹</button>
+    <button onclick="closeProfile()" aria-label="Back from profile" style="background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);border-radius:50%;width:44px;height:44px;color:#fff;font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center;">‹</button>
     <div style="font-family:var(--font-display);font-size:1rem;font-weight:700;letter-spacing:0.15em;color:rgba(255,255,255,0.9);">MY PROFILE</div>
   </div>
   <!-- Avatar + name -->
   <div style="display:flex;align-items:center;gap:16px;margin-bottom:24px;">
     <div style="width:60px;height:60px;background:#CC1212;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:1.8rem;">🐸</div>
     <div>
-      <div style="font-family:var(--font-display);font-size:1.4rem;font-weight:700;letter-spacing:0.06em;color:#fff;">PLAYER ONE</div>
+      <div id="profile-display-name" style="font-family:var(--font-display);font-size:1.4rem;font-weight:700;letter-spacing:0.06em;color:#fff;">CROAKDOWN PLAYER</div>
       <div id="profile-tier-badge-pill" style="display:inline-block;background:#CC1212;color:#fff;font-family:var(--font-display);font-size:0.6rem;letter-spacing:0.15em;padding:3px 10px;border-radius:6px;margin-top:4px;text-transform:uppercase;">TADPOLE</div>
     </div>
   </div>
@@ -8104,8 +8153,8 @@ function checkResumeOnHome() {
   <!-- Big score -->
   <div id="session-final-score" style="font-family:var(--font-display);font-size:3.5rem;font-weight:900;color:#fff;line-height:1;margin-bottom:24px;">2 — 1</div>
   <!-- Buttons -->
-  <button id="btn-session-play-again" style="width:min(320px,88vw);background:#CC1212;border:none;border-radius:14px;color:#fff;font-family:var(--font-display);font-size:1rem;font-weight:700;letter-spacing:0.2em;text-transform:uppercase;padding:18px;cursor:pointer;margin-bottom:12px;">PLAY AGAIN</button>
-  <button id="btn-session-home" style="width:min(320px,88vw);background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:14px;color:rgba(255,255,255,0.6);font-family:var(--font-display);font-size:1rem;font-weight:700;letter-spacing:0.2em;text-transform:uppercase;padding:18px;cursor:pointer;">HOME</button>
+  <button id="btn-session-play-again" aria-label="Play duo again" style="width:min(320px,88vw);background:#CC1212;border:none;border-radius:14px;color:#fff;font-family:var(--font-display);font-size:1rem;font-weight:700;letter-spacing:0.2em;text-transform:uppercase;padding:18px;cursor:pointer;margin-bottom:12px;">PLAY AGAIN</button>
+  <button id="btn-session-home" aria-label="Return to home" style="width:min(320px,88vw);background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:14px;color:rgba(255,255,255,0.6);font-family:var(--font-display);font-size:1rem;font-weight:700;letter-spacing:0.2em;text-transform:uppercase;padding:18px;cursor:pointer;">HOME</button>
 </div>
 
 
@@ -8116,8 +8165,8 @@ function checkResumeOnHome() {
     <div style="font-size:2rem;margin-bottom:10px;">🐸</div>
     <div style="font-family:var(--font-display);font-size:1rem;font-weight:700;letter-spacing:0.15em;color:#fff;margin-bottom:8px;">QUIT GAME?</div>
     <div style="font-size:0.8rem;color:rgba(255,255,255,0.45);margin-bottom:24px;line-height:1.5;">Your current progress will be lost.</div>
-    <button id="btn-quit-yes" style="width:100%;background:#CC1212;border:none;border-radius:12px;color:#fff;font-family:var(--font-display);font-size:0.9rem;font-weight:700;letter-spacing:0.15em;padding:14px;cursor:pointer;margin-bottom:10px;">YES, QUIT</button>
-    <button id="btn-quit-no" style="width:100%;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:12px;color:rgba(255,255,255,0.6);font-family:var(--font-display);font-size:0.9rem;letter-spacing:0.12em;padding:14px;cursor:pointer;">RESUME GAME</button>
+    <button id="btn-quit-yes" aria-label="Quit game and return to home" style="width:100%;background:#CC1212;border:none;border-radius:12px;color:#fff;font-family:var(--font-display);font-size:0.9rem;font-weight:700;letter-spacing:0.15em;padding:14px;cursor:pointer;margin-bottom:10px;">YES, QUIT</button>
+    <button id="btn-quit-no" aria-label="Resume game" style="width:100%;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:12px;color:rgba(255,255,255,0.6);font-family:var(--font-display);font-size:0.9rem;letter-spacing:0.12em;padding:14px;cursor:pointer;">RESUME GAME</button>
   </div>
 </div>
 
