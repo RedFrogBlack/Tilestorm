@@ -670,30 +670,21 @@
       background: var(--black2);
       border-bottom: 3px solid var(--red);
       padding: 0 10px;
-      height: 56px;
+      height: 52px;
       display: flex;
       align-items: center;
       justify-content: space-between;
-      gap: 8px;
+      gap: 6px;
       flex-shrink: 0;
       position: relative; z-index: 1;
-      overflow: hidden;
+      overflow: visible;
     }
 
     .topbar-brand {
-      display: flex; align-items: center; gap: 9px; flex-shrink: 0;
+      display: flex; align-items: center; gap: 7px; flex-shrink: 0;
     }
-    .topbar-brand img { height: 32px; width: auto; }
-    .topbar-brand-name {
-      font-family: var(--font-display);
-      font-size: var(--fs-h3);
-      font-weight: 700;
-      letter-spacing: 0.1em;
-      text-transform: uppercase;
-      color: var(--white);
-      line-height: 1;
-    }
-    .topbar-brand-name em { color: var(--red); font-style: normal; }
+    .topbar-brand img { height: 30px; width: auto; }
+    /* Wordmark removed — only logo + diff badge shown */
 
     /* Stat pills — flat, no border radius curves */
     .stat-row { display: flex; gap: 4px; align-items: center; flex-shrink: 1; }
@@ -728,6 +719,8 @@
     .stat-pill .s-val.red { color: var(--red); }
 
     .topbar-right { display: flex; gap: 5px; align-items: center; flex-shrink: 0; }
+    /* Power bar inside topbar */
+    #topbar-power-bar { display: flex; gap: 5px; align-items: center; flex-shrink: 0; }
 
     /* Combo badge */
     .combo-badge {
@@ -1235,21 +1228,8 @@
     .psc-buy-btn:disabled { background: rgba(255,255,255,0.1); color: rgba(255,255,255,0.3); cursor: default; }
 
     /* Power bar strip — full-width row below topbar */
-    #power-bar-strip {
-      width: 100%;
-      background: rgba(0,0,0,0.6);
-      border-bottom: 1px solid rgba(255,255,255,0.07);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      padding: 5px 12px;
-      box-sizing: border-box;
-      flex-shrink: 0;
-      min-height: 0;
-    }
-    /* Hidden when power bar is empty (no owned powers) */
-    #power-bar-strip:empty,
-    #power-bar-strip:has(#power-bar:empty) { display: none; }
+    /* power-bar-strip kept in DOM for JS compat but never shown — powers now live in topbar */
+    #power-bar-strip { display: none !important; }
 
     /* In-game multi-power bar */
     #power-bar {
@@ -1257,12 +1237,12 @@
       flex-wrap: nowrap;
     }
     .power-slot {
-      width: 38px; height: 38px; border-radius: var(--radius-sm);
+      width: 40px; height: 40px; border-radius: var(--radius-sm);
       background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1);
       display: flex; flex-direction: column; align-items: center; justify-content: center;
       cursor: pointer; transition: border-color var(--t-fast), background var(--t-fast);
       position: relative; flex-shrink: 0;
-      font-size: var(--fs-body);
+      font-size: var(--fs-h3);
     }
     .power-slot:hover:not(.empty) { border-color: rgba(204,18,18,0.6); background: rgba(204,18,18,0.1); }
     .power-slot.active-power { border-color: #F7C948; background: rgba(247,201,72,0.12); animation: powerPulse 0.8s ease-in-out infinite; }
@@ -3408,20 +3388,21 @@
   <div class="game-topbar">
     <div class="topbar-brand" id="topbar-brand-logo" style="cursor:pointer;" title="Quit game">
       <img src="./rfba-logo.png" alt="RFBA" />
-      <div class="topbar-brand-name">CROAK<em>DOWN</em></div>
       <span id="diff-indicator">EASY</span>
     </div>
 
     <div class="stat-row">
       <div class="stat-pill"><div class="s-label">Score</div><div class="s-val" id="score-display">0</div></div>
-      <div class="stat-pill"><div class="s-label">Best</div><div class="s-val red" id="best-display">0</div></div>
+      <!-- BEST removed — not useful during live play -->
+      <div class="stat-pill" style="display:none"><div class="s-label">Best</div><div class="s-val red" id="best-display">0</div></div>
       <div class="stat-pill"><div class="s-label">Level</div><div class="s-val" id="level-display">1</div></div>
       <div class="stat-pill"><div class="s-label">Lines</div><div class="s-val" id="lines-display">0</div></div>
       <div class="combo-badge" id="combo-badge"><span class="cn" id="combo-num">2</span>×</div>
     </div>
 
     <div class="topbar-right">
-      <button class="icon-btn" id="btn-shop-ingame" title="Shop" aria-label="Open shop" style="font-family:var(--font-display);font-size:var(--fs-label);letter-spacing:0.08em;font-weight:700;padding:0 8px;">SHOP</button>
+      <!-- Powers inline in topbar -->
+      <div id="topbar-power-bar"></div>
       <button class="icon-btn" id="btn-sound" title="Sound" aria-label="Toggle sound" style="font-size: var(--fs-body)">🔊</button>
       <button class="icon-btn" id="btn-menu" title="Menu" aria-label="Open pause menu">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
@@ -3560,6 +3541,9 @@
       </div>
       <!-- Menu items -->
       <button id="btn-pause-resume" aria-label="Resume game" style="width:100%;background:#CC1212;border:none;border-radius:12px;color:#fff;font-family:var(--font-display);font-size: var(--fs-body);font-weight:700;letter-spacing:0.15em;text-transform:uppercase;padding:16px;cursor:pointer;margin-bottom:10px;display:flex;align-items:center;justify-content:center;gap:10px;">▶ RESUME</button>
+      <button id="btn-pause-shop" aria-label="Open magic powers shop" onclick="closePause();openShop('powers');" style="width:100%;background:rgba(247,201,72,0.08);border:1px solid rgba(247,201,72,0.3);border-radius:12px;color:#F7C948;font-family:var(--font-display);font-size: var(--fs-body);letter-spacing:0.12em;text-transform:uppercase;padding: 16px;cursor:pointer;margin-bottom:8px;display:flex;align-items:center;justify-content:space-between;">
+        <span>🔮 MAGIC POWERS</span><span style="color:rgba(247,201,72,0.4);">›</span>
+      </button>
       <button id="btn-pause-profile" aria-label="View my profile" style="width:100%;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.1);border-radius:12px;color:#fff;font-family:var(--font-display);font-size: var(--fs-body);letter-spacing:0.12em;text-transform:uppercase;padding: 16px;cursor:pointer;margin-bottom:8px;display:flex;align-items:center;justify-content:space-between;">
         <span>👤 MY PROFILE</span><span style="color:rgba(255,255,255,0.3);">›</span>
       </button>
@@ -4407,7 +4391,7 @@ let CELL=44;
 
 function calcLayout(){
   const topH=document.querySelector('.game-topbar')?.offsetHeight||60;
-  const powerStripH=document.getElementById('power-bar-strip')?.offsetHeight||0;
+  const powerStripH=0; // power bar now lives inside topbar, no separate strip row
   const levelBarH=document.getElementById('level-progress-bar')?.offsetHeight||20;
   const challengeHudH=(document.getElementById('challenge-hud')?.offsetHeight||0)*(gameActive?1:0);
   // Cap width at 480px on desktop, subtract safe margins on mobile
@@ -5228,10 +5212,11 @@ function spendDailyToken() {
 let activePowerId = null; // which power slot is armed
 
 function refreshPowerBar() {
-  const bar = document.getElementById('power-bar');
-  const strip = document.getElementById('power-bar-strip');
-  if (!bar) return;
-  bar.innerHTML = '';
+  // Powers now render into #topbar-power-bar (inline in topbar)
+  // #power-bar (in hidden strip) kept for DOM compat but not used for display
+  const topbarBar = document.getElementById('topbar-power-bar');
+  if (!topbarBar) return;
+  topbarBar.innerHTML = '';
 
   // Owned powers (year-access) + daily if token available
   const ownedPowers = POWER_DEFS.filter(p => {
@@ -5239,34 +5224,20 @@ function refreshPowerBar() {
     return isPowerOwned(p.id);
   });
 
-  if (ownedPowers.length === 0) {
-    // Hide strip when no powers — saves vertical space
-    if (strip) strip.style.display = 'none';
-    return;
-  }
-  // Show strip when powers exist
-  if (strip) strip.style.display = '';
+  if (ownedPowers.length === 0) return; // no powers — topbar stays clean
   // NOTE: do NOT call calcLayout() here — resizing the canvas clears it mid-game
 
-  // Window info: uses left + countdown
-  const usesLeft  = Math.max(0, POWER_WINDOW_MAX - _powerWindowUsed);
-  const secLeft   = powerWindowRemaining();
-  const windowEl  = document.createElement('div');
-  windowEl.style.cssText = 'display:flex;flex-direction:column;align-items:center;justify-content:center;min-width:28px;margin-right:2px;';
-  windowEl.innerHTML =
-    `<span style="font-family:var(--font-display);font-size: var(--fs-label);letter-spacing:0.06em;color:${usesLeft>0?'#F7C948':'#888'};line-height:1">${usesLeft}/${POWER_WINDOW_MAX}</span>` +
-    (secLeft > 0 ? `<span style="font-size: var(--fs-micro);color:rgba(255,255,255,0.35);line-height:1;margin-top:2px">${secLeft}s</span>` : '');
-  bar.appendChild(windowEl);
+  const secLeft = powerWindowRemaining();
 
   ownedPowers.slice(0, 5).forEach(p => {
     const slot = document.createElement('div');
     const armed = activePowerId === p.id;
     const exhausted = !canUsePower() && p.id !== 'daily';
     slot.className = 'power-slot' + (armed ? ' active-power' : '') + (exhausted ? ' power-exhausted' : '');
-    slot.title = p.name + (exhausted ? ' (⏳ refilling in ' + secLeft + 's)' : '');
+    slot.title = p.name + (exhausted ? '\u23f3 refilling in ' + secLeft + 's' : '');
     slot.innerHTML = p.icon;
     slot.addEventListener('click', () => armPower(p.id));
-    bar.appendChild(slot);
+    topbarBar.appendChild(slot);
   });
 }
 
@@ -7683,7 +7654,8 @@ document.addEventListener('click', (e) => {
   }
 });
 // Shop button removed from home screen (now lives in Solo Setup only)
-document.getElementById('btn-shop-ingame').addEventListener('click',openShop);
+// btn-shop-ingame removed from topbar — shop accessible via pause menu
+document.getElementById('btn-shop-ingame')?.addEventListener('click',openShop);
 document.getElementById('btn-shop-home').addEventListener('click',()=>openShop('powers'));
 document.getElementById('shop-close').addEventListener('click',closeShop);
 document.getElementById('shop-overlay').addEventListener('click',e=>{if(e.target===document.getElementById('shop-overlay'))closeShop();});
