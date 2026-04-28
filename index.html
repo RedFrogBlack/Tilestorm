@@ -2990,10 +2990,6 @@
     </div>
 
     <!-- Settings pill -->
-    <button id="btn-city-pack-home" onclick="if(tierOwned('citypack')){startCityPackGame(0);}else{openShop('citypack');}" style="width:100%;background:linear-gradient(135deg,rgba(74,158,255,0.1),rgba(74,158,255,0.04));border:1px solid rgba(74,158,255,0.35);border-radius:var(--radius-md);color:#4A9EFF;font-family:var(--font-display);font-size:var(--fs-body);letter-spacing:0.1em;text-transform:uppercase;padding:14px 16px;cursor:pointer;margin-bottom:8px;display:flex;align-items:center;justify-content:space-between;">
-  <span>🏙️ CITY PACK — WORLD SKYLINES</span>
-  <span style="font-size:var(--fs-label);opacity:0.55;">£3.99</span>
-</button>
 <button id="btn-settings-home" class="home-settings-pill" aria-label="Open settings">⚙ SETTINGS</button>
   </div>
 </div>
@@ -7859,13 +7855,7 @@ document.getElementById('btn-confirm-buy').addEventListener('click',confirmPurch
 document.getElementById('btn-cancel-buy').addEventListener('click',closePurchaseModal);
 document.getElementById('purchase-overlay').addEventListener('click',e=>{if(e.target===document.getElementById('purchase-overlay'))closePurchaseModal();});
 // btn-powerup removed — replaced by multi-slot power bar
-document.getElementById('btn-sound').addEventListener('click',()=>{
-  soundOn=!soundOn;
-  const btn=document.getElementById('btn-sound');
-  btn.textContent=soundOn?'🔊':'🔇';
-  btn.style.opacity=soundOn?'1':'0.5';
-  localStorage.setItem('ts_sound',soundOn?'1':'0');
-});
+// btn-sound removed from topbar — sound toggle is now in pause menu (btn-pause-sound) and settings
 
 // Home screen: Solo & Duo buttons
 document.getElementById('btn-solo').addEventListener('click', () => { ensureAudio(); openSoloSetup(); });
