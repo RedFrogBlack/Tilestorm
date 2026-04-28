@@ -5037,10 +5037,14 @@ function updateCityPackHUD() {
   nameEl.textContent = city.emoji+' '+city.name+(isDev ? ' ⏭' : '');
   // Dev tap-to-skip: tap city name to advance to next city instantly
   nameEl.style.cursor = isDev ? 'pointer' : 'default';
-  nameEl.onclick = isDev ? () => {
-    showToast('⏭ DEV: skipping to next city');
-    advanceCityPackLevel();
-  } : null;
+  // Remove old listeners cleanly
+  const newNameEl = nameEl.cloneNode(true);
+  nameEl.parentNode.replaceChild(newNameEl, nameEl);
+  if (isDev) {
+    const _devSkip = (e) => { e.preventDefault(); showToast('⏭ DEV: skipping to next city'); advanceCityPackLevel(); };
+    newNameEl.addEventListener('click', _devSkip);
+    newNameEl.addEventListener('touchend', _devSkip, { passive: false });
+  }
   hud.querySelector('.cp-progress').textContent  = cityPackLinesCleared+' / '+cityPackLinesTarget+' lines';
   hud.querySelector('.cp-level').textContent = 'City '+(cityPackCityIdx+1)+' / '+CITY_PACK_CITIES.length;
   hud.style.display = 'flex';
@@ -8577,12 +8581,12 @@ function spawnJumpingFrog(type, targetR, targetC) {
     const liveRect = canvas ? canvas.getBoundingClientRect() : null;
     const goodRect = (liveRect && liveRect.width > 0) ? liveRect : null;
 
-    // Build list of empty cells sorted left-to-right
+    // Build list of empty cells sorted left-to-right (skip masked city-pack sky cells)
     const emptyCells = [];
     if (grid) {
       for (let c = 0; c < COLS; c++) {
         for (let r = 0; r < ROWS; r++) {
-          if (grid[r] && grid[r][c] === 0) emptyCells.push([r, c]);
+          if (grid[r] && grid[r][c] === 0 && !isMasked(r, c)) emptyCells.push([r, c]);
         }
       }
     }
