@@ -1414,7 +1414,7 @@
 
     /* In-game bonus event banner */
     #event-banner {
-      position: absolute; top: 109px; left: 50%;
+      position: fixed; top: var(--event-banner-top, 109px); left: 50%;
       transform: translateX(-50%) translateY(-60px);
       background: linear-gradient(135deg, #1a0a00, #2a1500);
       border: 1px solid #F5A623;
@@ -3421,7 +3421,7 @@
     </div>
 
     <div class="topbar-right">
-      <button class="icon-btn" id="btn-shop-ingame" title="Shop" aria-label="Open shop" style="font-size: var(--fs-body)">🐸</button>
+      <button class="icon-btn" id="btn-shop-ingame" title="Shop" aria-label="Open shop" style="font-family:var(--font-display);font-size:var(--fs-label);letter-spacing:0.08em;font-weight:700;padding:0 8px;">SHOP</button>
       <button class="icon-btn" id="btn-sound" title="Sound" aria-label="Toggle sound" style="font-size: var(--fs-body)">🔊</button>
       <button class="icon-btn" id="btn-menu" title="Menu" aria-label="Open pause menu">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
@@ -4433,8 +4433,10 @@ function calcLayout(){
   if (opp) opp.style.top = fixedTopPx;
   const coopBanner = document.getElementById('coop-turn-banner');
   if (coopBanner) coopBanner.style.top = fixedTopPx;
+  // Set banner top via CSS variable so it clears the topbar + power strip
+  document.documentElement.style.setProperty('--event-banner-top', fixedTopPx);
   const eventBanner = document.getElementById('event-banner');
-  if (eventBanner) eventBanner.style.top = fixedTopPx;
+  if (eventBanner) eventBanner.style.top = '';  // let CSS var handle it
 }
 
 // ── Grid helpers ──────────────────────────────────────────────────
@@ -5244,7 +5246,7 @@ function refreshPowerBar() {
   }
   // Show strip when powers exist
   if (strip) strip.style.display = '';
-  calcLayout();
+  // NOTE: do NOT call calcLayout() here — resizing the canvas clears it mid-game
 
   // Window info: uses left + countdown
   const usesLeft  = Math.max(0, POWER_WINDOW_MAX - _powerWindowUsed);
@@ -5256,7 +5258,7 @@ function refreshPowerBar() {
     (secLeft > 0 ? `<span style="font-size: var(--fs-micro);color:rgba(255,255,255,0.35);line-height:1;margin-top:2px">${secLeft}s</span>` : '');
   bar.appendChild(windowEl);
 
-  ownedPowers.slice(0, 4).forEach(p => {
+  ownedPowers.slice(0, 5).forEach(p => {
     const slot = document.createElement('div');
     const armed = activePowerId === p.id;
     const exhausted = !canUsePower() && p.id !== 'daily';
@@ -5310,6 +5312,8 @@ function armPower(id) {
                   id === 'daily'    ? 'Tap a cell to use your free power' : 'Tap the board';
     showToast('🔥 ' + p.name + ' — ' + label);
     gridCanvas.style.cursor = 'crosshair';
+    // Redraw grid immediately so tiles are visible while player aims
+    drawGrid();
     gridCanvas.addEventListener('click',     _powerGridClick);
     gridCanvas.addEventListener('touchend',  _powerGridTouch, { passive: false });
   }
@@ -5534,8 +5538,8 @@ function buildPowersPanel() {
   });
 }
 
-// Auto-claim daily power on load and init bar
-(function() { claimDailyPower(); refreshPowerBar(); })();
+// Init power bar on load — daily token is only claimed when user presses CLAIM in shop
+(function() { refreshPowerBar(); })();
 
 // ════════════════════════════════════════════════════════════════
 // BEHAVIOUR ENGINE
@@ -7680,6 +7684,7 @@ document.addEventListener('click', (e) => {
 });
 // Shop button removed from home screen (now lives in Solo Setup only)
 document.getElementById('btn-shop-ingame').addEventListener('click',openShop);
+document.getElementById('btn-shop-home').addEventListener('click',()=>openShop('powers'));
 document.getElementById('shop-close').addEventListener('click',closeShop);
 document.getElementById('shop-overlay').addEventListener('click',e=>{if(e.target===document.getElementById('shop-overlay'))closeShop();});
 document.getElementById('btn-confirm-buy').addEventListener('click',confirmPurchase);
