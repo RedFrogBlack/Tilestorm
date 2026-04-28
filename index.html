@@ -5221,11 +5221,20 @@ function buildShopUI(){
     const card=document.createElement('div');
     card.className='tier-card'+(isEquipped?' active-tier':'')+(!owned&&tier.price?' locked-card':''); if(!owned&&tier.price){card.style.setProperty('--lock-color','#F7C948');}
     card.style.setProperty('--tier-color',tier.color);
+    card.dataset.tierId = tier.id; // used by scrollIntoView for citypack
 
     const annualSuffix = tier.annual ? '/yr' : '';
     const trialLabel = tier.trialDays ? `<div class="tier-price" style="font-size: var(--fs-ui);color:#7ED321">FREE ${tier.trialDays} DAYS</div><div style="font-size: var(--fs-ui);color:rgba(255,255,255,0.4);margin-top:2px">then £${tier.price.toFixed(2)}${annualSuffix}</div>` : null;
     let tagHtml='';
-    let btnHtml=owned ? (isEquipped?`<button class="tier-buy-btn" style="background:#CC1212;color:#fff" data-play="${tier.id}">▶ PLAY</button>`:`<button class="tier-buy-btn equip" data-equip="${tier.id}">EQUIP</button>`) : `<button class="tier-buy-btn buy" data-buy="${idx}">BUY</button>`;
+    // City Pack: owned = PLAY launches city pack; not owned = BUY
+    let btnHtml;
+    if (tier.isCityPack) {
+      btnHtml = owned
+        ? `<button class="tier-buy-btn" style="background:#4A9EFF;color:#000" onclick="closeShop();startCityPackGame(0);">▶ PLAY CITIES</button>`
+        : `<button class="tier-buy-btn buy" data-buy="${idx}">BUY £3.99</button>`;
+    } else {
+      btnHtml = owned ? (isEquipped?`<button class="tier-buy-btn" style="background:#CC1212;color:#fff" data-play="${tier.id}">▶ PLAY</button>`:`<button class="tier-buy-btn equip" data-equip="${tier.id}">EQUIP</button>`) : `<button class="tier-buy-btn buy" data-buy="${idx}">BUY</button>`;
+    }
     const priceHtml=tier.subscription?`<div class="tier-price" style="font-size: var(--fs-body);color:#c084fc">£${tier.price.toFixed(2)}<small style="font-size:0.5rem;opacity:0.7">/mo</small></div>`:tier.annual?trialLabel||`<div class="tier-price">£${tier.price.toFixed(2)}<small style="font-size:0.5rem;opacity:0.7">/yr</small></div>`:trialLabel||`<div class="tier-price">£${tier.price.toFixed(2)}</div>`;
     const perksHtml=tier.perks.slice(0,3).map(p=>`<span class="tier-perk">${p}</span>`).join('');
 
@@ -5260,12 +5269,20 @@ function openShop(tab){
 function closeShop(){document.getElementById('shop-overlay').classList.remove('open');}
 
 function switchShopTab(tab) {
-  const isTiers = tab === 'tiers';
+  // 'citypack' is a tier — open tiers tab and scroll to it after build
+  const scrollToCity = (tab === 'citypack');
+  const isTiers = (tab === 'tiers' || scrollToCity);
   document.getElementById('shop-panel-tiers').style.display  = isTiers ? '' : 'none';
   document.getElementById('shop-panel-powers').style.display = isTiers ? 'none' : '';
   document.getElementById('shop-tab-tiers').classList.toggle('active', isTiers);
   document.getElementById('shop-tab-powers').classList.toggle('active', !isTiers);
   if (!isTiers) buildPowersPanel();
+  if (scrollToCity) {
+    setTimeout(() => {
+      const card = document.querySelector('[data-tier-id="citypack"]');
+      if (card) card.scrollIntoView({ behavior:'smooth', block:'center' });
+    }, 150);
+  }
 }
 
 // ──────────────────────────────────────────────────────
