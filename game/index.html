@@ -8085,7 +8085,6 @@ function checkResumeOnHome() {
     <button onclick="openShop()" style="width:100%;background:#F5E000;border:none;border-radius:10px;color:#000;font-family:var(--font-display);font-size:0.8rem;font-weight:700;letter-spacing:0.12em;padding:10px;cursor:pointer;">UPGRADE NOW</button>
   </div>
   <!-- Cloud note -->
-  <div style="text-align:center;font-size:0.65rem;color:rgba(255,255,255,0.2);margin-top:16px;line-height:1.6;">Scores saved on this device.<br>Sign in with Apple/Google coming soon.</div>
 </div>
 </div>
 
@@ -8109,82 +8108,6 @@ function checkResumeOnHome() {
   <button id="btn-session-home" style="width:min(320px,88vw);background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:14px;color:rgba(255,255,255,0.6);font-family:var(--font-display);font-size:1rem;font-weight:700;letter-spacing:0.2em;text-transform:uppercase;padding:18px;cursor:pointer;">HOME</button>
 </div>
 
-
-<!-- ════════════ PROFILE SCREEN ════════════ -->
-<div id="screen-profile" class="screen hidden">
-<div style="padding:16px;max-width:480px;margin:0 auto;width:100%;box-sizing:border-box;overflow-y:auto;max-height:100vh;">
-  <!-- Header -->
-  <div style="display:flex;align-items:center;gap:12px;margin-bottom:24px;">
-    <button onclick="closeProfile()" style="background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);border-radius:50%;width:36px;height:36px;color:#fff;font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center;">‹</button>
-    <div style="font-family:var(--font-display);font-size:1rem;font-weight:700;letter-spacing:0.15em;color:rgba(255,255,255,0.9);">MY PROFILE</div>
-  </div>
-  <!-- Avatar + name -->
-  <div style="display:flex;align-items:center;gap:16px;margin-bottom:24px;">
-    <div style="width:60px;height:60px;background:#CC1212;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:1.8rem;">🐸</div>
-    <div>
-      <div style="font-family:var(--font-display);font-size:1.4rem;font-weight:700;letter-spacing:0.06em;color:#fff;">PLAYER ONE</div>
-      <div id="profile-tier-badge-pill" style="display:inline-block;background:#CC1212;color:#fff;font-family:var(--font-display);font-size:0.6rem;letter-spacing:0.15em;padding:3px 10px;border-radius:6px;margin-top:4px;text-transform:uppercase;">TADPOLE</div>
-    </div>
-  </div>
-  <!-- 4 stat cards -->
-  <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:20px;">
-    <div style="background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:14px;padding:16px;">
-      <div style="font-size:0.58rem;letter-spacing:0.18em;color:rgba(255,255,255,0.35);text-transform:uppercase;margin-bottom:6px;">🏆 BEST SCORE</div>
-      <div id="profile-best" style="font-family:var(--font-display);font-size:1.5rem;font-weight:700;color:#F7C948;">0</div>
-    </div>
-    <div style="background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:14px;padding:16px;">
-      <div style="font-size:0.58rem;letter-spacing:0.18em;color:rgba(255,255,255,0.35);text-transform:uppercase;margin-bottom:6px;">🔥 DAY STREAK</div>
-      <div id="profile-streak" style="font-family:var(--font-display);font-size:1.5rem;font-weight:700;color:#CC1212;">0</div>
-    </div>
-    <div style="background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:14px;padding:16px;">
-      <div style="font-size:0.58rem;letter-spacing:0.18em;color:rgba(255,255,255,0.35);text-transform:uppercase;margin-bottom:6px;">📊 TOTAL LINES</div>
-      <div id="profile-lines" style="font-family:var(--font-display);font-size:1.5rem;font-weight:700;color:#fff;">0</div>
-    </div>
-    <div style="background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:14px;padding:16px;">
-      <div style="font-size:0.58rem;letter-spacing:0.18em;color:rgba(255,255,255,0.35);text-transform:uppercase;margin-bottom:6px;">🎮 GAMES PLAYED</div>
-      <div id="profile-games" style="font-family:var(--font-display);font-size:1.5rem;font-weight:700;color:#fff;">0</div>
-    </div>
-  </div>
-  <!-- Recent games -->
-  <div style="font-family:var(--font-display);font-size:0.7rem;letter-spacing:0.2em;color:#CC1212;text-transform:uppercase;margin-bottom:12px;">RECENT GAMES</div>
-  <div id="profile-recent-list" style="display:flex;flex-direction:column;gap:8px;margin-bottom:20px;">
-    <div style="color:rgba(255,255,255,0.3);font-size:0.8rem;text-align:center;padding:16px;">No games yet — start playing!</div>
-  </div>
-  <!-- Upgrade promo card -->
-  <div id="profile-upgrade-card" style="background:rgba(245,224,0,0.06);border:1.5px solid rgba(245,224,0,0.25);border-radius:14px;padding:16px;">
-    <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">
-      <span style="font-size:1.2rem;">✨</span>
-      <span style="font-family:var(--font-display);font-size:0.9rem;font-weight:700;letter-spacing:0.1em;color:#F5E000;">GOLDEN FROG</span>
-      <span style="margin-left:auto;font-family:var(--font-display);font-size:0.8rem;color:rgba(255,255,255,0.5);">£7.99</span>
-    </div>
-    <div style="font-size:0.75rem;color:rgba(255,255,255,0.45);line-height:1.5;margin-bottom:12px;">Unlocks Colour Run mode, Expert difficulty &amp; Frog Stamp. ×2.5 score multiplier.</div>
-    <button onclick="openShop()" style="width:100%;background:#F5E000;border:none;border-radius:10px;color:#000;font-family:var(--font-display);font-size:0.8rem;font-weight:700;letter-spacing:0.12em;padding:10px;cursor:pointer;">UPGRADE NOW</button>
-  </div>
-  <!-- Cloud note -->
-  <div style="text-align:center;font-size:0.65rem;color:rgba(255,255,255,0.2);margin-top:16px;line-height:1.6;">Scores saved on this device.<br>Sign in with Apple/Google coming soon.</div>
-</div>
-</div>
-
-<!-- ════════════ SESSION RESULT (Duo) ════════════ -->
-<div id="screen-session-result" class="screen hidden" style="background:#080808;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:32px 20px;box-sizing:border-box;">
-  <div style="width:72px;height:72px;background:#CC1212;border-radius:50%;display:flex;align-items:center;justify-content:center;margin-bottom:20px;box-shadow:0 0 40px rgba(204,18,18,0.5);">
-    <img src="./rfba-logo.png" style="width:50px;filter:brightness(0) invert(1);" />
-  </div>
-  <div style="font-family:var(--font-display);font-size:0.9rem;letter-spacing:0.3em;color:rgba(255,255,255,0.4);text-transform:uppercase;margin-bottom:8px;">SESSION COMPLETE</div>
-  <div id="session-verdict" style="font-family:var(--font-display);font-size:2.2rem;font-weight:900;color:#CC1212;text-transform:uppercase;margin-bottom:24px;">YOU WIN 🏆</div>
-  <!-- Match breakdown -->
-  <div style="width:100%;max-width:340px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:14px;overflow:hidden;margin-bottom:20px;">
-    <div id="session-match-rows" style="display:flex;flex-direction:column;">
-      <!-- populated by JS -->
-    </div>
-  </div>
-  <!-- Big score -->
-  <div id="session-final-score" style="font-family:var(--font-display);font-size:3.5rem;font-weight:900;color:#fff;line-height:1;margin-bottom:24px;">2 — 1</div>
-  <!-- Buttons -->
-  <button id="btn-session-play-again" style="width:min(320px,88vw);background:#CC1212;border:none;border-radius:14px;color:#fff;font-family:var(--font-display);font-size:1rem;font-weight:700;letter-spacing:0.2em;text-transform:uppercase;padding:18px;cursor:pointer;margin-bottom:12px;">PLAY AGAIN</button>
-  <button id="btn-session-home" style="width:min(320px,88vw);background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:14px;color:rgba(255,255,255,0.6);font-family:var(--font-display);font-size:1rem;font-weight:700;letter-spacing:0.2em;text-transform:uppercase;padding:18px;cursor:pointer;">HOME</button>
-</div>
-</div>
 
 
 <!-- Quit Game confirmation modal -->
