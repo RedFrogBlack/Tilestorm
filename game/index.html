@@ -945,13 +945,15 @@
     /* Each tray slot — equal thirds */
     .tray-piece {
       flex: 1;
+      min-width: 0;           /* allow flex shrink below canvas natural width */
       display: flex;
       align-items: center;
       justify-content: center;
       cursor: grab;
-      transition: transform 0.2s ease, filter 0.2s ease;
+      transition: transform var(--t-fast), filter var(--t-fast);
       transform-origin: center;
       padding: 0 4px;
+      overflow: hidden;       /* safety net — never clip but never overflow parent */
     }
     .tray-piece:hover {
       transform: scale(1.18) translateY(-6px);
@@ -4408,14 +4410,18 @@ function calcLayout(){
   const powerStripH=document.getElementById('power-bar-strip')?.offsetHeight||0;
   const levelBarH=document.getElementById('level-progress-bar')?.offsetHeight||20;
   const challengeHudH=(document.getElementById('challenge-hud')?.offsetHeight||0)*(gameActive?1:0);
-  // Measure actual tray height — avoids grid overflowing into tray on any screen size
-  const traySection=document.querySelector('.tray-section');
-  const trayH=traySection ? traySection.offsetHeight : 168;
-  const availH=window.innerHeight-topH-powerStripH-levelBarH-challengeHudH-trayH-8; // 8px breathing room
   // Cap width at 480px on desktop, subtract safe margins on mobile
   const safeMargin = window.innerWidth < 500 ? 16 : 8;
   const maxW=Math.min(window.innerWidth-safeMargin, 480);
   const availW=maxW;
+  // Tray cell size — must fit a 4-wide piece in one third of the tray width
+  // tray-wrap padding is 12px each side = 24px; 3 slots; max piece width = 4 cells
+  const slotW = (maxW - 24) / 3;
+  TRAY_CELL = Math.max(20, Math.min(36, Math.floor((slotW - 8) / 4)));
+  // Measure actual tray height — avoids grid overflowing into tray on any screen size
+  const traySection=document.querySelector('.tray-section');
+  const trayH=traySection ? traySection.offsetHeight : 168;
+  const availH=window.innerHeight-topH-powerStripH-levelBarH-challengeHudH-trayH-8; // 8px breathing room
   CELL=Math.floor(Math.min(availH/ROWS,availW/COLS));
   CELL=Math.max(26,Math.min(CELL,64));
   gridCanvas.width=COLS*CELL;gridCanvas.height=ROWS*CELL;
@@ -4659,7 +4665,7 @@ function drawGrid(){
 }
 
 // ── Tray render ───────────────────────────────────────────────────
-const TRAY_CELL=36;
+let TRAY_CELL=36; // recalculated in calcLayout() based on viewport
 function renderTray(){
   const wrap=document.getElementById('tray-wrap');wrap.innerHTML='';
   trayPieces.forEach((piece,idx)=>{
@@ -5005,8 +5011,8 @@ function startGame(){
   document.getElementById('hazard-overlay').classList.remove('flash');
   document.getElementById('bonus-popup').classList.remove('show');
   showScreen('screen-game');
-  // Recalc AFTER screen is visible so tray-section has real offsetHeight
-  requestAnimationFrame(() => { calcLayout(); drawGrid(); });
+  // Recalc AFTER screen is visible so tray-section has real offsetHeight + TRAY_CELL is correct
+  requestAnimationFrame(() => { calcLayout(); renderTray(); drawGrid(); });
   // Welcome banner based on tier challenge
   const msgs = {
     standard: '🥚 TADPOLE · EASY — CLEAR ROWS!',
@@ -7845,7 +7851,7 @@ function showSessionResult(matchResults, myWins, oppWins) {
   showScreen('screen-session-result');
 }
 
-window.addEventListener('resize',()=>{calcLayout();if(gameActive)drawGrid();particleCanvas.width=window.innerWidth;particleCanvas.height=window.innerHeight;});
+window.addEventListener('resize',()=>{calcLayout();if(gameActive){renderTray();drawGrid();}particleCanvas.width=window.innerWidth;particleCanvas.height=window.innerHeight;});
 
 // Boot
 calcLayout();updateTierBadge();loadStreak();requestAnimationFrame(animateParticles);initTrial();updateTrialBanner();updateLockIcons();showScreen('screen-title');
