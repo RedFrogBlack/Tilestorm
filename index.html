@@ -718,9 +718,22 @@
     }
     .stat-pill .s-val.red { color: var(--red); }
 
-    .topbar-right { display: flex; gap: 5px; align-items: center; flex-shrink: 0; }
+    .topbar-right {
+      display: flex; gap: 4px; align-items: center; flex-shrink: 0;
+      /* never let this grow wider than available space */
+      max-width: 60%;
+    }
     /* Power bar inside topbar */
-    #topbar-power-bar { display: flex; gap: 5px; align-items: center; flex-shrink: 0; }
+    #topbar-power-bar { display: flex; gap: 4px; align-items: center; flex-shrink: 1; flex-wrap: nowrap; }
+    /* Menu button always visible — never shrinks */
+    .topbar-menu-btn { flex-shrink: 0 !important; }
+    /* Compact power slots + menu on narrow screens */
+    @media (max-width: 430px) {
+      .power-slot { width: 34px !important; height: 34px !important; font-size: var(--fs-body) !important; }
+      .topbar-menu-btn { width: 34px !important; height: 34px !important; min-width: 34px !important; min-height: 34px !important; }
+      #topbar-power-bar { gap: 3px; }
+      .topbar-right { gap: 3px; }
+    }
 
     /* Combo badge */
     .combo-badge {
@@ -3388,7 +3401,8 @@
   <div class="game-topbar">
     <div class="topbar-brand" id="topbar-brand-logo" style="cursor:pointer;" title="Quit game">
       <img src="./rfba-logo.png" alt="RFBA" />
-      <span id="diff-indicator">EASY</span>
+      <!-- diff-indicator hidden — JS still writes to it but it's not shown -->
+      <span id="diff-indicator" style="display:none"></span>
     </div>
 
     <div class="stat-row">
@@ -3403,8 +3417,8 @@
     <div class="topbar-right">
       <!-- Powers inline in topbar -->
       <div id="topbar-power-bar"></div>
-      <button class="icon-btn" id="btn-sound" title="Sound" aria-label="Toggle sound" style="font-size: var(--fs-body)">🔊</button>
-      <button class="icon-btn" id="btn-menu" title="Menu" aria-label="Open pause menu">
+      <!-- Sound button moved to pause menu — saves topbar space -->
+      <button class="icon-btn topbar-menu-btn" id="btn-menu" title="Menu" aria-label="Open pause menu">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
           <line x1="3" y1="12" x2="21" y2="12"/>
           <line x1="3" y1="6"  x2="21" y2="6"/>
@@ -3549,6 +3563,9 @@
       </button>
       <button id="btn-pause-upgrade" aria-label="Upgrade tier" style="width:100%;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.1);border-radius:12px;color:#fff;font-family:var(--font-display);font-size: var(--fs-body);letter-spacing:0.12em;text-transform:uppercase;padding: 16px;cursor:pointer;margin-bottom:8px;display:flex;align-items:center;justify-content:space-between;">
         <span>🐸 UPGRADE TIER</span><span style="color:rgba(255,255,255,0.3);">›</span>
+      </button>
+      <button id="btn-pause-sound" aria-label="Toggle sound" onclick="toggleSound();this.querySelector('.pause-sound-label').textContent=soundEnabled?'🔊 SOUND ON':'🔇 SOUND OFF';" style="width:100%;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.1);border-radius:12px;color:#fff;font-family:var(--font-display);font-size: var(--fs-body);letter-spacing:0.12em;text-transform:uppercase;padding: 16px;cursor:pointer;margin-bottom:8px;display:flex;align-items:center;justify-content:space-between;">
+        <span class="pause-sound-label">🔊 SOUND ON</span><span id="pause-sound-arrow" style="color:rgba(255,255,255,0.3);"></span>
       </button>
       <button id="btn-pause-settings" aria-label="Open settings" style="width:100%;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.1);border-radius:12px;color:#fff;font-family:var(--font-display);font-size: var(--fs-body);letter-spacing:0.12em;text-transform:uppercase;padding: 16px;cursor:pointer;margin-bottom:8px;display:flex;align-items:center;justify-content:space-between;">
         <span>⚙ SETTINGS</span><span style="color:rgba(255,255,255,0.3);">›</span>
