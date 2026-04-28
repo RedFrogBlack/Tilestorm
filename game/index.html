@@ -8234,6 +8234,64 @@ function checkResumeOnHome() {
       el.scrollLeft = scrollLeft - (x - startX) * 1.1;
     });
   })();
+
+  /* ── DEV UNLOCK — tap RFBA logo circle 5 times to toggle all tiers ──
+     Hidden developer backdoor for testing. Never shown to real users.
+     Tap the red circle on the home screen 5 times rapidly.
+  ── */
+  (function() {
+    var DEV_KEY = 'cd_dev_unlock';
+    var tapCount = 0;
+    var tapTimer = null;
+
+    function isDevUnlocked() {
+      return localStorage.getItem(DEV_KEY) === '1';
+    }
+
+    function activateDevUnlock() {
+      localStorage.setItem(DEV_KEY, '1');
+      // Grant all tier IDs silently
+      var allTiers = ['tadpole','treefrog','poisondart','goldenfrog','duopack'];
+      try {
+        var owned = JSON.parse(localStorage.getItem('ts_owned_tiers') || '[]');
+        allTiers.forEach(function(t) { if (!owned.includes(t)) owned.push(t); });
+        localStorage.setItem('ts_owned_tiers', JSON.stringify(owned));
+      } catch(e) {}
+      showToast('🐸 Dev mode ON — all tiers unlocked');
+      if (typeof updateTrialBanner === 'function') updateTrialBanner();
+    }
+
+    function deactivateDevUnlock() {
+      localStorage.removeItem(DEV_KEY);
+      // Remove dev-granted tiers (keeps any legitimately purchased ones)
+      try {
+        localStorage.setItem('ts_owned_tiers', '[]');
+      } catch(e) {}
+      showToast('🔒 Dev mode OFF — tiers cleared');
+      if (typeof updateTrialBanner === 'function') updateTrialBanner();
+    }
+
+    // Restore dev unlock on page load if previously set
+    if (isDevUnlocked()) {
+      activateDevUnlock();
+    }
+
+    // Attach 5-tap listener to the red badge circle on title screen
+    document.addEventListener('DOMContentLoaded', function() {
+      var badge = document.querySelector('.title-badge-circle');
+      if (!badge) return;
+      badge.addEventListener('click', function() {
+        tapCount++;
+        clearTimeout(tapTimer);
+        tapTimer = setTimeout(function() { tapCount = 0; }, 1500);
+        if (tapCount >= 5) {
+          tapCount = 0;
+          if (isDevUnlocked()) { deactivateDevUnlock(); }
+          else { activateDevUnlock(); }
+        }
+      });
+    });
+  })();
   </script>
 </body>
 </html>
