@@ -4486,16 +4486,46 @@ function calcLayout(){
 
 // ── City Pack ─────────────────────────────────────────────────────
 const CITY_PACK_CITIES = [
-  { id:'london',   name:'LONDON',    emoji:'🇬🇧', colHeights:[4,5,7,5,10,6,9,5,7,4],  note:'The Shard · Gherkin · Canary Wharf' },
-  { id:'newyork',  name:'NEW YORK',  emoji:'🗽', colHeights:[5,6,9,7,10,8,10,6,7,5],  note:'Empire State · Chrysler · One WTC' },
-  { id:'paris',    name:'PARIS',     emoji:'🇫🇷', colHeights:[3,5,6,8,10,8,6,5,4,3],  note:'Eiffel Tower skyline' },
-  { id:'tokyo',    name:'TOKYO',     emoji:'🇯🇵', colHeights:[6,8,5,9,7,10,5,8,6,4],  note:'Tokyo Tower · Skytree district' },
-  { id:'dubai',    name:'DUBAI',     emoji:'🇦🇪', colHeights:[4,5,6,7,10,10,8,6,5,4], note:'Burj Khalifa · Burj Al Arab' },
-  { id:'sydney',   name:'SYDNEY',    emoji:'🇦🇺', colHeights:[7,5,4,6,5,4,6,5,7,8],   note:'Opera House · Harbour Bridge' },
-  { id:'chicago',  name:'CHICAGO',   emoji:'🇺🇸', colHeights:[7,9,6,8,10,7,9,6,8,5],  note:'Willis Tower · Hancock Center' },
-  { id:'hongkong', name:'HONG KONG', emoji:'🇭🇰', colHeights:[6,8,5,7,6,8,7,5,8,6],   note:'Victoria Harbour skyline' },
-  { id:'moscow',   name:'MOSCOW',    emoji:'🇷🇺', colHeights:[5,7,9,6,8,10,7,9,6,5],  note:'Kremlin · Stalin skyscrapers' },
-  { id:'miami',    name:'MIAMI',     emoji:'🌴', colHeights:[5,6,4,6,10,7,5,5,6,4],   note:'Downtown · Brickell skyline' },
+  { id:'london',   name:'LONDON',    emoji:'🇬🇧', colHeights:[4,5,7,5,10,6,9,5,7,4],  note:'The Shard · Gherkin · Canary Wharf',
+    sky:{ nightTop:[4,8,22],   nightHoriz:[10,22,55],  dayTop:[30,55,100], dayHoriz:[80,130,180],
+          weather:'rain', accentColor:[74,158,255], edgeColor:[74,158,255],
+          cloudAlpha:0.55, sunColor:[220,200,160] } },
+  { id:'newyork',  name:'NEW YORK',  emoji:'🗽', colHeights:[5,6,9,7,10,8,10,6,7,5],  note:'Empire State · Chrysler · One WTC',
+    sky:{ nightTop:[5,5,18],   nightHoriz:[15,15,50],  dayTop:[20,60,140], dayHoriz:[80,150,230],
+          weather:'clear', accentColor:[120,180,255], edgeColor:[150,200,255],
+          cloudAlpha:0.35, sunColor:[255,230,120] } },
+  { id:'paris',    name:'PARIS',     emoji:'🇫🇷', colHeights:[3,5,6,8,10,8,6,5,4,3],  note:'Eiffel Tower skyline',
+    sky:{ nightTop:[8,5,20],   nightHoriz:[20,15,55],  dayTop:[60,80,160], dayHoriz:[140,180,240],
+          weather:'clouds', accentColor:[180,160,255], edgeColor:[200,180,255],
+          cloudAlpha:0.6,  sunColor:[255,220,160] } },
+  { id:'tokyo',    name:'TOKYO',     emoji:'🇯🇵', colHeights:[6,8,5,9,7,10,5,8,6,4],  note:'Tokyo Tower · Skytree district',
+    sky:{ nightTop:[10,4,25],  nightHoriz:[25,10,60],  dayTop:[40,80,170], dayHoriz:[120,180,240],
+          weather:'blossoms', accentColor:[255,160,200], edgeColor:[255,140,180],
+          cloudAlpha:0.3,  sunColor:[255,240,200] } },
+  { id:'dubai',    name:'DUBAI',     emoji:'🇦🇪', colHeights:[4,5,6,7,10,10,8,6,5,4], note:'Burj Khalifa · Burj Al Arab',
+    sky:{ nightTop:[15,8,5],   nightHoriz:[40,25,10],  dayTop:[60,120,180],dayHoriz:[200,220,180],
+          weather:'haze', accentColor:[255,200,80],  edgeColor:[255,210,100],
+          cloudAlpha:0.15, sunColor:[255,160,40] } },
+  { id:'sydney',   name:'SYDNEY',    emoji:'🇦🇺', colHeights:[7,5,4,6,5,4,6,5,7,8],   note:'Opera House · Harbour Bridge',
+    sky:{ nightTop:[4,10,28],  nightHoriz:[12,28,65],  dayTop:[20,80,180], dayHoriz:[80,160,240],
+          weather:'birds', accentColor:[80,200,255], edgeColor:[100,210,255],
+          cloudAlpha:0.3,  sunColor:[255,235,120] } },
+  { id:'chicago',  name:'CHICAGO',   emoji:'🇺🇸', colHeights:[7,9,6,8,10,7,9,6,8,5],  note:'Willis Tower · Hancock Center',
+    sky:{ nightTop:[5,5,15],   nightHoriz:[12,12,40],  dayTop:[25,55,120], dayHoriz:[70,130,200],
+          weather:'wind', accentColor:[140,180,255], edgeColor:[160,200,255],
+          cloudAlpha:0.7,  sunColor:[240,220,140] } },
+  { id:'hongkong', name:'HONG KONG', emoji:'🇭🇰', colHeights:[6,8,5,7,6,8,7,5,8,6],   note:'Victoria Harbour skyline',
+    sky:{ nightTop:[6,4,20],   nightHoriz:[20,10,55],  dayTop:[30,70,150], dayHoriz:[100,160,220],
+          weather:'neon', accentColor:[255,80,180],  edgeColor:[255,100,200],
+          cloudAlpha:0.4,  sunColor:[255,200,100] } },
+  { id:'moscow',   name:'MOSCOW',    emoji:'🇷🇺', colHeights:[5,7,9,6,8,10,7,9,6,5],  note:'Kremlin · Stalin skyscrapers',
+    sky:{ nightTop:[3,4,12],   nightHoriz:[8,10,30],   dayTop:[15,30,80],  dayHoriz:[60,90,140],
+          weather:'snow', accentColor:[180,200,240], edgeColor:[200,215,255],
+          cloudAlpha:0.8,  sunColor:[220,220,230] } },
+  { id:'miami',    name:'MIAMI',     emoji:'🌴', colHeights:[5,6,4,6,10,7,5,5,6,4],   note:'Downtown · Brickell skyline',
+    sky:{ nightTop:[5,4,25],   nightHoriz:[15,8,60],   dayTop:[20,110,200],dayHoriz:[80,200,255],
+          weather:'tropical', accentColor:[0,220,180], edgeColor:[0,240,200],
+          cloudAlpha:0.25, sunColor:[255,220,80] } },
 ];
 
 let cityPackActive = false;
@@ -4503,6 +4533,452 @@ let cityPackCityIdx = 0;
 let cityPackLinesTarget = 0;
 let cityPackLinesCleared = 0;
 let gridMask = null;
+
+// ── City Sky Animation Engine ──────────────────────────────────────────
+// Self-contained animated sky renderer for City Pack mode.
+// Draws into an offscreen canvas, then composited behind the tile grid.
+
+const SKY_CYCLE_MS = 60000; // full day→night duration
+let _skyT = 0.02;           // start just after midnight
+let _skyLastTS = 0;
+let _skyCanvas = null;
+let _skyCtx = null;
+let _skyStars = [];
+let _skyBirds = [];
+let _skyParticles = []; // rain/snow/blossom/haze
+let _skyClouds = [];
+let _skyMist = [];
+let _skyNeonFlickers = [];
+let _skyInitialized = false;
+
+function _skyLerp(a,b,t){return a+(b-a)*t;}
+function _skyClamp(v,lo,hi){return Math.max(lo,Math.min(hi,v));}
+function _skyLerpC(c1,c2,t){return [Math.round(_skyLerp(c1[0],c2[0],t)),Math.round(_skyLerp(c1[1],c2[1],t)),Math.round(_skyLerp(c1[2],c2[2],t))];}
+function _skyRgb(c,a){return a===undefined?`rgb(${c[0]},${c[1]},${c[2]})`:`rgba(${c[0]},${c[1]},${c[2]},${a})`;}
+function _skyNight(t){return (Math.cos(t*Math.PI*2)+1)/2;} // 1=midnight 0=noon
+function _skyDay(t){return 1-_skyNight(t);}
+function _skyIsNight(t){return t<0.22||t>0.78;}
+function _skyIsDay(t){return t>0.32&&t<0.68;}
+
+function _skyGetColors(t, cfg) {
+  const n = _skyNight(t);
+  const nt = cfg.nightTop, nh = cfg.nightHoriz, dt = cfg.dayTop, dh = cfg.dayHoriz;
+  // Sunrise/sunset tint
+  let tintF = 0;
+  if (t > 0.18 && t < 0.32) tintF = Math.sin(((t-0.18)/0.14)*Math.PI);
+  if (t > 0.68 && t < 0.82) tintF = Math.sin(((t-0.68)/0.14)*Math.PI);
+  const tintTop   = [60,30,10], tintHoriz = [200,90,30];
+  const rawTop   = _skyLerpC(dt, nt, n);
+  const rawHoriz = _skyLerpC(dh, nh, n);
+  return {
+    top:   _skyLerpC(rawTop,   tintTop,   tintF*0.45),
+    horiz: _skyLerpC(rawHoriz, tintHoriz, tintF*0.5),
+  };
+}
+
+function _skyInit(W, H) {
+  _skyCanvas = document.createElement('canvas');
+  _skyCanvas.width  = W;
+  _skyCanvas.height = H;
+  _skyCtx = _skyCanvas.getContext('2d');
+
+  // Stars — placed only in masked (sky) zone
+  _skyStars = [];
+  for (let i=0; i<60; i++) {
+    let placed=false, tries=0;
+    while (!placed && tries++<300) {
+      const fc=Math.random()*COLS, fr=Math.random()*ROWS;
+      const gc=Math.floor(fc), gr=Math.floor(fr);
+      if (gc<COLS && gr<ROWS && gridMask && !gridMask[gr][gc]) {
+        _skyStars.push({
+          fx:fc/COLS, fy:fr/ROWS,
+          r: Math.random()*0.9+0.3,
+          base: Math.random()*0.5+0.3,
+          spd: Math.random()*2+0.6,
+          off: Math.random()*Math.PI*2,
+          warm: Math.random()>0.82,
+        });
+        placed=true;
+      }
+    }
+  }
+
+  // Birds — generic for all cities (extra density for Sydney)
+  const city = CITY_PACK_CITIES[cityPackCityIdx];
+  const bCount = city.sky.weather==='birds' ? 6 : 3;
+  _skyBirds = Array.from({length:bCount},(_,i)=>({
+    x: -0.1 - i*0.18,
+    y: 0.05 + Math.random()*0.3,
+    spd: 0.00010 + Math.random()*0.00008,
+    wSpd: 3 + Math.random()*2,
+    wOff: Math.random()*Math.PI*2,
+    sz: 0.5 + Math.random()*0.6,
+    nextAt: Math.random()*10000,
+  }));
+
+  // Clouds
+  _skyClouds = [
+    {fx:0.05, fy:0.08, fw:0.28, spd:0.000018},
+    {fx:0.42, fy:0.13, fw:0.22, spd:0.000012},
+    {fx:0.70, fy:0.05, fw:0.20, spd:0.000021},
+    {fx:0.15, fy:0.18, fw:0.18, spd:0.000015},
+  ];
+
+  // Mist (London + Chicago + Moscow)
+  _skyMist = Array.from({length:6},(_,i)=>({
+    x: Math.random(),
+    y: 0.45 + i*0.09,
+    w: 0.35+Math.random()*0.45,
+    a: 0.04+Math.random()*0.05,
+    spd: 0.00005+Math.random()*0.00007,
+  }));
+
+  // Weather particles (rain / snow / blossoms / haze / sand)
+  _skyParticles = Array.from({length:100},()=>_skyMakeParticle(city.sky.weather));
+
+  // Hong Kong neon flickers
+  _skyNeonFlickers = Array.from({length:8},(_,i)=>({
+    c:Math.floor(Math.random()*COLS),
+    r:Math.floor(ROWS*0.2+Math.random()*ROWS*0.5),
+    phase:Math.random()*Math.PI*2,
+    spd:1+Math.random()*3,
+    color:[Math.random()>0.5?[255,40,160]:[0,240,180],][0],
+  }));
+
+  _skyInitialized = true;
+}
+
+function _skyMakeParticle(weather) {
+  switch(weather) {
+    case 'rain':     return {x:Math.random(),y:Math.random(),spd:0.004+Math.random()*0.004,len:0.022+Math.random()*0.025,a:0.1+Math.random()*0.2,dx:-0.0003};
+    case 'snow':     return {x:Math.random(),y:Math.random(),spd:0.0008+Math.random()*0.001,r:1.2+Math.random()*1.8,a:0.4+Math.random()*0.5,dx:(Math.random()-0.5)*0.0003,wo:Math.random()*Math.PI*2};
+    case 'blossoms': return {x:Math.random(),y:Math.random(),spd:0.0006+Math.random()*0.0008,r:2+Math.random()*2.5,a:0.5+Math.random()*0.5,dx:(Math.random()-0.5)*0.0006,rot:Math.random()*Math.PI*2,rspd:(Math.random()-0.5)*0.03};
+    case 'haze':     return {x:Math.random(),y:Math.random()*0.6,w:0.08+Math.random()*0.15,h:0.03+Math.random()*0.05,a:0.04+Math.random()*0.06,spd:0.00004+Math.random()*0.00006};
+    case 'tropical': return {x:Math.random(),y:Math.random(),spd:0.0015+Math.random()*0.002,r:1+Math.random()*2,a:0.3+Math.random()*0.5,dx:(Math.random()-0.5)*0.001,color:[0+Math.floor(Math.random()*80),200+Math.floor(Math.random()*55),150+Math.floor(Math.random()*55)]};
+    default:         return {x:Math.random(),y:Math.random(),spd:0.001,r:1,a:0.3};
+  }
+}
+
+function _skyDraw(timestamp) {
+  if (!_skyInitialized || !_skyCtx || !gridMask) return;
+  const dt = _skyLastTS ? timestamp - _skyLastTS : 16;
+  _skyLastTS = timestamp;
+  _skyT = (_skyT + dt/SKY_CYCLE_MS) % 1;
+
+  const sc = _skyCtx;
+  const W = _skyCanvas.width, H = _skyCanvas.height;
+  const t = _skyT;
+  const city = CITY_PACK_CITIES[cityPackCityIdx];
+  const cfg  = city.sky;
+  const night = _skyNight(t);
+  const day   = _skyDay(t);
+  const acc   = cfg.accentColor;
+  const edge  = cfg.edgeColor;
+
+  sc.clearRect(0,0,W,H);
+
+  // 1. Sky gradient (fills entire canvas; building cells will overdraw)
+  const col = _skyGetColors(t, cfg);
+  const skyG = sc.createLinearGradient(0,0,0,H);
+  skyG.addColorStop(0, _skyRgb(col.top));
+  skyG.addColorStop(1, _skyRgb(col.horiz));
+  sc.fillStyle = skyG;
+  sc.fillRect(0,0,W,H);
+
+  // 2. Dubai: extra sandy/haze overlay on horizon during day
+  if (cfg.weather==='haze' && day>0.2) {
+    const hazeG = sc.createLinearGradient(0,H*0.5,0,H);
+    hazeG.addColorStop(0,'transparent');
+    hazeG.addColorStop(1,`rgba(200,150,60,${day*0.25})`);
+    sc.fillStyle=hazeG; sc.fillRect(0,0,W,H);
+  }
+
+  // 3. Stars
+  if (night>0.05) {
+    for (const s of _skyStars) {
+      const tw = Math.sin(timestamp*0.001*s.spd + s.off);
+      const a  = _skyClamp(s.base + tw*0.35, 0, 1) * night;
+      if (a<0.02) continue;
+      const sx = s.fx*W, sy = s.fy*H;
+      if (a>0.45) {
+        const g=sc.createRadialGradient(sx,sy,0,sx,sy,s.r*4);
+        g.addColorStop(0,`rgba(255,255,255,${a*0.4})`); g.addColorStop(1,'transparent');
+        sc.fillStyle=g; sc.beginPath(); sc.arc(sx,sy,s.r*4,0,Math.PI*2); sc.fill();
+      }
+      sc.globalAlpha=a;
+      sc.fillStyle=s.warm?'#FFE8B0':'#FFFFFF';
+      sc.beginPath(); sc.arc(sx,sy,s.r,0,Math.PI*2); sc.fill();
+      sc.globalAlpha=1;
+    }
+  }
+
+  // 4. Moon
+  if (night>0.1) {
+    const mx=W*0.78, my=H*0.12, mr=W*0.042*night;
+    const g=sc.createRadialGradient(mx,my,0,mx,my,mr*5);
+    g.addColorStop(0,`rgba(180,210,255,${0.18*night})`); g.addColorStop(1,'transparent');
+    sc.fillStyle=g; sc.beginPath(); sc.arc(mx,my,mr*5,0,Math.PI*2); sc.fill();
+    sc.fillStyle=`rgba(230,240,255,${night})`;
+    sc.beginPath(); sc.arc(mx,my,mr,0,Math.PI*2); sc.fill();
+    // crescent
+    sc.fillStyle=_skyRgb(col.top, night*0.9);
+    sc.beginPath(); sc.arc(mx+mr*0.38,my-mr*0.05,mr*0.78,0,Math.PI*2); sc.fill();
+  }
+
+  // 5. Sun
+  if (day>0.08) {
+    const sunT = _skyClamp((t-0.2)/0.6,0,1);
+    const sx = W*(0.08+sunT*0.84);
+    const sy = H*(0.28-Math.sin(sunT*Math.PI)*0.2);
+    const sr = W*0.05*day;
+    const sc2 = cfg.sunColor;
+    const sg=sc.createRadialGradient(sx,sy,0,sx,sy,sr*7);
+    sg.addColorStop(0,`rgba(${sc2[0]},${sc2[1]},${sc2[2]},${0.35*day})`);
+    sg.addColorStop(0.35,`rgba(${sc2[0]},${sc2[1]},${sc2[2]},${0.1*day})`);
+    sg.addColorStop(1,'transparent');
+    sc.fillStyle=sg; sc.beginPath(); sc.arc(sx,sy,sr*7,0,Math.PI*2); sc.fill();
+    sc.fillStyle=`rgba(${sc2[0]},${sc2[1]},${sc2[2]},${day})`;
+    sc.beginPath(); sc.arc(sx,sy,sr,0,Math.PI*2); sc.fill();
+    sc.fillStyle=`rgba(255,255,240,${day*0.55})`;
+    sc.beginPath(); sc.arc(sx,sy,sr*0.55,0,Math.PI*2); sc.fill();
+  }
+
+  // 6. Clouds
+  {
+    const baseA = _skyIsNight(t) ? cfg.cloudAlpha*0.08*night : cfg.cloudAlpha*(0.3+day*0.7);
+    if (baseA>0.01) {
+      for (const cl of _skyClouds) {
+        const cx = ((cl.fx + timestamp*cl.spd)%1.3-0.15)*W;
+        const cy = cl.fy*H;
+        const cw = cl.fw*W;
+        sc.globalAlpha=baseA;
+        // Moscow/Chicago: dark heavy clouds
+        sc.fillStyle=(cfg.weather==='snow'||cfg.weather==='wind')?'#8899AA':'#E8EEF8';
+        sc.beginPath(); sc.arc(cx,cy,cw*0.36,0,Math.PI*2); sc.fill();
+        sc.beginPath(); sc.arc(cx+cw*0.24,cy-cw*0.14,cw*0.26,0,Math.PI*2); sc.fill();
+        sc.beginPath(); sc.arc(cx+cw*0.48,cy,cw*0.30,0,Math.PI*2); sc.fill();
+        sc.beginPath(); sc.arc(cx+cw*0.20,cy+cw*0.07,cw*0.24,0,Math.PI*2); sc.fill();
+        sc.globalAlpha=1;
+      }
+    }
+  }
+
+  // 7. Birds — daytime, Sydney gets more
+  if (day>0.15) {
+    const bAlpha = _skyClamp(day*0.9, 0, 1);
+    for (const b of _skyBirds) {
+      if (timestamp < b.nextAt) continue;
+      b.x += b.spd;
+      if (b.x > 1.15) {
+        b.x = -0.12 - Math.random()*0.25;
+        b.y = 0.04 + Math.random()*0.28;
+        b.nextAt = timestamp + 4000 + Math.random()*14000;
+      }
+      const bx=b.x*W, by=b.y*H, bs=b.sz*(W/160);
+      const flap=Math.sin(timestamp*0.001*b.wSpd+b.wOff)*0.38;
+      sc.save();
+      sc.translate(bx,by);
+      sc.strokeStyle=`rgba(20,40,80,${bAlpha*0.75})`;
+      sc.lineWidth=bs*0.8; sc.lineCap='round';
+      sc.beginPath();
+      sc.moveTo(-bs*3, bs*flap);
+      sc.quadraticCurveTo(-bs*1.5,-bs*1.1,0,0);
+      sc.quadraticCurveTo(bs*1.5,-bs*1.1,bs*3,bs*flap);
+      sc.stroke();
+      sc.restore();
+    }
+  }
+
+  // 8. Weather particles
+  {
+    const w = cfg.weather;
+    for (const p of _skyParticles) {
+      // London / Chicago: RAIN
+      if (w==='rain' || (w==='wind' && night>0.3)) {
+        const rainStr = w==='rain' ? night : night*0.6;
+        if (rainStr<0.05) { p.y+=p.spd; if(p.y>1)p.y=-p.len; continue; }
+        p.y += p.spd; p.x += p.dx||0;
+        if (p.y>1) { p.y=-p.len; p.x=Math.random(); }
+        sc.globalAlpha=p.a*rainStr;
+        sc.strokeStyle=`rgba(140,185,240,1)`;
+        sc.lineWidth=0.7;
+        sc.beginPath();
+        sc.moveTo(p.x*W-(p.dx||0)*H*3, p.y*H);
+        sc.lineTo(p.x*W-(p.dx||0)*H*3 + 1, (p.y+p.len)*H);
+        sc.stroke();
+        sc.globalAlpha=1;
+      }
+      // Moscow: SNOW
+      else if (w==='snow') {
+        p.y+=p.spd; p.x+=(p.dx||0)+Math.sin(timestamp*0.001+p.wo)*0.0002;
+        if (p.y>1){p.y=-0.02;p.x=Math.random();}
+        sc.globalAlpha=p.a*(night*0.4+0.6);
+        sc.fillStyle='rgba(220,230,255,1)';
+        sc.beginPath(); sc.arc(p.x*W,p.y*H,p.r,0,Math.PI*2); sc.fill();
+        sc.globalAlpha=1;
+      }
+      // Tokyo: CHERRY BLOSSOMS
+      else if (w==='blossoms') {
+        p.y+=p.spd; p.x+=p.dx||0; p.rot+=(p.rspd||0);
+        if (p.y>1){p.y=-0.02;p.x=Math.random();}
+        sc.save();
+        sc.globalAlpha=p.a*(day*0.7+night*0.15);
+        sc.translate(p.x*W,p.y*H); sc.rotate(p.rot||0);
+        // Petal: two overlapping ellipses
+        sc.fillStyle=`rgba(255,${150+Math.floor(Math.random()*60)},${180+Math.floor(Math.random()*40)},1)`;
+        sc.beginPath(); sc.ellipse(0,0,p.r,p.r*0.5,0,0,Math.PI*2); sc.fill();
+        sc.restore();
+        sc.globalAlpha=1;
+      }
+      // Dubai: HEAT HAZE particles
+      else if (w==='haze') {
+        p.x+=p.spd||0;
+        if (p.x>1.2){p.x=-0.2;p.y=Math.random()*0.65;}
+        const hA=p.a*(day*0.7+0.1);
+        const hg=sc.createRadialGradient(p.x*W,p.y*H,0,p.x*W,p.y*H,(p.w||0.1)*W*0.5);
+        hg.addColorStop(0,`rgba(255,200,80,${hA})`);
+        hg.addColorStop(1,'transparent');
+        sc.fillStyle=hg;
+        sc.fillRect(p.x*W-(p.w||0.1)*W*0.5,p.y*H-(p.h||0.05)*H*0.5,(p.w||0.1)*W,(p.h||0.05)*H);
+      }
+      // Miami / Sydney: TROPICAL glow drops
+      else if (w==='tropical'||w==='birds') {
+        const vib = p.color||[0,220,180];
+        p.y+=p.spd; p.x+=p.dx||0;
+        if (p.y>1){p.y=-0.02;p.x=Math.random();}
+        sc.globalAlpha=p.a*(day*0.5+night*0.1);
+        sc.fillStyle=`rgba(${vib[0]},${vib[1]},${vib[2]},1)`;
+        sc.beginPath(); sc.arc(p.x*W,p.y*H,p.r,0,Math.PI*2); sc.fill();
+        sc.globalAlpha=1;
+      }
+    }
+  }
+
+  // 9. Mist (London, Moscow, Chicago)
+  if (cfg.weather==='rain'||cfg.weather==='snow'||cfg.weather==='wind') {
+    const mistStr = cfg.weather==='rain' ? night*0.85 : (cfg.weather==='snow' ? 0.6 : 0.4);
+    if (mistStr>0.04) {
+      for (const ml of _skyMist) {
+        ml.x=(ml.x+ml.spd)%1.4;
+        const mg=sc.createRadialGradient((ml.x-0.1)*W+ml.w*W*0.5,ml.y*H,0,(ml.x-0.1)*W+ml.w*W*0.5,ml.y*H,ml.w*W*0.55);
+        mg.addColorStop(0,`rgba(${acc[0]},${acc[1]},${acc[2]},${ml.a*mistStr})`);
+        mg.addColorStop(1,'transparent');
+        sc.fillStyle=mg;
+        sc.fillRect((ml.x-0.2)*W,ml.y*H-ml.w*W*0.3,ml.w*W,ml.w*W*0.6);
+      }
+    }
+  }
+
+  // 10. Hong Kong: neon reflections on buildings at night
+  if (cfg.weather==='neon' && night>0.2) {
+    for (const nf of _skyNeonFlickers) {
+      const fi = Math.sin(timestamp*0.001*nf.spd+nf.phase);
+      const fa = (0.3+fi*0.2)*night;
+      const nx=nf.c*CELL+CELL*0.1, ny=nf.r*CELL+CELL*0.1;
+      if (!gridMask[nf.r]?.[nf.c]) continue; // only on building cells
+      sc.globalAlpha=fa;
+      sc.fillStyle=`rgb(${nf.color[0]},${nf.color[1]},${nf.color[2]})`;
+      sc.fillRect(nx,ny,CELL*0.8,CELL*0.8);
+      sc.globalAlpha=1;
+    }
+  }
+
+  // ── Building cells overdraw ────────────────────────────────────────
+  // Cover active (playable) cells with building dark bg + windows.
+  // Masked (sky) cells are left clear — sky shines through.
+  if (gridMask) {
+    for (let r=0;r<ROWS;r++) for (let c=0;c<COLS;c++) {
+      if (!gridMask[r][c]) continue; // sky zone — leave transparent
+      const x=c*CELL+1, y=r*CELL+1, cw=CELL-2, ch=CELL-2;
+      const topRow=ROWS-CITY_PACK_CITIES[cityPackCityIdx].colHeights[c];
+      const relR=r-topRow;
+      // Building bg
+      const bgR=Math.round(_skyLerp(22,10,night));
+      const bgG=Math.round(_skyLerp(30,18,night));
+      const bgB=Math.round(_skyLerp(50,28,night));
+      sc.fillStyle=`rgb(${bgR},${bgG},${bgB})`;
+      sc.beginPath(); sc.roundRect(x,y,cw,ch,2); sc.fill();
+      // Windows
+      if (relR>0) {
+        const ww=Math.max(1,Math.floor(cw/2-2));
+        const wh=Math.max(1,Math.floor(ch/2-2));
+        for (let wy=0;wy<2;wy++) for (let wx=0;wx<2;wx++) {
+          const seed=r*100+c*10+wy*2+wx;
+          const lit=(seed*11+7)%5!==0;
+          // Hong Kong: neon colours at night; others: blue-white
+          let winR,winG,winB;
+          if (cfg.weather==='neon'&&night>0.1) {
+            winR=lit?(seed%3===0?255:seed%3===1?0:255):(acc[0]);
+            winG=lit?(seed%3===0?40:seed%3===1?240:100):(acc[1]);
+            winB=lit?(seed%3===0?160:seed%3===1?180:200):(acc[2]);
+          } else {
+            winR=edge[0]; winG=edge[1]; winB=edge[2];
+          }
+          const winA=lit?_skyLerp(0.05,0.38,night):_skyLerp(0.01,0.07,night);
+          sc.fillStyle=`rgba(${winR},${winG},${winB},${winA})`;
+          sc.fillRect(x+2+wx*(ww+2), y+2+wy*(wh+2), ww, wh);
+        }
+      }
+      // Cell border
+      sc.strokeStyle=`rgba(${edge[0]},${edge[1]},${edge[2]},${_skyLerp(0.05,0.14,night)})`;
+      sc.lineWidth=0.5;
+      sc.beginPath(); sc.roundRect(x-0.5,y-0.5,cw+1,ch+1,2); sc.stroke();
+    }
+    // Column separators
+    const colH=CITY_PACK_CITIES[cityPackCityIdx].colHeights;
+    sc.lineWidth=0.8;
+    for (let c=1;c<COLS;c++) {
+      const startR=Math.max(ROWS-colH[c], ROWS-colH[c-1]);
+      if (startR>=ROWS) continue;
+      sc.strokeStyle=`rgba(${edge[0]},${edge[1]},${edge[2]},${_skyLerp(0.06,0.22,night)})`;
+      sc.beginPath(); sc.moveTo(c*CELL,startR*CELL); sc.lineTo(c*CELL,ROWS*CELL); sc.stroke();
+    }
+    // Skyline edge — glowing contour
+    const eA=_skyLerp(0.30,0.80,night);
+    sc.strokeStyle=`rgba(${edge[0]},${edge[1]},${edge[2]},${eA})`;
+    sc.lineWidth=2;
+    sc.lineJoin='miter';
+    sc.beginPath();
+    for (let c=0;c<COLS;c++) {
+      const tr=ROWS-colH[c];
+      if (c===0) sc.moveTo(0,tr*CELL); else sc.lineTo(c*CELL,tr*CELL);
+      sc.lineTo((c+1)*CELL,tr*CELL);
+    }
+    sc.stroke();
+  }
+
+  // 11. Horizon glow
+  {
+    const tintF = (t>0.18&&t<0.32)?Math.sin(((t-0.18)/0.14)*Math.PI):((t>0.68&&t<0.82)?Math.sin(((t-0.68)/0.14)*Math.PI):0);
+    if (tintF>0.05||day>0.1) {
+      const colH=CITY_PACK_CITIES[cityPackCityIdx].colHeights;
+      const minTop=Math.min(...colH);
+      const hy=(ROWS-minTop)*CELL;
+      const spread=H*0.12;
+      const hg=sc.createLinearGradient(0,hy-spread,0,hy+spread*0.5);
+      const gc2=tintF>0.05?[220,110,40]:acc;
+      const glA=_skyClamp((tintF>0.05?tintF:day)*0.18,0,0.22);
+      hg.addColorStop(0,'transparent');
+      hg.addColorStop(0.5,`rgba(${gc2[0]},${gc2[1]},${gc2[2]},${glA})`);
+      hg.addColorStop(1,'transparent');
+      sc.fillStyle=hg; sc.fillRect(0,hy-spread,W,spread*1.5);
+    }
+  }
+}
+
+function _skyReset() {
+  _skyInitialized = false;
+  _skyT = 0.02;
+  _skyLastTS = 0;
+  _skyCanvas = null;
+  _skyCtx = null;
+  _skyStars = [];
+  _skyBirds = [];
+  _skyParticles = [];
+  _skyClouds = [];
+  _skyMist = [];
+}
+// ── End Sky Animation Engine ───────────────────────────────────────────
 
 function buildCityMask(colHeights) {
   const mask = Array.from({length:ROWS}, () => new Array(COLS).fill(false));
@@ -4539,10 +5015,13 @@ function startCityPackGame(cityIdx) {
   const totalCells = city.colHeights.reduce((a,b)=>a+b,0);
   cityPackLinesTarget = Math.max(4, Math.round(totalCells / 10));
   cityPackLinesCleared = 0;
+  _skyReset();
   revealCitySkyline(city).then(() => {
     startGame();
     gridMask = buildCityMask(city.colHeights);
     for (let r=0;r<ROWS;r++) for (let c=0;c<COLS;c++) if(isMasked(r,c)) grid[r][c]=0;
+    // Init sky engine now that gridCanvas dimensions are set
+    _skyInit(gridCanvas.width, gridCanvas.height);
     updateCityPackHUD();
     setTimeout(()=>showEventBanner(city.emoji+' '+city.name+' — FILL THE SKYLINE!'), 300);
   });
@@ -4563,7 +5042,7 @@ function advanceCityPackLevel() {
   const nextIdx = cityPackCityIdx + 1;
   if (nextIdx >= CITY_PACK_CITIES.length) {
     showEventBanner('🏆 ALL 10 CITIES CONQUERED!');
-    setTimeout(() => { cityPackActive=false; gridMask=null; triggerGameOver(); }, 1400);
+    setTimeout(() => { cityPackActive=false; gridMask=null; _skyReset(); triggerGameOver(); }, 1400);
     return;
   }
   showEventBanner('✅ '+CITY_PACK_CITIES[cityPackCityIdx].name+' COMPLETE!');
@@ -4784,10 +5263,16 @@ function drawGrid(){
   ctx.beginPath();ctx.moveTo(W-bLen,H-bW/2);ctx.lineTo(W-bW/2,H-bW/2);ctx.lineTo(W-bW/2,H-bLen);ctx.stroke();
 
   if(gridMask){
-    for(let r=0;r<ROWS;r++) for(let c=0;c<COLS;c++){
-      if(isMasked(r,c)){
-        ctx.fillStyle='rgba(0,0,0,0.75)';
-        ctx.beginPath();ctx.roundRect(c*CELL+1,r*CELL+1,CELL-2,CELL-2,3);ctx.fill();
+    // City Pack: composite animated sky layer
+    if(cityPackActive && _skyInitialized && _skyCanvas) {
+      ctx.drawImage(_skyCanvas, 0, 0);
+    } else {
+      // Fallback: plain dark masked cells
+      for(let r=0;r<ROWS;r++) for(let c=0;c<COLS;c++){
+        if(isMasked(r,c)){
+          ctx.fillStyle='rgba(0,0,0,0.75)';
+          ctx.beginPath();ctx.roundRect(c*CELL+1,r*CELL+1,CELL-2,CELL-2,3);ctx.fill();
+        }
       }
     }
   }
@@ -5113,7 +5598,13 @@ function animateParticles(ts){
   const dt=Math.min((ts-lastPT)/1000,.05);lastPT=ts;
   particleCtx.clearRect(0,0,particleCanvas.width,particleCanvas.height);
   particles.forEach(p=>{p.x+=p.vx*dt;p.y+=p.vy*dt;p.vy+=200*dt;p.life-=dt;const a=Math.max(0,p.life/p.maxLife);particleCtx.globalAlpha=a;particleCtx.fillStyle=p.color;const s=p.size*a;particleCtx.beginPath();particleCtx.roundRect(p.x-s/2,p.y-s/2,s,s,s*.3);particleCtx.fill();});
-  particleCtx.globalAlpha=1;particles=particles.filter(p=>p.life>0);requestAnimationFrame(animateParticles);
+  particleCtx.globalAlpha=1;particles=particles.filter(p=>p.life>0);
+  // City Pack: drive sky animation and redraw grid every frame
+  if (cityPackActive && _skyInitialized) {
+    _skyDraw(ts);
+    drawGrid();
+  }
+  requestAnimationFrame(animateParticles);
 }
 
 // ── Screens ───────────────────────────────────────────────────────
@@ -5154,7 +5645,7 @@ function showScreen(id){
 
 function startGame(){
   // Reset city pack mask for normal (non-city-pack) games
-  if (!cityPackActive) { gridMask = null; }
+  if (!cityPackActive) { gridMask = null; _skyReset(); }
   const _cpHud = document.getElementById('city-pack-hud');
   if (_cpHud && !cityPackActive) _cpHud.style.display = 'none';
   ensureAudio(); // guarantee audio context is running before any game sounds fire
