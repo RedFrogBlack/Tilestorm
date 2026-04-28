@@ -55,9 +55,38 @@
       --tile-6: #7B3FBE;   /* art violet */
       --tile-7: #E62298;   /* art pink */
 
-      --radius:    8px;
-      --radius-sm: 4px;
-      --t:         200ms cubic-bezier(0.16,1,0.3,1);
+      /* ── Type scale (9 tokens — replaces 62 unique font-size values) ── */
+      --fs-hero:    clamp(2rem, 8vw, 3.2rem);  /* CROAKDOWN wordmark */
+      --fs-display: 2.2rem;                    /* big scores, game-over numbers */
+      --fs-h1:      1.8rem;                    /* screen titles, shop headers */
+      --fs-h2:      1.4rem;                    /* section headers, tier names */
+      --fs-h3:      1.1rem;                    /* card titles, modal headers */
+      --fs-body:    0.9rem;                    /* descriptions, body copy */
+      --fs-ui:      0.75rem;                   /* buttons, nav labels, tab text */
+      --fs-label:   0.65rem;                   /* badges, small tags, inline labels */
+      --fs-micro:   0.55rem;                   /* legal copy, footnotes */
+
+      /* ── Spacing scale (8pt grid) ── */
+      --sp-1:  4px;
+      --sp-2:  8px;
+      --sp-3:  12px;
+      --sp-4:  16px;
+      --sp-5:  24px;
+      --sp-6:  32px;
+      --sp-7:  48px;
+      --sp-8:  64px;
+
+      /* ── Border radius ── */
+      --radius-xs: 4px;
+      --radius-sm: 8px;
+      --radius-md: 12px;
+      --radius-lg: 20px;
+      --radius:    8px;  /* alias kept for back-compat */
+
+      /* ── Motion ── */
+      --t:      200ms cubic-bezier(0.16,1,0.3,1);  /* standard — most interactions */
+      --t-fast: 120ms ease;                         /* micro — button press, toggle */
+      --t-slow: 350ms cubic-bezier(0.16,1,0.3,1);  /* screen enters, modals */
     }
 
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -114,9 +143,28 @@
       position: fixed; inset: 0;
       display: flex; align-items: center; justify-content: center;
       flex-direction: column;
-      transition: opacity 0.3s ease, transform 0.3s ease;
+      transition: opacity var(--t-slow), transform var(--t-slow);
     }
     .screen.hidden { display: none !important; }
+
+    /* ── Signature screen transition — slide-up + fade ──────────────── */
+    /* Screens entering: start slightly below, fade + slide up into place */
+    @keyframes screenEnter {
+      from { opacity: 0; transform: translateY(10px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+    /* Screens exiting: fade out upward (feels like depth) */
+    @keyframes screenExit {
+      from { opacity: 1; transform: translateY(0); }
+      to   { opacity: 0; transform: translateY(-8px); }
+    }
+    .screen.is-entering {
+      animation: screenEnter var(--t-slow) cubic-bezier(0.16,1,0.3,1) both;
+    }
+    .screen.is-exiting {
+      animation: screenExit 180ms ease both;
+      pointer-events: none;
+    }
 
     /* ── Reduced Motion — accessibility ── */
     @media (prefers-reduced-motion: reduce) {
@@ -204,7 +252,7 @@
       display: flex; flex-direction: column;
       align-items: center; justify-content: center;
       gap: 0;
-      padding: 18px;
+      padding: 16px;
       box-shadow:
         0 0 0 2px rgba(255,255,255,0.08),
         0 20px 60px rgba(204,18,18,0.55),
@@ -228,7 +276,7 @@
 
     .title-headline {
       font-family: var(--font-display);
-      font-size: clamp(2rem, 8vw, 3.2rem);
+      font-size: var(--fs-hero);
       font-weight: 700;
       letter-spacing: 0.05em;
       text-transform: uppercase;
@@ -239,7 +287,7 @@
 
     .title-tagline {
       font-family: var(--font-body);
-      font-size: 0.7rem;
+      font-size: var(--fs-ui);
       font-weight: 500;
       letter-spacing: 0.2em;
       text-transform: uppercase;
@@ -255,7 +303,7 @@
       padding: 12px 40px;
       border-radius: var(--radius-sm);
       font-family: var(--font-display);
-      font-size: 0.9rem;
+      font-size: var(--fs-body);
       font-weight: 600;
       letter-spacing: 0.15em;
       text-transform: uppercase;
@@ -268,7 +316,7 @@
 
     /* Below-circle content */
     .title-sub {
-      display: flex; flex-direction: column; align-items: center; gap: 14px;
+      display: flex; flex-direction: column; align-items: center; gap: 16px;
       padding: 28px 24px 0;
       width: 100%;
     }
@@ -280,7 +328,7 @@
       padding: 13px 32px;
       border-radius: var(--radius-sm);
       font-family: var(--font-display);
-      font-size: 0.85rem;
+      font-size: var(--fs-body);
       font-weight: 600;
       letter-spacing: 0.15em;
       text-transform: uppercase;
@@ -296,24 +344,24 @@
     .tier-badge-title {
       display: flex; align-items: center; gap: 8px;
       font-family: var(--font-display);
-      font-size: 0.7rem; font-weight: 500;
+      font-size: var(--fs-ui); font-weight: 500;
       letter-spacing: 0.18em; text-transform: uppercase;
       color: var(--muted);
     }
     .tb-dot { width: 7px; height: 7px; border-radius: 50%; }
 
     .best-label {
-      font-size: 0.72rem; font-weight: 500; letter-spacing: 0.12em;
+      font-size: var(--fs-ui); font-weight: 500; letter-spacing: 0.12em;
       text-transform: uppercase; color: var(--muted);
     }
     .best-label span { color: var(--white); font-weight: 700; }
 
     /* Art swatches row */
     .title-swatches {
-      display: flex; gap: 6px;
+      display: flex; gap: 8px;
     }
     .swatch {
-      width: 18px; height: 18px; border-radius: 2px;
+      width: 18px; height: 18px; border-radius: var(--radius-xs);
     }
 
     /* ════════════════════════════════════════════════
@@ -336,21 +384,21 @@
     }
     .solo-back-btn {
       background: none; border: none;
-      color: var(--muted); font-size: 1.3rem;
+      color: var(--muted); font-size: var(--fs-h2);
       cursor: pointer; padding: 4px 8px;
       transition: color 0.15s;
     }
     .solo-back-btn:hover { color: #fff; }
     .solo-setup-title {
       font-family: var(--font-display);
-      font-size: 1.1rem; font-weight: 700;
+      font-size: var(--fs-h3); font-weight: 700;
       letter-spacing: 0.15em; text-transform: uppercase;
       color: #fff;
     }
     /* Section heading */
     .setup-section-label {
       font-family: var(--font-display);
-      font-size: 0.6rem; letter-spacing: 0.2em;
+      font-size: var(--fs-label); letter-spacing: 0.2em;
       text-transform: uppercase; color: var(--muted);
       margin-bottom: 10px;
     }
@@ -362,12 +410,12 @@
       flex: 1;
       background: rgba(255,255,255,0.04);
       border: 2px solid rgba(255,255,255,0.12);
-      border-radius: 12px;
+      border-radius: var(--radius-md);
       padding: 16px 8px;
       cursor: pointer;
       display: flex; flex-direction: column;
-      align-items: center; gap: 6px;
-      transition: all 0.18s;
+      align-items: center; gap: 8px;
+      transition: all var(--t);
     }
     .solo-diff-btn:hover { border-color: rgba(255,255,255,0.3); background: rgba(255,255,255,0.07); }
     .solo-diff-btn.active { border-width: 2px; transform: scale(1.03); }
@@ -375,14 +423,14 @@
     .solo-diff-btn[data-diff="medium"].active { border-color: #F5A623; background: rgba(245,166,35,0.12); }
     .solo-diff-btn[data-diff="hard"].active   { border-color: #7B3FBE; background: rgba(123,63,190,0.15); }
     .solo-diff-btn[data-diff="expert"].active { border-color: #F5E000; background: rgba(245,224,0,0.12); }
-    .solo-diff-icon { font-size: 1.4rem; }
+    .solo-diff-icon { font-size: var(--fs-h2); }
     .solo-diff-name {
       font-family: var(--font-display);
-      font-size: 0.78rem; font-weight: 700;
+      font-size: var(--fs-ui); font-weight: 700;
       letter-spacing: 0.1em; text-transform: uppercase; color: #fff;
     }
     .solo-diff-hint {
-      font-size: 0.6rem; color: var(--muted);
+      font-size: var(--fs-label); color: var(--muted);
       text-align: center; line-height: 1.3;
     }
     /* ── Game Tier Cards (solo setup) ── */
@@ -392,10 +440,10 @@
       justify-content: space-between;
       background: rgba(255,255,255,0.04);
       border: 2px solid color-mix(in srgb, var(--tc) 40%, transparent);
-      border-radius: 16px;
+      border-radius: var(--radius-md);
       padding: 16px 18px;
       gap: 12px;
-      transition: background 0.18s, border-color 0.18s;
+      transition: background var(--t), border-color var(--t);
       position: relative;
       overflow: hidden;
     }
@@ -409,30 +457,30 @@
     .gtc-left {
       display: flex;
       align-items: center;
-      gap: 14px;
+      gap: 16px;
       flex: 1;
       min-width: 0;
     }
     .gtc-emoji {
-      font-size: 2rem;
+      font-size: var(--fs-display);
       flex-shrink: 0;
     }
     .gtc-info {
       display: flex;
       flex-direction: column;
-      gap: 3px;
+      gap: 4px;
       min-width: 0;
     }
     .gtc-name {
       font-family: var(--font-display);
-      font-size: 0.95rem;
+      font-size: var(--fs-body);
       font-weight: 900;
       letter-spacing: 0.12em;
       text-transform: uppercase;
       color: #fff;
     }
     .gtc-sub {
-      font-size: 0.72rem;
+      font-size: var(--fs-ui);
       color: rgba(255,255,255,0.55);
       letter-spacing: 0.02em;
     }
@@ -440,14 +488,14 @@
       display: inline-block;
       margin-top: 4px;
       font-family: var(--font-display);
-      font-size: 0.6rem;
+      font-size: var(--fs-label);
       font-weight: 700;
       letter-spacing: 0.12em;
       text-transform: uppercase;
       color: color-mix(in srgb, var(--tc) 90%, #fff);
       background: color-mix(in srgb, var(--tc) 18%, transparent);
       border: 1px solid color-mix(in srgb, var(--tc) 40%, transparent);
-      border-radius: 6px;
+      border-radius: var(--radius-xs);
       padding: 3px 8px;
     }
     .gtc-badge.free-badge {
@@ -459,22 +507,22 @@
       color: #F7C948;
       background: rgba(247,201,72,0.12);
       border-color: rgba(247,201,72,0.4);
-      font-size: 0.65rem;
+      font-size: var(--fs-label);
     }
     .gtc-play-btn {
       flex-shrink: 0;
       background: var(--red);
       border: none;
-      border-radius: 10px;
+      border-radius: var(--radius-sm);
       color: #fff;
       font-family: var(--font-display);
-      font-size: 0.75rem;
+      font-size: var(--fs-ui);
       font-weight: 700;
       letter-spacing: 0.14em;
       text-transform: uppercase;
       padding: 12px 16px;
       cursor: pointer;
-      transition: background 0.15s, transform 0.12s;
+      transition: background var(--t-fast), transform var(--t-fast);
       white-space: nowrap;
     }
     .gtc-play-btn:active { transform: scale(0.96); }
@@ -489,10 +537,10 @@
       background: #F7C948;
       color: #000;
       font-family: var(--font-display);
-      font-size: 0.55rem;
+      font-size: var(--fs-micro);
       font-weight: 700;
       letter-spacing: 0.1em;
-      border-radius: 5px;
+      border-radius: var(--radius-xs);
       padding: 2px 6px;
     }
     /* Challenge mode cards */
@@ -504,13 +552,13 @@
     .challenge-card {
       background: rgba(255,255,255,0.04);
       border: 2px solid rgba(255,255,255,0.1);
-      border-radius: 14px;
+      border-radius: var(--radius-md);
       padding: 16px 12px;
       cursor: pointer;
       display: flex; flex-direction: column;
-      align-items: center; gap: 7px;
+      align-items: center; gap: 8px;
       text-align: center;
-      transition: all 0.18s;
+      transition: all var(--t);
       position: relative;
     }
     .challenge-card:hover { border-color: rgba(255,255,255,0.28); background: rgba(255,255,255,0.07); }
@@ -521,33 +569,33 @@
     }
     .challenge-card.locked { opacity: 0.5; cursor: default; }
     .challenge-card.locked:hover { border-color: rgba(255,255,255,0.1); background: rgba(255,255,255,0.04); transform: none; }
-    .challenge-icon { font-size: 1.8rem; }
+    .challenge-icon { font-size: var(--fs-h1); }
     .challenge-name {
       font-family: var(--font-display);
-      font-size: 0.72rem; font-weight: 700;
+      font-size: var(--fs-ui); font-weight: 700;
       letter-spacing: 0.08em; text-transform: uppercase; color: #fff;
     }
     .challenge-hint {
-      font-size: 0.58rem; color: var(--muted); line-height: 1.3;
+      font-size: var(--fs-label); color: var(--muted); line-height: 1.3;
     }
     .challenge-lock-badge {
       position: absolute; top: 7px; right: 8px;
-      font-size: 0.55rem; background: rgba(123,63,190,0.7);
-      color: #fff; padding: 2px 5px; border-radius: 4px;
+      font-size: var(--fs-micro); background: rgba(123,63,190,0.7);
+      color: #fff; padding: 2px 5px; border-radius: var(--radius-xs);
       font-family: var(--font-display); letter-spacing: 0.08em;
     }
-    .challenge-desc { font-size:11px; color:#666; line-height:1.4; margin-top:3px; }
+    .challenge-desc { font-size: var(--fs-micro); color:#666; line-height:1.4; margin-top:3px; }
     /* Solo start button */
     #btn-solo-start {
       width: 100%;
       background: var(--red); color: #fff;
-      border: none; border-radius: 12px;
+      border: none; border-radius: var(--radius-md);
       font-family: var(--font-display);
-      font-size: 1rem; font-weight: 700;
+      font-size: var(--fs-body); font-weight: 700;
       letter-spacing: 0.15em; text-transform: uppercase;
       padding: 16px; cursor: pointer;
       box-shadow: 0 4px 20px rgba(204,18,18,0.4);
-      transition: all 0.18s;
+      transition: all var(--t);
     }
     #btn-solo-start:hover { background: #e01414; transform: translateY(-1px); }
     #btn-solo-start:active { transform: translateY(0); }
@@ -565,9 +613,9 @@
     }
     #challenge-hud.active { display: flex; }
     #challenge-hud-left { display: flex; flex-direction: column; }
-    #challenge-hud-title { font-family: var(--font-display); font-size: 0.8rem; font-weight: 700; letter-spacing: 0.1em; color: #fff; text-transform: uppercase; }
-    #challenge-hud-sub { font-size: 0.65rem; color: rgba(255,255,255,0.6); margin-top: 2px; }
-    #challenge-hud-timer { font-family: var(--font-display); font-size: 2rem; font-weight: 900; color: #F5E000; line-height: 1; }
+    #challenge-hud-title { font-family: var(--font-display); font-size: var(--fs-ui); font-weight: 700; letter-spacing: 0.1em; color: #fff; text-transform: uppercase; }
+    #challenge-hud-sub { font-size: var(--fs-label); color: rgba(255,255,255,0.6); margin-top: 2px; }
+    #challenge-hud-timer { font-family: var(--font-display); font-size: var(--fs-display); font-weight: 900; color: #F5E000; line-height: 1; }
     #challenge-hud-timer.urgent { color: #fff; animation: pulse 0.5s infinite; }
     @keyframes pulse { 0%,100%{opacity:1}50%{opacity:0.4} }
     .tray-cell.colour-match { box-shadow: 0 0 12px rgba(204,18,18,0.7); border-color: #CC1212 !important; }
@@ -626,7 +674,7 @@
       display: flex;
       align-items: center;
       justify-content: space-between;
-      gap: 6px;
+      gap: 8px;
       flex-shrink: 0;
       position: relative; z-index: 1;
       overflow: hidden;
@@ -638,7 +686,7 @@
     .topbar-brand img { height: 32px; width: auto; }
     .topbar-brand-name {
       font-family: var(--font-display);
-      font-size: 1.05rem;
+      font-size: var(--fs-h3);
       font-weight: 700;
       letter-spacing: 0.1em;
       text-transform: uppercase;
@@ -660,7 +708,7 @@
     }
     .stat-pill .s-label {
       font-family: var(--font-display);
-      font-size: 0.48rem;
+      font-size: var(--fs-micro);
       font-weight: 500;
       text-transform: uppercase;
       letter-spacing: 0.08em;
@@ -670,7 +718,7 @@
     }
     .stat-pill .s-val {
       font-family: var(--font-display);
-      font-size: 0.95rem;
+      font-size: var(--fs-body);
       font-weight: 700;
       font-variant-numeric: tabular-nums lining-nums;
       color: var(--white);
@@ -687,7 +735,7 @@
       border-radius: var(--radius-sm);
       padding: 3px 10px;
       font-family: var(--font-display);
-      font-size: 0.72rem;
+      font-size: var(--fs-ui);
       font-weight: 700;
       letter-spacing: 0.12em;
       text-transform: uppercase;
@@ -696,7 +744,7 @@
       white-space: nowrap;
     }
     .combo-badge.visible { opacity: 1; transform: scale(1) translateY(0); }
-    .combo-badge .cn { font-size: 1.1rem; margin-right: 2px; }
+    .combo-badge .cn { font-size: var(--fs-h3); margin-right: 2px; }
 
     /* Icon buttons */
     .icon-btn {
@@ -719,10 +767,10 @@
       border-radius: var(--radius-sm);
       padding: 10px 16px;
       min-height: 44px;
-      display: flex; align-items: center; gap: 6px;
+      display: flex; align-items: center; gap: 8px;
       cursor: pointer; color: var(--red);
       font-family: var(--font-display);
-      font-size: 0.78rem;
+      font-size: var(--fs-ui);
       font-weight: 700;
       letter-spacing: 0.1em;
       text-transform: uppercase;
@@ -733,8 +781,8 @@
     .powerup-btn:disabled { opacity: 0.3; cursor: default; }
     .pu-count {
       background: var(--red); color: #fff;
-      border-radius: 3px; padding: 1px 5px;
-      font-size: 0.6rem; font-weight: 700;
+      border-radius: var(--radius-xs); padding: 1px 5px;
+      font-size: var(--fs-label); font-weight: 700;
     }
 
     /* Game area — fills everything below topbar, grid then tray stacked */
@@ -770,7 +818,7 @@
       position: relative;
       flex-shrink: 0;
       padding: 3px;
-      border-radius: 12px;
+      border-radius: var(--radius-md);
       background: linear-gradient(
         145deg,
         var(--red) 0%,
@@ -788,7 +836,7 @@
     #grid-canvas {
       display: block;
       flex-shrink: 0;
-      border-radius: 10px;
+      border-radius: var(--radius-sm);
     }
 
     /* Mid-zone — sits between grid and tray, turns dead space into content */
@@ -806,21 +854,21 @@
     }
     .mid-tier-badge {
       font-family: var(--font-display);
-      font-size: 0.58rem;
+      font-size: var(--fs-label);
       font-weight: 600;
       letter-spacing: 0.16em;
       text-transform: uppercase;
       color: rgba(255,255,255,0.5);
       background: rgba(255,255,255,0.04);
       border: 1px solid rgba(255,255,255,0.07);
-      border-radius: 20px;
+      border-radius: var(--radius-lg);
       padding: 5px 14px;
     }
     .mid-art-strip {
       display: flex;
       width: 90%;
       height: 3px;
-      border-radius: 2px;
+      border-radius: var(--radius-xs);
       overflow: hidden;
       opacity: 0.7;
     }
@@ -839,7 +887,7 @@
       display: flex;
       justify-content: space-between;
       font-family: var(--font-display);
-      font-size: 0.48rem;
+      font-size: var(--fs-micro);
       font-weight: 500;
       letter-spacing: 0.14em;
       text-transform: uppercase;
@@ -849,13 +897,13 @@
       width: 100%;
       height: 4px;
       background: rgba(255,255,255,0.06);
-      border-radius: 2px;
+      border-radius: var(--radius-xs);
       overflow: hidden;
     }
     .mid-progress-fill {
       height: 100%;
       background: var(--red);
-      border-radius: 2px;
+      border-radius: var(--radius-xs);
       transition: width 0.35s ease;
       width: 0%;
     }
@@ -873,7 +921,7 @@
     }
     .tray-label {
       font-family: var(--font-display);
-      font-size: 0.5rem;
+      font-size: var(--fs-micro);
       font-weight: 500;
       letter-spacing: 0.28em;
       text-transform: uppercase;
@@ -891,7 +939,7 @@
       border: 1px solid rgba(255,255,255,0.1);
       border-bottom: 3px solid var(--red);
       border-left: none; border-right: none;
-      padding: 14px 12px 18px;
+      padding: 16px 12px 18px;
       box-sizing: border-box;
     }
     /* Each tray slot — equal thirds */
@@ -931,7 +979,7 @@
       background: var(--red);
       border-radius: 50%;
       display: flex; flex-direction: column; align-items: center; justify-content: center;
-      gap: 6px;
+      gap: 8px;
       box-shadow: 0 20px 60px rgba(204,18,18,0.45), 0 0 80px rgba(204,18,18,0.15);
       padding: 28px;
       margin-bottom: 8px;
@@ -939,25 +987,25 @@
     .go-logo { width: 50px; height: auto; }
     .go-heading {
       font-family: var(--font-display);
-      font-size: 2.2rem; font-weight: 700;
+      font-size: var(--fs-display); font-weight: 700;
       letter-spacing: 0.08em; text-transform: uppercase;
       color: var(--white); line-height: 1;
     }
     .go-score-val {
       font-family: var(--font-display);
-      font-size: 2.4rem; font-weight: 700;
+      font-size: var(--fs-display); font-weight: 700;
       color: var(--white); letter-spacing: 0.04em;
       font-variant-numeric: tabular-nums;
     }
     .go-score-label {
       font-family: var(--font-display);
-      font-size: 0.6rem; font-weight: 500;
+      font-size: var(--fs-label); font-weight: 500;
       letter-spacing: 0.2em; text-transform: uppercase;
       color: rgba(255,255,255,0.65);
     }
     .go-best {
       font-family: var(--font-display);
-      font-size: 0.72rem; font-weight: 600;
+      font-size: var(--fs-ui); font-weight: 600;
       letter-spacing: 0.12em; text-transform: uppercase;
       color: rgba(255,255,255,0.8);
     }
@@ -968,8 +1016,8 @@
     ════════════════════════════════════════════════ */
     .btn-red {
       background: var(--red); color: var(--white); border: none;
-      padding: 14px 44px; border-radius: var(--radius-sm);
-      font-family: var(--font-display); font-size: 0.95rem;
+      padding: 16px 44px; border-radius: var(--radius-sm);
+      font-family: var(--font-display); font-size: var(--fs-body);
       font-weight: 600; letter-spacing: 0.15em; text-transform: uppercase;
       cursor: pointer;
       transition: background var(--t), transform var(--t);
@@ -981,7 +1029,7 @@
       background: transparent; color: var(--muted);
       border: 1px solid var(--border-strong);
       padding: 13px 28px; border-radius: var(--radius-sm);
-      font-family: var(--font-display); font-size: 0.85rem;
+      font-family: var(--font-display); font-size: var(--fs-body);
       font-weight: 500; letter-spacing: 0.12em; text-transform: uppercase;
       cursor: pointer;
       transition: color var(--t), border-color var(--t);
@@ -1012,37 +1060,37 @@
       width: min(500px, 95vw);
       max-height: 88vh;
       overflow-y: auto; overflow-x: hidden;
-      padding: 26px 22px 22px;
+      padding: 24px 22px 22px;
       position: relative;
     }
     .shop-modal::-webkit-scrollbar { width: 3px; }
-    .shop-modal::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.08); border-radius: 3px; }
+    .shop-modal::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.08); border-radius: var(--radius-xs); }
 
     .shop-close {
       position: absolute; top: 10px; right: 10px;
       background: rgba(255,255,255,0.05); border: none; border-radius: var(--radius-sm);
       width: 44px; height: 44px; cursor: pointer; color: var(--muted);
       display: flex; align-items: center; justify-content: center;
-      font-family: var(--font-body); font-size: 0.85rem;
+      font-family: var(--font-body); font-size: var(--fs-body);
       transition: background var(--t), color var(--t);
     }
     .shop-close:hover { background: rgba(255,255,255,0.12); color: var(--white); }
 
-    .shop-header { text-align: center; margin-bottom: 22px; }
+    .shop-header { text-align: center; margin-bottom: 24px; }
     .shop-header h2 {
       font-family: var(--font-display);
-      font-size: 1.7rem; font-weight: 700;
+      font-size: var(--fs-h1); font-weight: 700;
       letter-spacing: 0.12em; text-transform: uppercase;
       color: var(--white); margin-bottom: 6px;
     }
     .shop-header h2 span { color: var(--red); }
     .shop-header p {
-      font-size: 0.78rem; color: var(--muted);
+      font-size: var(--fs-ui); color: var(--muted);
       line-height: 1.6; letter-spacing: 0.02em;
     }
 
     /* Evolution path */
-    .evolution-path { display: flex; flex-direction: column; gap: 0; margin-bottom: 18px; }
+    .evolution-path { display: flex; flex-direction: column; gap: 0; margin-bottom: 16px; }
 
     /* Tier connector */
     .tier-connector {
@@ -1059,18 +1107,18 @@
       background: var(--black2); border: 1px solid rgba(255,255,255,0.1);
       border-radius: 50%; z-index: 1;
       display: flex; align-items: center; justify-content: center;
-      font-size: 7px; color: var(--muted);
+      font-size: var(--fs-micro); color: var(--muted);
     }
 
     /* Tier card — flat, gallery style */
     .tier-card {
       border-radius: var(--radius);
-      padding: 14px 16px;
+      padding: 16px 16px;
       border: 1px solid var(--border);
       background: var(--black3);
       display: flex; align-items: flex-start; gap: 12px;
       cursor: pointer;
-      transition: border-color 0.2s, background 0.2s;
+      transition: border-color var(--t), background var(--t);
     }
     .tier-card.active-tier {
       border-color: var(--tier-color, var(--red));
@@ -1081,48 +1129,48 @@
     .tier-frog-svg { flex-shrink: 0; width: 48px; height: 48px; }
 
     .tier-info { flex: 1; min-width: 0; }
-    .tier-name-row { display: flex; align-items: center; gap: 7px; margin-bottom: 3px; flex-wrap: wrap; }
+    .tier-name-row { display: flex; align-items: center; gap: 8px; margin-bottom: 3px; flex-wrap: wrap; }
     .tier-name {
       font-family: var(--font-display);
-      font-size: 0.95rem; font-weight: 700;
+      font-size: var(--fs-body); font-weight: 700;
       letter-spacing: 0.08em; text-transform: uppercase; line-height: 1;
     }
     .tier-tag {
       font-family: var(--font-display);
-      font-size: 0.55rem; font-weight: 600;
+      font-size: var(--fs-micro); font-weight: 600;
       letter-spacing: 0.12em; text-transform: uppercase;
-      padding: 2px 7px; border-radius: 2px;
+      padding: 2px 7px; border-radius: var(--radius-xs);
     }
     .tier-tag.free     { background: rgba(255,255,255,0.08); color: var(--muted); }
     .tier-tag.premium  { background: var(--red); color: #fff; }
     .tier-tag.owned    { background: rgba(204,18,18,0.15); color: var(--red); border: 1px solid rgba(204,18,18,0.3); }
     .tier-tag.active   { background: var(--red); color: #fff; }
 
-    .tier-desc { font-size: 0.75rem; color: var(--muted); line-height: 1.45; margin-bottom: 7px; }
+    .tier-desc { font-size: var(--fs-ui); color: var(--muted); line-height: 1.45; margin-bottom: 7px; }
     .tier-perks { display: flex; flex-wrap: wrap; gap: 4px; }
     .tier-perk {
       font-family: var(--font-display);
-      font-size: 0.58rem; font-weight: 500;
+      font-size: var(--fs-label); font-weight: 500;
       letter-spacing: 0.06em; text-transform: uppercase;
-      padding: 2px 7px; border-radius: 2px;
+      padding: 2px 7px; border-radius: var(--radius-xs);
       background: rgba(255,255,255,0.05); color: rgba(255,255,255,0.6);
     }
 
     .tier-price-col {
       flex-shrink: 0; display: flex; flex-direction: column;
-      align-items: flex-end; justify-content: center; gap: 6px;
+      align-items: flex-end; justify-content: center; gap: 8px;
     }
     .tier-price {
       font-family: var(--font-display);
-      font-size: 1.15rem; font-weight: 700;
+      font-size: var(--fs-h3); font-weight: 700;
       color: var(--white); letter-spacing: 0.02em;
       white-space: nowrap;
     }
-    .tier-price.free-tag { color: var(--muted); font-size: 0.8rem; }
+    .tier-price.free-tag { color: var(--muted); font-size: var(--fs-ui); }
     .tier-buy-btn {
       border: none; border-radius: var(--radius-sm);
-      padding: 7px 14px;
-      font-family: var(--font-display); font-size: 0.68rem;
+      padding: 8px 14px;
+      font-family: var(--font-display); font-size: var(--fs-ui);
       font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase;
       cursor: pointer; white-space: nowrap;
       transition: background var(--t), transform var(--t);
@@ -1136,7 +1184,7 @@
 
     .shop-footer {
       border-top: 1px solid var(--border); padding-top: 12px;
-      text-align: center; font-size: 0.7rem; color: var(--muted); line-height: 1.6;
+      text-align: center; font-size: var(--fs-ui); color: var(--muted); line-height: 1.6;
     }
     .shop-footer a { color: var(--red); text-decoration: none; }
     .shop-footer a:hover { text-decoration: underline; }
@@ -1145,13 +1193,13 @@
     .shop-tabs {
       display: flex; gap: 4px; margin-bottom: 20px;
       background: rgba(255,255,255,0.04);
-      border-radius: 12px; padding: 4px;
+      border-radius: var(--radius-md); padding: 4px;
     }
     .shop-tab {
       flex: 1; background: transparent; border: none; color: rgba(255,255,255,0.4);
-      font-family: var(--font-display); font-size: 0.72rem; font-weight: 700;
-      letter-spacing: 0.15em; padding: 10px; border-radius: 9px;
-      cursor: pointer; transition: all 0.18s;
+      font-family: var(--font-display); font-size: var(--fs-ui); font-weight: 700;
+      letter-spacing: 0.15em; padding: 10px; border-radius: var(--radius-sm);
+      cursor: pointer; transition: all var(--t);
     }
     .shop-tab.active { background: var(--red); color: #fff; }
     .shop-tab:not(.active):hover { color: #fff; }
@@ -1159,25 +1207,25 @@
     /* Power shop cards */
     .power-shop-card {
       background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08);
-      border-radius: 14px; padding: 14px 16px;
-      display: flex; align-items: center; gap: 14px;
+      border-radius: var(--radius-md); padding: 16px 16px;
+      display: flex; align-items: center; gap: 16px;
     }
     .psc-icon {
-      font-size: 1.8rem; width: 44px; height: 44px;
-      background: rgba(204,18,18,0.12); border-radius: 12px;
+      font-size: var(--fs-h1); width: 44px; height: 44px;
+      background: rgba(204,18,18,0.12); border-radius: var(--radius-md);
       display: flex; align-items: center; justify-content: center; flex-shrink: 0;
     }
     .psc-body { flex: 1; min-width: 0; }
-    .psc-name { font-family: var(--font-display); font-size: 0.8rem; font-weight: 700; letter-spacing: 0.1em; color: #fff; margin-bottom: 2px; }
-    .psc-desc { font-size: 0.72rem; color: rgba(255,255,255,0.45); line-height: 1.4; }
-    .psc-count { font-size: 0.65rem; color: #F7C948; margin-top: 3px; font-family: var(--font-display); letter-spacing: 0.06em; }
-    .psc-right { display: flex; flex-direction: column; align-items: flex-end; gap: 6px; flex-shrink: 0; }
-    .psc-price { font-family: var(--font-display); font-size: 0.85rem; color: #F7C948; font-weight: 700; }
+    .psc-name { font-family: var(--font-display); font-size: var(--fs-ui); font-weight: 700; letter-spacing: 0.1em; color: #fff; margin-bottom: 2px; }
+    .psc-desc { font-size: var(--fs-label); color: rgba(255,255,255,0.45); line-height: 1.4; }
+    .psc-count { font-size: var(--fs-label); color: #F7C948; margin-top: 3px; font-family: var(--font-display); letter-spacing: 0.06em; }
+    .psc-right { display: flex; flex-direction: column; align-items: flex-end; gap: 8px; flex-shrink: 0; }
+    .psc-price { font-family: var(--font-display); font-size: var(--fs-body); color: #F7C948; font-weight: 700; }
     .psc-buy-btn {
       background: var(--red); border: none; color: #fff;
-      font-family: var(--font-display); font-size: 0.65rem; font-weight: 700;
-      letter-spacing: 0.12em; padding: 7px 14px; border-radius: 8px; cursor: pointer;
-      transition: background 0.15s;
+      font-family: var(--font-display); font-size: var(--fs-label); font-weight: 700;
+      letter-spacing: 0.12em; padding: 8px 14px; border-radius: var(--radius-sm); cursor: pointer;
+      transition: background var(--t-fast);
     }
     .psc-buy-btn:hover { background: #e01414; }
     .psc-buy-btn.free { background: #1a7a1a; }
@@ -1203,23 +1251,23 @@
 
     /* In-game multi-power bar */
     #power-bar {
-      display: flex; gap: 6px; align-items: center;
+      display: flex; gap: 8px; align-items: center;
       flex-wrap: nowrap;
     }
     .power-slot {
-      width: 38px; height: 38px; border-radius: 10px;
+      width: 38px; height: 38px; border-radius: var(--radius-sm);
       background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1);
       display: flex; flex-direction: column; align-items: center; justify-content: center;
-      cursor: pointer; transition: border-color 0.15s, background 0.15s;
+      cursor: pointer; transition: border-color var(--t-fast), background var(--t-fast);
       position: relative; flex-shrink: 0;
-      font-size: 1rem;
+      font-size: var(--fs-body);
     }
     .power-slot:hover:not(.empty) { border-color: rgba(204,18,18,0.6); background: rgba(204,18,18,0.1); }
     .power-slot.active-power { border-color: #F7C948; background: rgba(247,201,72,0.12); animation: powerPulse 0.8s ease-in-out infinite; }
     .power-slot.empty { opacity: 0.3; cursor: default; }
     .power-slot-count {
       position: absolute; bottom: 2px; right: 4px;
-      font-family: var(--font-display); font-size: 0.5rem; font-weight: 700;
+      font-family: var(--font-display); font-size: var(--fs-micro); font-weight: 700;
       color: #F7C948; line-height: 1;
     }
     @keyframes powerPulse {
@@ -1251,44 +1299,44 @@
       width: min(360px, 92vw);
       text-align: center;
     }
-    .purchase-frog { font-size: 3.5rem; margin-bottom: 6px; animation: logoBob 2.5s ease-in-out infinite; }
+    .purchase-frog { font-size: var(--fs-display); margin-bottom: 6px; animation: logoBob 2.5s ease-in-out infinite; }
     .purchase-title {
       font-family: var(--font-display);
-      font-size: 1.3rem; font-weight: 700;
+      font-size: var(--fs-h2); font-weight: 700;
       letter-spacing: 0.1em; text-transform: uppercase;
       color: var(--white); margin-bottom: 5px;
     }
     .purchase-tier-name { color: var(--red); }
-    .purchase-desc { font-size: 0.78rem; color: var(--muted); line-height: 1.5; }
+    .purchase-desc { font-size: var(--fs-ui); color: var(--muted); line-height: 1.5; }
     .purchase-price-display {
       font-family: var(--font-display);
-      font-size: 2.4rem; font-weight: 700;
+      font-size: var(--fs-display); font-weight: 700;
       color: var(--white); letter-spacing: 0.04em;
       margin: 12px 0;
     }
-    .purchase-price-display small { font-size: 1rem; color: var(--muted); }
+    .purchase-price-display small { font-size: var(--fs-body); color: var(--muted); }
     .purchase-perks {
       text-align: left; background: var(--black3);
       border-radius: var(--radius-sm); padding: 12px 14px; margin: 12px 0;
     }
     .pp-title {
       font-family: var(--font-display);
-      font-size: 0.6rem; font-weight: 600;
+      font-size: var(--fs-label); font-weight: 600;
       letter-spacing: 0.18em; text-transform: uppercase;
       color: var(--muted); margin-bottom: 8px;
     }
     .purchase-perk-item {
       display: flex; align-items: center; gap: 8px;
-      font-size: 0.78rem; color: rgba(255,255,255,0.82);
+      font-size: var(--fs-ui); color: rgba(255,255,255,0.82);
       margin-bottom: 6px;
     }
     .purchase-perk-item:last-child { margin-bottom: 0; }
-    .pp-check { color: var(--red); font-weight: 800; font-size: 0.9rem; }
+    .pp-check { color: var(--red); font-weight: 800; font-size: var(--fs-body); }
     .purchase-btns { display: flex; gap: 8px; margin-top: 16px; }
     .btn-purchase-confirm {
       flex: 1; background: var(--red); color: #fff; border: none;
       border-radius: var(--radius-sm); padding: 13px;
-      font-family: var(--font-display); font-size: 0.9rem;
+      font-family: var(--font-display); font-size: var(--fs-body);
       font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase;
       cursor: pointer; transition: background var(--t);
     }
@@ -1297,7 +1345,7 @@
       flex: 1; background: transparent; color: var(--muted);
       border: 1px solid var(--border-strong); border-radius: var(--radius-sm);
       padding: 13px;
-      font-family: var(--font-display); font-size: 0.8rem;
+      font-family: var(--font-display); font-size: var(--fs-ui);
       font-weight: 500; letter-spacing: 0.1em; text-transform: uppercase;
       cursor: pointer; transition: color var(--t), border-color var(--t);
     }
@@ -1312,7 +1360,7 @@
     }
     .diff-section-label {
       font-family: var(--font-display);
-      font-size: 0.62rem;
+      font-size: var(--fs-label);
       letter-spacing: 0.18em;
       color: var(--muted);
       text-align: center;
@@ -1327,13 +1375,13 @@
       flex: 1; max-width: 110px;
       background: rgba(255,255,255,0.04);
       border: 2px solid var(--border-strong);
-      border-radius: 12px;
+      border-radius: var(--radius-md);
       color: var(--muted);
       font-family: var(--font-display);
-      font-size: 0.95rem; font-weight: 700;
+      font-size: var(--fs-body); font-weight: 700;
       letter-spacing: 0.12em; text-transform: uppercase;
       padding: 12px 0; cursor: pointer;
-      transition: all 0.18s ease;
+      transition: all var(--t);
     }
     .diff-btn.active {
       background: var(--red); color: #fff;
@@ -1346,18 +1394,18 @@
     .diff-btn:hover:not(.active) { border-color: rgba(255,255,255,0.3); color: #fff; background: rgba(255,255,255,0.08); }
 
     .streak-row {
-      display: flex; align-items: center; gap: 6px;
+      display: flex; align-items: center; gap: 8px;
       justify-content: center;
       margin: 6px 0 2px;
       font-family: var(--font-display);
     }
-    .streak-fire { font-size: 1rem; }
+    .streak-fire { font-size: var(--fs-body); }
     .streak-val {
-      font-size: 1.4rem; font-weight: 700; color: #F5A623;
+      font-size: var(--fs-h2); font-weight: 700; color: #F5A623;
       line-height: 1;
     }
     .streak-label {
-      font-size: 0.5rem; letter-spacing: 0.16em;
+      font-size: var(--fs-micro); letter-spacing: 0.16em;
       color: var(--muted); text-transform: uppercase;
       align-self: flex-end; padding-bottom: 2px;
     }
@@ -1371,7 +1419,7 @@
       border-radius: var(--radius-sm);
       color: #F5A623;
       font-family: var(--font-display);
-      font-size: 0.72rem; font-weight: 700;
+      font-size: var(--fs-ui); font-weight: 700;
       letter-spacing: 0.14em; text-transform: uppercase;
       padding: 8px 20px;
       z-index: 100;
@@ -1408,7 +1456,7 @@
     /* ── Jumping Frog Animations ── */
     .frog-jumper {
       position: fixed;
-      font-size: 2.8rem;
+      font-size: var(--fs-display);
       z-index: 1100;
       pointer-events: none;
       line-height: 1;
@@ -1479,25 +1527,25 @@
       display: flex; flex-direction: column; align-items: center; gap: 8px;
       background: rgba(8,8,8,0.88);
       border: 2px solid #CC1212;
-      border-radius: 20px;
+      border-radius: var(--radius-lg);
       padding: 24px 36px;
       box-shadow: 0 0 60px rgba(204,18,18,0.5);
       transform: scale(0.4);
     }
     .glitch-frog-emoji {
-      font-size: 4rem;
+      font-size: var(--fs-display);
       line-height: 1;
       filter: drop-shadow(0 0 16px rgba(204,18,18,0.8));
       animation: frogShake 0.3s ease infinite alternate;
     }
     .glitch-frog-text {
       font-family: var(--font-display);
-      font-size: 1rem; font-weight: 700;
+      font-size: var(--fs-body); font-weight: 700;
       letter-spacing: 0.15em; text-transform: uppercase;
       color: #CC1212;
     }
     .glitch-frog-sub {
-      font-size: 0.7rem; color: rgba(255,255,255,0.5);
+      font-size: var(--fs-ui); color: rgba(255,255,255,0.5);
       letter-spacing: 0.08em;
     }
     @keyframes glitchFrogSlam {
@@ -1523,7 +1571,7 @@
     /* Special brick indicators in tray */
     .special-label {
       font-family: var(--font-display);
-      font-size: 0.42rem; font-weight: 700;
+      font-size: var(--fs-micro); font-weight: 700;
       letter-spacing: 0.1em; text-transform: uppercase;
       color: #F5A623; text-align: center;
       margin-top: 2px; display: block;
@@ -1549,26 +1597,26 @@
     }
     .bonus-card {
       background: rgba(20,20,28,0.97);
-      border-radius: 10px;
+      border-radius: var(--radius-sm);
       border: 1px solid rgba(245,166,35,0.5);
       padding: 10px 16px;
       display: flex; align-items: center; gap: 12px;
       box-shadow: 0 4px 24px rgba(0,0,0,0.6);
     }
-    .bonus-icon { font-size: 1.6rem; flex-shrink: 0; }
+    .bonus-icon { font-size: var(--fs-h1); flex-shrink: 0; }
     .bonus-text { display: flex; flex-direction: column; gap: 1px; }
     .bonus-title {
-      font-family: var(--font-display); font-size: 0.75rem; font-weight: 700;
+      font-family: var(--font-display); font-size: var(--fs-ui); font-weight: 700;
       letter-spacing: 0.1em; text-transform: uppercase; color: #F5A623;
     }
     .bonus-desc {
-      font-size: 0.68rem; color: rgba(255,255,255,0.65);
+      font-size: var(--fs-ui); color: rgba(255,255,255,0.65);
       line-height: 1.3;
     }
     .btn-bonus-ok {
       background: #F5A623; color: #000; border: none;
       border-radius: var(--radius-sm); padding: 12px 32px;
-      font-family: var(--font-display); font-size: 0.9rem;
+      font-family: var(--font-display); font-size: var(--fs-body);
       font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase;
       cursor: pointer;
     }
@@ -1576,9 +1624,9 @@
     /* Diff indicator in topbar */
     #diff-indicator {
       font-family: var(--font-display);
-      font-size: 0.42rem; font-weight: 700;
+      font-size: var(--fs-micro); font-weight: 700;
       letter-spacing: 0.14em; text-transform: uppercase;
-      padding: 2px 7px; border-radius: 10px;
+      padding: 2px 7px; border-radius: var(--radius-sm);
       background: rgba(204,18,18,0.2); color: var(--red);
       border: 1px solid rgba(204,18,18,0.35);
       align-self: center;
@@ -1595,7 +1643,7 @@
       transform: translateX(-50%) translateY(20px);
       background: var(--black2); border: 1px solid var(--red);
       border-radius: var(--radius-sm); padding: 9px 20px;
-      font-family: var(--font-display); font-size: 0.78rem;
+      font-family: var(--font-display); font-size: var(--fs-ui);
       font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase;
       color: var(--white); white-space: nowrap;
       opacity: 0; transition: opacity 0.2s, transform 0.2s;
@@ -1605,7 +1653,7 @@
 
     .float-text {
       position: fixed;
-      font-family: var(--font-display); font-size: 1.1rem;
+      font-family: var(--font-display); font-size: var(--fs-h3);
       font-weight: 700; letter-spacing: 0.08em;
       color: var(--white); pointer-events: none;
       animation: floatUp 0.9s ease forwards; z-index: 50;
@@ -1631,7 +1679,7 @@
     ════════════════════════════════════════════════ */
     .vanish-overlay {
       position: absolute; pointer-events: none; z-index: 10;
-      border-radius: 5px;
+      border-radius: var(--radius-xs);
       animation: vanishFade 12s linear forwards;
     }
     @keyframes vanishFade {
@@ -1655,16 +1703,16 @@
       align-items: center; justify-content: center;
       font-family: var(--font-display);
       z-index: 120; pointer-events: none;
-      opacity: 0; transition: opacity 0.3s;
+      opacity: 0; transition: opacity var(--t-slow);
       box-shadow: 0 0 20px rgba(230,34,152,0.6);
     }
     #speed-countdown.show { opacity: 1; }
     #speed-countdown .sc-num {
-      font-size: 1.4rem; font-weight: 700; color: #E62298;
+      font-size: var(--fs-h2); font-weight: 700; color: #E62298;
       line-height: 1;
     }
     #speed-countdown .sc-lbl {
-      font-size: 0.35rem; letter-spacing: 0.12em;
+      font-size: var(--fs-micro); letter-spacing: 0.12em;
       color: rgba(230,34,152,0.7); text-transform: uppercase;
     }
     #speed-countdown.urgent { border-color: #ff0000; box-shadow: 0 0 30px rgba(255,0,0,0.8); }
@@ -1681,7 +1729,7 @@
       border-radius: var(--radius-sm);
       padding: 10px 22px;
       font-family: var(--font-display);
-      font-size: 0.75rem; font-weight: 700;
+      font-size: var(--fs-ui); font-weight: 700;
       letter-spacing: 0.12em; text-transform: uppercase;
       color: #7ED321;
       z-index: 110; white-space: nowrap;
@@ -1712,9 +1760,9 @@
     .duo-back-btn {
       align-self: flex-start;
       background: transparent; border: none; color: var(--muted);
-      font-family: var(--font-display); font-size: 0.72rem;
+      font-family: var(--font-display); font-size: var(--fs-ui);
       font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase;
-      cursor: pointer; display: flex; align-items: center; gap: 6px;
+      cursor: pointer; display: flex; align-items: center; gap: 8px;
       padding: 0 0 18px 0;
       transition: color var(--t);
     }
@@ -1724,28 +1772,28 @@
     }
     .duo-header h2 {
       font-family: var(--font-display);
-      font-size: 2rem; font-weight: 700;
+      font-size: var(--fs-display); font-weight: 700;
       letter-spacing: 0.12em; text-transform: uppercase;
       color: var(--white); margin-bottom: 6px;
     }
     .duo-header h2 span { color: var(--red); }
     .duo-header p {
-      font-size: 0.78rem; color: var(--muted); line-height: 1.5;
+      font-size: var(--fs-ui); color: var(--muted); line-height: 1.5;
     }
 
     /* Mode picker cards */
     .mode-cards {
       display: flex; flex-direction: column; gap: 10px;
-      width: 100%; margin-bottom: 22px;
+      width: 100%; margin-bottom: 24px;
     }
     .mode-card {
       border-radius: var(--radius);
       border: 1.5px solid var(--border);
       background: var(--black3);
-      padding: 14px 16px;
+      padding: 16px 16px;
       cursor: pointer;
-      transition: border-color 0.2s, background 0.2s, transform 0.15s;
-      display: flex; align-items: center; gap: 14px;
+      transition: border-color var(--t), background var(--t), transform var(--t);
+      display: flex; align-items: center; gap: 16px;
       position: relative; overflow: hidden;
     }
     .mode-card::before {
@@ -1763,7 +1811,7 @@
     .mode-card.selected::before,
     .mode-card:hover::before { opacity: 1; }
     .mode-icon {
-      font-size: 1.8rem; flex-shrink: 0;
+      font-size: var(--fs-h1); flex-shrink: 0;
       width: 44px; height: 44px;
       display: flex; align-items: center; justify-content: center;
       background: rgba(255,255,255,0.04);
@@ -1772,19 +1820,19 @@
     .mode-info { flex: 1; min-width: 0; }
     .mode-name {
       font-family: var(--font-display);
-      font-size: 0.95rem; font-weight: 700;
+      font-size: var(--fs-body); font-weight: 700;
       letter-spacing: 0.08em; text-transform: uppercase;
       color: var(--mode-color, var(--white)); margin-bottom: 3px;
     }
     .mode-desc {
-      font-size: 0.73rem; color: var(--muted); line-height: 1.4;
+      font-size: var(--fs-ui); color: var(--muted); line-height: 1.4;
     }
     .mode-check {
       width: 18px; height: 18px; border-radius: 50%;
       border: 1.5px solid var(--border-strong);
       flex-shrink: 0; display: flex; align-items: center; justify-content: center;
-      font-size: 0.6rem; color: #000;
-      transition: background 0.2s, border-color 0.2s;
+      font-size: var(--fs-label); color: #000;
+      transition: background var(--t), border-color var(--t);
     }
     .mode-card.selected .mode-check {
       background: var(--mode-color, var(--red));
@@ -1803,26 +1851,26 @@
     }
     .duo-panel-title {
       font-family: var(--font-display);
-      font-size: 0.65rem; font-weight: 600;
+      font-size: var(--fs-label); font-weight: 600;
       letter-spacing: 0.18em; text-transform: uppercase;
-      color: var(--muted); margin-bottom: 14px;
+      color: var(--muted); margin-bottom: 16px;
     }
     .duo-code-display {
       font-family: var(--font-display);
-      font-size: 2.8rem; font-weight: 700;
+      font-size: var(--fs-display); font-weight: 700;
       letter-spacing: 0.22em; text-align: center;
       color: var(--white);
       background: var(--black3);
       border: 2px dashed rgba(255,255,255,0.12);
       border-radius: var(--radius-sm);
-      padding: 18px 0;
+      padding: 16px 0;
       margin: 10px 0 14px;
       min-height: 80px;
       display: flex; align-items: center; justify-content: center;
     }
     .duo-code-display .code-val { color: var(--red); }
     .duo-code-display .code-waiting {
-      font-size: 0.72rem; color: var(--muted);
+      font-size: var(--fs-ui); color: var(--muted);
       letter-spacing: 0.12em; animation: blink 1.2s ease infinite;
     }
     @keyframes blink { 0%,100%{opacity:1}50%{opacity:0.3} }
@@ -1838,7 +1886,7 @@
       border-radius: var(--radius-sm);
       color: var(--white);
       font-family: var(--font-display);
-      font-size: 1.4rem; font-weight: 700;
+      font-size: var(--fs-h2); font-weight: 700;
       letter-spacing: 0.25em; text-transform: uppercase;
       text-align: center;
       padding: 12px;
@@ -1848,7 +1896,7 @@
     .duo-code-input:focus { border-color: rgba(255,255,255,0.3); }
     .duo-status {
       font-family: var(--font-display);
-      font-size: 0.6rem; font-weight: 600;
+      font-size: var(--fs-label); font-weight: 600;
       letter-spacing: 0.14em; text-transform: uppercase;
       text-align: center; padding: 8px 0 0;
     }
@@ -1873,7 +1921,7 @@
     #opp-mini-board.visible { display: block; }
     .opp-label {
       font-family: var(--font-display);
-      font-size: 0.38rem; font-weight: 600;
+      font-size: var(--fs-micro); font-weight: 600;
       letter-spacing: 0.1em; text-transform: uppercase;
       color: var(--muted); margin-bottom: 4px; text-align: center;
     }
@@ -1884,11 +1932,11 @@
     }
     .opp-score-item {
       font-family: var(--font-display);
-      font-size: 0.42rem; font-weight: 600;
+      font-size: var(--fs-micro); font-weight: 600;
       letter-spacing: 0.06em; text-transform: uppercase;
       color: var(--muted);
     }
-    .opp-score-item span { color: var(--white); display: block; font-size: 0.65rem; }
+    .opp-score-item span { color: var(--white); display: block; font-size: var(--fs-label); }
 
     /* Coop turn indicator */
     #coop-turn-banner {
@@ -1896,10 +1944,10 @@
       transform: translateX(-50%);
       background: var(--black2);
       border: 1.5px solid var(--art-teal);
-      border-radius: 20px;
+      border-radius: var(--radius-lg);
       padding: 5px 18px;
       font-family: var(--font-display);
-      font-size: 0.62rem; font-weight: 700;
+      font-size: var(--fs-label); font-weight: 700;
       letter-spacing: 0.14em; text-transform: uppercase;
       color: var(--art-teal);
       z-index: 90; display: none;
@@ -1932,7 +1980,7 @@
       z-index: 60;
       display: none;
       flex-direction: column;
-      gap: 6px;
+      gap: 8px;
       align-items: center;
     }
     #emoji-bar.visible { display: flex; }
@@ -1941,7 +1989,7 @@
       border-radius: 50%;
       background: rgba(123,63,190,0.85);
       border: 2px solid rgba(192,132,252,0.6);
-      font-size: 1.2rem;
+      font-size: var(--fs-h3);
       display: flex; align-items: center; justify-content: center;
       cursor: pointer;
       box-shadow: 0 4px 16px rgba(0,0,0,0.5);
@@ -1961,7 +2009,7 @@
       border-radius: 50%;
       background: rgba(20,20,30,0.92);
       border: 2px solid rgba(255,255,255,0.15);
-      font-size: 1.3rem;
+      font-size: var(--fs-h2);
       display: flex; align-items: center; justify-content: center;
       cursor: pointer;
       box-shadow: 0 3px 10px rgba(0,0,0,0.5);
@@ -1989,18 +2037,18 @@
       animation: emojiPop 2.2s cubic-bezier(0.22,1,0.36,1) forwards;
     }
     #emoji-incoming-icon {
-      font-size: 4.5rem;
+      font-size: var(--fs-display);
       line-height: 1;
       filter: drop-shadow(0 0 18px rgba(255,255,255,0.6));
     }
     #emoji-incoming-label {
       font-family: 'Oswald', sans-serif;
-      font-size: 0.7rem;
+      font-size: var(--fs-ui);
       letter-spacing: 0.12em;
       color: rgba(255,255,255,0.7);
       background: rgba(0,0,0,0.55);
       padding: 2px 8px;
-      border-radius: 10px;
+      border-radius: var(--radius-sm);
       text-transform: uppercase;
     }
     @keyframes emojiPop {
@@ -2022,7 +2070,7 @@
     }
     .mode-card.locked::before { display: none; }
     .lock-badge {
-      font-size: 0.9rem;
+      font-size: var(--fs-body);
       flex-shrink: 0;
     }
 
@@ -2033,7 +2081,7 @@
       border-radius: var(--radius-sm);
       padding: 4px 10px;
       font-family: var(--font-display);
-      font-size: 0.52rem; font-weight: 600;
+      font-size: var(--fs-micro); font-weight: 600;
       letter-spacing: 0.14em; text-transform: uppercase;
       color: #c084fc;
     }
@@ -2048,15 +2096,15 @@
     gap: 8px;
     background: rgba(204,18,18,0.12);
     border: 1px solid rgba(204,18,18,0.35);
-    border-radius: 24px;
-    padding: 7px 16px;
+    border-radius: var(--radius-lg);
+    padding: 8px 16px;
     font-family: var(--font-display);
-    font-size: 0.72rem;
+    font-size: var(--fs-ui);
     font-weight: 700;
     letter-spacing: 0.08em;
     color: #ff6b6b;
     cursor: pointer;
-    transition: background 0.2s;
+    transition: background var(--t);
     max-width: min(320px,88vw);
     text-align: center;
   }
@@ -2086,7 +2134,7 @@
   #upgrade-modal {
     background: #111;
     border: 1px solid rgba(255,255,255,0.12);
-    border-radius: 20px;
+    border-radius: var(--radius-lg);
     padding: 24px 20px;
     max-width: 400px;
     width: 100%;
@@ -2101,14 +2149,14 @@
     background: none;
     border: none;
     color: rgba(255,255,255,0.45);
-    font-size: 1.4rem;
+    font-size: var(--fs-h2);
     cursor: pointer;
     line-height: 1;
   }
   #upgrade-close:hover { color: #fff; }
   #upgrade-title {
     font-family: var(--font-display);
-    font-size: 1.1rem;
+    font-size: var(--fs-h3);
     font-weight: 900;
     letter-spacing: 0.1em;
     color: #fff;
@@ -2116,10 +2164,10 @@
     margin-bottom: 6px;
   }
   #upgrade-reason {
-    font-size: 0.8rem;
+    font-size: var(--fs-ui);
     color: rgba(255,255,255,0.55);
     text-align: center;
-    margin-bottom: 18px;
+    margin-bottom: 16px;
     line-height: 1.4;
   }
   #upgrade-tiers-list {
@@ -2130,8 +2178,8 @@
   .upgrade-tier-card {
     background: rgba(255,255,255,0.04);
     border: 1px solid rgba(255,255,255,0.1);
-    border-radius: 14px;
-    padding: 14px 16px;
+    border-radius: var(--radius-md);
+    padding: 16px 16px;
     display: flex;
     align-items: center;
     gap: 12px;
@@ -2141,55 +2189,55 @@
     border-color: rgba(126,211,33,0.45);
     background: rgba(126,211,33,0.06);
   }
-  .upgrade-tier-emoji { font-size: 1.8rem; flex-shrink: 0; }
+  .upgrade-tier-emoji { font-size: var(--fs-h1); flex-shrink: 0; }
   .upgrade-tier-info { flex: 1; min-width: 0; }
   .upgrade-tier-name {
     font-family: var(--font-display);
-    font-size: 0.85rem;
+    font-size: var(--fs-body);
     font-weight: 800;
     letter-spacing: 0.08em;
     color: #fff;
     margin-bottom: 2px;
   }
   .upgrade-tier-desc {
-    font-size: 0.71rem;
+    font-size: var(--fs-ui);
     color: rgba(255,255,255,0.5);
     line-height: 1.35;
   }
   .upgrade-owned-badge {
-    font-size: 0.65rem;
+    font-size: var(--fs-label);
     font-weight: 700;
     color: #7ED321;
     letter-spacing: 0.06em;
     padding: 2px 8px;
     border: 1px solid rgba(126,211,33,0.4);
-    border-radius: 20px;
+    border-radius: var(--radius-lg);
     flex-shrink: 0;
   }
   .upgrade-buy-btn {
     background: var(--red);
     border: none;
-    border-radius: 10px;
+    border-radius: var(--radius-sm);
     color: #fff;
     font-family: var(--font-display);
-    font-size: 0.78rem;
+    font-size: var(--fs-ui);
     font-weight: 800;
     letter-spacing: 0.06em;
     padding: 8px 14px;
     cursor: pointer;
     flex-shrink: 0;
-    transition: background 0.15s, transform 0.1s;
+    transition: background var(--t-fast), transform var(--t-fast);
   }
   .upgrade-buy-btn:hover { background: #e01414; transform: scale(1.03); }
   .upgrade-free-note {
     text-align: center;
-    font-size: 0.7rem;
+    font-size: var(--fs-ui);
     color: rgba(255,255,255,0.35);
-    margin-top: 14px;
+    margin-top: 16px;
   }
 
   .tier-lock {
-    font-size: 0.7em;
+    font-size: var(--fs-ui);
     opacity: 0.7;
     vertical-align: middle;
     margin-left: 2px;
@@ -2203,12 +2251,12 @@
   /* ── ADHD / FOCUS improvements ─────────────────────────────── */
   .focus-badge {
     display: inline-block;
-    font-size: 0.58rem;
+    font-size: var(--fs-label);
     font-weight: 700;
     letter-spacing: 0.06em;
     color: #F5A623;
     border: 1px solid rgba(245,166,35,0.45);
-    border-radius: 20px;
+    border-radius: var(--radius-lg);
     padding: 2px 7px;
     margin-top: 2px;
     white-space: nowrap;
@@ -2220,26 +2268,26 @@
     border: 1px solid rgba(255,255,255,0.15);
     border-radius: 50%;
     width: 44px; height: 44px;
-    font-size: 1.2rem;
+    font-size: var(--fs-h3);
     display: flex; align-items: center; justify-content: center;
     cursor: pointer; color: rgba(255,255,255,0.7);
-    transition: background 0.2s;
+    transition: background var(--t);
     z-index: 10;
   }
   #btn-sound-home:hover { background: rgba(255,255,255,0.12); color: #fff; }
   #btn-quick-start {
     background: transparent;
     border: 1px solid rgba(255,255,255,0.15);
-    border-radius: 10px;
+    border-radius: var(--radius-sm);
     color: rgba(255,255,255,0.45);
     font-family: var(--font-display);
-    font-size: 0.68rem;
+    font-size: var(--fs-ui);
     font-weight: 600;
     letter-spacing: 0.1em;
     text-transform: uppercase;
     padding: 10px 20px;
     cursor: pointer;
-    transition: all 0.18s;
+    transition: all var(--t);
     width: min(320px,88vw);
   }
   #btn-quick-start:hover { border-color: rgba(255,255,255,0.3); color: rgba(255,255,255,0.7); }
@@ -2250,17 +2298,17 @@
   /* ── Home screen mockup classes ─────────────────────────────── */
   .home-title {
     font-family: var(--font-display);
-    font-size: clamp(2.4rem, 11vw, 4.5rem);
+    font-size: var(--fs-hero);
     font-weight: 900;
     letter-spacing: 0.04em;
     color: #fff;
     text-transform: uppercase;
     line-height: 1;
     text-align: center;
-    margin-top: 14px;
+    margin-top: 16px;
   }
   .home-tagline {
-    font-size: 0.65rem;
+    font-size: var(--fs-label);
     letter-spacing: 0.3em;
     color: rgba(255,255,255,0.3);
     text-transform: uppercase;
@@ -2272,9 +2320,9 @@
     align-items: center;
     background: rgba(255,255,255,0.05);
     border: 1px solid rgba(255,255,255,0.1);
-    border-radius: 16px;
+    border-radius: var(--radius-md);
     width: min(320px, 88vw);
-    padding: 14px 20px;
+    padding: 16px 20px;
     box-sizing: border-box;
     margin-bottom: 16px;
   }
@@ -2283,7 +2331,7 @@
     text-align: center;
   }
   .home-score-label {
-    font-size: 0.6rem;
+    font-size: var(--fs-label);
     letter-spacing: 0.2em;
     color: rgba(255,255,255,0.35);
     text-transform: uppercase;
@@ -2291,7 +2339,7 @@
   }
   .home-score-val {
     font-family: var(--font-display);
-    font-size: 1.6rem;
+    font-size: var(--fs-h1);
     font-weight: 700;
     color: #F7C948;
   }
@@ -2311,14 +2359,14 @@
   .home-btn-solo {
     background: #CC1212;
     border: none;
-    border-radius: 14px;
+    border-radius: var(--radius-md);
     color: #fff;
     font-family: var(--font-display);
-    font-size: 1.1rem;
+    font-size: var(--fs-h3);
     font-weight: 700;
     letter-spacing: 0.15em;
     text-transform: uppercase;
-    padding: 18px;
+    padding: 16px;
     cursor: pointer;
     box-shadow: 0 4px 24px rgba(204,18,18,0.45);
     transition: opacity 0.15s;
@@ -2326,30 +2374,30 @@
   .home-btn-duo {
     background: transparent;
     border: 2px solid #CC1212;
-    border-radius: 14px;
+    border-radius: var(--radius-md);
     color: #CC1212;
     font-family: var(--font-display);
-    font-size: 1.1rem;
+    font-size: var(--fs-h3);
     font-weight: 700;
     letter-spacing: 0.15em;
     text-transform: uppercase;
-    padding: 18px;
+    padding: 16px;
     cursor: pointer;
     transition: opacity 0.15s;
   }
   .home-btn-howto {
     background: transparent;
     border: 1px solid rgba(255,255,255,0.18);
-    border-radius: 14px;
+    border-radius: var(--radius-md);
     color: rgba(255,255,255,0.55);
     font-family: var(--font-display);
-    font-size: 0.85rem;
+    font-size: var(--fs-body);
     font-weight: 700;
     letter-spacing: 0.15em;
     text-transform: uppercase;
     padding: 13px;
     cursor: pointer;
-    transition: border-color 0.15s, color 0.15s;
+    transition: border-color var(--t-fast), color var(--t-fast);
   }
   .home-btn-howto:hover { border-color: rgba(255,255,255,0.35); color: #fff; }
 
@@ -2379,7 +2427,7 @@
   }
   #howto-overlay.open #howto-sheet { transform: translateY(0); }
   .howto-handle {
-    width: 36px; height: 5px; border-radius: 3px;
+    width: 36px; height: 5px; border-radius: var(--radius-xs);
     background: rgba(255,255,255,0.22);
     margin: 12px auto 22px;
   }
@@ -2387,9 +2435,9 @@
     position: absolute; top: 16px; right: 18px;
     background: rgba(255,255,255,0.10);
     border: none; color: rgba(255,255,255,0.75);
-    width: 30px; height: 30px; border-radius: 50%; font-size: 0.9rem;
+    width: 30px; height: 30px; border-radius: 50%; font-size: var(--fs-body);
     cursor: pointer; display: flex; align-items: center; justify-content: center;
-    transition: background 0.15s;
+    transition: background var(--t-fast);
   }
   .howto-close:hover { background: rgba(255,255,255,0.18); }
   #howto-sheet { position: relative; }
@@ -2417,7 +2465,7 @@
   }
   .htp-eyebrow {
     font-family: var(--font-display);
-    font-size: 0.6rem;
+    font-size: var(--fs-label);
     letter-spacing: 0.24em;
     text-transform: uppercase;
     font-weight: 700;
@@ -2425,15 +2473,15 @@
   }
   .htp-hero-h1 {
     font-family: var(--font-display);
-    font-size: 2.3rem;
+    font-size: var(--fs-display);
     font-weight: 700;
     line-height: 1.06;
     letter-spacing: -0.025em;
     color: #fff;
-    margin-bottom: 14px;
+    margin-bottom: 16px;
   }
   .htp-hero-p {
-    font-size: 1rem;
+    font-size: var(--fs-body);
     line-height: 1.65;
     color: rgba(255,255,255,0.55);
   }
@@ -2448,7 +2496,7 @@
 
   .htp-sec-h2 {
     font-family: var(--font-display);
-    font-size: 1.6rem;
+    font-size: var(--fs-h1);
     font-weight: 700;
     line-height: 1.08;
     letter-spacing: -0.025em;
@@ -2456,7 +2504,7 @@
     margin-bottom: 10px;
   }
   .htp-sec-p {
-    font-size: 0.97rem;
+    font-size: var(--fs-body);
     line-height: 1.65;
     color: rgba(255,255,255,0.52);
     margin-bottom: 0;
@@ -2467,24 +2515,24 @@
   .htp-tier-row {
     display: flex;
     align-items: center;
-    gap: 14px;
-    padding: 14px 0;
+    gap: 16px;
+    padding: 16px 0;
     border-bottom: 1px solid rgba(255,255,255,0.07);
   }
   .htp-tier-row:last-child { border-bottom: none; }
-  .htp-tier-emoji { font-size: 1.75rem; flex-shrink: 0; width: 38px; text-align: center; }
+  .htp-tier-emoji { font-size: var(--fs-h1); flex-shrink: 0; width: 38px; text-align: center; }
   .htp-tier-info  { flex: 1; min-width: 0; }
   .htp-tier-name  {
     font-family: var(--font-display);
-    font-size: 0.84rem;
+    font-size: var(--fs-body);
     font-weight: 700;
     letter-spacing: 0.05em;
     margin-bottom: 3px;
   }
-  .htp-tier-sub   { font-size: 0.8rem; color: rgba(255,255,255,0.4); line-height: 1.35; }
+  .htp-tier-sub   { font-size: var(--fs-ui); color: rgba(255,255,255,0.4); line-height: 1.35; }
   .htp-tier-price {
     font-family: var(--font-display);
-    font-size: 0.64rem;
+    font-size: var(--fs-label);
     color: rgba(255,255,255,0.25);
     flex-shrink: 0;
     text-align: right;
@@ -2496,7 +2544,7 @@
     display: flex;
     gap: 20px;
     align-items: center;
-    padding: 22px 0;
+    padding: 24px 0;
     border-bottom: 1px solid rgba(255,255,255,0.07);
   }
   .htp-frog-block:first-of-type { padding-top: 26px; }
@@ -2504,13 +2552,13 @@
   .htp-frog-block svg { flex-shrink: 0; }
   .htp-frog-name {
     font-family: var(--font-display);
-    font-size: 1rem;
+    font-size: var(--fs-body);
     font-weight: 700;
     letter-spacing: 0.04em;
     margin-bottom: 6px;
   }
   .htp-frog-desc {
-    font-size: 0.9rem;
+    font-size: var(--fs-body);
     line-height: 1.55;
     color: rgba(255,255,255,0.5);
   }
@@ -2518,7 +2566,7 @@
   /* ── Note / caption ── */
   .htp-note {
     margin-top: 20px;
-    font-size: 0.83rem;
+    font-size: var(--fs-body);
     color: rgba(255,255,255,0.28);
     line-height: 1.5;
     font-style: italic;
@@ -2528,7 +2576,7 @@
   /* ── Powers ── */
   .htp-pw-group {
     font-family: var(--font-display);
-    font-size: 0.58rem;
+    font-size: var(--fs-label);
     letter-spacing: 0.2em;
     font-weight: 700;
     text-transform: uppercase;
@@ -2537,28 +2585,28 @@
   .htp-pw-row {
     display: flex;
     align-items: center;
-    gap: 14px;
+    gap: 16px;
     padding: 12px 0;
     border-bottom: 1px solid rgba(255,255,255,0.06);
   }
   .htp-pw-row:last-child { border-bottom: none; }
-  .htp-pw-icon { font-size: 1.55rem; width: 34px; text-align: center; flex-shrink: 0; }
+  .htp-pw-icon { font-size: var(--fs-h1); width: 34px; text-align: center; flex-shrink: 0; }
   .htp-pw-info { flex: 1; }
   .htp-pw-name {
     font-family: var(--font-display);
-    font-size: 0.84rem;
+    font-size: var(--fs-body);
     font-weight: 700;
     color: #fff;
     letter-spacing: 0.03em;
     margin-bottom: 2px;
   }
-  .htp-pw-desc { font-size: 0.78rem; color: rgba(255,255,255,0.4); line-height: 1.35; }
+  .htp-pw-desc { font-size: var(--fs-ui); color: rgba(255,255,255,0.4); line-height: 1.35; }
   .htp-pw-pill {
     font-family: var(--font-display);
-    font-size: 0.48rem;
+    font-size: var(--fs-micro);
     letter-spacing: 0.12em;
     padding: 3px 8px;
-    border-radius: 20px;
+    border-radius: var(--radius-lg);
     flex-shrink: 0;
   }
   .htp-pill-s { background:rgba(204,18,18,0.18); color:#ff7070; border:1px solid rgba(204,18,18,0.35); }
@@ -2566,13 +2614,13 @@
 
   /* Solo/Duo screen powers section */
   .screen-powers-section {
-    padding: 18px 16px 0;
+    padding: 16px 16px 0;
     width: 100%;
     box-sizing: border-box;
   }
   .screen-powers-label {
     font-family: var(--font-display);
-    font-size: 0.58rem;
+    font-size: var(--fs-label);
     letter-spacing: 0.22em;
     text-transform: uppercase;
     color: rgba(255,255,255,0.3);
@@ -2590,15 +2638,15 @@
   /* Section headers — bright, readable */
   .howto-section-title {
     font-family: var(--font-display);
-    font-size: 0.6rem; letter-spacing: 0.22em;
+    font-size: var(--fs-label); letter-spacing: 0.22em;
     color: rgba(255,255,255,0.55); text-transform: uppercase;
     border-bottom: 1px solid rgba(255,255,255,0.08);
-    padding-bottom: 9px; margin-bottom: 14px;
+    padding-bottom: 9px; margin-bottom: 16px;
     display: flex; align-items: center; gap: 8px;
   }
   .howto-section-title .hst-accent {
     display: inline-block; width: 3px; height: 14px;
-    border-radius: 2px; flex-shrink: 0;
+    border-radius: var(--radius-xs); flex-shrink: 0;
   }
 
   /* Tier tile cards */
@@ -2606,7 +2654,7 @@
     display: flex; align-items: center; gap: 12px;
     background: rgba(255,255,255,0.04);
     border: 1px solid rgba(255,255,255,0.07);
-    border-radius: 14px; padding: 12px 14px;
+    border-radius: var(--radius-md); padding: 12px 14px;
     margin-bottom: 8px;
     position: relative; overflow: hidden;
   }
@@ -2616,17 +2664,17 @@
     background: var(--tc, #888);
   }
   .howto-tier-emoji {
-    font-size: 1.6rem; flex-shrink: 0; width: 34px; text-align: center;
+    font-size: var(--fs-h1); flex-shrink: 0; width: 34px; text-align: center;
   }
   .howto-tier-body { flex: 1; min-width: 0; }
   .howto-tier-name {
-    font-family: var(--font-display); font-size: 0.78rem;
+    font-family: var(--font-display); font-size: var(--fs-ui);
     font-weight: 700; letter-spacing: 0.08em;
     color: #fff; margin-bottom: 3px;
   }
-  .howto-tier-desc { font-size: 0.72rem; color: rgba(255,255,255,0.5); line-height: 1.4; }
+  .howto-tier-desc { font-size: var(--fs-ui); color: rgba(255,255,255,0.5); line-height: 1.4; }
   .howto-tier-price {
-    font-family: var(--font-display); font-size: 0.75rem;
+    font-family: var(--font-display); font-size: var(--fs-ui);
     font-weight: 700; flex-shrink: 0; text-align: right;
     color: var(--tc, #888); letter-spacing: 0.04em;
   }
@@ -2634,7 +2682,7 @@
   .howto-duo-card {
     background: rgba(155,48,255,0.10);
     border: 1px solid rgba(155,48,255,0.35);
-    border-radius: 14px; padding: 14px 16px;
+    border-radius: var(--radius-md); padding: 16px 16px;
     margin-top: 6px;
   }
   .howto-duo-header {
@@ -2642,19 +2690,19 @@
     margin-bottom: 6px;
   }
   .howto-duo-name {
-    font-family: var(--font-display); font-size: 0.85rem;
+    font-family: var(--font-display); font-size: var(--fs-body);
     font-weight: 700; letter-spacing: 0.1em; color: #c084fc;
   }
   .howto-duo-price {
-    font-family: var(--font-display); font-size: 0.75rem;
+    font-family: var(--font-display); font-size: var(--fs-ui);
     color: #c084fc; font-weight: 700;
   }
-  .howto-duo-desc { font-size: 0.73rem; color: rgba(255,255,255,0.5); line-height: 1.4; margin-bottom: 6px; }
+  .howto-duo-desc { font-size: var(--fs-ui); color: rgba(255,255,255,0.5); line-height: 1.4; margin-bottom: 6px; }
   .howto-duo-tag {
-    font-family: var(--font-display); font-size: 0.58rem; letter-spacing: 0.1em;
+    font-family: var(--font-display); font-size: var(--fs-label); letter-spacing: 0.1em;
     background: rgba(155,48,255,0.2); color: #c084fc;
     border: 1px solid rgba(155,48,255,0.4);
-    border-radius: 8px; padding: 2px 8px; display: inline-block;
+    border-radius: var(--radius-sm); padding: 2px 8px; display: inline-block;
   }
 
   /* Frog rows */
@@ -2668,15 +2716,15 @@
   }
   .howto-frog-body { flex: 1; }
   .howto-frog-name {
-    font-family: var(--font-display); font-size: 0.8rem;
+    font-family: var(--font-display); font-size: var(--fs-ui);
     font-weight: 700; letter-spacing: 0.08em; color: #fff; margin-bottom: 2px;
   }
-  .howto-frog-desc { font-size: 0.75rem; color: rgba(255,255,255,0.45); line-height: 1.45; }
+  .howto-frog-desc { font-size: var(--fs-ui); color: rgba(255,255,255,0.45); line-height: 1.45; }
   .howto-settings-tip {
     background: rgba(255,255,255,0.04);
     border: 1px solid rgba(255,255,255,0.08);
-    border-radius: 12px; padding: 12px 16px;
-    font-size: 0.73rem; color: rgba(255,255,255,0.5); line-height: 1.5;
+    border-radius: var(--radius-md); padding: 12px 16px;
+    font-size: var(--fs-ui); color: rgba(255,255,255,0.5); line-height: 1.5;
     margin-top: 10px;
   }
   .howto-settings-tip strong { color: rgba(255,255,255,0.8); }
@@ -2704,14 +2752,14 @@
     scroll-snap-align: start;
     background: rgba(255,255,255,0.04);
     border: 1.5px solid color-mix(in srgb, var(--pc,#888) 35%, transparent);
-    border-radius: 18px;
-    padding: 14px 12px 12px;
+    border-radius: var(--radius-md);
+    padding: 16px 12px 12px;
     position: relative;
     overflow: hidden;
     display: flex;
     flex-direction: column;
-    gap: 6px;
-    transition: border-color 0.15s, transform 0.1s;
+    gap: 8px;
+    transition: border-color var(--t-fast), transform var(--t-fast);
     cursor: pointer;
     /* iOS-style card depth */
     box-shadow: 0 2px 12px rgba(0,0,0,0.35), inset 0 0 0 0.5px rgba(255,255,255,0.06);
@@ -2726,20 +2774,20 @@
     pointer-events: none;
   }
   .power-card-icon {
-    font-size: 2rem;
+    font-size: var(--fs-display);
     line-height: 1;
     margin-bottom: 2px;
   }
   .power-card-name {
     font-family: var(--font-display);
-    font-size: 0.76rem;
+    font-size: var(--fs-ui);
     font-weight: 700;
     letter-spacing: 0.07em;
     color: #fff;
     line-height: 1.1;
   }
   .power-card-desc {
-    font-size: 0.67rem;
+    font-size: var(--fs-label);
     color: rgba(255,255,255,0.48);
     line-height: 1.38;
     flex: 1;
@@ -2752,17 +2800,17 @@
   }
   .power-card-price {
     font-family: var(--font-display);
-    font-size: 0.68rem;
+    font-size: var(--fs-ui);
     font-weight: 700;
     color: #F7C948;
     letter-spacing: 0.03em;
   }
   .power-card-tag {
     font-family: var(--font-display);
-    font-size: 0.5rem;
+    font-size: var(--fs-micro);
     letter-spacing: 0.12em;
     padding: 2px 7px;
-    border-radius: 20px;
+    border-radius: var(--radius-lg);
     display: inline-block;
   }
   .ptag-solo {
@@ -2786,7 +2834,7 @@
     width: 5px; height: 5px;
     border-radius: 50%;
     background: rgba(255,255,255,0.15);
-    transition: background 0.2s, transform 0.2s;
+    transition: background var(--t), transform var(--t);
   }
   .pcd.active {
     background: #F7C948;
@@ -2796,13 +2844,13 @@
   .htag-duo  { background: rgba(155,48,255,0.15); color: #c084fc; border: 1px solid rgba(155,48,255,0.3); }
   .howto-shop-note {
     background: rgba(247,201,72,0.07); border: 1px solid rgba(247,201,72,0.2);
-    border-radius: 14px; padding: 12px 16px; margin-top: 10px;
-    font-size: 0.73rem; color: rgba(255,255,255,0.5); line-height: 1.5;
+    border-radius: var(--radius-md); padding: 12px 16px; margin-top: 10px;
+    font-size: var(--fs-ui); color: rgba(255,255,255,0.5); line-height: 1.5;
   }
   .howto-shop-note strong { color: #F7C948; }
 
   .home-tap-hint {
-    font-size: 11px;
+    font-size: var(--fs-micro);
     color: #444;
     text-align: center;
     letter-spacing: 1px;
@@ -2811,10 +2859,10 @@
   .home-settings-pill {
     background: transparent;
     border: 1px solid rgba(255,255,255,0.12);
-    border-radius: 30px;
+    border-radius: var(--radius-lg);
     color: rgba(255,255,255,0.3);
     font-family: var(--font-display);
-    font-size: 0.7rem;
+    font-size: var(--fs-ui);
     letter-spacing: 0.2em;
     padding: 10px 24px;
     cursor: pointer;
@@ -2836,7 +2884,7 @@
     justify-content: space-between;
     padding: 3px 12px;
     font-family: var(--font-display);
-    font-size: 0.52rem;
+    font-size: var(--fs-micro);
     letter-spacing: 0.12em;
     color: rgba(255,255,255,0.3);
     text-transform: uppercase;
@@ -2905,7 +2953,7 @@
     <!-- Big title below circle -->
     <div class="home-title">CROAKDOWN</div>
     <div class="home-tagline">REDFROGBLACK</div>
-    <div style="font-family:var(--font-body);font-size:0.68rem;font-weight:500;letter-spacing:0.12em;color:rgba(255,255,255,0.55);text-transform:uppercase;text-align:center;margin-top:2px;">The tile puzzle where the frogs play back</div>
+    <div style="font-family:var(--font-body);font-size: var(--fs-ui);font-weight:500;letter-spacing:0.12em;color:rgba(255,255,255,0.55);text-transform:uppercase;text-align:center;margin-top:2px;">The tile puzzle where the frogs play back</div>
 
     <!-- Hidden for JS -->
     <span id="streak-val" style="display:none;">0</span>
@@ -2929,12 +2977,12 @@
     </div>
 
     <!-- Resume banner (shown if saved game exists) -->
-    <div id="resume-game-banner" style="display:none;background:rgba(204,18,18,0.12);border:1.5px solid rgba(204,18,18,0.4);border-radius:14px;padding:14px 18px;margin-bottom:14px;align-items:center;justify-content:space-between;gap:12px;">
+    <div id="resume-game-banner" style="display:none;background:rgba(204,18,18,0.12);border:1.5px solid rgba(204,18,18,0.4);border-radius:14px;padding: 16px 18px;margin-bottom: 16px;align-items:center;justify-content:space-between;gap:12px;">
       <div>
-        <div style="font-family:var(--font-display);font-size:0.8rem;font-weight:700;letter-spacing:0.1em;color:#CC1212;margin-bottom:2px;">▶ GAME IN PROGRESS</div>
-        <div id="resume-banner-detail" style="font-size:0.72rem;color:rgba(255,255,255,0.5);">Tap to continue</div>
+        <div style="font-family:var(--font-display);font-size: var(--fs-ui);font-weight:700;letter-spacing:0.1em;color:#CC1212;margin-bottom:2px;">▶ GAME IN PROGRESS</div>
+        <div id="resume-banner-detail" style="font-size: var(--fs-label);color:rgba(255,255,255,0.5);">Tap to continue</div>
       </div>
-      <button onclick="resumeSavedGame()" aria-label="Resume saved game" style="background:#CC1212;border:none;border-radius:10px;color:#fff;font-family:var(--font-display);font-size:0.75rem;font-weight:700;letter-spacing:0.1em;padding:10px 16px;cursor:pointer;white-space:nowrap;">RESUME</button>
+      <button onclick="resumeSavedGame()" aria-label="Resume saved game" style="background:#CC1212;border:none;border-radius:10px;color:#fff;font-family:var(--font-display);font-size: var(--fs-ui);font-weight:700;letter-spacing:0.1em;padding:10px 16px;cursor:pointer;white-space:nowrap;">RESUME</button>
     </div>
 
     <!-- Buttons -->
@@ -3217,7 +3265,7 @@
         <div class="htp-pw-pill htp-pill-s">SOLO</div>
       </div>
 
-      <div class="htp-pw-group" style="color:rgba(192,132,252,0.8);margin-top:22px;">Duo Only</div>
+      <div class="htp-pw-group" style="color:rgba(192,132,252,0.8);margin-top: 24px;">Duo Only</div>
       <div class="htp-pw-row">
         <div class="htp-pw-icon">🐸</div>
         <div class="htp-pw-info"><div class="htp-pw-name">Frog Bomb</div><div class="htp-pw-desc">Scrambles your opponent's board.</div></div>
@@ -3371,8 +3419,8 @@
     </div>
 
     <div class="topbar-right">
-      <button class="icon-btn" id="btn-shop-ingame" title="Shop" aria-label="Open shop" style="font-size:1rem">🐸</button>
-      <button class="icon-btn" id="btn-sound" title="Sound" aria-label="Toggle sound" style="font-size:1rem">🔊</button>
+      <button class="icon-btn" id="btn-shop-ingame" title="Shop" aria-label="Open shop" style="font-size: var(--fs-body)">🐸</button>
+      <button class="icon-btn" id="btn-sound" title="Sound" aria-label="Toggle sound" style="font-size: var(--fs-body)">🔊</button>
       <button class="icon-btn" id="btn-menu" title="Menu" aria-label="Open pause menu">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
           <line x1="3" y1="12" x2="21" y2="12"/>
@@ -3405,7 +3453,7 @@
       <div id="challenge-hud-sub">1 / 2 cleared</div>
     </div>
     <div style="display:flex;align-items:center;gap:8px;">
-      <button id="cr-flip-btn" onclick="toggleColourRunSplit()" style="display:none;background:rgba(247,201,72,0.12);border:1px solid rgba(247,201,72,0.4);border-radius:8px;color:#F7C948;font-family:var(--font-display);font-size:0.6rem;font-weight:700;letter-spacing:0.1em;padding:5px 10px;cursor:pointer;transition:all 0.15s;white-space:nowrap;">SPLIT 🗳</button>
+      <button id="cr-flip-btn" onclick="toggleColourRunSplit()" style="display:none;background:rgba(247,201,72,0.12);border:1px solid rgba(247,201,72,0.4);border-radius:8px;color:#F7C948;font-family:var(--font-display);font-size: var(--fs-label);font-weight:700;letter-spacing:0.1em;padding:5px 10px;cursor:pointer;transition:all 0.15s;white-space:nowrap;">SPLIT 🗳</button>
       <div id="challenge-hud-timer">25s</div>
     </div>
   </div>
@@ -3448,26 +3496,26 @@
 
   <!-- Duo Race HUD -->
   <div id="duo-race-hud" style="display:none;flex-direction:column;width:100%;max-width:480px;flex-shrink:0;">
-    <div style="text-align:center;font-family:var(--font-display);font-size:0.65rem;letter-spacing:0.25em;color:rgba(255,255,255,0.35);padding:6px 0 0;">MATCH 1 OF 3</div>
-    <div id="duo-timer-display" style="text-align:center;font-family:var(--font-display);font-size:3rem;font-weight:900;color:#fff;line-height:1;padding:4px 0;">1:00</div>
+    <div style="text-align:center;font-family:var(--font-display);font-size: var(--fs-label);letter-spacing:0.25em;color:rgba(255,255,255,0.35);padding:6px 0 0;">MATCH 1 OF 3</div>
+    <div id="duo-timer-display" style="text-align:center;font-family:var(--font-display);font-size: var(--fs-display);font-weight:900;color:#fff;line-height:1;padding:4px 0;">1:00</div>
     <div style="height:2px;background:linear-gradient(90deg,#CC1212,#8B0000);width:100%;margin-bottom:6px;"></div>
     <!-- Opponent bar -->
     <div style="display:flex;justify-content:space-between;align-items:center;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:8px;padding:8px 14px;margin:0 8px 6px;box-sizing:border-box;">
       <div style="display:flex;align-items:center;gap:8px;">
-        <span style="font-size:0.9rem;">🎮</span>
-        <span style="font-family:var(--font-display);font-size:0.75rem;font-weight:700;letter-spacing:0.1em;color:rgba(255,255,255,0.6);">OPPONENT</span>
+        <span style="font-size: var(--fs-body);">🎮</span>
+        <span style="font-family:var(--font-display);font-size: var(--fs-ui);font-weight:700;letter-spacing:0.1em;color:rgba(255,255,255,0.6);">OPPONENT</span>
       </div>
       <div style="display:flex;gap:16px;">
-        <span style="font-size:0.7rem;color:rgba(255,255,255,0.4);"><span id="duo-opp-lines">0</span> LINES</span>
-        <span style="font-family:var(--font-display);font-size:0.8rem;color:rgba(255,255,255,0.5);" id="duo-opp-score">0</span>
+        <span style="font-size: var(--fs-ui);color:rgba(255,255,255,0.4);"><span id="duo-opp-lines">0</span> LINES</span>
+        <span style="font-family:var(--font-display);font-size: var(--fs-ui);color:rgba(255,255,255,0.5);" id="duo-opp-score">0</span>
       </div>
     </div>
     <!-- You bar (green highlight) -->
     <div style="display:flex;justify-content:space-between;align-items:center;background:rgba(126,211,33,0.08);border:1px solid rgba(126,211,33,0.25);border-radius:8px;padding:8px 14px;margin:0 8px 6px;box-sizing:border-box;">
-      <div style="font-family:var(--font-display);font-size:0.75rem;font-weight:700;letter-spacing:0.1em;color:#7ED321;">YOU</div>
+      <div style="font-family:var(--font-display);font-size: var(--fs-ui);font-weight:700;letter-spacing:0.1em;color:#7ED321;">YOU</div>
       <div style="display:flex;gap:16px;">
-        <span style="font-size:0.7rem;color:rgba(126,211,33,0.7);"><span id="duo-my-lines">0</span> LINES</span>
-        <span style="font-family:var(--font-display);font-size:0.8rem;color:#7ED321;" id="duo-my-score">0</span>
+        <span style="font-size: var(--fs-ui);color:rgba(126,211,33,0.7);"><span id="duo-my-lines">0</span> LINES</span>
+        <span style="font-family:var(--font-display);font-size: var(--fs-ui);color:#7ED321;" id="duo-my-score">0</span>
       </div>
     </div>
   </div>
@@ -3492,34 +3540,34 @@
       <div style="width:64px;height:64px;background:#CC1212;border-radius:50%;display:flex;align-items:center;justify-content:center;margin-bottom:16px;box-shadow:0 0 30px rgba(204,18,18,0.5);">
         <img src="./rfba-logo.png" style="width:44px;filter:brightness(0) invert(1);" />
       </div>
-      <div style="font-family:var(--font-display);font-size:1.4rem;letter-spacing:0.3em;color:rgba(255,255,255,0.5);margin-bottom:20px;">PAUSED</div>
+      <div style="font-family:var(--font-display);font-size: var(--fs-h2);letter-spacing:0.3em;color:rgba(255,255,255,0.5);margin-bottom:20px;">PAUSED</div>
       <!-- Stats row -->
       <div style="display:flex;gap:0;width:100%;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:14px;margin-bottom:20px;overflow:hidden;">
-        <div style="flex:1;text-align:center;padding:14px 8px;border-right:1px solid rgba(255,255,255,0.06);">
-          <div style="font-size:0.55rem;letter-spacing:0.2em;color:rgba(255,255,255,0.35);text-transform:uppercase;margin-bottom:6px;">SCORE</div>
-          <div id="pause-score-val" style="font-family:var(--font-display);font-size:1.1rem;font-weight:700;color:#fff;">0</div>
+        <div style="flex:1;text-align:center;padding: 16px 8px;border-right:1px solid rgba(255,255,255,0.06);">
+          <div style="font-size: var(--fs-micro);letter-spacing:0.2em;color:rgba(255,255,255,0.35);text-transform:uppercase;margin-bottom:6px;">SCORE</div>
+          <div id="pause-score-val" style="font-family:var(--font-display);font-size: var(--fs-h3);font-weight:700;color:#fff;">0</div>
         </div>
-        <div style="flex:1;text-align:center;padding:14px 8px;border-right:1px solid rgba(255,255,255,0.06);">
-          <div style="font-size:0.55rem;letter-spacing:0.2em;color:rgba(255,255,255,0.35);text-transform:uppercase;margin-bottom:6px;">LEVEL</div>
-          <div id="pause-level-val" style="font-family:var(--font-display);font-size:1.1rem;font-weight:700;color:#CC1212;">1</div>
+        <div style="flex:1;text-align:center;padding: 16px 8px;border-right:1px solid rgba(255,255,255,0.06);">
+          <div style="font-size: var(--fs-micro);letter-spacing:0.2em;color:rgba(255,255,255,0.35);text-transform:uppercase;margin-bottom:6px;">LEVEL</div>
+          <div id="pause-level-val" style="font-family:var(--font-display);font-size: var(--fs-h3);font-weight:700;color:#CC1212;">1</div>
         </div>
-        <div style="flex:1;text-align:center;padding:14px 8px;">
-          <div style="font-size:0.55rem;letter-spacing:0.2em;color:rgba(255,255,255,0.35);text-transform:uppercase;margin-bottom:6px;">BEST</div>
-          <div id="pause-best-val" style="font-family:var(--font-display);font-size:1.1rem;font-weight:700;color:#F7C948;">0</div>
+        <div style="flex:1;text-align:center;padding: 16px 8px;">
+          <div style="font-size: var(--fs-micro);letter-spacing:0.2em;color:rgba(255,255,255,0.35);text-transform:uppercase;margin-bottom:6px;">BEST</div>
+          <div id="pause-best-val" style="font-family:var(--font-display);font-size: var(--fs-h3);font-weight:700;color:#F7C948;">0</div>
         </div>
       </div>
       <!-- Menu items -->
-      <button id="btn-pause-resume" aria-label="Resume game" style="width:100%;background:#CC1212;border:none;border-radius:12px;color:#fff;font-family:var(--font-display);font-size:1rem;font-weight:700;letter-spacing:0.15em;text-transform:uppercase;padding:16px;cursor:pointer;margin-bottom:10px;display:flex;align-items:center;justify-content:center;gap:10px;">▶ RESUME</button>
-      <button id="btn-pause-profile" aria-label="View my profile" style="width:100%;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.1);border-radius:12px;color:#fff;font-family:var(--font-display);font-size:0.9rem;letter-spacing:0.12em;text-transform:uppercase;padding:14px;cursor:pointer;margin-bottom:8px;display:flex;align-items:center;justify-content:space-between;">
+      <button id="btn-pause-resume" aria-label="Resume game" style="width:100%;background:#CC1212;border:none;border-radius:12px;color:#fff;font-family:var(--font-display);font-size: var(--fs-body);font-weight:700;letter-spacing:0.15em;text-transform:uppercase;padding:16px;cursor:pointer;margin-bottom:10px;display:flex;align-items:center;justify-content:center;gap:10px;">▶ RESUME</button>
+      <button id="btn-pause-profile" aria-label="View my profile" style="width:100%;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.1);border-radius:12px;color:#fff;font-family:var(--font-display);font-size: var(--fs-body);letter-spacing:0.12em;text-transform:uppercase;padding: 16px;cursor:pointer;margin-bottom:8px;display:flex;align-items:center;justify-content:space-between;">
         <span>👤 MY PROFILE</span><span style="color:rgba(255,255,255,0.3);">›</span>
       </button>
-      <button id="btn-pause-upgrade" aria-label="Upgrade tier" style="width:100%;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.1);border-radius:12px;color:#fff;font-family:var(--font-display);font-size:0.9rem;letter-spacing:0.12em;text-transform:uppercase;padding:14px;cursor:pointer;margin-bottom:8px;display:flex;align-items:center;justify-content:space-between;">
+      <button id="btn-pause-upgrade" aria-label="Upgrade tier" style="width:100%;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.1);border-radius:12px;color:#fff;font-family:var(--font-display);font-size: var(--fs-body);letter-spacing:0.12em;text-transform:uppercase;padding: 16px;cursor:pointer;margin-bottom:8px;display:flex;align-items:center;justify-content:space-between;">
         <span>🐸 UPGRADE TIER</span><span style="color:rgba(255,255,255,0.3);">›</span>
       </button>
-      <button id="btn-pause-settings" aria-label="Open settings" style="width:100%;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.1);border-radius:12px;color:#fff;font-family:var(--font-display);font-size:0.9rem;letter-spacing:0.12em;text-transform:uppercase;padding:14px;cursor:pointer;margin-bottom:8px;display:flex;align-items:center;justify-content:space-between;">
+      <button id="btn-pause-settings" aria-label="Open settings" style="width:100%;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.1);border-radius:12px;color:#fff;font-family:var(--font-display);font-size: var(--fs-body);letter-spacing:0.12em;text-transform:uppercase;padding: 16px;cursor:pointer;margin-bottom:8px;display:flex;align-items:center;justify-content:space-between;">
         <span>⚙ SETTINGS</span><span style="color:rgba(255,255,255,0.3);">›</span>
       </button>
-      <button id="btn-pause-home" aria-label="Quit to home screen" style="width:100%;background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.06);border-radius:12px;color:rgba(255,255,255,0.4);font-family:var(--font-display);font-size:0.9rem;letter-spacing:0.12em;text-transform:uppercase;padding:14px;cursor:pointer;display:flex;align-items:center;justify-content:space-between;">
+      <button id="btn-pause-home" aria-label="Quit to home screen" style="width:100%;background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.06);border-radius:12px;color:rgba(255,255,255,0.4);font-family:var(--font-display);font-size: var(--fs-body);letter-spacing:0.12em;text-transform:uppercase;padding: 16px;cursor:pointer;display:flex;align-items:center;justify-content:space-between;">
         <span>🏠 EXIT TO HOME</span><span style="color:rgba(255,255,255,0.15);">›</span>
       </button>
     </div>
@@ -3528,10 +3576,10 @@
 
 <!-- ════════════ LEVEL UP OVERLAY ════════════ -->
 <div id="levelup-overlay" class="screen hidden" style="position:fixed;inset:0;background:rgba(8,8,8,0.95);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;z-index:500;">
-  <div style="font-family:var(--font-mono);font-size:13px;letter-spacing:4px;color:#CC1212;">LEVEL UP</div>
-  <div id="levelup-number" style="font-family:var(--font-mono);font-size:72px;font-weight:900;color:#fff;line-height:1;">5</div>
-  <div id="levelup-changes" style="display:flex;flex-direction:column;gap:6px;width:min(280px,88vw);margin:12px 0;"></div>
-  <button id="btn-levelup-continue" aria-label="Keep playing" style="background:#CC1212;border:none;border-radius:12px;color:#fff;font-family:var(--font-display);font-size:1rem;letter-spacing:3px;padding:14px 32px;cursor:pointer;">KEEP PLAYING</button>
+  <div style="font-family:var(--font-mono);font-size: var(--fs-ui);letter-spacing:4px;color:#CC1212;">LEVEL UP</div>
+  <div id="levelup-number" style="font-family:var(--font-mono);font-size: var(--fs-display);font-weight:900;color:#fff;line-height:1;">5</div>
+  <div id="levelup-changes" style="display:flex;flex-direction:column;gap: 8px;width:min(280px,88vw);margin:12px 0;"></div>
+  <button id="btn-levelup-continue" aria-label="Keep playing" style="background:#CC1212;border:none;border-radius:12px;color:#fff;font-family:var(--font-display);font-size: var(--fs-body);letter-spacing:3px;padding: 16px 32px;cursor:pointer;">KEEP PLAYING</button>
 </div>
 
 <!-- ════════════ GAME OVER ════════════ -->
@@ -3554,13 +3602,13 @@
 <div id="duo-modal" class="modal-overlay hidden">
   <div class="modal-card">
     <div style="text-align:center;padding:8px 0 16px;">
-      <div style="font-size:3rem;margin-bottom:12px;">🐸</div>
-      <h2 style="font-family:var(--font-display);font-size:1.6rem;font-weight:900;letter-spacing:0.12em;color:#fff;margin:0 0 12px;">DUO MODE</h2>
-      <p style="font-size:0.9rem;color:rgba(255,255,255,0.55);margin:0 0 24px;line-height:1.5;">Play with a friend anywhere in the world.<br>Create a room, share the code, and compete live.</p>
-      <div style="font-family:var(--font-display);font-size:2.2rem;font-weight:900;color:#CC1212;margin-bottom:6px;">£5 / month</div>
-      <div style="font-size:0.72rem;color:rgba(255,255,255,0.35);letter-spacing:0.15em;margin-bottom:24px;">Each player pays separately</div>
-      <button id="duo-modal-play" aria-label="Subscribe to Duo Pack and play" style="width:100%;background:#CC1212;border:none;border-radius:14px;color:#fff;font-family:var(--font-display);font-size:1rem;font-weight:700;letter-spacing:0.2em;text-transform:uppercase;padding:16px;cursor:pointer;margin-bottom:12px;">SUBSCRIBE &amp; PLAY</button>
-      <button id="duo-modal-close" aria-label="Maybe later" style="background:none;border:none;color:rgba(255,255,255,0.3);font-family:var(--font-display);font-size:0.75rem;letter-spacing:0.2em;text-transform:uppercase;cursor:pointer;padding:8px;">MAYBE LATER</button>
+      <div style="font-size: var(--fs-display);margin-bottom:12px;">🐸</div>
+      <h2 style="font-family:var(--font-display);font-size: var(--fs-h1);font-weight:900;letter-spacing:0.12em;color:#fff;margin:0 0 12px;">DUO MODE</h2>
+      <p style="font-size: var(--fs-body);color:rgba(255,255,255,0.55);margin:0 0 24px;line-height:1.5;">Play with a friend anywhere in the world.<br>Create a room, share the code, and compete live.</p>
+      <div style="font-family:var(--font-display);font-size: var(--fs-display);font-weight:900;color:#CC1212;margin-bottom:6px;">£5 / month</div>
+      <div style="font-size: var(--fs-label);color:rgba(255,255,255,0.35);letter-spacing:0.15em;margin-bottom:24px;">Each player pays separately</div>
+      <button id="duo-modal-play" aria-label="Subscribe to Duo Pack and play" style="width:100%;background:#CC1212;border:none;border-radius:14px;color:#fff;font-family:var(--font-display);font-size: var(--fs-body);font-weight:700;letter-spacing:0.2em;text-transform:uppercase;padding:16px;cursor:pointer;margin-bottom:12px;">SUBSCRIBE &amp; PLAY</button>
+      <button id="duo-modal-close" aria-label="Maybe later" style="background:none;border:none;color:rgba(255,255,255,0.3);font-family:var(--font-display);font-size: var(--fs-ui);letter-spacing:0.2em;text-transform:uppercase;cursor:pointer;padding:8px;">MAYBE LATER</button>
     </div>
   </div>
 </div>
@@ -3572,9 +3620,9 @@
 
     <!-- Paid Feature Banner -->
     <div style="width:100%;background:linear-gradient(135deg,rgba(123,63,190,0.25),rgba(90,30,160,0.18));border:1.5px solid rgba(123,63,190,0.6);border-radius:14px;padding:16px 18px;margin-bottom:20px;text-align:center;">
-      <div style="font-family:var(--font-display);font-size:0.65rem;font-weight:700;letter-spacing:0.18em;text-transform:uppercase;color:#fff;background:rgba(123,63,190,0.7);border-radius:6px;padding:4px 12px;display:inline-block;margin-bottom:10px;">PAID FEATURE</div>
-      <div style="font-family:var(--font-display);font-size:1.1rem;font-weight:700;color:#c084fc;letter-spacing:0.08em;margin-bottom:6px;">£5 / month per player</div>
-      <div style="font-size:0.75rem;color:rgba(255,255,255,0.6);line-height:1.5;">You and your friend each pay £5/month &mdash; play together from anywhere in the world.</div>
+      <div style="font-family:var(--font-display);font-size: var(--fs-label);font-weight:700;letter-spacing:0.18em;text-transform:uppercase;color:#fff;background:rgba(123,63,190,0.7);border-radius:6px;padding:4px 12px;display:inline-block;margin-bottom:10px;">PAID FEATURE</div>
+      <div style="font-family:var(--font-display);font-size: var(--fs-h3);font-weight:700;color:#c084fc;letter-spacing:0.08em;margin-bottom:6px;">£5 / month per player</div>
+      <div style="font-size: var(--fs-ui);color:rgba(255,255,255,0.6);line-height:1.5;">You and your friend each pay £5/month &mdash; play together from anywhere in the world.</div>
     </div>
 
     <div class="duo-header">
@@ -3642,10 +3690,10 @@
       </div>
     </div>
     <!-- Paywall notice if not subscribed -->
-    <div id="duo-paywall-notice" style="display:none;width:100%;background:rgba(123,63,190,0.12);border:1px solid rgba(123,63,190,0.35);border-radius:var(--radius-sm);padding:12px 14px;margin-bottom:14px;">
-      <div style="font-family:var(--font-display);font-size:0.7rem;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:#c084fc;margin-bottom:4px;">🔒 DUO PACK REQUIRED</div>
-      <div style="font-size:0.75rem;color:rgba(255,255,255,0.65);line-height:1.4;">Multiplayer is part of the Duo Pack &mdash; £5/month per player. Unlock in the Frog Evolution Shop below.</div>
-      <button onclick="openShop()" style="margin-top:10px;background:rgba(123,63,190,0.3);border:1px solid rgba(123,63,190,0.5);color:#c084fc;font-family:var(--font-display);font-size:0.65rem;font-weight:600;letter-spacing:0.12em;text-transform:uppercase;padding:7px 16px;border-radius:var(--radius-sm);cursor:pointer;">UNLOCK IN SHOP →</button>
+    <div id="duo-paywall-notice" style="display:none;width:100%;background:rgba(123,63,190,0.12);border:1px solid rgba(123,63,190,0.35);border-radius:var(--radius-sm);padding:12px 14px;margin-bottom: 16px;">
+      <div style="font-family:var(--font-display);font-size: var(--fs-ui);font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:#c084fc;margin-bottom:4px;">🔒 DUO PACK REQUIRED</div>
+      <div style="font-size: var(--fs-ui);color:rgba(255,255,255,0.65);line-height:1.4;">Multiplayer is part of the Duo Pack &mdash; £5/month per player. Unlock in the Frog Evolution Shop below.</div>
+      <button onclick="openShop()" style="margin-top:10px;background:rgba(123,63,190,0.3);border:1px solid rgba(123,63,190,0.5);color:#c084fc;font-family:var(--font-display);font-size: var(--fs-label);font-weight:600;letter-spacing:0.12em;text-transform:uppercase;padding: 8px 16px;border-radius:var(--radius-sm);cursor:pointer;">UNLOCK IN SHOP →</button>
     </div>
 
     <!-- Create room panel -->
@@ -3655,13 +3703,13 @@
         <span class="code-waiting">PRESS CREATE ROOM</span>
       </div>
       <div class="duo-status waiting" id="create-status">Share this code with your partner</div>
-      <button class="btn-red" id="btn-create-room" aria-label="Create a duo room" style="width:100%;margin-top:14px;">CREATE ROOM</button>
+      <button class="btn-red" id="btn-create-room" aria-label="Create a duo room" style="width:100%;margin-top: 16px;">CREATE ROOM</button>
     </div>
 
     <!-- OR divider -->
     <div style="display:flex;align-items:center;gap:12px;width:100%;margin:6px 0;">
       <div style="flex:1;height:1px;background:var(--border);"></div>
-      <div style="font-family:var(--font-display);font-size:0.6rem;letter-spacing:0.16em;color:var(--muted);">OR</div>
+      <div style="font-family:var(--font-display);font-size: var(--fs-label);letter-spacing:0.16em;color:var(--muted);">OR</div>
       <div style="flex:1;height:1px;background:var(--border);"></div>
     </div>
 
@@ -3678,21 +3726,21 @@
     <!-- OR divider before VS Frog -->
     <div style="display:flex;align-items:center;gap:12px;width:100%;margin:6px 0;">
       <div style="flex:1;height:1px;background:var(--border);"></div>
-      <div style="font-family:var(--font-display);font-size:0.6rem;letter-spacing:0.16em;color:var(--muted);">OR</div>
+      <div style="font-family:var(--font-display);font-size: var(--fs-label);letter-spacing:0.16em;color:var(--muted);">OR</div>
       <div style="flex:1;height:1px;background:var(--border);"></div>
     </div>
 
     <!-- Play vs Frog (AI) panel -->
     <div class="duo-panel" style="border-color:rgba(126,211,33,0.3);background:rgba(126,211,33,0.04);">
       <div style="display:flex;align-items:center;gap:12px;margin-bottom:10px;">
-        <div style="width:44px;height:44px;background:rgba(126,211,33,0.12);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:1.6rem;border:1.5px solid rgba(126,211,33,0.3);">🐸</div>
+        <div style="width:44px;height:44px;background:rgba(126,211,33,0.12);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size: var(--fs-h1);border:1.5px solid rgba(126,211,33,0.3);">🐸</div>
         <div>
-          <div style="font-family:var(--font-display);font-size:0.85rem;font-weight:700;letter-spacing:0.1em;color:#7ED321;">PLAY WITH A FROG</div>
-          <div style="font-size:0.65rem;color:rgba(255,255,255,0.35);margin-top:2px;">No partner needed</div>
+          <div style="font-family:var(--font-display);font-size: var(--fs-body);font-weight:700;letter-spacing:0.1em;color:#7ED321;">PLAY WITH A FROG</div>
+          <div style="font-size: var(--fs-label);color:rgba(255,255,255,0.35);margin-top:2px;">No partner needed</div>
         </div>
       </div>
-      <div style="font-size:0.72rem;color:rgba(255,255,255,0.4);line-height:1.5;margin-bottom:14px;">The Frog plays by itself and adapts to your pace &mdash; play faster and it keeps up, slow down and it gives you breathing room.</div>
-      <button onclick="startVsFrog()" style="width:100%;background:rgba(126,211,33,0.12);border:1.5px solid rgba(126,211,33,0.4);border-radius:12px;color:#7ED321;font-family:var(--font-display);font-size:0.9rem;font-weight:700;letter-spacing:0.15em;padding:14px;cursor:pointer;transition:background 0.2s;" onmouseover="this.style.background='rgba(126,211,33,0.22)'" onmouseout="this.style.background='rgba(126,211,33,0.12)'">🐸 CHALLENGE THE FROG</button>
+      <div style="font-size: var(--fs-ui);color:rgba(255,255,255,0.4);line-height:1.5;margin-bottom: 16px;">The Frog plays by itself and adapts to your pace &mdash; play faster and it keeps up, slow down and it gives you breathing room.</div>
+      <button onclick="startVsFrog()" style="width:100%;background:rgba(126,211,33,0.12);border:1.5px solid rgba(126,211,33,0.4);border-radius:12px;color:#7ED321;font-family:var(--font-display);font-size: var(--fs-body);font-weight:700;letter-spacing:0.15em;padding: 16px;cursor:pointer;transition:background 0.2s;" onmouseover="this.style.background='rgba(126,211,33,0.22)'" onmouseout="this.style.background='rgba(126,211,33,0.12)'">🐸 CHALLENGE THE FROG</button>
     </div>
 
   </div>
@@ -3724,7 +3772,7 @@
         <h2>MAGIC <span>POWERS</span></h2>
         <p>Each power unlocks for a full year. Use it as much as you like — up to 3 times per 30-second window while playing, then it refills automatically. One free bonus use resets daily.</p>
       </div>
-      <div id="powers-inventory-bar" style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-bottom:18px;"></div>
+      <div id="powers-inventory-bar" style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-bottom: 16px;"></div>
       <div id="shop-powers-list" style="display:flex;flex-direction:column;gap:10px;padding:0 4px;"></div>
     </div>
 
@@ -3750,6 +3798,64 @@
   </div>
 </div>
 
+<!-- ════════════ UNLOCK CELEBRATION ════════════ -->
+<div id="unlock-celebration" aria-hidden="true">
+  <div class="unlock-cel-inner">
+    <div class="unlock-cel-emoji" id="cel-emoji"></div>
+    <div class="unlock-cel-label">UNLOCKED</div>
+    <div class="unlock-cel-name" id="cel-name"></div>
+  </div>
+</div>
+
+<style>
+  #unlock-celebration {
+    position: fixed; inset: 0; z-index: 9999;
+    display: flex; align-items: center; justify-content: center;
+    background: rgba(10,10,10,0.92);
+    opacity: 0; pointer-events: none;
+    transition: opacity 0.25s ease;
+  }
+  #unlock-celebration.show {
+    opacity: 1;
+    pointer-events: none; /* never blocks taps */
+  }
+  .unlock-cel-inner {
+    text-align: center;
+    animation: celPop 0.45s cubic-bezier(0.16,1,0.3,1) both;
+  }
+  #unlock-celebration.show .unlock-cel-inner {
+    animation: celPop 0.45s cubic-bezier(0.16,1,0.3,1) both;
+  }
+  @keyframes celPop {
+    from { opacity: 0; transform: scale(0.7) translateY(16px); }
+    to   { opacity: 1; transform: scale(1) translateY(0); }
+  }
+  .unlock-cel-emoji {
+    font-size: 5rem; /* intentional: celebration emoji display, not a text token */
+    line-height: 1;
+    margin-bottom: 16px;
+    filter: drop-shadow(0 0 32px rgba(204,18,18,0.8));
+  }
+  .unlock-cel-label {
+    font-family: var(--font-display);
+    font-size: var(--fs-label);
+    font-weight: 700;
+    letter-spacing: 0.25em;
+    color: var(--red);
+    margin-bottom: 8px;
+  }
+  .unlock-cel-name {
+    font-family: var(--font-display);
+    font-size: var(--fs-h1);
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    color: var(--white);
+  }
+  @media (prefers-reduced-motion: reduce) {
+    #unlock-celebration, .unlock-cel-inner { animation: none !important; transition: none !important; }
+  }
+</style>
+
 <!-- ════════════ SETTINGS SCREEN ════════════ -->
 <style>
 /* ── iOS-style toggle switch ─────────────────────────── */
@@ -3761,8 +3867,8 @@
 .ios-toggle-track {
   position: absolute; inset: 0;
   background: rgba(255,255,255,0.14);
-  border-radius: 31px;
-  transition: background 0.25s cubic-bezier(.4,0,.2,1);
+  border-radius: var(--radius-lg);
+  transition: background var(--t);
 }
 .ios-toggle input:checked + .ios-toggle-track { background: #34C759; }
 .ios-toggle-thumb {
@@ -3795,18 +3901,18 @@
 .settings-group {
   background: rgba(255,255,255,0.04);
   border: 1px solid rgba(255,255,255,0.08);
-  border-radius: 16px;
+  border-radius: var(--radius-md);
   padding: 0 16px;
   margin-bottom: 10px;
   overflow: hidden;
 }
 .settings-group-label {
   font-family: var(--font-display);
-  font-size: 0.6rem;
+  font-size: var(--fs-label);
   letter-spacing: 0.22em;
   color: rgba(255,255,255,0.32);
   text-transform: uppercase;
-  padding: 14px 0 6px;
+  padding: 16px 0 6px;
   margin-bottom: 2px;
 }
 .settings-row {
@@ -3818,8 +3924,8 @@
   border-bottom: 1px solid rgba(255,255,255,0.06);
 }
 .settings-row:last-child { border-bottom: none; }
-.settings-row-label { font-family: var(--font-display); font-size: 0.85rem; font-weight: 700; letter-spacing: 0.06em; color: #fff; }
-.settings-row-sub { font-size: 0.7rem; color: rgba(255,255,255,0.38); margin-top: 3px; line-height: 1.4; }
+.settings-row-label { font-family: var(--font-display); font-size: var(--fs-body); font-weight: 700; letter-spacing: 0.06em; color: #fff; }
+.settings-row-sub { font-size: var(--fs-ui); color: rgba(255,255,255,0.38); margin-top: 3px; line-height: 1.4; }
 </style>
 
 <div id="screen-settings" class="screen hidden">
@@ -3827,8 +3933,8 @@
 
   <!-- Header -->
   <div style="display:flex;align-items:center;gap:12px;margin-bottom:24px;padding-top:4px;">
-    <button onclick="closeSettings()" aria-label="Back from settings" style="background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);border-radius:50%;width:44px;height:44px;color:#fff;font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;">‹</button>
-    <div style="font-family:var(--font-display);font-size:1rem;font-weight:700;letter-spacing:0.15em;color:#fff;">⚙ SETTINGS</div>
+    <button onclick="closeSettings()" aria-label="Back from settings" style="background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);border-radius:50%;width:44px;height:44px;color:#fff;font-size: var(--fs-body);cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;">‹</button>
+    <div style="font-family:var(--font-display);font-size: var(--fs-body);font-weight:700;letter-spacing:0.15em;color:#fff;">⚙ SETTINGS</div>
   </div>
 
   <!-- AUDIO group -->
@@ -3921,8 +4027,8 @@
   <div class="settings-group">
     <div class="settings-group-label">Saved Game</div>
     <div class="settings-row" style="display:block;padding:12px 0;">
-      <div id="settings-saved-game-info" style="font-size:0.78rem;color:rgba(255,255,255,0.45);margin-bottom:10px;">No game in progress.</div>
-      <button id="settings-clear-save" onclick="clearSavedGame()" style="background:rgba(204,18,18,0.12);border:1px solid rgba(204,18,18,0.3);border-radius:10px;color:#CC1212;font-family:var(--font-display);font-size:0.72rem;font-weight:700;letter-spacing:0.1em;padding:9px 16px;cursor:pointer;display:none;">CLEAR SAVED GAME</button>
+      <div id="settings-saved-game-info" style="font-size: var(--fs-ui);color:rgba(255,255,255,0.45);margin-bottom:10px;">No game in progress.</div>
+      <button id="settings-clear-save" onclick="clearSavedGame()" style="background:rgba(204,18,18,0.12);border:1px solid rgba(204,18,18,0.3);border-radius:10px;color:#CC1212;font-family:var(--font-display);font-size: var(--fs-ui);font-weight:700;letter-spacing:0.1em;padding:9px 16px;cursor:pointer;display:none;">CLEAR SAVED GAME</button>
     </div>
   </div>
 
@@ -3933,17 +4039,17 @@
       <!-- populated by updateSettingsToggles() -->
     </div>
     <div style="padding:12px 0;">
-      <button onclick="openShop();closeSettings();" style="width:100%;background:rgba(204,18,18,0.1);border:1px solid rgba(204,18,18,0.25);border-radius:10px;color:#CC1212;font-family:var(--font-display);font-size:0.75rem;font-weight:700;letter-spacing:0.1em;padding:11px 18px;cursor:pointer;">MANAGE / UPGRADE →</button>
+      <button onclick="openShop();closeSettings();" style="width:100%;background:rgba(204,18,18,0.1);border:1px solid rgba(204,18,18,0.25);border-radius:10px;color:#CC1212;font-family:var(--font-display);font-size: var(--fs-ui);font-weight:700;letter-spacing:0.1em;padding:11px 18px;cursor:pointer;">MANAGE / UPGRADE →</button>
     </div>
   </div>
 
   <!-- Legal -->
   <div style="display:flex;justify-content:center;gap:20px;margin-top:8px;margin-bottom:4px;">
-    <a href="https://croakdown.com/privacy" target="_blank" style="font-size:0.62rem;color:rgba(255,255,255,0.22);text-decoration:none;letter-spacing:0.04em;">Privacy Policy</a>
-    <span style="font-size:0.62rem;color:rgba(255,255,255,0.1);">·</span>
-    <a href="https://croakdown.com/terms" target="_blank" style="font-size:0.62rem;color:rgba(255,255,255,0.22);text-decoration:none;letter-spacing:0.04em;">Terms of Use</a>
+    <a href="https://croakdown.com/privacy" target="_blank" style="font-size: var(--fs-label);color:rgba(255,255,255,0.22);text-decoration:none;letter-spacing:0.04em;">Privacy Policy</a>
+    <span style="font-size: var(--fs-label);color:rgba(255,255,255,0.1);">·</span>
+    <a href="https://croakdown.com/terms" target="_blank" style="font-size: var(--fs-label);color:rgba(255,255,255,0.22);text-decoration:none;letter-spacing:0.04em;">Terms of Use</a>
   </div>
-  <div style="text-align:center;font-size:0.6rem;color:rgba(255,255,255,0.12);margin-top:8px;">CROAKDOWN · Red Frog Black Art · v1.0</div>
+  <div style="text-align:center;font-size: var(--fs-label);color:rgba(255,255,255,0.12);margin-top:8px;">CROAKDOWN · Red Frog Black Art · v1.0</div>
 
 </div>
 </div>
@@ -4591,7 +4697,7 @@ function renderTray(){
       lbl.style.color=meta.color||'#F5A623';
       // Stack vertically: canvas on top, label below
       const inner=document.createElement('div');
-      inner.style.cssText='display:flex;flex-direction:column;align-items:center;gap:3px;';
+      inner.style.cssText='display:flex;flex-direction:column;align-items:center;gap: 4px;';
       inner.appendChild(pc);
       inner.appendChild(lbl);
       wrapper.appendChild(inner);
@@ -4765,7 +4871,7 @@ function showLevelUp(newLevel) {
   items.push('Score multiplier: ×' + getDiff().scoreMultiplier.toFixed(1));
   if(newLevel % 5 === 0) items.push('Piece complexity increased');
   if(newLevel % 5 === 0) items.push('Hazard frequency increased');
-  changes.innerHTML = items.map(t => '<div style="background:#1a1a1a;border:1px solid #222;border-radius:8px;padding:8px 12px;font-size:12px;color:#aaa;text-align:center;">'+t+'</div>').join('');
+  changes.innerHTML = items.map(t => '<div style="background:#1a1a1a;border:1px solid #222;border-radius:8px;padding:8px 12px;font-size: var(--fs-label);color:#aaa;text-align:center;">'+t+'</div>').join('');
   gameActive = false;
   document.getElementById('levelup-overlay').classList.remove('hidden');
 }
@@ -4847,7 +4953,40 @@ function animateParticles(ts){
 }
 
 // ── Screens ───────────────────────────────────────────────────────
-function showScreen(id){document.querySelectorAll('.screen').forEach(s=>s.classList.toggle('hidden',s.id!==id));if(id==='screen-title'){updateTrialBanner();checkResumeOnHome();}if(id==='screen-profile'){updateProfileScreen();}}
+function showScreen(id){
+  const screens = document.querySelectorAll('.screen');
+  const incoming = document.getElementById(id);
+  const prefersReduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  screens.forEach(s => {
+    if (s.id === id) return; // handle incoming separately
+    if (s.classList.contains('hidden')) return; // already hidden
+    if (prefersReduced) {
+      s.classList.add('hidden');
+      s.classList.remove('is-entering','is-exiting');
+    } else {
+      s.classList.add('is-exiting');
+      const exit = s;
+      setTimeout(() => {
+        exit.classList.add('hidden');
+        exit.classList.remove('is-exiting');
+      }, 180);
+    }
+  });
+
+  if (!incoming) return;
+  incoming.classList.remove('hidden','is-exiting');
+  if (!prefersReduced) {
+    incoming.classList.remove('is-entering');
+    // Force reflow so animation restarts cleanly
+    void incoming.offsetWidth;
+    incoming.classList.add('is-entering');
+    setTimeout(() => incoming.classList.remove('is-entering'), 400);
+  }
+
+  if (id === 'screen-title')  { updateTrialBanner(); checkResumeOnHome(); }
+  if (id === 'screen-profile'){ updateProfileScreen(); }
+}
 
 function startGame(){
   ensureAudio(); // guarantee audio context is running before any game sounds fire
@@ -4910,10 +5049,10 @@ function buildShopUI(){
     card.style.setProperty('--tier-color',tier.color);
 
     const annualSuffix = tier.annual ? '/yr' : '';
-    const trialLabel = tier.trialDays ? `<div class="tier-price" style="font-size:0.75rem;color:#7ED321">FREE ${tier.trialDays} DAYS</div><div style="font-size:0.7rem;color:rgba(255,255,255,0.4);margin-top:2px">then £${tier.price.toFixed(2)}${annualSuffix}</div>` : null;
+    const trialLabel = tier.trialDays ? `<div class="tier-price" style="font-size: var(--fs-ui);color:#7ED321">FREE ${tier.trialDays} DAYS</div><div style="font-size: var(--fs-ui);color:rgba(255,255,255,0.4);margin-top:2px">then £${tier.price.toFixed(2)}${annualSuffix}</div>` : null;
     let tagHtml='';
     let btnHtml=owned ? (isEquipped?`<button class="tier-buy-btn" style="background:#CC1212;color:#fff" data-play="${tier.id}">▶ PLAY</button>`:`<button class="tier-buy-btn equip" data-equip="${tier.id}">EQUIP</button>`) : `<button class="tier-buy-btn buy" data-buy="${idx}">BUY</button>`;
-    const priceHtml=tier.subscription?`<div class="tier-price" style="font-size:0.9rem;color:#c084fc">£${tier.price.toFixed(2)}<small style="font-size:0.5rem;opacity:0.7">/mo</small></div>`:tier.annual?trialLabel||`<div class="tier-price">£${tier.price.toFixed(2)}<small style="font-size:0.5rem;opacity:0.7">/yr</small></div>`:trialLabel||`<div class="tier-price">£${tier.price.toFixed(2)}</div>`;
+    const priceHtml=tier.subscription?`<div class="tier-price" style="font-size: var(--fs-body);color:#c084fc">£${tier.price.toFixed(2)}<small style="font-size:0.5rem;opacity:0.7">/mo</small></div>`:tier.annual?trialLabel||`<div class="tier-price">£${tier.price.toFixed(2)}<small style="font-size:0.5rem;opacity:0.7">/yr</small></div>`:trialLabel||`<div class="tier-price">£${tier.price.toFixed(2)}</div>`;
     const perksHtml=tier.perks.slice(0,3).map(p=>`<span class="tier-perk">${p}</span>`).join('');
 
     card.innerHTML=`<div class="tier-frog-svg">${FROG_SVGS[tier.id]}</div><div class="tier-info"><div class="tier-name-row"><div class="tier-name" style="color:${tier.color}">${tier.name}</div>${tagHtml}</div><div class="tier-desc">${tier.desc}</div><div class="tier-perks">${perksHtml}</div></div><div class="tier-price-col">${priceHtml}${btnHtml}</div>`;
@@ -5104,8 +5243,8 @@ function refreshPowerBar() {
   const windowEl  = document.createElement('div');
   windowEl.style.cssText = 'display:flex;flex-direction:column;align-items:center;justify-content:center;min-width:28px;margin-right:2px;';
   windowEl.innerHTML =
-    `<span style="font-family:var(--font-display);font-size:0.65rem;letter-spacing:0.06em;color:${usesLeft>0?'#F7C948':'#888'};line-height:1">${usesLeft}/${POWER_WINDOW_MAX}</span>` +
-    (secLeft > 0 ? `<span style="font-size:0.52rem;color:rgba(255,255,255,0.35);line-height:1;margin-top:2px">${secLeft}s</span>` : '');
+    `<span style="font-family:var(--font-display);font-size: var(--fs-label);letter-spacing:0.06em;color:${usesLeft>0?'#F7C948':'#888'};line-height:1">${usesLeft}/${POWER_WINDOW_MAX}</span>` +
+    (secLeft > 0 ? `<span style="font-size: var(--fs-micro);color:rgba(255,255,255,0.35);line-height:1;margin-top:2px">${secLeft}s</span>` : '');
   bar.appendChild(windowEl);
 
   ownedPowers.slice(0, 4).forEach(p => {
@@ -5322,14 +5461,14 @@ function buildPowersPanel() {
     invBar.innerHTML = '';
     const owned = POWER_DEFS.filter(p => p.id !== 'daily' && isPowerOwned(p.id));
     if (owned.length === 0) {
-      invBar.innerHTML = '<div style="font-size:0.78rem;color:rgba(255,255,255,0.3);padding:8px 0;">No powers yet — unlock your first below</div>';
+      invBar.innerHTML = '<div style="font-size: var(--fs-ui);color:rgba(255,255,255,0.3);padding:8px 0;">No powers yet — unlock your first below</div>';
     } else {
       owned.forEach(p => {
         const exp = getPowerExpiry(p.id);
         const daysLeft = Math.max(0, Math.ceil((exp - Date.now()) / 86400000));
         const chip = document.createElement('div');
-        chip.style.cssText = 'background:rgba(204,18,18,0.12);border:1px solid rgba(204,18,18,0.3);border-radius:20px;padding:5px 12px;font-size:0.75rem;color:#fff;display:flex;align-items:center;gap:6px;';
-        chip.innerHTML = `<span>${p.icon}</span><span style="font-family:var(--font-display);font-size:0.65rem;letter-spacing:0.08em;">${p.name}</span><span style="background:#CC1212;color:#fff;border-radius:4px;padding:1px 6px;font-family:var(--font-display);font-size:0.6rem;font-weight:700;">${daysLeft}d</span>`;
+        chip.style.cssText = 'background:rgba(204,18,18,0.12);border:1px solid rgba(204,18,18,0.3);border-radius:20px;padding:5px 12px;font-size: var(--fs-ui);color:#fff;display:flex;align-items:center;gap: 8px;';
+        chip.innerHTML = `<span>${p.icon}</span><span style="font-family:var(--font-display);font-size: var(--fs-label);letter-spacing:0.08em;">${p.name}</span><span style="background:#CC1212;color:#fff;border-radius:4px;padding:1px 6px;font-family:var(--font-display);font-size: var(--fs-label);font-weight:700;">${daysLeft}d</span>`;
         invBar.appendChild(chip);
       });
     }
@@ -5361,7 +5500,7 @@ function buildPowersPanel() {
     card.innerHTML = `
       <div class="psc-icon">${p.icon}</div>
       <div class="psc-body">
-        <div class="psc-name">${p.name}${owned ? ' <span style="color:#7ED321;font-size:0.6rem;font-family:var(--font-display)">✓ ACTIVE</span>' : ''}</div>
+        <div class="psc-name">${p.name}${owned ? ' <span style="color:#7ED321;font-size: var(--fs-label);font-family:var(--font-display)">✓ ACTIVE</span>' : ''}</div>
         <div class="psc-desc">${p.desc}</div>
         <div class="psc-count">${subtext}</div>
       </div>
@@ -5753,7 +5892,7 @@ function openPurchaseModal(idx){
   document.getElementById('purchase-frog-emoji').textContent=tier.emoji;
   document.getElementById('purchase-tier-name').textContent=tier.name;
   document.getElementById('purchase-desc').textContent=tier.desc;
-  const _priceSuffix = tier.annual ? '<small style="font-size:1rem;opacity:0.6">/yr</small>' : tier.subscription ? '<small style="font-size:1rem;opacity:0.6">/mo</small>' : '';
+  const _priceSuffix = tier.annual ? '<small style="font-size: var(--fs-body);opacity:0.6">/yr</small>' : tier.subscription ? '<small style="font-size: var(--fs-body);opacity:0.6">/mo</small>' : '';
   document.getElementById('purchase-price-display').innerHTML=`<small>£</small>${tier.price.toFixed(2)}${_priceSuffix}`;
   const list=document.getElementById('purchase-perks-list');
   list.innerHTML=`<div class="pp-title">WHAT YOU GET</div>`;
@@ -5762,6 +5901,25 @@ function openPurchaseModal(idx){
 }
 function closePurchaseModal(){document.getElementById('purchase-overlay').classList.remove('open');pendingPurchaseTierIdx=-1;}
 
+// ── Unlock celebration overlay ─────────────────────────────────
+function showUnlockCelebration(tier, onDone) {
+  const cel = document.getElementById('unlock-celebration');
+  const emoji = document.getElementById('cel-emoji');
+  const name  = document.getElementById('cel-name');
+  if (!cel) { if (onDone) onDone(); return; }
+  emoji.textContent = tier.emoji;
+  name.textContent  = tier.name;
+  // Restart animation
+  cel.classList.remove('show');
+  void cel.offsetWidth;
+  cel.classList.add('show');
+  hapticWin && hapticWin();
+  setTimeout(() => {
+    cel.classList.remove('show');
+    if (onDone) setTimeout(onDone, 260);
+  }, 1600);
+}
+
 function confirmPurchase(){
   if(pendingPurchaseTierIdx<0)return;
   const tier=TIERS[pendingPurchaseTierIdx];
@@ -5769,11 +5927,11 @@ function confirmPurchase(){
   equippedTierId=tier.id;
   saveOwnedTiers();
   localStorage.setItem('ts_equipped', equippedTierId);
-  closePurchaseModal();closeShop();updateTierBadge();updateTrialBanner();
+  closePurchaseModal();closeShop();
+  updateTierBadge();updateTrialBanner();
   hideUpgradeModal();
-  showToast(`${tier.emoji} ${tier.name} UNLOCKED`);
-  // Route straight to solo setup so player can play immediately
-  setTimeout(() => openSoloSetup(), 300);
+  // Celebration overlay, then route to game
+  showUnlockCelebration(tier, () => openSoloSetup());
 }
 function equipTier(id){equippedTierId=id;updateTierBadge();buildShopUI();}
 function updateTierBadge(){
@@ -7066,7 +7224,7 @@ function buildSoloSetupCards() {
       if (!card.querySelector('.gtc-lock-badge')) {
         const lb = document.createElement('div');
         lb.className = 'gtc-lock-badge';
-        lb.style.cssText = 'position:absolute;top:8px;right:58px;font-size:0.58rem;letter-spacing:0.08em;color:#F7C948;background:rgba(247,201,72,0.12);border:1px solid rgba(247,201,72,0.25);border-radius:6px;padding:2px 6px;';
+        lb.style.cssText = 'position:absolute;top:8px;right:58px;font-size: var(--fs-label);letter-spacing:0.08em;color:#F7C948;background:rgba(247,201,72,0.12);border:1px solid rgba(247,201,72,0.25);border-radius:6px;padding:2px 6px;';
         const priceMap = { treefrog:'£2.99/yr', poisondart:'£4.99/yr', goldenfrog:'£7.99/yr' };
         lb.textContent = priceMap[tid] || '';
         card.appendChild(lb);
@@ -7646,10 +7804,10 @@ function updateProfileScreen() {
     list.innerHTML = stats.history.slice(0,5).map(g => `
       <div style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.07);border-radius:10px;padding:12px 14px;display:flex;align-items:center;justify-content:space-between;">
         <div>
-          <div style="font-family:var(--font-display);font-size:1rem;font-weight:700;color:#fff;">${(g.score||0).toLocaleString()}</div>
-          <div style="font-size:0.65rem;color:rgba(255,255,255,0.35);text-transform:uppercase;letter-spacing:0.1em;margin-top:2px;">${(g.mode||'standard').toUpperCase()} · ${(g.diff||'easy').toUpperCase()} · LVL ${g.level||1}</div>
+          <div style="font-family:var(--font-display);font-size: var(--fs-body);font-weight:700;color:#fff;">${(g.score||0).toLocaleString()}</div>
+          <div style="font-size: var(--fs-label);color:rgba(255,255,255,0.35);text-transform:uppercase;letter-spacing:0.1em;margin-top:2px;">${(g.mode||'standard').toUpperCase()} · ${(g.diff||'easy').toUpperCase()} · LVL ${g.level||1}</div>
         </div>
-        <div style="font-size:0.65rem;color:rgba(255,255,255,0.25);">${g.date||''}</div>
+        <div style="font-size: var(--fs-label);color:rgba(255,255,255,0.25);">${g.date||''}</div>
       </div>
     `).join('');
   }
@@ -7673,10 +7831,10 @@ function showSessionResult(matchResults, myWins, oppWins) {
   const rows = document.getElementById('session-match-rows');
   rows.innerHTML = matchResults.map((m, i) => `
     <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 16px;border-bottom:1px solid rgba(255,255,255,0.06);">
-      <span style="font-family:var(--font-display);font-size:0.7rem;letter-spacing:0.1em;color:rgba(255,255,255,0.4);">M${i+1}</span>
-      <span style="font-family:var(--font-display);font-size:0.9rem;font-weight:700;color:#fff;">YOU ${m.myScore.toLocaleString()}</span>
-      <span style="font-family:var(--font-display);font-size:0.85rem;color:rgba(255,255,255,0.4);">OPP ${m.oppScore.toLocaleString()}</span>
-      <span style="font-size:1rem;">${m.myScore >= m.oppScore ? '✓' : '✗'}</span>
+      <span style="font-family:var(--font-display);font-size: var(--fs-ui);letter-spacing:0.1em;color:rgba(255,255,255,0.4);">M${i+1}</span>
+      <span style="font-family:var(--font-display);font-size: var(--fs-body);font-weight:700;color:#fff;">YOU ${m.myScore.toLocaleString()}</span>
+      <span style="font-family:var(--font-display);font-size: var(--fs-body);color:rgba(255,255,255,0.4);">OPP ${m.oppScore.toLocaleString()}</span>
+      <span style="font-size: var(--fs-body);">${m.myScore >= m.oppScore ? '✓' : '✗'}</span>
     </div>
   `).join('');
   document.getElementById('btn-session-play-again').onclick = () => { showScreen('screen-duo-lobby'); };
@@ -7782,7 +7940,7 @@ function spawnJumpingFrog(type, targetR, targetC) {
         hop.className = 'frog-jumper adder-hop';
         hop.textContent = '🐸';
         hop.style.cssText = `position:fixed;pointer-events:none;line-height:1;
-          font-size:2.2rem;z-index:9999;
+          font-size: var(--fs-display);z-index:9999;
           left:${hx - 22}px;top:${hy - 55}px;
           filter:drop-shadow(0 0 10px #CC1212) sepia(1) saturate(5) hue-rotate(320deg);
           animation:adderHopIn 0.38s cubic-bezier(0.22,0.61,0.36,1) forwards;`;
@@ -7901,12 +8059,12 @@ function updateSettingsToggles() {
     tierList.innerHTML = tierDefs.map(t => {
       const owned = tierOwned(t.id) || (t.id === 'duopack' && isDuoSubscriber());
       return `<div style="display:flex;align-items:center;gap:12px;padding:8px 0;border-bottom:1px solid rgba(255,255,255,0.05);">
-        <span style="font-size:1.3rem;width:28px;text-align:center;">${t.emoji}</span>
+        <span style="font-size: var(--fs-h2);width:28px;text-align:center;">${t.emoji}</span>
         <div style="flex:1;">
-          <div style="font-family:var(--font-display);font-size:0.78rem;font-weight:700;letter-spacing:0.08em;color:${owned ? '#fff' : 'rgba(255,255,255,0.3)'};">${t.name}</div>
-          <div style="font-size:0.65rem;color:rgba(255,255,255,0.3);margin-top:1px;">${t.subtitle}</div>
+          <div style="font-family:var(--font-display);font-size: var(--fs-ui);font-weight:700;letter-spacing:0.08em;color:${owned ? '#fff' : 'rgba(255,255,255,0.3)'};">${t.name}</div>
+          <div style="font-size: var(--fs-label);color:rgba(255,255,255,0.3);margin-top:1px;">${t.subtitle}</div>
         </div>
-        <div style="font-family:var(--font-display);font-size:0.65rem;font-weight:700;letter-spacing:0.12em;padding:4px 10px;border-radius:8px;background:${owned ? t.color + '22' : 'rgba(255,255,255,0.05)'};color:${owned ? t.color : 'rgba(255,255,255,0.2)'};border:1px solid ${owned ? t.color + '55' : 'rgba(255,255,255,0.08)'};">${ owned ? 'UNLOCKED' : 'LOCKED'}</div>
+        <div style="font-family:var(--font-display);font-size: var(--fs-label);font-weight:700;letter-spacing:0.12em;padding:4px 10px;border-radius:8px;background:${owned ? t.color + '22' : 'rgba(255,255,255,0.05)'};color:${owned ? t.color : 'rgba(255,255,255,0.2)'};border:1px solid ${owned ? t.color + '55' : 'rgba(255,255,255,0.08)'};">${ owned ? 'UNLOCKED' : 'LOCKED'}</div>
       </div>`;
     }).join('');
   }
@@ -8088,50 +8246,50 @@ function checkResumeOnHome() {
 <div style="padding:16px;max-width:480px;margin:0 auto;width:100%;box-sizing:border-box;overflow-y:auto;max-height:100vh;">
   <!-- Header -->
   <div style="display:flex;align-items:center;gap:12px;margin-bottom:24px;">
-    <button onclick="closeProfile()" aria-label="Back from profile" style="background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);border-radius:50%;width:44px;height:44px;color:#fff;font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center;">‹</button>
-    <div style="font-family:var(--font-display);font-size:1rem;font-weight:700;letter-spacing:0.15em;color:rgba(255,255,255,0.9);">MY PROFILE</div>
+    <button onclick="closeProfile()" aria-label="Back from profile" style="background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);border-radius:50%;width:44px;height:44px;color:#fff;font-size: var(--fs-body);cursor:pointer;display:flex;align-items:center;justify-content:center;">‹</button>
+    <div style="font-family:var(--font-display);font-size: var(--fs-body);font-weight:700;letter-spacing:0.15em;color:rgba(255,255,255,0.9);">MY PROFILE</div>
   </div>
   <!-- Avatar + name -->
   <div style="display:flex;align-items:center;gap:16px;margin-bottom:24px;">
-    <div style="width:60px;height:60px;background:#CC1212;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:1.8rem;">🐸</div>
+    <div style="width:60px;height:60px;background:#CC1212;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size: var(--fs-h1);">🐸</div>
     <div>
-      <div id="profile-display-name" style="font-family:var(--font-display);font-size:1.4rem;font-weight:700;letter-spacing:0.06em;color:#fff;">CROAKDOWN PLAYER</div>
-      <div id="profile-tier-badge-pill" style="display:inline-block;background:#CC1212;color:#fff;font-family:var(--font-display);font-size:0.6rem;letter-spacing:0.15em;padding:3px 10px;border-radius:6px;margin-top:4px;text-transform:uppercase;">TADPOLE</div>
+      <div id="profile-display-name" style="font-family:var(--font-display);font-size: var(--fs-h2);font-weight:700;letter-spacing:0.06em;color:#fff;">CROAKDOWN PLAYER</div>
+      <div id="profile-tier-badge-pill" style="display:inline-block;background:#CC1212;color:#fff;font-family:var(--font-display);font-size: var(--fs-label);letter-spacing:0.15em;padding:3px 10px;border-radius:6px;margin-top:4px;text-transform:uppercase;">TADPOLE</div>
     </div>
   </div>
   <!-- 4 stat cards -->
   <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:20px;">
     <div style="background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:14px;padding:16px;">
-      <div style="font-size:0.58rem;letter-spacing:0.18em;color:rgba(255,255,255,0.35);text-transform:uppercase;margin-bottom:6px;">🏆 BEST SCORE</div>
-      <div id="profile-best" style="font-family:var(--font-display);font-size:1.5rem;font-weight:700;color:#F7C948;">0</div>
+      <div style="font-size: var(--fs-label);letter-spacing:0.18em;color:rgba(255,255,255,0.35);text-transform:uppercase;margin-bottom:6px;">🏆 BEST SCORE</div>
+      <div id="profile-best" style="font-family:var(--font-display);font-size: var(--fs-h2);font-weight:700;color:#F7C948;">0</div>
     </div>
     <div style="background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:14px;padding:16px;">
-      <div style="font-size:0.58rem;letter-spacing:0.18em;color:rgba(255,255,255,0.35);text-transform:uppercase;margin-bottom:6px;">🔥 DAY STREAK</div>
-      <div id="profile-streak" style="font-family:var(--font-display);font-size:1.5rem;font-weight:700;color:#CC1212;">0</div>
+      <div style="font-size: var(--fs-label);letter-spacing:0.18em;color:rgba(255,255,255,0.35);text-transform:uppercase;margin-bottom:6px;">🔥 DAY STREAK</div>
+      <div id="profile-streak" style="font-family:var(--font-display);font-size: var(--fs-h2);font-weight:700;color:#CC1212;">0</div>
     </div>
     <div style="background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:14px;padding:16px;">
-      <div style="font-size:0.58rem;letter-spacing:0.18em;color:rgba(255,255,255,0.35);text-transform:uppercase;margin-bottom:6px;">📊 TOTAL LINES</div>
-      <div id="profile-lines" style="font-family:var(--font-display);font-size:1.5rem;font-weight:700;color:#fff;">0</div>
+      <div style="font-size: var(--fs-label);letter-spacing:0.18em;color:rgba(255,255,255,0.35);text-transform:uppercase;margin-bottom:6px;">📊 TOTAL LINES</div>
+      <div id="profile-lines" style="font-family:var(--font-display);font-size: var(--fs-h2);font-weight:700;color:#fff;">0</div>
     </div>
     <div style="background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:14px;padding:16px;">
-      <div style="font-size:0.58rem;letter-spacing:0.18em;color:rgba(255,255,255,0.35);text-transform:uppercase;margin-bottom:6px;">🎮 GAMES PLAYED</div>
-      <div id="profile-games" style="font-family:var(--font-display);font-size:1.5rem;font-weight:700;color:#fff;">0</div>
+      <div style="font-size: var(--fs-label);letter-spacing:0.18em;color:rgba(255,255,255,0.35);text-transform:uppercase;margin-bottom:6px;">🎮 GAMES PLAYED</div>
+      <div id="profile-games" style="font-family:var(--font-display);font-size: var(--fs-h2);font-weight:700;color:#fff;">0</div>
     </div>
   </div>
   <!-- Recent games -->
-  <div style="font-family:var(--font-display);font-size:0.7rem;letter-spacing:0.2em;color:#CC1212;text-transform:uppercase;margin-bottom:12px;">RECENT GAMES</div>
+  <div style="font-family:var(--font-display);font-size: var(--fs-ui);letter-spacing:0.2em;color:#CC1212;text-transform:uppercase;margin-bottom:12px;">RECENT GAMES</div>
   <div id="profile-recent-list" style="display:flex;flex-direction:column;gap:8px;margin-bottom:20px;">
-    <div style="color:rgba(255,255,255,0.3);font-size:0.8rem;text-align:center;padding:16px;">No games yet — start playing!</div>
+    <div style="color:rgba(255,255,255,0.3);font-size: var(--fs-ui);text-align:center;padding:16px;">No games yet — start playing!</div>
   </div>
   <!-- Upgrade promo card -->
   <div id="profile-upgrade-card" style="background:rgba(245,224,0,0.06);border:1.5px solid rgba(245,224,0,0.25);border-radius:14px;padding:16px;">
     <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">
-      <span style="font-size:1.2rem;">✨</span>
-      <span style="font-family:var(--font-display);font-size:0.9rem;font-weight:700;letter-spacing:0.1em;color:#F5E000;">GOLDEN FROG</span>
-      <span style="margin-left:auto;font-family:var(--font-display);font-size:0.8rem;color:rgba(255,255,255,0.5);">£7.99</span>
+      <span style="font-size: var(--fs-h3);">✨</span>
+      <span style="font-family:var(--font-display);font-size: var(--fs-body);font-weight:700;letter-spacing:0.1em;color:#F5E000;">GOLDEN FROG</span>
+      <span style="margin-left:auto;font-family:var(--font-display);font-size: var(--fs-ui);color:rgba(255,255,255,0.5);">£7.99</span>
     </div>
-    <div style="font-size:0.75rem;color:rgba(255,255,255,0.45);line-height:1.5;margin-bottom:12px;">Unlocks Colour Run mode, Expert difficulty &amp; Frog Stamp. ×2.5 score multiplier.</div>
-    <button onclick="openShop()" style="width:100%;background:#F5E000;border:none;border-radius:10px;color:#000;font-family:var(--font-display);font-size:0.8rem;font-weight:700;letter-spacing:0.12em;padding:10px;cursor:pointer;">UPGRADE NOW</button>
+    <div style="font-size: var(--fs-ui);color:rgba(255,255,255,0.45);line-height:1.5;margin-bottom:12px;">Unlocks Colour Run mode, Expert difficulty &amp; Frog Stamp. ×2.5 score multiplier.</div>
+    <button onclick="openShop()" style="width:100%;background:#F5E000;border:none;border-radius:10px;color:#000;font-family:var(--font-display);font-size: var(--fs-ui);font-weight:700;letter-spacing:0.12em;padding:10px;cursor:pointer;">UPGRADE NOW</button>
   </div>
   <!-- Cloud note -->
 </div>
@@ -8142,8 +8300,8 @@ function checkResumeOnHome() {
   <div style="width:72px;height:72px;background:#CC1212;border-radius:50%;display:flex;align-items:center;justify-content:center;margin-bottom:20px;box-shadow:0 0 40px rgba(204,18,18,0.5);">
     <img src="./rfba-logo.png" style="width:50px;filter:brightness(0) invert(1);" />
   </div>
-  <div style="font-family:var(--font-display);font-size:0.9rem;letter-spacing:0.3em;color:rgba(255,255,255,0.4);text-transform:uppercase;margin-bottom:8px;">SESSION COMPLETE</div>
-  <div id="session-verdict" style="font-family:var(--font-display);font-size:2.2rem;font-weight:900;color:#CC1212;text-transform:uppercase;margin-bottom:24px;">YOU WIN 🏆</div>
+  <div style="font-family:var(--font-display);font-size: var(--fs-body);letter-spacing:0.3em;color:rgba(255,255,255,0.4);text-transform:uppercase;margin-bottom:8px;">SESSION COMPLETE</div>
+  <div id="session-verdict" style="font-family:var(--font-display);font-size: var(--fs-display);font-weight:900;color:#CC1212;text-transform:uppercase;margin-bottom:24px;">YOU WIN 🏆</div>
   <!-- Match breakdown -->
   <div style="width:100%;max-width:340px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:14px;overflow:hidden;margin-bottom:20px;">
     <div id="session-match-rows" style="display:flex;flex-direction:column;">
@@ -8151,10 +8309,10 @@ function checkResumeOnHome() {
     </div>
   </div>
   <!-- Big score -->
-  <div id="session-final-score" style="font-family:var(--font-display);font-size:3.5rem;font-weight:900;color:#fff;line-height:1;margin-bottom:24px;">2 — 1</div>
+  <div id="session-final-score" style="font-family:var(--font-display);font-size: var(--fs-display);font-weight:900;color:#fff;line-height:1;margin-bottom:24px;">2 — 1</div>
   <!-- Buttons -->
-  <button id="btn-session-play-again" aria-label="Play duo again" style="width:min(320px,88vw);background:#CC1212;border:none;border-radius:14px;color:#fff;font-family:var(--font-display);font-size:1rem;font-weight:700;letter-spacing:0.2em;text-transform:uppercase;padding:18px;cursor:pointer;margin-bottom:12px;">PLAY AGAIN</button>
-  <button id="btn-session-home" aria-label="Return to home" style="width:min(320px,88vw);background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:14px;color:rgba(255,255,255,0.6);font-family:var(--font-display);font-size:1rem;font-weight:700;letter-spacing:0.2em;text-transform:uppercase;padding:18px;cursor:pointer;">HOME</button>
+  <button id="btn-session-play-again" aria-label="Play duo again" style="width:min(320px,88vw);background:#CC1212;border:none;border-radius:14px;color:#fff;font-family:var(--font-display);font-size: var(--fs-body);font-weight:700;letter-spacing:0.2em;text-transform:uppercase;padding: 16px;cursor:pointer;margin-bottom:12px;">PLAY AGAIN</button>
+  <button id="btn-session-home" aria-label="Return to home" style="width:min(320px,88vw);background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:14px;color:rgba(255,255,255,0.6);font-family:var(--font-display);font-size: var(--fs-body);font-weight:700;letter-spacing:0.2em;text-transform:uppercase;padding: 16px;cursor:pointer;">HOME</button>
 </div>
 
 
@@ -8162,11 +8320,11 @@ function checkResumeOnHome() {
 <!-- Quit Game confirmation modal -->
 <div id="quit-confirm-overlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.75);z-index:1200;align-items:center;justify-content:center;">
   <div style="background:#111;border:1.5px solid rgba(204,18,18,0.5);border-radius:20px;padding:28px 24px;width:min(300px,88vw);text-align:center;">
-    <div style="font-size:2rem;margin-bottom:10px;">🐸</div>
-    <div style="font-family:var(--font-display);font-size:1rem;font-weight:700;letter-spacing:0.15em;color:#fff;margin-bottom:8px;">QUIT GAME?</div>
-    <div style="font-size:0.8rem;color:rgba(255,255,255,0.45);margin-bottom:24px;line-height:1.5;">Your current progress will be lost.</div>
-    <button id="btn-quit-yes" aria-label="Quit game and return to home" style="width:100%;background:#CC1212;border:none;border-radius:12px;color:#fff;font-family:var(--font-display);font-size:0.9rem;font-weight:700;letter-spacing:0.15em;padding:14px;cursor:pointer;margin-bottom:10px;">YES, QUIT</button>
-    <button id="btn-quit-no" aria-label="Resume game" style="width:100%;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:12px;color:rgba(255,255,255,0.6);font-family:var(--font-display);font-size:0.9rem;letter-spacing:0.12em;padding:14px;cursor:pointer;">RESUME GAME</button>
+    <div style="font-size: var(--fs-display);margin-bottom:10px;">🐸</div>
+    <div style="font-family:var(--font-display);font-size: var(--fs-body);font-weight:700;letter-spacing:0.15em;color:#fff;margin-bottom:8px;">QUIT GAME?</div>
+    <div style="font-size: var(--fs-ui);color:rgba(255,255,255,0.45);margin-bottom:24px;line-height:1.5;">Your current progress will be lost.</div>
+    <button id="btn-quit-yes" aria-label="Quit game and return to home" style="width:100%;background:#CC1212;border:none;border-radius:12px;color:#fff;font-family:var(--font-display);font-size: var(--fs-body);font-weight:700;letter-spacing:0.15em;padding: 16px;cursor:pointer;margin-bottom:10px;">YES, QUIT</button>
+    <button id="btn-quit-no" aria-label="Resume game" style="width:100%;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:12px;color:rgba(255,255,255,0.6);font-family:var(--font-display);font-size: var(--fs-body);letter-spacing:0.12em;padding: 16px;cursor:pointer;">RESUME GAME</button>
   </div>
 </div>
 
