@@ -5043,7 +5043,7 @@ function updateCityPackHUD() {
   } : null;
   hud.querySelector('.cp-progress').textContent  = cityPackLinesCleared+' / '+cityPackLinesTarget+' lines';
   hud.querySelector('.cp-level').textContent = 'City '+(cityPackCityIdx+1)+' / '+CITY_PACK_CITIES.length;
-  hud.style.display = '';
+  hud.style.display = 'flex';
 }
 
 function advanceCityPackLevel() {
