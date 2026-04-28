@@ -2990,7 +2990,11 @@
     </div>
 
     <!-- Settings pill -->
-    <button id="btn-settings-home" class="home-settings-pill" aria-label="Open settings">⚙ SETTINGS</button>
+    <button id="btn-city-pack-home" onclick="if(tierOwned('citypack')){startCityPackGame(0);}else{openShop('citypack');}" style="width:100%;background:linear-gradient(135deg,rgba(74,158,255,0.1),rgba(74,158,255,0.04));border:1px solid rgba(74,158,255,0.35);border-radius:var(--radius-md);color:#4A9EFF;font-family:var(--font-display);font-size:var(--fs-body);letter-spacing:0.1em;text-transform:uppercase;padding:14px 16px;cursor:pointer;margin-bottom:8px;display:flex;align-items:center;justify-content:space-between;">
+  <span>🏙️ CITY PACK — WORLD SKYLINES</span>
+  <span style="font-size:var(--fs-label);opacity:0.55;">£3.99</span>
+</button>
+<button id="btn-settings-home" class="home-settings-pill" aria-label="Open settings">⚙ SETTINGS</button>
   </div>
 </div>
 
@@ -3429,10 +3433,39 @@
   </div>
 
   <!-- Power bar strip — sits between topbar and level progress -->
-  <div id="power-bar-strip" style="display:none">
+  <!-- City Pack: city reveal overlay -->
+<style>
+  #city-reveal-overlay {
+    position:fixed; inset:0; z-index:9998;
+    background:rgba(0,0,0,0.92);
+    display:flex; align-items:center; justify-content:center; flex-direction:column;
+    opacity:0; pointer-events:none;
+    transition:opacity 0.35s ease;
+  }
+  #city-reveal-overlay.show { opacity:1; pointer-events:auto; animation: cityRevealIn 0.4s ease forwards; }
+  @keyframes cityRevealIn { from{opacity:0;transform:scale(0.93)} to{opacity:1;transform:scale(1)} }
+  #city-pack-hud {
+    width:100%; background:rgba(74,158,255,0.08);
+    border-bottom:1px solid rgba(74,158,255,0.2);
+    padding:4px 12px; box-sizing:border-box;
+    display:none; align-items:center; justify-content:space-between;
+    flex-shrink:0;
+  }
+</style>
+<div id="city-reveal-overlay">
+  <div id="city-reveal-name" style="font-family:var(--font-display);font-size:clamp(2rem,8vw,3.5rem);color:#fff;letter-spacing:0.12em;text-align:center;margin-bottom:10px;"></div>
+  <div id="city-reveal-note" style="font-family:var(--font-body);font-size:var(--fs-body);color:rgba(255,255,255,0.5);text-align:center;"></div>
+</div>
+
+<div id="power-bar-strip" style="display:none">
     <div id="power-bar"></div>
   </div>
 
+  <div id="city-pack-hud">
+    <span class="cp-city-name" style="font-family:var(--font-display);font-size:var(--fs-label);color:#4A9EFF;letter-spacing:0.08em;"></span>
+    <span class="cp-level" style="font-family:var(--font-display);font-size:var(--fs-micro);color:rgba(74,158,255,0.55);"></span>
+    <span class="cp-progress" style="font-family:var(--font-display);font-size:var(--fs-label);color:#fff;"></span>
+  </div>
   <div id="level-progress-bar">
     <div id="level-progress-label-row">
       <span id="lpb-level-label">LEVEL 1 → 2</span>
@@ -4110,6 +4143,21 @@ const TIERS = [
     gridTheme: { bg: '#0e0518', gridLine: 'rgba(192,132,252,0.06)', corner: 'rgba(192,132,252,0.4)' },
     tileStyle: 'classic', powerup: null, powerupCount: 0,
   },
+  {
+    id: 'citypack', name: 'CITY PACK', emoji: '🏙️', color: '#4A9EFF',
+    price: 3.99, annual: false,
+    tagline: 'Play on shaped city skyline boards',
+    perks: [
+      '10 iconic city skylines as shaped playing boards',
+      'London · New York · Paris · Tokyo · Dubai and more',
+      'Each city has a unique skyline shape — changes strategy completely',
+      'Complete line targets city by city to progress',
+    ],
+    gridTheme: { bg:'#080C14', corner:'#4A9EFF' },
+    tileStyle: 'classic',
+    bonusMultiplier: 1.5,
+    isCityPack: true,
+  },
 ];
 
 const TILE_PALETTES = {
@@ -4439,12 +4487,115 @@ function calcLayout(){
   if (eventBanner) eventBanner.style.top = '';  // let CSS var handle it
 }
 
+
+// ── City Pack ─────────────────────────────────────────────────────
+const CITY_PACK_CITIES = [
+  { id:'london',   name:'LONDON',    emoji:'🇬🇧', colHeights:[4,5,7,5,10,6,9,5,7,4],  note:'The Shard · Gherkin · Canary Wharf' },
+  { id:'newyork',  name:'NEW YORK',  emoji:'🗽', colHeights:[5,6,9,7,10,8,10,6,7,5],  note:'Empire State · Chrysler · One WTC' },
+  { id:'paris',    name:'PARIS',     emoji:'🇫🇷', colHeights:[3,5,6,8,10,8,6,5,4,3],  note:'Eiffel Tower skyline' },
+  { id:'tokyo',    name:'TOKYO',     emoji:'🇯🇵', colHeights:[6,8,5,9,7,10,5,8,6,4],  note:'Tokyo Tower · Skytree district' },
+  { id:'dubai',    name:'DUBAI',     emoji:'🇦🇪', colHeights:[4,5,6,7,10,10,8,6,5,4], note:'Burj Khalifa · Burj Al Arab' },
+  { id:'sydney',   name:'SYDNEY',    emoji:'🇦🇺', colHeights:[7,5,4,6,5,4,6,5,7,8],   note:'Opera House · Harbour Bridge' },
+  { id:'chicago',  name:'CHICAGO',   emoji:'🇺🇸', colHeights:[7,9,6,8,10,7,9,6,8,5],  note:'Willis Tower · Hancock Center' },
+  { id:'hongkong', name:'HONG KONG', emoji:'🇭🇰', colHeights:[6,8,5,7,6,8,7,5,8,6],   note:'Victoria Harbour skyline' },
+  { id:'moscow',   name:'MOSCOW',    emoji:'🇷🇺', colHeights:[5,7,9,6,8,10,7,9,6,5],  note:'Kremlin · Stalin skyscrapers' },
+  { id:'miami',    name:'MIAMI',     emoji:'🌴', colHeights:[5,6,4,6,10,7,5,5,6,4],   note:'Downtown · Brickell skyline' },
+];
+
+let cityPackActive = false;
+let cityPackCityIdx = 0;
+let cityPackLinesTarget = 0;
+let cityPackLinesCleared = 0;
+let gridMask = null;
+
+function buildCityMask(colHeights) {
+  const mask = Array.from({length:ROWS}, () => new Array(COLS).fill(false));
+  for (let c = 0; c < COLS; c++) {
+    const h = Math.min(colHeights[c] || 0, ROWS);
+    for (let r = ROWS - h; r < ROWS; r++) mask[r][c] = true;
+  }
+  return mask;
+}
+
+function isMasked(r, c) {
+  if (!gridMask) return false;
+  return !gridMask[r][c];
+}
+
+function revealCitySkyline(city) {
+  return new Promise(resolve => {
+    const overlay = document.getElementById('city-reveal-overlay');
+    const nameEl  = document.getElementById('city-reveal-name');
+    const noteEl  = document.getElementById('city-reveal-note');
+    if (!overlay) { resolve(); return; }
+    nameEl.textContent = city.emoji + '  ' + city.name;
+    noteEl.textContent = city.note;
+    overlay.classList.add('show');
+    setTimeout(() => { overlay.classList.remove('show'); setTimeout(resolve, 400); }, 2000);
+  });
+}
+
+function startCityPackGame(cityIdx) {
+  cityPackActive = true;
+  cityPackCityIdx = Math.min(cityIdx, CITY_PACK_CITIES.length - 1);
+  const city = CITY_PACK_CITIES[cityPackCityIdx];
+  gridMask = buildCityMask(city.colHeights);
+  const totalCells = city.colHeights.reduce((a,b)=>a+b,0);
+  cityPackLinesTarget = Math.max(4, Math.round(totalCells / 10));
+  cityPackLinesCleared = 0;
+  revealCitySkyline(city).then(() => {
+    startGame();
+    gridMask = buildCityMask(city.colHeights);
+    for (let r=0;r<ROWS;r++) for (let c=0;c<COLS;c++) if(isMasked(r,c)) grid[r][c]=0;
+    updateCityPackHUD();
+    setTimeout(()=>showEventBanner(city.emoji+' '+city.name+' — FILL THE SKYLINE!'), 300);
+  });
+}
+
+function updateCityPackHUD() {
+  const hud = document.getElementById('city-pack-hud');
+  if (!hud) return;
+  if (!cityPackActive) { hud.style.display='none'; return; }
+  const city = CITY_PACK_CITIES[cityPackCityIdx];
+  hud.querySelector('.cp-city-name').textContent = city.emoji+' '+city.name;
+  hud.querySelector('.cp-progress').textContent  = cityPackLinesCleared+' / '+cityPackLinesTarget+' lines';
+  hud.querySelector('.cp-level').textContent = 'City '+(cityPackCityIdx+1)+' / '+CITY_PACK_CITIES.length;
+  hud.style.display = '';
+}
+
+function advanceCityPackLevel() {
+  const nextIdx = cityPackCityIdx + 1;
+  if (nextIdx >= CITY_PACK_CITIES.length) {
+    showEventBanner('🏆 ALL 10 CITIES CONQUERED!');
+    setTimeout(() => { cityPackActive=false; gridMask=null; triggerGameOver(); }, 1400);
+    return;
+  }
+  showEventBanner('✅ '+CITY_PACK_CITIES[cityPackCityIdx].name+' COMPLETE!');
+  setTimeout(() => startCityPackGame(nextIdx), 1600);
+}
+
 // ── Grid helpers ──────────────────────────────────────────────────
 function initGrid(){grid=Array.from({length:ROWS},()=>new Array(COLS).fill(0));}
-function canPlace(shape,r,c){return shape.every(([dr,dc])=>{const nr=r+dr,nc=c+dc;return nr>=0&&nr<ROWS&&nc>=0&&nc<COLS&&grid[nr][nc]===0;});}
+function canPlace(shape,r,c){return shape.every(([dr,dc])=>{const nr=r+dr,nc=c+dc;return nr>=0&&nr<ROWS&&nc>=0&&nc<COLS&&!isMasked(nr,nc)&&grid[nr][nc]===0;});}
 function placeShape(shape,r,c,color){shape.forEach(([dr,dc])=>{grid[r+dr][c+dc]=color;});}
-function findCompletedLines(){const rows=[],cols=[];for(let r=0;r<ROWS;r++)if(grid[r].every(v=>v!==0))rows.push(r);for(let c=0;c<COLS;c++)if(grid.every(row=>row[c]!==0))cols.push(c);return{completedRows:rows,completedCols:cols};}
-function clearLines({completedRows,completedCols}){const s=new Set();completedRows.forEach(r=>{for(let c=0;c<COLS;c++){s.add(`${r},${c}`);grid[r][c]=0;}});completedCols.forEach(c=>{for(let r=0;r<ROWS;r++){s.add(`${r},${c}`);grid[r][c]=0;}});if(duoGameActive&&duoMode==='hazard'){const _t=completedRows.length+completedCols.length;if(_t>0)sendHazardAttack(_t);}return s;}
+function findCompletedLines(){
+  const rows=[],cols=[];
+  for(let r=0;r<ROWS;r++){const mc=[];for(let c=0;c<COLS;c++)if(!isMasked(r,c))mc.push(c);if(mc.length>0&&mc.every(c=>grid[r][c]!==0))rows.push(r);}
+  for(let c=0;c<COLS;c++){const mr=[];for(let r=0;r<ROWS;r++)if(!isMasked(r,c))mr.push(r);if(mr.length>0&&mr.every(r=>grid[r][c]!==0))cols.push(c);}
+  return{completedRows:rows,completedCols:cols};
+}
+function clearLines({completedRows,completedCols}){
+  const s=new Set();
+  completedRows.forEach(r=>{for(let c=0;c<COLS;c++){s.add(`${r},${c}`);grid[r][c]=0;}});
+  completedCols.forEach(c=>{for(let r=0;r<ROWS;r++){s.add(`${r},${c}`);grid[r][c]=0;}});
+  if(cityPackActive){
+    cityPackLinesCleared+=completedRows.length+completedCols.length;
+    updateCityPackHUD();
+    if(cityPackLinesCleared>=cityPackLinesTarget)setTimeout(advanceCityPackLevel,700);
+  }
+  if(duoGameActive&&duoMode==='hazard'){const _t=completedRows.length+completedCols.length;if(_t>0)sendHazardAttack(_t);}
+  return s;
+}
 function calcScore(cells,lines,comboMult){const bonus=equippedTier().bonusMultiplier||1;return Math.round((cells*10+lines*lines*50)*comboMult*bonus);}
 function checkGameOver(){
   // Never trigger game over before player has placed at least 3 pieces
@@ -4636,6 +4787,14 @@ function drawGrid(){
   ctx.beginPath();ctx.moveTo(bW/2,H-bLen);ctx.lineTo(bW/2,H-bW/2);ctx.lineTo(bLen,H-bW/2);ctx.stroke();
   ctx.beginPath();ctx.moveTo(W-bLen,H-bW/2);ctx.lineTo(W-bW/2,H-bW/2);ctx.lineTo(W-bW/2,H-bLen);ctx.stroke();
 
+  if(gridMask){
+    for(let r=0;r<ROWS;r++) for(let c=0;c<COLS;c++){
+      if(isMasked(r,c)){
+        ctx.fillStyle='rgba(0,0,0,0.75)';
+        ctx.beginPath();ctx.roundRect(c*CELL+1,r*CELL+1,CELL-2,CELL-2,3);ctx.fill();
+      }
+    }
+  }
   for(let r=0;r<ROWS;r++)for(let c=0;c<COLS;c++)if(grid[r][c])drawTile(r,c,getTileColor(grid[r][c]),1,false,isGold);
 
   if(dragging&&dragShape&&hoverCell){
@@ -4998,6 +5157,10 @@ function showScreen(id){
 }
 
 function startGame(){
+  // Reset city pack mask for normal (non-city-pack) games
+  if (!cityPackActive) { gridMask = null; }
+  const _cpHud = document.getElementById('city-pack-hud');
+  if (_cpHud && !cityPackActive) _cpHud.style.display = 'none';
   ensureAudio(); // guarantee audio context is running before any game sounds fire
   clearVanishTimers();clearAdderFrogTimer();clearSpeedCountdown();stopChallenges();stopChallengeMode();
   initGrid();score=0;linesCleared=0;level=1;combo=0;particles=[];gameActive=true;powerupActive=false;
