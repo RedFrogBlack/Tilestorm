@@ -4408,9 +4408,10 @@ function calcLayout(){
   const powerStripH=document.getElementById('power-bar-strip')?.offsetHeight||0;
   const levelBarH=document.getElementById('level-progress-bar')?.offsetHeight||20;
   const challengeHudH=(document.getElementById('challenge-hud')?.offsetHeight||0)*(gameActive?1:0);
-  // tray only (mid-zone removed)
-  const trayH=155+8;
-  const availH=window.innerHeight-topH-powerStripH-levelBarH-challengeHudH-trayH;
+  // Measure actual tray height — avoids grid overflowing into tray on any screen size
+  const traySection=document.querySelector('.tray-section');
+  const trayH=traySection ? traySection.offsetHeight : 168;
+  const availH=window.innerHeight-topH-powerStripH-levelBarH-challengeHudH-trayH-8; // 8px breathing room
   // Cap width at 480px on desktop, subtract safe margins on mobile
   const safeMargin = window.innerWidth < 500 ? 16 : 8;
   const maxW=Math.min(window.innerWidth-safeMargin, 480);
@@ -5004,6 +5005,8 @@ function startGame(){
   document.getElementById('hazard-overlay').classList.remove('flash');
   document.getElementById('bonus-popup').classList.remove('show');
   showScreen('screen-game');
+  // Recalc AFTER screen is visible so tray-section has real offsetHeight
+  requestAnimationFrame(() => { calcLayout(); drawGrid(); });
   // Welcome banner based on tier challenge
   const msgs = {
     standard: '🥚 TADPOLE · EASY — CLEAR ROWS!',
