@@ -12,7 +12,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <!-- Oswald (condensed caps display) + DM Sans (clean body) -->
   <!-- PeerJS loaded lazily on Duo lobby entry — see loadPeerJS() -->
-  <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600;700&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600;700&family=DM+Sans:wght@400;500;600;700&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet" />
 
   <style>
     /* ════════════════════════════════════════════════
@@ -1045,7 +1045,7 @@
     .btn-outline:hover { color: var(--white); border-color: rgba(255,255,255,0.3); }
 
     /* ════════════════════════════════════════════════
-       SHOP MODAL
+       SHOP MODAL — DARK REDESIGN
     ════════════════════════════════════════════════ */
     #shop-overlay {
       position: fixed; inset: 0;
@@ -1060,31 +1060,42 @@
     #shop-overlay.open { opacity: 1; pointer-events: all; }
 
     .shop-modal {
-      background: var(--black2);
-      border: 1px solid var(--border-strong);
-      border-top: 3px solid var(--red);
+      background: #080808;
+      border: 1px solid rgba(255,255,255,0.08);
       -webkit-overflow-scrolling: touch;
-      border-radius: var(--radius);
+      border-radius: 20px;
       width: min(500px, 95vw);
       max-height: 88vh;
       overflow-y: auto; overflow-x: hidden;
-      padding: 24px 22px 22px;
+      padding: 0 0 16px;
       position: relative;
     }
     .shop-modal::-webkit-scrollbar { width: 3px; }
-    .shop-modal::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.08); border-radius: var(--radius-xs); }
+    .shop-modal::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.08); border-radius: 99px; }
+
+    /* Shop modal header bar */
+    .shop-modal-header {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 18px 18px 14px;
+      border-bottom: 1px solid rgba(255,255,255,0.06);
+      position: sticky; top: 0; z-index: 10;
+      background: #080808;
+    }
+    .shop-modal-title {
+      font-family: var(--font-display); font-size: var(--fs-h2); font-weight: 700;
+      letter-spacing: 0.1em; text-transform: uppercase; color: #fff;
+    }
 
     .shop-close {
-      position: absolute; top: 10px; right: 10px;
-      background: rgba(255,255,255,0.05); border: none; border-radius: var(--radius-sm);
-      width: 44px; height: 44px; cursor: pointer; color: var(--muted);
+      background: rgba(255,255,255,0.07); border: none; border-radius: 10px;
+      width: 36px; height: 36px; cursor: pointer; color: rgba(255,255,255,0.55);
       display: flex; align-items: center; justify-content: center;
       font-family: var(--font-body); font-size: var(--fs-body);
       transition: background var(--t), color var(--t);
     }
-    .shop-close:hover { background: rgba(255,255,255,0.12); color: var(--white); }
+    .shop-close:hover { background: rgba(255,255,255,0.14); color: #fff; }
 
-    .shop-header { text-align: center; margin-bottom: 24px; }
+    .shop-header { text-align: center; margin-bottom: 20px; padding: 0 18px; }
     .shop-header h2 {
       font-family: var(--font-display);
       font-size: var(--fs-h1); font-weight: 700;
@@ -1097,12 +1108,27 @@
       line-height: 1.6; letter-spacing: 0.02em;
     }
 
+    /* Shop tabs — pill style */
+    .shop-tabs {
+      display: flex; gap: 4px; margin: 14px 18px 16px;
+      background: rgba(255,255,255,0.04);
+      border-radius: 99px; padding: 4px;
+    }
+    .shop-tab {
+      flex: 1; background: transparent; border: none; color: rgba(255,255,255,0.4);
+      font-family: var(--font-display); font-size: var(--fs-ui); font-weight: 700;
+      letter-spacing: 0.12em; padding: 10px 8px; border-radius: 99px;
+      cursor: pointer; transition: all var(--t); white-space: nowrap;
+    }
+    .shop-tab.active { background: #CC1212; color: #fff; }
+    .shop-tab:not(.active):hover { color: #fff; }
+
     /* Evolution path */
-    .evolution-path { display: flex; flex-direction: column; gap: 0; margin-bottom: 16px; }
+    .evolution-path { display: flex; flex-direction: column; gap: 0; margin-bottom: 16px; padding: 0 12px; }
 
     /* Tier connector */
     .tier-connector {
-      display: flex; justify-content: center; align-items: center; height: 22px; position: relative;
+      display: flex; justify-content: center; align-items: center; height: 20px; position: relative;
     }
     .tier-connector::before {
       content: '';
@@ -1112,13 +1138,93 @@
     }
     .tier-connector-arrow {
       width: 14px; height: 14px;
-      background: var(--black2); border: 1px solid rgba(255,255,255,0.1);
+      background: #080808; border: 1px solid rgba(255,255,255,0.1);
       border-radius: 50%; z-index: 1;
       display: flex; align-items: center; justify-content: center;
       font-size: var(--fs-micro); color: var(--muted);
     }
 
-    /* Tier card — flat, gallery style */
+    /* Shop pack card — dark glass with ambient canvas */
+    .shop-pack-card {
+      position: relative; overflow: hidden;
+      background: rgba(255,255,255,0.04);
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 16px;
+      margin-bottom: 12px;
+      padding: 16px;
+      cursor: pointer;
+      transition: border-color var(--t);
+    }
+    .shop-pack-card.active-tier { border-left-width: 3px !important; }
+    .shop-pack-card.locked-card { opacity: 0.65; }
+    .shop-card-canvas {
+      position: absolute; inset: 0;
+      width: 100%; height: 100%;
+      opacity: 0.18;
+      pointer-events: none;
+    }
+    .shop-card-content {
+      position: relative; z-index: 1;
+      display: flex; align-items: flex-start; justify-content: space-between; gap: 12px;
+      margin-bottom: 10px;
+    }
+    .shop-card-left { display: flex; align-items: flex-start; gap: 12px; min-width: 0; }
+    .shop-card-emoji { font-size: 2rem; line-height: 1; flex-shrink: 0; }
+    .shop-card-meta { min-width: 0; }
+    .shop-card-name {
+      font-family: var(--font-display); font-size: var(--fs-body); font-weight: 700;
+      letter-spacing: 0.1em; text-transform: uppercase; color: #fff;
+    }
+    .shop-card-sub { font-size: var(--fs-label); color: rgba(255,255,255,0.45); margin-top: 2px; }
+    .shop-card-right {
+      flex-shrink: 0; display: flex; flex-direction: column; align-items: flex-end; gap: 8px;
+    }
+    .shop-card-price {
+      font-family: var(--font-display); font-size: var(--fs-body); font-weight: 700;
+      color: #F7C948; white-space: nowrap;
+    }
+    .shop-card-btn {
+      background: #CC1212; border: none; color: #fff;
+      font-family: var(--font-display); font-size: var(--fs-label); font-weight: 700;
+      letter-spacing: 0.12em; padding: 8px 14px; border-radius: 8px; cursor: pointer;
+      transition: background var(--t-fast), transform var(--t-fast); white-space: nowrap;
+    }
+    .shop-card-btn:active { transform: scale(0.95); }
+    .shop-card-btn:hover { background: #e01414; }
+    .shop-card-btn.equip { background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); }
+    .shop-card-btn.equip:hover { background: rgba(255,255,255,0.18); }
+    .shop-card-btn.equipped { background: transparent; color: rgba(255,255,255,0.35); border: 1px solid rgba(255,255,255,0.15); cursor: default; }
+    .shop-card-btn.play { background: #1a7a1a; }
+    .shop-card-btn.play:hover { background: #228822; }
+    .shop-card-btn.city-play { background: #4A9EFF; color: #000; }
+    .shop-card-btn.city-play:hover { background: #67b3ff; }
+    .shop-card-btn.bundle-btn { background: linear-gradient(135deg,#FFD700,#FF8C00); color: #000; font-weight: 700; }
+    .shop-card-features {
+      position: relative; z-index: 1;
+      list-style: none; padding: 0; margin: 0 0 8px;
+      display: flex; flex-wrap: wrap; gap: 4px;
+    }
+    .shop-card-features li {
+      font-family: var(--font-display);
+      font-size: var(--fs-label); font-weight: 500;
+      letter-spacing: 0.06em; text-transform: uppercase;
+      padding: 3px 8px; border-radius: 6px;
+      background: rgba(255,255,255,0.05); color: rgba(255,255,255,0.55);
+    }
+    .shop-card-frog { flex-shrink: 0; width: 40px; height: 40px; }
+    .shop-card-legal {
+      position: relative; z-index: 1;
+      font-size: 0.6rem; color: rgba(255,255,255,0.28); line-height: 1.5;
+      margin: 4px 0 0;
+    }
+    .shop-restore-link {
+      display: block; text-align: center; margin-top: 14px;
+      font-size: var(--fs-ui); color: rgba(255,255,255,0.3);
+      cursor: pointer; text-decoration: underline; padding: 6px;
+    }
+    .shop-restore-link:hover { color: rgba(255,255,255,0.6); }
+
+    /* Tier card — kept for legacy compat but replaced by shop-pack-card */
     .tier-card {
       border-radius: var(--radius);
       padding: 16px 16px;
@@ -1133,9 +1239,7 @@
       background: color-mix(in srgb, var(--tier-color, var(--red)) 7%, var(--black3));
     }
     .tier-card.locked-card { opacity: 0.55; cursor: default; }
-
     .tier-frog-svg { flex-shrink: 0; width: 48px; height: 48px; }
-
     .tier-info { flex: 1; min-width: 0; }
     .tier-name-row { display: flex; align-items: center; gap: 8px; margin-bottom: 3px; flex-wrap: wrap; }
     .tier-name {
@@ -1153,7 +1257,6 @@
     .tier-tag.premium  { background: var(--red); color: #fff; }
     .tier-tag.owned    { background: rgba(204,18,18,0.15); color: var(--red); border: 1px solid rgba(204,18,18,0.3); }
     .tier-tag.active   { background: var(--red); color: #fff; }
-
     .tier-desc { font-size: var(--fs-ui); color: var(--muted); line-height: 1.45; margin-bottom: 7px; }
     .tier-perks { display: flex; flex-wrap: wrap; gap: 4px; }
     .tier-perk {
@@ -1163,7 +1266,6 @@
       padding: 2px 7px; border-radius: var(--radius-xs);
       background: rgba(255,255,255,0.05); color: rgba(255,255,255,0.6);
     }
-
     .tier-price-col {
       flex-shrink: 0; display: flex; flex-direction: column;
       align-items: flex-end; justify-content: center; gap: 8px;
@@ -1191,36 +1293,57 @@
     .tier-buy-btn.equipped { background: transparent; color: var(--muted); border: 1px solid var(--border); cursor: default; }
 
     .shop-footer {
-      border-top: 1px solid var(--border); padding-top: 12px;
+      border-top: 1px solid var(--border); padding: 12px 18px 0;
       text-align: center; font-size: var(--fs-ui); color: var(--muted); line-height: 1.6;
     }
     .shop-footer a { color: var(--red); text-decoration: none; }
     .shop-footer a:hover { text-decoration: underline; }
 
-    /* Shop tabs */
-    .shop-tabs {
-      display: flex; gap: 4px; margin-bottom: 20px;
+    /* Power shop cards — redesigned */
+    .shop-power-card {
       background: rgba(255,255,255,0.04);
-      border-radius: var(--radius-md); padding: 4px;
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 14px;
+      padding: 16px;
+      margin-bottom: 10px;
+      display: flex; align-items: center; gap: 14px;
     }
-    .shop-tab {
-      flex: 1; background: transparent; border: none; color: rgba(255,255,255,0.4);
-      font-family: var(--font-display); font-size: var(--fs-ui); font-weight: 700;
-      letter-spacing: 0.15em; padding: 10px; border-radius: var(--radius-sm);
-      cursor: pointer; transition: all var(--t);
+    .shop-power-card.psc-owned { border-color: rgba(126,211,33,0.3); }
+    .spc-icon-wrap {
+      width: 52px; height: 52px; flex-shrink: 0;
+      background: rgba(247,201,72,0.12); border: 1px solid rgba(247,201,72,0.2);
+      border-radius: 12px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1.4rem;
     }
-    .shop-tab.active { background: var(--red); color: #fff; }
-    .shop-tab:not(.active):hover { color: #fff; }
+    .spc-body { flex: 1; min-width: 0; }
+    .spc-name { font-family: var(--font-display); font-size: var(--fs-ui); font-weight: 700; letter-spacing: 0.1em; color: #fff; margin-bottom: 2px; }
+    .spc-desc { font-size: var(--fs-label); color: rgba(255,255,255,0.45); line-height: 1.4; }
+    .spc-usage { font-size: var(--fs-label); color: #F7C948; margin-top: 3px; font-family: var(--font-display); letter-spacing: 0.06em; }
+    .spc-right { display: flex; flex-direction: column; align-items: flex-end; gap: 8px; flex-shrink: 0; }
+    .spc-price { font-family: var(--font-display); font-size: var(--fs-body); color: #F7C948; font-weight: 700; }
+    .spc-btn {
+      background: #CC1212; border: none; color: #fff;
+      font-family: var(--font-display); font-size: var(--fs-label); font-weight: 700;
+      letter-spacing: 0.12em; padding: 8px 14px; border-radius: 8px; cursor: pointer;
+      transition: background var(--t-fast);
+    }
+    .spc-btn:hover { background: #e01414; }
+    .spc-btn.free { background: #1a7a1a; }
+    .spc-btn.free:hover { background: #228822; }
+    .spc-btn:disabled { background: rgba(255,255,255,0.1); color: rgba(255,255,255,0.3); cursor: default; }
 
-    /* Power shop cards */
+    /* Legacy power-shop-card aliases — keep dynamic rendering working */
     .power-shop-card {
-      background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08);
-      border-radius: var(--radius-md); padding: 16px 16px;
-      display: flex; align-items: center; gap: 16px;
+      background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 14px; padding: 16px;
+      display: flex; align-items: center; gap: 14px;
     }
+    .power-shop-card.psc-owned { border-color: rgba(126,211,33,0.3); }
     .psc-icon {
-      font-size: var(--fs-h1); width: 44px; height: 44px;
-      background: rgba(204,18,18,0.12); border-radius: var(--radius-md);
+      font-size: var(--fs-h1); width: 52px; height: 52px;
+      background: rgba(247,201,72,0.12); border: 1px solid rgba(247,201,72,0.2);
+      border-radius: 12px;
       display: flex; align-items: center; justify-content: center; flex-shrink: 0;
     }
     .psc-body { flex: 1; min-width: 0; }
@@ -1230,9 +1353,9 @@
     .psc-right { display: flex; flex-direction: column; align-items: flex-end; gap: 8px; flex-shrink: 0; }
     .psc-price { font-family: var(--font-display); font-size: var(--fs-body); color: #F7C948; font-weight: 700; }
     .psc-buy-btn {
-      background: var(--red); border: none; color: #fff;
+      background: #CC1212; border: none; color: #fff;
       font-family: var(--font-display); font-size: var(--fs-label); font-weight: 700;
-      letter-spacing: 0.12em; padding: 8px 14px; border-radius: var(--radius-sm); cursor: pointer;
+      letter-spacing: 0.12em; padding: 8px 14px; border-radius: 8px; cursor: pointer;
       transition: background var(--t-fast);
     }
     .psc-buy-btn:hover { background: #e01414; }
@@ -3122,6 +3245,361 @@
     opacity: 1;
     transform: translate(-50%, -50%) scale(1);
   }
+
+  /* ════════════════════════════════════════════════
+     HOME SCREEN DARK REDESIGN — v2
+  ════════════════════════════════════════════════ */
+
+  /* Override background to pure near-black */
+  #screen-title {
+    background: #080808;
+    justify-content: flex-start;
+    overflow-y: auto;
+    overflow-x: hidden;
+  }
+
+  /* Background canvas behind everything */
+  #home-bg-canvas {
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+    pointer-events: none;
+    width: 100%;
+    height: 100%;
+  }
+
+  /* Ensure all direct children of screen-title sit above canvas */
+  #screen-title > *:not(#home-bg-canvas) {
+    position: relative;
+    z-index: 1;
+  }
+
+  /* ── Logo area ── */
+  .home-logo-wrap {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding-top: 52px;
+    padding-bottom: 8px;
+    gap: 10px;
+    width: 100%;
+  }
+  .home-logo-badge {
+    width: min(88px, 22vw);
+    aspect-ratio: 1;
+    background: #CC1212;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 10px;
+    box-shadow:
+      0 0 0 2px rgba(255,255,255,0.06),
+      0 12px 40px rgba(204,18,18,0.5),
+      0 0 80px rgba(204,18,18,0.18);
+    animation: homeLogoPulse 4s ease-in-out infinite;
+  }
+  .home-logo-badge img {
+    width: 80%;
+    height: auto;
+    filter: drop-shadow(0 1px 8px rgba(255,255,255,0.1));
+    animation: logoBob 3s ease-in-out infinite;
+  }
+  .home-logo-title {
+    font-family: 'Space Grotesk', 'Oswald', sans-serif;
+    font-size: clamp(2.2rem, 9vw, 3.4rem);
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: #ffffff;
+    text-align: center;
+    line-height: 1;
+    animation: homeLogoGlow 4s ease-in-out infinite;
+  }
+  .home-logo-tagline {
+    font-family: 'Space Grotesk', var(--font-body);
+    font-size: var(--fs-label);
+    font-weight: 500;
+    letter-spacing: 0.28em;
+    text-transform: uppercase;
+    font-variant: small-caps;
+    color: rgba(255,255,255,0.35);
+    text-align: center;
+    margin-top: -4px;
+  }
+
+  @keyframes homeLogoGlow {
+    0%, 100% {
+      text-shadow:
+        0 0 20px rgba(204,18,18,0),
+        0 0 40px rgba(204,18,18,0);
+    }
+    50% {
+      text-shadow:
+        0 0 20px rgba(204,18,18,0.55),
+        0 0 55px rgba(204,18,18,0.25),
+        0 0 90px rgba(204,18,18,0.12);
+    }
+  }
+  @keyframes homeLogoPulse {
+    0%, 100% {
+      box-shadow:
+        0 0 0 2px rgba(255,255,255,0.06),
+        0 12px 40px rgba(204,18,18,0.45),
+        0 0 80px rgba(204,18,18,0.15);
+    }
+    50% {
+      box-shadow:
+        0 0 0 2px rgba(255,255,255,0.1),
+        0 12px 55px rgba(204,18,18,0.65),
+        0 0 110px rgba(204,18,18,0.28);
+    }
+  }
+
+  /* ── Content wrapper ── */
+  .home-content-wrap {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0;
+    width: 100%;
+    padding: 0 16px 48px;
+    max-width: 440px;
+    margin: 0 auto;
+  }
+
+  /* ── Tier game mode cards ── */
+  .home-tier-cards {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    width: 100%;
+    margin-top: 8px;
+    margin-bottom: 16px;
+  }
+  .home-tier-card {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    background: rgba(255,255,255,0.04);
+    border-radius: 14px;
+    padding: 14px 16px;
+    cursor: pointer;
+    transition: transform 0.18s cubic-bezier(0.16,1,0.3,1),
+                background 0.18s ease;
+    text-align: left;
+    border: 1px solid;
+    border-left-width: 3px;
+  }
+  .home-tier-card:hover {
+    transform: translateY(-2px);
+    background: rgba(255,255,255,0.07);
+  }
+  .home-tier-card:active {
+    transform: translateY(0);
+  }
+  .home-tier-card[data-tier="tadpole"]    { border-color: #888888; border-left-color: #888888; }
+  .home-tier-card[data-tier="treefrog"]   { border-color: rgba(245,166,35,0.5); border-left-color: #F5A623; }
+  .home-tier-card[data-tier="poisondart"] { border-color: rgba(204,18,18,0.5);  border-left-color: #CC1212; }
+  .home-tier-card[data-tier="goldenfrog"] { border-color: rgba(245,224,0,0.5);  border-left-color: #F5E000; }
+
+  .home-tier-emoji {
+    font-size: 2rem;
+    flex-shrink: 0;
+    line-height: 1;
+  }
+  .home-tier-text {
+    flex: 1;
+    min-width: 0;
+  }
+  .home-tier-name {
+    font-family: 'Space Grotesk', var(--font-display);
+    font-size: var(--fs-h3);
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: #fff;
+    line-height: 1.1;
+  }
+  .home-tier-sub {
+    font-size: var(--fs-label);
+    color: rgba(255,255,255,0.45);
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    margin-top: 2px;
+  }
+  .home-tier-right {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 6px;
+    flex-shrink: 0;
+  }
+  .home-tier-price {
+    font-family: var(--font-display);
+    font-size: var(--fs-label);
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    color: rgba(255,255,255,0.55);
+    background: rgba(255,255,255,0.07);
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 6px;
+    padding: 2px 8px;
+    white-space: nowrap;
+  }
+  .home-tier-price.free { color: #7ED321; border-color: rgba(126,211,33,0.3); background: rgba(126,211,33,0.08); }
+  .home-tier-play-btn {
+    background: #CC1212;
+    border: none;
+    border-radius: 20px;
+    color: #fff;
+    font-family: var(--font-display);
+    font-size: var(--fs-ui);
+    font-weight: 700;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    padding: 6px 14px;
+    cursor: pointer;
+    transition: opacity 0.15s, transform 0.15s;
+    white-space: nowrap;
+  }
+  .home-tier-play-btn:hover  { opacity: 0.85; }
+  .home-tier-play-btn:active { transform: scale(0.95); }
+
+  /* Lock overlay on cards */
+  .home-tier-card.locked {
+    opacity: 0.55;
+  }
+  .home-tier-card.locked .home-tier-play-btn {
+    background: rgba(255,255,255,0.12);
+    color: rgba(255,255,255,0.5);
+  }
+
+  /* ── Powers strip ── */
+  .home-powers-strip {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    width: 100%;
+    flex-wrap: wrap;
+    margin-bottom: 16px;
+    padding: 0 4px;
+  }
+  .home-powers-label {
+    font-family: var(--font-display);
+    font-size: var(--fs-micro);
+    font-weight: 600;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    color: rgba(255,255,255,0.3);
+    width: 100%;
+    text-align: center;
+    margin-bottom: 4px;
+  }
+  .home-powers-pill {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    background: rgba(255,255,255,0.05);
+    border: 1px solid rgba(247,201,72,0.25);
+    border-radius: 20px;
+    padding: 7px 14px;
+    cursor: pointer;
+    font-family: var(--font-display);
+    font-size: var(--fs-ui);
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    color: #F7C948;
+    text-transform: uppercase;
+    transition: background 0.15s, border-color 0.15s, transform 0.12s;
+    white-space: nowrap;
+  }
+  .home-powers-pill:hover {
+    background: rgba(247,201,72,0.12);
+    border-color: rgba(247,201,72,0.5);
+    transform: translateY(-1px);
+  }
+  .home-powers-pill:active { transform: scale(0.96); }
+
+  /* ── Bottom nav bar ── */
+  .home-nav-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-around;
+    width: 100%;
+    border-top: 1px solid rgba(255,255,255,0.07);
+    padding: 10px 0 6px;
+    margin-top: 4px;
+    background: rgba(8,8,8,0.95);
+    position: sticky;
+    bottom: 0;
+    z-index: 10;
+  }
+  .home-nav-tab {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 3px;
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 6px 16px;
+    transition: color 0.15s;
+    position: relative;
+  }
+  .home-nav-tab-icon {
+    font-size: 1.3rem;
+    line-height: 1;
+  }
+  .home-nav-tab-label {
+    font-family: var(--font-display);
+    font-size: var(--fs-micro);
+    font-weight: 700;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: inherit;
+  }
+  .home-nav-tab.active {
+    color: #CC1212;
+  }
+  .home-nav-tab.active::after {
+    content: '';
+    display: block;
+    position: absolute;
+    bottom: -10px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 32px;
+    height: 2px;
+    background: #CC1212;
+    border-radius: 2px;
+    box-shadow: 0 0 8px rgba(204,18,18,0.8);
+  }
+  .home-nav-tab:not(.active) {
+    color: rgba(255,255,255,0.3);
+  }
+  .home-nav-tab:not(.active):hover {
+    color: rgba(255,255,255,0.65);
+  }
+
+  /* ── Resume / stats area ── */
+  #screen-title .home-score-pill {
+    margin-bottom: 12px;
+    margin-top: 4px;
+  }
+  #screen-title #trial-banner {
+    margin-bottom: 10px;
+  }
+  #screen-title #resume-game-banner {
+    width: 100%;
+  }
+
+  /* sound button stays top-right */
+  #screen-title #btn-sound-home {
+    z-index: 10;
+  }
   </style>
 </head>
 <body>
@@ -3157,35 +3635,35 @@
 
 <!-- ════════════ TITLE ════════════ -->
 <div id="screen-title" class="screen">
-  <div class="title-art-bg"></div>
-  <div class="title-zebra"></div>
-  <div class="title-art-strips">
-    <div style="height:4px;background:linear-gradient(90deg,#CC1212,#8B0000);width:100%;"></div>
-  </div>
-  <div class="title-bottom-bar"></div>
+  <!-- Animated background canvas — sits behind all content -->
+  <canvas id="home-bg-canvas"></canvas>
 
+  <!-- Sound toggle — top right -->
   <button id="btn-sound-home" title="Toggle sound" aria-label="Toggle sound">🔊</button>
 
-  <div class="title-inner">
-    <!-- Small logo circle -->
-    <div class="title-badge-circle">
-      <img src="./rfba-logo.png" alt="RFBA" class="title-logo-img" />
-    </div>
+  <!-- Hidden JS hooks -->
+  <span id="streak-val" style="display:none;">0</span>
+  <div id="title-tier-badge" class="tier-badge-title" style="display:none;">
+    <div class="tb-dot" id="tier-badge-dot" style="background:#666"></div>
+    <span id="tier-badge-name">TADPOLE EDITION</span>
+  </div>
 
-    <!-- Big title below circle -->
-    <div class="home-title">CROAKDOWN</div>
-    <div class="home-tagline">REDFROGBLACK</div>
-    <div style="font-family:var(--font-body);font-size: var(--fs-ui);font-weight:500;letter-spacing:0.12em;color:rgba(255,255,255,0.55);text-transform:uppercase;text-align:center;margin-top:2px;">The tile puzzle where the frogs play back</div>
-
-    <!-- Hidden for JS -->
-    <span id="streak-val" style="display:none;">0</span>
-    <div id="title-tier-badge" class="tier-badge-title" style="display:none;">
-      <div class="tb-dot" id="tier-badge-dot" style="background:#666"></div>
-      <span id="tier-badge-name">TADPOLE EDITION</span>
+  <!-- Logo area -->
+  <div class="home-logo-wrap">
+    <div class="home-logo-badge">
+      <img src="./rfba-logo.png" alt="RFBA" />
     </div>
+    <div class="home-logo-title">CROAKDOWN</div>
+    <div class="home-logo-tagline">Unleash Your Playful Side</div>
+  </div>
+
+  <!-- Main content -->
+  <div class="home-content-wrap">
+
+    <!-- Trial banner -->
     <div id="trial-banner"><span id="trial-banner-icon">⏳</span><span id="trial-banner-text">7 days free trial remaining</span></div>
 
-    <!-- Score pill — ONE card, both stats side by side -->
+    <!-- Score pill -->
     <div class="home-score-pill">
       <div class="home-score-item">
         <div class="home-score-label">🏆 BEST</div>
@@ -3199,25 +3677,100 @@
     </div>
 
     <!-- Resume banner (shown if saved game exists) -->
-    <div id="resume-game-banner" style="display:none;background:rgba(204,18,18,0.12);border:1.5px solid rgba(204,18,18,0.4);border-radius:14px;padding: 16px 18px;margin-bottom: 16px;align-items:center;justify-content:space-between;gap:12px;">
+    <div id="resume-game-banner" style="display:none;background:rgba(204,18,18,0.12);border:1.5px solid rgba(204,18,18,0.4);border-radius:14px;padding:16px 18px;margin-bottom:16px;align-items:center;justify-content:space-between;gap:12px;width:100%;">
       <div>
-        <div style="font-family:var(--font-display);font-size: var(--fs-ui);font-weight:700;letter-spacing:0.1em;color:#CC1212;margin-bottom:2px;">▶ GAME IN PROGRESS</div>
-        <div id="resume-banner-detail" style="font-size: var(--fs-label);color:rgba(255,255,255,0.5);">Tap to continue</div>
+        <div style="font-family:var(--font-display);font-size:var(--fs-ui);font-weight:700;letter-spacing:0.1em;color:#CC1212;margin-bottom:2px;">▶ GAME IN PROGRESS</div>
+        <div id="resume-banner-detail" style="font-size:var(--fs-label);color:rgba(255,255,255,0.5);">Tap to continue</div>
       </div>
-      <button onclick="resumeSavedGame()" aria-label="Resume saved game" style="background:#CC1212;border:none;border-radius:10px;color:#fff;font-family:var(--font-display);font-size: var(--fs-ui);font-weight:700;letter-spacing:0.1em;padding:10px 16px;cursor:pointer;white-space:nowrap;">RESUME</button>
+      <button onclick="resumeSavedGame()" aria-label="Resume saved game" style="background:#CC1212;border:none;border-radius:10px;color:#fff;font-family:var(--font-display);font-size:var(--fs-ui);font-weight:700;letter-spacing:0.1em;padding:10px 16px;cursor:pointer;white-space:nowrap;">RESUME</button>
     </div>
 
-    <!-- Buttons -->
-    <div class="home-btn-stack">
-      <button id="btn-solo" class="home-btn-solo" aria-label="Start solo play">SOLO PLAY</button>
-      <button id="btn-duo-mode" class="home-btn-duo" aria-label="Open duo multiplayer mode">DUO MODE</button>
-      <button id="btn-how-to-play" class="home-btn-howto" aria-label="How to play Croakdown">? HOW TO PLAY</button>
-      <button id="btn-shop-home" class="home-btn-howto" aria-label="Open magic powers shop" style="border-color:rgba(247,201,72,0.5);color:#F7C948;">🛒 SHOP — MAGIC POWERS</button>
-      <p class="home-tap-hint">Tap to learn more</p>
+    <!-- Game mode cards -->
+    <div class="home-tier-cards">
+
+      <!-- Tadpole — free -->
+      <div class="home-tier-card" data-tier="tadpole" onclick="document.getElementById('btn-solo').click()">
+        <div class="home-tier-emoji">🥚</div>
+        <div class="home-tier-text">
+          <div class="home-tier-name">Tadpole</div>
+          <div class="home-tier-sub">Easy · Classic mode</div>
+        </div>
+        <div class="home-tier-right">
+          <span class="home-tier-price free">FREE</span>
+          <button class="home-tier-play-btn" aria-label="Play Tadpole mode">PLAY</button>
+        </div>
+      </div>
+
+      <!-- Tree Frog -->
+      <div class="home-tier-card" data-tier="treefrog" onclick="document.getElementById('btn-solo').click()">
+        <div class="home-tier-emoji">🐸</div>
+        <div class="home-tier-text">
+          <div class="home-tier-name">Tree Frog</div>
+          <div class="home-tier-sub">Medium · Frenzy + Timed</div>
+        </div>
+        <div class="home-tier-right">
+          <span class="home-tier-price">£1.99</span>
+          <button class="home-tier-play-btn" aria-label="Play Tree Frog mode">PLAY</button>
+        </div>
+      </div>
+
+      <!-- Poison Dart -->
+      <div class="home-tier-card" data-tier="poisondart" onclick="document.getElementById('btn-solo').click()">
+        <div class="home-tier-emoji">🎯</div>
+        <div class="home-tier-text">
+          <div class="home-tier-name">Poison Dart</div>
+          <div class="home-tier-sub">Hard · Colour Run + Blitz</div>
+        </div>
+        <div class="home-tier-right">
+          <span class="home-tier-price">£2.99</span>
+          <button class="home-tier-play-btn" aria-label="Play Poison Dart mode">PLAY</button>
+        </div>
+      </div>
+
+      <!-- Golden Frog -->
+      <div class="home-tier-card" data-tier="goldenfrog" onclick="document.getElementById('btn-solo').click()">
+        <div class="home-tier-emoji">✨</div>
+        <div class="home-tier-text">
+          <div class="home-tier-name">Golden Frog</div>
+          <div class="home-tier-sub">Expert · All modes unlocked</div>
+        </div>
+        <div class="home-tier-right">
+          <span class="home-tier-price">£4.99</span>
+          <button class="home-tier-play-btn" aria-label="Play Golden Frog mode">PLAY</button>
+        </div>
+      </div>
     </div>
 
-    <!-- Settings pill -->
-<button id="btn-settings-home" class="home-settings-pill" aria-label="Open settings">⚙ SETTINGS</button>
+    <!-- Magic Powers strip -->
+    <div class="home-powers-strip">
+      <div class="home-powers-label">⚡ Magic Powers</div>
+      <button class="home-powers-pill" onclick="openShop('powers')" aria-label="Buy Spark power">⚡ SPARK <span style="opacity:0.6;">£0.99</span></button>
+      <button class="home-powers-pill" onclick="openShop('powers')" aria-label="Buy Surge power">⚡⚡ SURGE <span style="opacity:0.6;">£1.49</span></button>
+      <button class="home-powers-pill" onclick="openShop('powers')" aria-label="Buy Storm power">⚡⚡⚡ STORM <span style="opacity:0.6;">£1.99</span></button>
+    </div>
+
+    <!-- DUO + HOW TO hidden buttons (still wired for JS handlers) -->
+    <button id="btn-solo" style="display:none;" aria-label="Start solo play"></button>
+    <button id="btn-duo-mode" style="display:none;" aria-label="Open duo multiplayer mode"></button>
+    <button id="btn-how-to-play" style="display:none;" aria-label="How to play Croakdown"></button>
+    <button id="btn-shop-home" style="display:none;" aria-label="Open magic powers shop"></button>
+
+    <!-- Bottom navigation bar -->
+    <nav class="home-nav-bar" aria-label="Home navigation">
+      <button class="home-nav-tab active" onclick="" aria-label="Play tab">
+        <span class="home-nav-tab-icon">🎮</span>
+        <span class="home-nav-tab-label">Play</span>
+      </button>
+      <button class="home-nav-tab" onclick="document.getElementById('btn-how-to-play').click()" aria-label="Scores / How to play">
+        <span class="home-nav-tab-icon">🏆</span>
+        <span class="home-nav-tab-label">Scores</span>
+      </button>
+      <button class="home-nav-tab" id="btn-settings-home" aria-label="Open settings">
+        <span class="home-nav-tab-icon">⚙️</span>
+        <span class="home-nav-tab-label">Settings</span>
+      </button>
+    </nav>
+
   </div>
 </div>
 
@@ -4032,31 +4585,31 @@
 <!-- ════════════ FROG SHOP ════════════ -->
 <div id="shop-overlay">
   <div class="shop-modal">
-    <button class="shop-close" id="shop-close" aria-label="Close shop">✕</button>
+    <!-- Sticky header -->
+    <div class="shop-modal-header">
+      <div class="shop-modal-title">🛒 SHOP</div>
+      <button class="shop-close" id="shop-close" aria-label="Close shop">✕</button>
+    </div>
 
-    <!-- Shop tabs -->
+    <!-- Shop tabs — pill style -->
     <div class="shop-tabs">
-      <button class="shop-tab active" id="shop-tab-tiers" onclick="switchShopTab('tiers')" aria-label="Tiers tab">TIERS</button>
-      <button class="shop-tab" id="shop-tab-powers" onclick="switchShopTab('powers')" aria-label="Powers tab">POWERS</button>
+      <button class="shop-tab active" id="shop-tab-tiers" onclick="switchShopTab('tiers')" aria-label="Tiers tab">GAME PACKS</button>
+      <button class="shop-tab" id="shop-tab-powers" onclick="switchShopTab('powers')" aria-label="Powers tab">MAGIC POWERS</button>
     </div>
 
     <!-- Tiers panel -->
     <div id="shop-panel-tiers">
-      <div class="shop-header">
-        <h2>FROG <span>EVOLUTION</span></h2>
-        <p>Evolve your frog. Unlock exclusive tile skins, grid themes,<br>and powerful abilities unique to each tier.</p>
-      </div>
       <div class="evolution-path" id="evolution-path"></div>
+      <span class="shop-restore-link" onclick="showToast('Contacting App Store…')">Restore purchases</span>
     </div>
 
     <!-- Powers panel -->
     <div id="shop-panel-powers" style="display:none">
-      <div class="shop-header">
-        <h2>MAGIC <span>POWERS</span></h2>
-        <p>Three tiers of row-clearing power — all annual subscriptions. SPARK clears 1 row (1 use/30s), SURGE clears 2 rows (2 uses/30s), STORM clears 3 rows (3 uses/30s). Window auto-refills. One free use resets every day.</p>
+      <div style="padding:0 12px">
+        <div id="powers-inventory-bar" style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-bottom:16px;"></div>
+        <div id="shop-powers-list" style="display:flex;flex-direction:column;gap:10px;"></div>
+        <span class="shop-restore-link" onclick="showToast('Contacting App Store…')">Restore purchases</span>
       </div>
-      <div id="powers-inventory-bar" style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-bottom: 16px;"></div>
-      <div id="shop-powers-list" style="display:flex;flex-direction:column;gap:10px;padding:0 4px;"></div>
     </div>
 
     <div class="shop-footer">
@@ -6448,8 +7001,324 @@ function triggerGameOver(){
 }
 
 // ── Shop ──────────────────────────────────────────────────────────
+// ═══════════════════════════════════════════════════════════════
+// SHOP AMBIENT CANVAS ANIMATIONS
+// ═══════════════════════════════════════════════════════════════
+let _shopAmbientRAFs = [];
+
+function _shopAmbientStop() {
+  _shopAmbientRAFs.forEach(id => cancelAnimationFrame(id));
+  _shopAmbientRAFs = [];
+}
+
+function _shopAmbientInit() {
+  _shopAmbientStop(); // cancel any running loops first
+  const cards = document.querySelectorAll('.shop-pack-card');
+  cards.forEach(card => {
+    const tier = card.dataset.tier;
+    const cvs = card.querySelector('.shop-card-canvas');
+    if (!cvs || !tier) return;
+    // Size canvas to card
+    const resizeCvs = () => {
+      cvs.width = card.offsetWidth;
+      cvs.height = card.offsetHeight;
+    };
+    resizeCvs();
+    const ctx = cvs.getContext('2d');
+    if (!ctx) return;
+
+    switch (tier) {
+      case 'tadpole':     _ambientTadpole(cvs, ctx);     break;
+      case 'treefrog':    _ambientTreeFrog(cvs, ctx);    break;
+      case 'poisondart':  _ambientPoisonDart(cvs, ctx);  break;
+      case 'goldenfrog':  _ambientGoldenFrog(cvs, ctx);  break;
+      case 'citypack':    _ambientCityPack(cvs, ctx);    break;
+      case 'complete':    _ambientComplete(cvs, ctx);    break;
+      default: break;
+    }
+  });
+}
+
+// ── Tadpole: pond ambient ─────────────────────────────────────
+function _ambientTadpole(cvs, ctx) {
+  const ripples = Array.from({length:4}, (_,i) => ({ x: 0.3+i*0.15, y: 0.4+Math.random()*0.3, r:0, maxR:0, life:0, period: 2200+i*600 }));
+  const lilies  = Array.from({length:3}, (_,i) => ({ x: 0.1+i*0.35, y: 0.5+Math.random()*0.35, dx: (Math.random()-0.5)*0.00006 }));
+  let t0 = null;
+  function draw(ts) {
+    if (!t0) t0 = ts;
+    const elapsed = ts - t0;
+    const W = cvs.width, H = cvs.height;
+    ctx.clearRect(0,0,W,H);
+    // Background gradient
+    const bg = ctx.createLinearGradient(0,0,W,H);
+    bg.addColorStop(0,'#0a2a20'); bg.addColorStop(1,'#0d3d2a');
+    ctx.fillStyle = bg; ctx.fillRect(0,0,W,H);
+    // Ripples
+    ripples.forEach(rp => {
+      const phase = (elapsed % rp.period) / rp.period;
+      const r = phase * Math.min(W,H) * 0.55;
+      const alpha = Math.max(0, 0.6 * (1 - phase));
+      ctx.beginPath();
+      ctx.arc(rp.x*W, rp.y*H, r, 0, Math.PI*2);
+      ctx.strokeStyle = `rgba(80,200,160,${alpha})`;
+      ctx.lineWidth = 1.5;
+      ctx.stroke();
+    });
+    // Lily pads
+    lilies.forEach(lily => {
+      lily.x += lily.dx;
+      if (lily.x < 0) lily.x = 1; if (lily.x > 1) lily.x = 0;
+      ctx.save();
+      ctx.translate(lily.x*W, lily.y*H);
+      ctx.beginPath();
+      ctx.arc(0,0, W*0.04, 0.15, Math.PI*2-0.15);
+      ctx.closePath();
+      ctx.fillStyle = 'rgba(40,140,60,0.7)';
+      ctx.fill();
+      ctx.restore();
+    });
+    _shopAmbientRAFs.push(requestAnimationFrame(draw));
+  }
+  _shopAmbientRAFs.push(requestAnimationFrame(draw));
+}
+
+// ── Tree Frog: frenzy weather ─────────────────────────────────
+function _ambientTreeFrog(cvs, ctx) {
+  const rainDrops = Array.from({length:30}, () => ({
+    x: Math.random(), y: Math.random(), speed: 0.003+Math.random()*0.004, len: 0.04+Math.random()*0.06
+  }));
+  let lightningTimer = 0, lightningAlpha = 0;
+  let t0 = null;
+  function draw(ts) {
+    if (!t0) t0 = ts;
+    const elapsed = ts - t0;
+    const W = cvs.width, H = cvs.height;
+    ctx.clearRect(0,0,W,H);
+    // Stormy sky
+    const skyShift = (Math.sin(elapsed * 0.0004) + 1) * 0.5;
+    const bg = ctx.createLinearGradient(0,0,0,H);
+    bg.addColorStop(0, `rgba(${Math.round(20+skyShift*15)},${Math.round(30+skyShift*20)},${Math.round(60+skyShift*30)},1)`);
+    bg.addColorStop(1, `rgba(${Math.round(40+skyShift*20)},${Math.round(45+skyShift*20)},${Math.round(60+skyShift*20)},1)`);
+    ctx.fillStyle = bg; ctx.fillRect(0,0,W,H);
+    // Lightning flash
+    lightningTimer += 1;
+    if (lightningTimer > 200 + Math.random()*300) { lightningAlpha = 0.7; lightningTimer = 0; }
+    if (lightningAlpha > 0) {
+      ctx.fillStyle = `rgba(220,240,255,${lightningAlpha})`;
+      ctx.fillRect(0,0,W,H);
+      lightningAlpha = Math.max(0, lightningAlpha - 0.06);
+    }
+    // Rain
+    rainDrops.forEach(d => {
+      d.y += d.speed;
+      d.x += d.speed * 0.4;
+      if (d.y > 1) { d.y = -0.1; d.x = Math.random(); }
+      const sx = d.x*W, sy = d.y*H;
+      ctx.beginPath();
+      ctx.moveTo(sx, sy);
+      ctx.lineTo(sx + d.len*W*0.2, sy + d.len*H);
+      ctx.strokeStyle = 'rgba(180,210,255,0.35)';
+      ctx.lineWidth = 1;
+      ctx.stroke();
+    });
+    _shopAmbientRAFs.push(requestAnimationFrame(draw));
+  }
+  _shopAmbientRAFs.push(requestAnimationFrame(draw));
+}
+
+// ── Poison Dart: glitch/survival ─────────────────────────────
+function _ambientPoisonDart(cvs, ctx) {
+  let scanY = 0;
+  let glitchUntil = 0;
+  let t0 = null;
+  function draw(ts) {
+    if (!t0) t0 = ts;
+    const elapsed = ts - t0;
+    const W = cvs.width, H = cvs.height;
+    ctx.clearRect(0,0,W,H);
+    // Near-black background
+    ctx.fillStyle = '#050505'; ctx.fillRect(0,0,W,H);
+    // Red scan line
+    scanY = (scanY + 1.2) % H;
+    const grad = ctx.createLinearGradient(0, scanY-6, 0, scanY+6);
+    grad.addColorStop(0,'rgba(204,18,18,0)');
+    grad.addColorStop(0.5,'rgba(204,18,18,0.6)');
+    grad.addColorStop(1,'rgba(204,18,18,0)');
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, scanY-6, W, 12);
+    // Glitch flash
+    if (ts > glitchUntil && Math.random() < 0.003) { glitchUntil = ts + 50; }
+    if (ts < glitchUntil) {
+      ctx.save();
+      ctx.globalCompositeOperation = 'difference';
+      ctx.fillStyle = 'rgba(255,40,40,0.9)';
+      ctx.fillRect(0,0,W,H);
+      ctx.restore();
+    }
+    // Red vignette
+    const vig = ctx.createRadialGradient(W/2,H/2, H*0.2, W/2,H/2, H*0.8);
+    vig.addColorStop(0,'rgba(0,0,0,0)');
+    vig.addColorStop(1,'rgba(180,0,0,0.35)');
+    ctx.fillStyle = vig; ctx.fillRect(0,0,W,H);
+    _shopAmbientRAFs.push(requestAnimationFrame(draw));
+  }
+  _shopAmbientRAFs.push(requestAnimationFrame(draw));
+}
+
+// ── Golden Frog: Dubai sunset ─────────────────────────────────
+function _ambientGoldenFrog(cvs, ctx) {
+  const particles = Array.from({length:25}, () => ({
+    x: Math.random(), y: 0.4+Math.random()*0.6, speed: 0.0005+Math.random()*0.001, size: 1+Math.random()*2
+  }));
+  let t0 = null;
+  function draw(ts) {
+    if (!t0) t0 = ts;
+    const elapsed = ts - t0;
+    const W = cvs.width, H = cvs.height;
+    ctx.clearRect(0,0,W,H);
+    // Desert amber/orange sky
+    const bg = ctx.createLinearGradient(0,0,0,H);
+    bg.addColorStop(0,'#1a0a00'); bg.addColorStop(0.5,'#3d1a00'); bg.addColorStop(1,'#6b2e00');
+    ctx.fillStyle = bg; ctx.fillRect(0,0,W,H);
+    // Warm shimmer glow from bottom
+    const glow = ctx.createRadialGradient(W*0.5, H, 0, W*0.5, H, W*0.7);
+    glow.addColorStop(0,'rgba(255,160,20,0.3)');
+    glow.addColorStop(1,'rgba(255,100,0,0)');
+    ctx.fillStyle = glow; ctx.fillRect(0,0,W,H);
+    // Burj Khalifa silhouette (thin tapering tower on right)
+    const bx = W*0.85, bBase = H, bH = H*0.75;
+    ctx.beginPath();
+    ctx.moveTo(bx-W*0.018, bBase);
+    ctx.lineTo(bx-W*0.008, bBase-bH*0.6);
+    ctx.lineTo(bx-W*0.003, bBase-bH*0.85);
+    ctx.lineTo(bx, bBase-bH);
+    ctx.lineTo(bx+W*0.003, bBase-bH*0.85);
+    ctx.lineTo(bx+W*0.008, bBase-bH*0.6);
+    ctx.lineTo(bx+W*0.018, bBase);
+    ctx.closePath();
+    ctx.fillStyle = 'rgba(10,5,0,0.8)';
+    ctx.fill();
+    // Antenna
+    ctx.beginPath(); ctx.moveTo(bx, bBase-bH); ctx.lineTo(bx, bBase-bH-H*0.06);
+    ctx.strokeStyle = 'rgba(10,5,0,0.8)'; ctx.lineWidth = 2; ctx.stroke();
+    // Sand particles drifting right
+    particles.forEach(p => {
+      p.x += p.speed;
+      if (p.x > 1.1) p.x = -0.1;
+      ctx.beginPath();
+      ctx.arc(p.x*W, p.y*H, p.size, 0, Math.PI*2);
+      ctx.fillStyle = 'rgba(255,180,60,0.5)';
+      ctx.fill();
+    });
+    _shopAmbientRAFs.push(requestAnimationFrame(draw));
+  }
+  _shopAmbientRAFs.push(requestAnimationFrame(draw));
+}
+
+// ── City Pack: city sky ───────────────────────────────────────
+function _ambientCityPack(cvs, ctx) {
+  const stars = Array.from({length:40}, () => ({
+    x: Math.random(), y: Math.random()*0.6, r: 0.5+Math.random()*1.5,
+    phase: Math.random()*Math.PI*2, speed: 0.5+Math.random()*1.5
+  }));
+  const buildings = [
+    {x:0.0,  w:0.18, h:0.35}, {x:0.15, w:0.14, h:0.50}, {x:0.27, w:0.20, h:0.40},
+    {x:0.45, w:0.15, h:0.55}, {x:0.58, w:0.18, h:0.38}, {x:0.75, w:0.14, h:0.48}, {x:0.86, w:0.16, h:0.32}
+  ];
+  let t0 = null;
+  function draw(ts) {
+    if (!t0) t0 = ts;
+    const elapsed = ts - t0;
+    const W = cvs.width, H = cvs.height;
+    ctx.clearRect(0,0,W,H);
+    // Dawn colour shift
+    const dawnT = (Math.sin(elapsed * 0.0002) + 1) * 0.5;
+    const bg = ctx.createLinearGradient(0,0,0,H);
+    bg.addColorStop(0, `rgba(${Math.round(5+dawnT*20)},${Math.round(8+dawnT*25)},${Math.round(40+dawnT*30)},1)`);
+    bg.addColorStop(1, `rgba(${Math.round(15+dawnT*30)},${Math.round(20+dawnT*35)},${Math.round(60+dawnT*25)},1)`);
+    ctx.fillStyle = bg; ctx.fillRect(0,0,W,H);
+    // Stars with twinkle
+    stars.forEach(s => {
+      const alpha = 0.4 + 0.6*Math.sin(elapsed*0.001*s.speed + s.phase);
+      ctx.beginPath(); ctx.arc(s.x*W, s.y*H, s.r, 0, Math.PI*2);
+      ctx.fillStyle = `rgba(255,255,255,${alpha})`; ctx.fill();
+    });
+    // Building silhouettes
+    buildings.forEach(b => {
+      ctx.fillStyle = 'rgba(5,8,20,0.9)';
+      ctx.fillRect(b.x*W, H-b.h*H, b.w*W, b.h*H);
+    });
+    _shopAmbientRAFs.push(requestAnimationFrame(draw));
+  }
+  _shopAmbientRAFs.push(requestAnimationFrame(draw));
+}
+
+// ── Croakdown Complete: all tiers combined ────────────────────
+function _ambientComplete(cvs, ctx) {
+  const COLORS = ['#888888','#F5A623','#CC1212','#F5E000','#4A9EFF','#FFD700'];
+  const streaks = Array.from({length:18}, (_,i) => ({
+    x: Math.random(), y: Math.random(), angle: Math.PI*0.3+Math.random()*0.4,
+    speed: 0.0008+Math.random()*0.0012, len: 0.15+Math.random()*0.2,
+    color: COLORS[i % COLORS.length], alpha: 0.3+Math.random()*0.4
+  }));
+  const particles = Array.from({length:30}, () => ({
+    x: Math.random(), y: Math.random(), r: 0.5+Math.random()*1.5,
+    speed: 0.0003+Math.random()*0.0006,
+    color: COLORS[Math.floor(Math.random()*COLORS.length)],
+    angle: Math.random()*Math.PI*2
+  }));
+  let t0 = null;
+  function draw(ts) {
+    if (!t0) t0 = ts;
+    const elapsed = ts - t0;
+    const W = cvs.width, H = cvs.height;
+    ctx.clearRect(0,0,W,H);
+    ctx.fillStyle = '#050505'; ctx.fillRect(0,0,W,H);
+    // Light streaks
+    streaks.forEach(s => {
+      s.x += Math.cos(s.angle)*s.speed; s.y += Math.sin(s.angle)*s.speed;
+      if (s.x>1.2) s.x=-0.2; if (s.y>1.2) s.y=-0.2;
+      ctx.save();
+      ctx.globalAlpha = s.alpha;
+      const grad = ctx.createLinearGradient(s.x*W, s.y*H, (s.x+Math.cos(s.angle)*s.len)*W, (s.y+Math.sin(s.angle)*s.len)*H);
+      grad.addColorStop(0, s.color+'00'); grad.addColorStop(0.5, s.color); grad.addColorStop(1, s.color+'00');
+      ctx.strokeStyle = grad; ctx.lineWidth = 1.5;
+      ctx.beginPath(); ctx.moveTo(s.x*W,s.y*H); ctx.lineTo((s.x+Math.cos(s.angle)*s.len)*W,(s.y+Math.sin(s.angle)*s.len)*H);
+      ctx.stroke(); ctx.restore();
+    });
+    // Gold shimmer pulse
+    const pulse = (Math.sin(elapsed*0.002)+1)*0.5;
+    const glow = ctx.createRadialGradient(W/2,H/2,0,W/2,H/2,W*0.6);
+    glow.addColorStop(0,`rgba(255,215,0,${0.06*pulse})`); glow.addColorStop(1,'rgba(255,215,0,0)');
+    ctx.fillStyle=glow; ctx.fillRect(0,0,W,H);
+    // Star particles
+    particles.forEach(p => {
+      p.x += Math.cos(p.angle)*p.speed; p.y += Math.sin(p.angle)*p.speed;
+      if (p.x<-0.1||p.x>1.1||p.y<-0.1||p.y>1.1){p.x=Math.random();p.y=Math.random();}
+      ctx.beginPath(); ctx.arc(p.x*W,p.y*H,p.r,0,Math.PI*2);
+      ctx.fillStyle=p.color+'99'; ctx.fill();
+    });
+    _shopAmbientRAFs.push(requestAnimationFrame(draw));
+  }
+  _shopAmbientRAFs.push(requestAnimationFrame(draw));
+}
+
+// duopack — no ambient (not in shop v2), but keep slot for safety
+function _ambientDuoPack(cvs, ctx) { /* placeholder */ }
+
 function buildShopUI(){
   const path=document.getElementById('evolution-path');path.innerHTML='';
+
+  // Tier metadata for new dark glass cards
+  const TIER_META = {
+    tadpole:    { emoji:'🥚', sub:'Standard · Easy',       legal:'7-day free trial, then £0.99/year · Annual subscription · Cancel anytime in App Store Settings' },
+    treefrog:   { emoji:'🐸', sub:'Frenzy · Medium',       legal:'Annual subscription · Cancel anytime in App Store Settings' },
+    poisondart: { emoji:'🦎', sub:'Survival · Hard',       legal:'Annual subscription · Cancel anytime in App Store Settings' },
+    goldenfrog: { emoji:'✨', sub:'Colour Run · Expert',   legal:'Annual subscription · Cancel anytime in App Store Settings' },
+    duopack:    { emoji:'🎮', sub:'Multiplayer · Monthly', legal:'Monthly subscription · Cancel anytime in App Store Settings' },
+    citypack:   { emoji:'🏙️', sub:'10 Cities · All Modes', legal:'Annual subscription · Cancel anytime in App Store Settings' },
+  };
+
   TIERS.forEach((tier,idx)=>{
     if(idx>0){
       const conn=document.createElement('div');conn.className='tier-connector';
@@ -6458,26 +7327,53 @@ function buildShopUI(){
     }
     const owned=tierOwned(tier.id);const isEquipped=(equippedTierId===tier.id);
     const card=document.createElement('div');
-    card.className='tier-card'+(isEquipped?' active-tier':'')+(!owned&&tier.price?' locked-card':''); if(!owned&&tier.price){card.style.setProperty('--lock-color','#F7C948');}
-    card.style.setProperty('--tier-color',tier.color);
-    card.dataset.tierId = tier.id; // used by scrollIntoView for citypack
+    const meta = TIER_META[tier.id] || {};
+    card.className='shop-pack-card'+(isEquipped?' active-tier':'')+(!owned&&tier.price?' locked-card':'');
+    card.style.borderLeft = `3px solid ${tier.color}`;
+    card.dataset.tierId = tier.id;
+    card.dataset.tier = tier.id; // for ambient canvas
 
+    // Price display
     const annualSuffix = tier.annual ? '/yr' : '';
-    const trialLabel = tier.trialDays ? `<div class="tier-price" style="font-size: var(--fs-ui);color:#7ED321">FREE ${tier.trialDays} DAYS</div><div style="font-size: var(--fs-ui);color:rgba(255,255,255,0.4);margin-top:2px">then £${tier.price.toFixed(2)}${annualSuffix}</div>` : null;
-    let tagHtml='';
-    // City Pack: owned = PLAY launches city pack; not owned = BUY
+    let priceStr;
+    if (tier.subscription) priceStr = `£${tier.price.toFixed(2)}/mo`;
+    else if (tier.trialDays) priceStr = `FREE ${tier.trialDays} DAYS`;
+    else priceStr = `£${tier.price.toFixed(2)}${annualSuffix}`;
+
+    // Button
     let btnHtml;
     if (tier.isCityPack) {
       btnHtml = owned
-        ? `<button class="tier-buy-btn" style="background:#4A9EFF;color:#000" onclick="closeShop();startCityPackGame(0);">▶ PLAY CITIES</button>`
-        : `<button class="tier-buy-btn buy" data-buy="${idx}">BUY £1.99/yr</button>`;
+        ? `<button class="shop-card-btn city-play" onclick="closeShop();startCityPackGame(0);">▶ PLAY</button>`
+        : `<button class="shop-card-btn" data-buy="${idx}">UNLOCK</button>`;
     } else {
-      btnHtml = owned ? (isEquipped?`<button class="tier-buy-btn" style="background:#CC1212;color:#fff" data-play="${tier.id}">▶ PLAY</button>`:`<button class="tier-buy-btn equip" data-equip="${tier.id}">EQUIP</button>`) : `<button class="tier-buy-btn buy" data-buy="${idx}">BUY</button>`;
+      btnHtml = owned
+        ? (isEquipped
+            ? `<button class="shop-card-btn play" data-play="${tier.id}">▶ PLAY</button>`
+            : `<button class="shop-card-btn equip" data-equip="${tier.id}">EQUIP</button>`)
+        : `<button class="shop-card-btn" data-buy="${idx}">UNLOCK</button>`;
     }
-    const priceHtml=tier.subscription?`<div class="tier-price" style="font-size: var(--fs-body);color:#c084fc">£${tier.price.toFixed(2)}<small style="font-size:0.5rem;opacity:0.7">/mo</small></div>`:tier.annual?trialLabel||`<div class="tier-price">£${tier.price.toFixed(2)}<small style="font-size:0.5rem;opacity:0.7">/yr</small></div>`:trialLabel||`<div class="tier-price">£${tier.price.toFixed(2)}</div>`;
-    const perksHtml=tier.perks.slice(0,3).map(p=>`<span class="tier-perk">${p}</span>`).join('');
 
-    card.innerHTML=`<div class="tier-frog-svg">${FROG_SVGS[tier.id]}</div><div class="tier-info"><div class="tier-name-row"><div class="tier-name" style="color:${tier.color}">${tier.name}</div>${tagHtml}</div><div class="tier-desc">${tier.desc}</div><div class="tier-perks">${perksHtml}</div></div><div class="tier-price-col">${priceHtml}${btnHtml}</div>`;
+    const perksHtml = tier.perks.slice(0,3).map(p=>`<li>${p}</li>`).join('');
+    const legalHtml = meta.legal || 'Annual subscription · Cancel anytime in App Store Settings';
+
+    card.innerHTML = `
+      <canvas class="shop-card-canvas"></canvas>
+      <div class="shop-card-content">
+        <div class="shop-card-left">
+          <div class="shop-card-emoji">${meta.emoji || tier.emoji || ''}</div>
+          <div class="shop-card-meta">
+            <div class="shop-card-name" style="color:${tier.color}">${tier.name}</div>
+            <div class="shop-card-sub">${meta.sub || tier.desc}</div>
+          </div>
+        </div>
+        <div class="shop-card-right">
+          <div class="shop-card-price">${priceStr}</div>
+          ${btnHtml}
+        </div>
+      </div>
+      <ul class="shop-card-features">${perksHtml}</ul>
+      <p class="shop-card-legal">${legalHtml}</p>`;
     path.appendChild(card);
   });
   path.querySelectorAll('[data-buy]').forEach(btn=>btn.addEventListener('click',()=>openPurchaseModal(parseInt(btn.dataset.buy))));
@@ -6499,7 +7395,7 @@ function buildShopUI(){
     initChallengeMode();
   }));
 
-  // ── CROAKDOWN COMPLETE bundle card ────────────────────────────
+  // ── CROAKDOWN COMPLETE bundle card ──────────────────────────────────────────
   // com.redfrogblackart.croakdown.allpacks
   const bundleConn = document.createElement('div');
   bundleConn.className = 'tier-connector';
@@ -6509,39 +7405,49 @@ function buildShopUI(){
   path.appendChild(bundleConn);
 
   const bundleCard = document.createElement('div');
-  bundleCard.className = 'tier-card';
-  bundleCard.style.cssText = 'background: linear-gradient(135deg, #1a0a00 0%, #2a1200 50%, #1a0800 100%); border: 1.5px solid #C49A00; position:relative; overflow:hidden;';
+  bundleCard.className = 'shop-pack-card';
+  bundleCard.dataset.tier = 'complete';
+  bundleCard.style.borderLeft = '3px solid #FFD700';
   bundleCard.innerHTML = `
-    <div style="position:absolute;top:8px;right:8px;background:linear-gradient(135deg,#FFD700,#FF6600);color:#000;font-family:var(--font-display);font-size:0.55rem;font-weight:700;padding:3px 7px;border-radius:20px;letter-spacing:0.05em;">\u2b50 BEST VALUE</div>
-    <div class="tier-frog-svg" style="font-size:2.2rem;line-height:1;padding:4px 0;">\u{1F31F}</div>
-    <div class="tier-info">
-      <div class="tier-name-row">
-        <div class="tier-name" style="color:#FFD700">CROAKDOWN COMPLETE</div>
+    <canvas class="shop-card-canvas"></canvas>
+    <div style="position:absolute;top:8px;right:8px;background:linear-gradient(135deg,#FFD700,#FF6600);color:#000;font-family:var(--font-display);font-size:0.55rem;font-weight:700;padding:3px 7px;border-radius:20px;letter-spacing:0.05em;z-index:2;">⭐ BEST VALUE</div>
+    <div class="shop-card-content">
+      <div class="shop-card-left">
+        <div class="shop-card-emoji">🌟</div>
+        <div class="shop-card-meta">
+          <div class="shop-card-name" style="color:#FFD700">CROAKDOWN COMPLETE</div>
+          <div class="shop-card-sub">All 5 packs &middot; Everything unlocked</div>
+        </div>
       </div>
-      <div class="tier-desc" style="color:rgba(255,215,0,0.7)">All 5 packs &middot; Everything unlocked</div>
-      <div class="tier-perks">
-        <span class="tier-perk">All 4 solo game tiers (Tadpole through Golden Frog)</span>
-        <span class="tier-perk">City Pack &mdash; 10 cities with animated skies</span>
-        <span class="tier-perk">Every mode, difficulty &amp; tile skin unlocked</span>
+      <div class="shop-card-right">
+        <div class="shop-card-price" style="color:#FFD700">£7.99/yr</div>
+        <button class="shop-card-btn bundle-btn" id="btn-buy-allpacks">GET ALL</button>
       </div>
     </div>
-    <div class="tier-price-col">
-      <div class="tier-price" style="color:#FFD700">£7.99<small style="font-size:0.5rem;opacity:0.7">/yr</small></div>
-      <button class="tier-buy-btn buy" id="btn-buy-allpacks" style="background:linear-gradient(135deg,#FFD700,#FF8C00);color:#000;font-weight:700;">GET EVERYTHING &mdash; £7.99/yr</button>
-      <div style="font-size:0.6rem;color:rgba(255,215,0,0.5);margin-top:4px;text-align:center;">Annual subscription &middot; Includes all game packs + City Pack &middot; Cancel anytime</div>
-    </div>
-  `;
+    <ul class="shop-card-features">
+      <li>All 4 solo game tiers (Tadpole through Golden Frog)</li>
+      <li>City Pack &mdash; 10 cities with animated skies</li>
+      <li>Every mode, difficulty &amp; tile skin unlocked</li>
+    </ul>
+    <p class="shop-card-legal">Annual subscription &middot; Includes all game packs + City Pack &middot; Cancel anytime in App Store Settings</p>`;
   path.appendChild(bundleCard);
   const allpacksBtn = document.getElementById('btn-buy-allpacks');
   if (allpacksBtn) allpacksBtn.addEventListener('click', () => showToast('\ud83c\udf1f CROAKDOWN COMPLETE — coming soon!'));
+
+  // Start ambient canvas animations
+  _shopAmbientInit();
 }
 
 function openShop(tab){
   buildShopUI();
   switchShopTab(tab || 'tiers');
   document.getElementById('shop-overlay').classList.add('open');
+  // Ambient init called inside buildShopUI already
 }
-function closeShop(){document.getElementById('shop-overlay').classList.remove('open');}
+function closeShop(){
+  document.getElementById('shop-overlay').classList.remove('open');
+  _shopAmbientStop();
+}
 
 function switchShopTab(tab) {
   // 'citypack' is a tier — open tiers tab and scroll to it after build
@@ -11069,6 +11975,113 @@ function checkResumeOnHome() {
       });
     });
   })();
+
+// ════════════════════════════════════════════════════════════════════
+// HOME SCREEN — Animated tile grid background
+// ════════════════════════════════════════════════════════════════════
+(function() {
+  var _homeCanvas = null;
+  var _homeCtx = null;
+  var _homeTiles = [];
+  var _homeRAF = null;
+  var _homeActive = false;
+
+  function _homeAnimInit() {
+    _homeCanvas = document.getElementById('home-bg-canvas');
+    if (!_homeCanvas) return;
+    var screen = document.getElementById('screen-title');
+    _homeCanvas.width  = screen.offsetWidth  || window.innerWidth;
+    _homeCanvas.height = screen.offsetHeight || window.innerHeight;
+    _homeCtx = _homeCanvas.getContext('2d');
+
+    var cols = 7;
+    var tileGap = 6;
+    var tileW = Math.floor((_homeCanvas.width - tileGap * (cols + 1)) / cols);
+    var tileH = tileW;
+    var rows = Math.ceil(_homeCanvas.height / (tileH + tileGap)) + 2;
+
+    _homeTiles = [];
+    for (var r = 0; r < rows; r++) {
+      for (var c = 0; c < cols; c++) {
+        var x = tileGap + c * (tileW + tileGap);
+        var y = tileGap + r * (tileH + tileGap);
+        var maxOp = 0.03 + Math.random() * 0.04;
+        _homeTiles.push({
+          x: x, y: y, w: tileW, h: tileH,
+          opacity: Math.random() * maxOp,
+          maxOp: maxOp,
+          fadeDir: Math.random() > 0.5 ? 1 : -1,
+          fadeSpeed: 0.003 + Math.random() * 0.006,
+          delay: Math.random() * 3000
+        });
+      }
+    }
+    _homeActive = true;
+    if (_homeRAF) cancelAnimationFrame(_homeRAF);
+    _homeRAF = requestAnimationFrame(_homeAnimDraw);
+  }
+
+  function _homeAnimDraw(ts) {
+    if (!_homeActive || !_homeCtx) return;
+    var canvas = _homeCanvas;
+    _homeCtx.clearRect(0, 0, canvas.width, canvas.height);
+    for (var i = 0; i < _homeTiles.length; i++) {
+      var t = _homeTiles[i];
+      if (ts < t.delay) continue;
+      t.opacity += t.fadeDir * t.fadeSpeed;
+      if (t.opacity >= t.maxOp)  { t.opacity = t.maxOp;  t.fadeDir = -1; }
+      if (t.opacity <= 0)         { t.opacity = 0;         t.fadeDir =  1; }
+      _homeCtx.globalAlpha = t.opacity;
+      _homeCtx.fillStyle = '#CC1212';
+      _homeCtx.beginPath();
+      if (_homeCtx.roundRect) {
+        _homeCtx.roundRect(t.x, t.y, t.w, t.h, 6);
+      } else {
+        _homeCtx.rect(t.x, t.y, t.w, t.h);
+      }
+      _homeCtx.fill();
+    }
+    _homeCtx.globalAlpha = 1;
+    _homeRAF = requestAnimationFrame(_homeAnimDraw);
+  }
+
+  function _homeAnimStop() {
+    _homeActive = false;
+    if (_homeRAF) { cancelAnimationFrame(_homeRAF); _homeRAF = null; }
+    if (_homeCtx && _homeCanvas) {
+      _homeCtx.clearRect(0, 0, _homeCanvas.width, _homeCanvas.height);
+    }
+  }
+
+  // Patch showScreen to start/stop home animation
+  var _origShowScreen = showScreen;
+  window.showScreen = function(id) {
+    if (id === 'screen-title') {
+      // init after a short delay so the screen is visible + has dimensions
+      setTimeout(_homeAnimInit, 60);
+    } else {
+      _homeAnimStop();
+    }
+    _origShowScreen(id);
+  };
+
+  // Re-init on resize while home is visible
+  window.addEventListener('resize', function() {
+    var st = document.getElementById('screen-title');
+    if (st && !st.classList.contains('hidden')) {
+      _homeAnimStop();
+      setTimeout(_homeAnimInit, 60);
+    }
+  });
+
+  // Kick off on initial page load (screen-title is shown by boot code)
+  setTimeout(function() {
+    var st = document.getElementById('screen-title');
+    if (st && !st.classList.contains('hidden')) {
+      _homeAnimInit();
+    }
+  }, 200);
+})();
   </script>
 </body>
 </html>
