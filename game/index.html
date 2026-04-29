@@ -6315,6 +6315,7 @@ function startCityPackGame(cityIdx) {
     // Init sky engine now that gridCanvas dimensions are set
     _skyInit(gridCanvas.width, gridCanvas.height);
     updateCityPackHUD();
+    _showDevSkipIfDev(); // show DEV button for city pack
     setTimeout(()=>showEventBanner(city.emoji+' '+city.name+' — FILL THE SKYLINE!'), 300);
   });
 }
@@ -9318,6 +9319,7 @@ function startDuoGameMode() {
   });
   var meta = DUO_GAME_META[currentDuoGame];
   setTimeout(function() { showEventBanner(meta.emoji + ' ' + meta.name + ' \u2014 LEVEL ' + currentDuoLevel + '!'); }, 800);
+  _showDevSkipIfDev(); // show DEV button for duo games
 }
 
 // ── Board Shake (Shake the Frog) ─────────────────────────────────
@@ -11160,10 +11162,31 @@ function stopChallengeMode() {
   activeChallengeMode = 'standard';
 }
 
-// Dev skip — bumps level/score to simulate progression
+// Dev skip — bumps level/score to simulate progression, works for ALL game modes
 function _devSkipLevel() {
   if (localStorage.getItem('cd_dev_unlock') !== '1') return;
-  // Simulate clearing 10 lines worth of progress
+
+  // City Pack: advance to next city
+  if (cityPackActive) {
+    showToast('⏭ DEV: next city');
+    advanceCityPackLevel();
+    return;
+  }
+
+  // Duo: jump to next level
+  if (currentDuoGame && currentDuoLevel) {
+    const nextLevel = Math.min(currentDuoLevel + 1, 10);
+    showToast('⏭ DEV: duo level ' + nextLevel);
+    currentDuoLevel = nextLevel;
+    // unlock it so lobby reflects progress
+    const key = 'cd_duo_lvl_' + currentDuoGame;
+    const cur = parseInt(localStorage.getItem(key) || '1');
+    if (nextLevel > cur) localStorage.setItem(key, String(nextLevel));
+    startDuoGameMode();
+    return;
+  }
+
+  // Solo (all modes including standard): add lines + score
   const fakeLines = 10;
   linesCleared += fakeLines;
   score += fakeLines * 500;
@@ -11182,7 +11205,8 @@ function _showDevSkipIfDev() {
   const btn = document.getElementById('dev-level-skip');
   if (!btn) return;
   const isDev = localStorage.getItem('cd_dev_unlock') === '1';
-  btn.style.display = isDev && gameActive && activeChallengeMode !== 'standard' ? 'inline-block' : 'none';
+  // Show for ALL game modes when dev is active — including standard, city pack, duo
+  btn.style.display = isDev && gameActive ? 'inline-block' : 'none';
 }
 
 // ── Pause menu ───────────────────────────────────────────────────
@@ -11500,21 +11524,25 @@ calcLayout();updateTierBadge();loadStreak();requestAnimationFrame(animateParticl
     if (!audioCtx) {
       audioCtx = new (window.AudioContext || window.webkitAudioContext)();
     }
+    const _doUnlock = () => {
+      // Play a silent buffer — required to fully unblock iOS audio policy
+      try {
+        const buf = audioCtx.createBuffer(1, 1, 22050);
+        const src = audioCtx.createBufferSource();
+        src.buffer = buf;
+        src.connect(audioCtx.destination);
+        src.start(0);
+      } catch(e) {}
+      // Only remove listeners once audio is actually running
+      if (audioCtx.state === 'running') {
+        document.removeEventListener('touchstart', _earlyAudioUnlock, true);
+        document.removeEventListener('mousedown',  _earlyAudioUnlock, true);
+      }
+    };
     if (audioCtx.state === 'suspended') {
-      audioCtx.resume().catch(()=>{});
-    }
-    // Play a silent buffer to fully unblock iOS audio policy
-    try {
-      const buf = audioCtx.createBuffer(1, 1, 22050);
-      const src = audioCtx.createBufferSource();
-      src.buffer = buf;
-      src.connect(audioCtx.destination);
-      src.start(0);
-    } catch(e) {}
-    // Once running, remove the listeners — audio is unlocked
-    if (audioCtx.state === 'running') {
-      document.removeEventListener('touchstart', _earlyAudioUnlock, true);
-      document.removeEventListener('mousedown',  _earlyAudioUnlock, true);
+      audioCtx.resume().then(_doUnlock).catch(()=>{});
+    } else {
+      _doUnlock();
     }
   }
   document.addEventListener('touchstart', _earlyAudioUnlock, true);
