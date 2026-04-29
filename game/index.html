@@ -9791,6 +9791,20 @@ function linesForNextLevel(lines) {
   return LEVEL_THRESHOLDS[lv];
 }
 
+// ── DEV-mode level setter (in-scope so it can mutate `let` vars) ────
+window.__devSoloSetLevel = function(targetLv){
+  try {
+    const lv = Math.max(1, Math.min(targetLv|0, LEVEL_THRESHOLDS.length));
+    linesCleared = LEVEL_THRESHOLDS[lv - 1];
+    level = lv;
+    score = (score|0) + 100 * (lv - 1);
+    if (typeof updateUI === 'function') updateUI();
+    if (typeof draw === 'function') draw();
+    return lv;
+  } catch(e){ console.warn('__devSoloSetLevel failed', e); return null; }
+};
+window.__devGetSoloLevel = function(){ try { return level; } catch(e){ return 1; } };
+
 function setDifficulty(d){
   currentDiff = d;
   document.querySelectorAll('.diff-btn').forEach(b=>b.classList.toggle('active', b.dataset.diff===d));
@@ -13795,7 +13809,8 @@ function updateHomeSubtitles() {
         const total = (typeof CITY_PACK_CITIES !== 'undefined') ? CITY_PACK_CITIES.length : 10;
         return 'CITY ' + ((cityPackCityIdx||0)+1) + '/' + total;
       }
-      return 'LVL ' + (typeof level !== 'undefined' ? level : 1) + '/50';
+      const lv = (typeof window.__devGetSoloLevel === 'function') ? window.__devGetSoloLevel() : 1;
+      return 'LVL ' + lv + '/50';
     } catch(e){ return ''; }
   }
 
@@ -13822,17 +13837,11 @@ function updateHomeSubtitles() {
         showDevToast('CITY ' + (next+1) + '/' + total);
         return;
       }
-      // Solo flow — bump linesCleared to next threshold
-      if (typeof level !== 'undefined' && typeof LEVEL_THRESHOLDS !== 'undefined') {
-        const nextLv = Math.min(level + 1, LEVEL_THRESHOLDS.length);
-        const target = LEVEL_THRESHOLDS[nextLv - 1];
-        window.linesCleared = target;
-        window.level = nextLv;
-        // bonus score so it feels right
-        if (typeof score !== 'undefined') window.score = score + 100 * (nextLv - 1);
-        if (typeof updateUI === 'function') updateUI();
-        if (typeof draw === 'function') draw();
-        showDevToast('SOLO LVL ' + nextLv);
+      // Solo flow — call the in-scope setter so `let`-scoped vars actually update
+      if (typeof window.__devSoloSetLevel === 'function') {
+        const cur = window.__devGetSoloLevel ? window.__devGetSoloLevel() : 1;
+        const newLv = window.__devSoloSetLevel(cur + 1);
+        if (newLv != null) showDevToast('SOLO LVL ' + newLv);
       }
     } catch(e){ console.warn('devNext failed', e); }
   }
@@ -13852,14 +13861,10 @@ function updateHomeSubtitles() {
         showDevToast('CITY ' + (prev+1));
         return;
       }
-      if (typeof level !== 'undefined' && typeof LEVEL_THRESHOLDS !== 'undefined') {
-        const prevLv = Math.max(level - 1, 1);
-        const target = LEVEL_THRESHOLDS[prevLv - 1];
-        window.linesCleared = target;
-        window.level = prevLv;
-        if (typeof updateUI === 'function') updateUI();
-        if (typeof draw === 'function') draw();
-        showDevToast('SOLO LVL ' + prevLv);
+      if (typeof window.__devSoloSetLevel === 'function') {
+        const cur = window.__devGetSoloLevel ? window.__devGetSoloLevel() : 1;
+        const newLv = window.__devSoloSetLevel(Math.max(cur - 1, 1));
+        if (newLv != null) showDevToast('SOLO LVL ' + newLv);
       }
     } catch(e){ console.warn('devPrev failed', e); }
   }
