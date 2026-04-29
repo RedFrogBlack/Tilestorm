@@ -3726,16 +3726,16 @@
         </div>
       </div>
 
-      <!-- Poison Dart -->
+      <!-- Fog the Frog -->
       <div class="home-tier-card" data-tier="poisondart" onclick="document.getElementById('btn-solo').click()">
-        <div class="home-tier-emoji">🎯</div>
+        <div class="home-tier-emoji">🌫️</div>
         <div class="home-tier-text">
-          <div class="home-tier-name">Poison Dart</div>
-          <div class="home-tier-sub">Hard · Colour Run + Blitz</div>
+          <div class="home-tier-name">Fog the Frog</div>
+          <div class="home-tier-sub">Hard · Fog · 10 Haunted Locations</div>
         </div>
         <div class="home-tier-right">
           <span class="home-tier-price">£1.99</span>
-          <button class="home-tier-play-btn" aria-label="Play Poison Dart mode">PLAY</button>
+          <button class="home-tier-play-btn" aria-label="Play Fog the Frog mode">PLAY</button>
         </div>
       </div>
 
@@ -3744,7 +3744,7 @@
         <div class="home-tier-emoji">✨</div>
         <div class="home-tier-text">
           <div class="home-tier-name">Golden Frog</div>
-          <div class="home-tier-sub">Expert · All modes unlocked</div>
+          <div class="home-tier-sub">Expert · 10 Luxury Locations</div>
         </div>
         <div class="home-tier-right">
           <span class="home-tier-price">£1.99</span>
@@ -3964,7 +3964,7 @@
           <div class="htp-tier-emoji">☠️</div>
           <div class="htp-tier-info">
             <div class="htp-tier-name" style="color:#CC1212">Poison Dart</div>
-            <div class="htp-tier-sub">Survival — tiles vanish. How long can you last?</div>
+            <div class="htp-tier-sub">Fog the Frog — fog drifts across the board. Can you see through it?</div>
           </div>
           <div class="htp-tier-price">£1.99/yr</div>
         </div>
@@ -3972,7 +3972,7 @@
           <div class="htp-tier-emoji">🌟</div>
           <div class="htp-tier-info">
             <div class="htp-tier-name" style="color:#F5E000">Golden Frog</div>
-            <div class="htp-tier-sub">Colour Run + all modes. Everything unlocked.</div>
+            <div class="htp-tier-sub">Golden Frog — 10 luxury locations, each with a unique board mechanic.</div>
           </div>
           <div class="htp-tier-price">£1.99/yr</div>
         </div>
@@ -4134,23 +4134,23 @@
       <!-- POISON DART -->
       <div class="game-tier-card" data-tier="poisondart" id="gtc-poisondart" style="--tc:#CC1212">
         <div class="gtc-left">
-          <div class="gtc-emoji">☠️</div>
+          <div class="gtc-emoji">🌫️</div>
           <div class="gtc-info">
-            <div class="gtc-name">POISON DART</div>
-            <div class="gtc-sub">Hard · Survival · Glitch Frog attacks</div>
+            <div class="gtc-name">FOG THE FROG</div>
+            <div class="gtc-sub">Hard · Fog · 10 Haunted Locations</div>
             <div class="gtc-badge">Unlocks all below · £1.99/yr</div>
           </div>
         </div>
-        <button class="gtc-play-btn" id="gtc-play-poisondart" aria-label="Play Poison Dart mode">▶ PLAY</button>
+        <button class="gtc-play-btn" id="gtc-play-poisondart" aria-label="Play Fog the Frog mode">▶ PLAY</button>
       </div>
 
       <!-- GOLDEN FROG -->
       <div class="game-tier-card" data-tier="goldenfrog" id="gtc-goldenfrog" style="--tc:#F5E000">
         <div class="gtc-left">
-          <div class="gtc-emoji">🌟</div>
+          <div class="gtc-emoji">✨</div>
           <div class="gtc-info">
             <div class="gtc-name">GOLDEN FROG</div>
-            <div class="gtc-sub">Expert · Colour Run · Frog Stamp</div>
+            <div class="gtc-sub">Expert · 10 Luxury Locations · Prestige</div>
             <div class="gtc-badge gtc-badge-gold">✦ Unlocks ALL 4 games · £1.99/yr each or £7.99/yr all</div>
           </div>
         </div>
@@ -4931,11 +4931,11 @@ const TIERS = [
     tileStyle: 'neon', powerup: { id:'bomb', label:'BOMB', icon:'💣', count:3 }, powerupCount: 3,
   },
   {
-    id: 'poisondart', name: 'POISON DART', emoji: '🦎', color: '#CC1212',
+    id: 'poisondart', name: 'FOG THE FROG', emoji: '🌫️', color: '#CC1212',
     price: 1.99,
     annual: true,
-    desc: 'Hard mode + Survival challenge unlocked.',
-    perks: ['Everything in Tadpole + Tree Frog (all 3 unlocked) · £1.99/year','Hard difficulty — 1.8× score multiplier','Survival mode: tiles vanish after 12s. Board over 50% full? Glitch Frog drops extra tiles on you!','Toxic orange/red tile skin','VENOM power-up: wipes all tiles of one colour','5 power-ups per game'],
+    desc: 'Hard mode + Fog the Frog challenge unlocked.',
+    perks: ['Everything in Tadpole + Tree Frog (all 3 unlocked) · £1.99/year','Hard difficulty — 1.8× score multiplier','Fog mode: a creeping fog drifts across the board — tiles fade and vanish beneath it. 10 haunted locations from Enchanted Woods to Above the Clouds!','Toxic orange/red tile skin','VENOM power-up: wipes all tiles of one colour','5 power-ups per game'],
     gridTheme: { bg: '#080808', gridLine: 'rgba(245,166,35,0.07)', corner: 'rgba(245,166,35,0.4)' },
     tileStyle: 'toxic', powerup: { id:'venom', label:'VENOM', icon:'☠️', count:5 }, powerupCount: 5,
     bonusMultiplier: 1.5,
@@ -4944,8 +4944,8 @@ const TIERS = [
     id: 'goldenfrog', name: 'GOLDEN FROG', emoji: '✨', color: '#F5E000',
     price: 1.99,
     annual: true,
-    desc: 'Expert mode + Colour Run. Everything unlocked.',
-    perks: ['Unlocks ALL 4 games — best value · £1.99/year each','Expert difficulty — 2.5× score multiplier','Colour Run mode: match 4 tiles of the same colour in a row. Break the streak? Obstacle tiles drop in!','Gold holographic tile skin + starfield grid','STORM power-up: force-clears 2 full lines','5 power-ups per game'],
+    desc: 'Expert prestige mode. 10 luxury locations. Everything unlocked.',
+    perks: ['Unlocks ALL 4 games — best value · £1.99/year each','Expert difficulty — 2.5× score multiplier','Golden Frog mode: 10 luxury world locations, each with a completely different board mechanic — Split, Mirror, Quake, Shrink, Blackout, Conveyor, Gravity, Ghost, Rotation, The Gauntlet','Gold holographic tile skin + starfield grid','STORM power-up: force-clears 2 full lines','5 power-ups per game'],
     gridTheme: { bg: '#06060c', gridLine: 'rgba(255,215,0,0.06)', corner: 'rgba(255,215,0,0.4)' },
     tileStyle: 'gold', powerup: { id:'storm', label:'STORM', icon:'⚡', count:5 }, powerupCount: 5,
     bonusMultiplier: 2.0, starfield: true,
@@ -5878,6 +5878,10 @@ function _ambientDraw(timestamp) {
     _drawFrenzyAmbient(ctx, W, H, rand, lerp);
   } else if (activeChallengeMode === 'colourrun') {
     _drawGoldenAmbient(ctx, W, H, rand, lerp);
+  } else if (activeChallengeMode === 'fog') {
+    _drawFogAmbient(ctx, W, H, rand, lerp);
+  } else if (activeChallengeMode === 'goldenfrog') {
+    _drawGoldenFrogAmbient(ctx, W, H, rand, lerp);
   }
 }
 
@@ -6272,6 +6276,90 @@ function _drawGoldenAmbient(ctx, W, H, rand, lerp) {
   }
 }
 
+
+// ─ Fog the Frog in-game ambient (overlays on grid via _ambientDraw) ─────────────
+function _drawFogAmbient(ctx, W, H, rand, lerp) {
+  const t = _ambientT;
+  // Enchanted woods background tones that shift by level
+  const fogLvl = Math.min(cm_fogLevel || 1, 10);
+  // Sky transitions from green forest (L1) to deep ocean dark (L9) to above clouds white (L10)
+  let skyTop, skyBot;
+  if (fogLvl <= 3) { skyTop = 'rgba(4,12,4,0.92)';  skyBot = 'rgba(8,20,6,0.90)'; }
+  else if (fogLvl <= 6) { skyTop = 'rgba(2,8,10,0.93)';  skyBot = 'rgba(4,15,12,0.91)'; }
+  else if (fogLvl <= 8) { skyTop = 'rgba(2,4,8,0.94)';   skyBot = 'rgba(3,8,16,0.92)'; }
+  else if (fogLvl === 9) { skyTop = 'rgba(0,1,4,0.97)';   skyBot = 'rgba(0,2,6,0.95)'; }
+  else { skyTop = 'rgba(18,22,28,0.90)'; skyBot = 'rgba(28,32,40,0.88)'; } // above clouds: lighter
+
+  const bg = ctx.createLinearGradient(0, 0, 0, H);
+  bg.addColorStop(0, skyTop); bg.addColorStop(1, skyBot);
+  ctx.fillStyle = bg; ctx.fillRect(0, 0, W, H);
+
+  // Ambient fog wisps drifting slowly
+  const numWisps = 3 + Math.floor(fogLvl / 3);
+  for (let wi = 0; wi < numWisps; wi++) {
+    const wx = ((t * (0.3 + wi * 0.12) + wi * W / numWisps) % (W + 80)) - 40;
+    const wy = H * (0.2 + wi * 0.14) + Math.sin(t * 0.008 + wi) * 12;
+    const wAlpha = (0.08 + 0.04 * Math.sin(t * 0.012 + wi)) * Math.min(fogLvl / 5, 1);
+    const hue = fogLvl <= 5 ? 120 : fogLvl <= 8 ? 160 : 180; // green → teal → blue
+    ctx.save();
+    ctx.globalAlpha = wAlpha;
+    const wg = ctx.createRadialGradient(wx, wy, 0, wx, wy, 55 + wi * 8);
+    wg.addColorStop(0, 'hsl(' + hue + ',50%,65%)');
+    wg.addColorStop(1, 'rgba(0,0,0,0)');
+    ctx.fillStyle = wg;
+    ctx.beginPath(); ctx.ellipse(wx, wy, 60 + wi * 10, 20 + wi * 3, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.restore();
+  }
+
+  // Frog eyes blinking in fog
+  if (fogLvl >= 3 && Math.floor(t / 45) % 3 === 0) {
+    const ex = W * (0.3 + Math.sin(t * 0.005) * 0.2);
+    const ey = H * (0.4 + Math.cos(t * 0.007) * 0.15);
+    const eyeA = (Math.sin(t * 0.3) + 1) * 0.5 * 0.5;
+    ctx.save(); ctx.globalAlpha = eyeA;
+    ctx.shadowColor = 'rgba(80,255,40,0.9)'; ctx.shadowBlur = 8;
+    ctx.fillStyle = 'rgba(100,255,60,1)';
+    ctx.beginPath(); ctx.arc(ex - 4, ey, 2, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.arc(ex + 4, ey, 2, 0, Math.PI * 2); ctx.fill();
+    ctx.restore();
+  }
+}
+
+// ─ Golden Frog in-game ambient ────────────────────────────────────────────────
+function _drawGoldenFrogAmbient(ctx, W, H, rand, lerp) {
+  const t = _ambientT;
+  const gfLvl = Math.min(cm_gfLevel || 1, 10);
+  const gfCfg = (typeof GF_LOCATIONS_CFG !== 'undefined') ? GF_LOCATIONS_CFG[gfLvl - 1] : null;
+  const accentHex = gfCfg ? gfCfg.accent : '#FFD700';
+  const bgHex = gfCfg ? gfCfg.bg : '#06060c';
+
+  // Deep background from location config
+  const bg = ctx.createLinearGradient(0, 0, W, H);
+  bg.addColorStop(0, bgHex);
+  bg.addColorStop(1, bgHex);
+  ctx.fillStyle = bg; ctx.fillRect(0, 0, W, H);
+
+  // Pulsing accent glow
+  const glowAlpha = 0.08 + 0.04 * Math.sin(t * 0.03);
+  const glow = ctx.createRadialGradient(W / 2, H * 0.4, 0, W / 2, H * 0.4, W * 0.7);
+  glow.addColorStop(0, accentHex.replace('#', 'rgba(').split('').join('') + ',0)'); // fallback
+  glow.addColorStop(0, 'rgba(255,215,0,' + glowAlpha + ')');
+  glow.addColorStop(1, 'rgba(0,0,0,0)');
+  ctx.fillStyle = glow; ctx.fillRect(0, 0, W, H);
+
+  // Gold sparkles
+  for (let si = 0; si < 6; si++) {
+    const sx = ((t * (0.4 + si * 0.15) * (si % 2 === 0 ? 1 : -1) + si * W / 6 + W) % (W + 20)) - 10;
+    const sy = H * (0.15 + si * 0.14) + Math.sin(t * 0.02 + si * 1.3) * 18;
+    const sparkA = (0.3 + 0.3 * Math.sin(t * 0.05 + si)) * 0.6;
+    ctx.save(); ctx.globalAlpha = sparkA;
+    ctx.fillStyle = '#FFD700';
+    ctx.shadowColor = 'rgba(255,215,0,0.8)'; ctx.shadowBlur = 6;
+    ctx.beginPath(); ctx.arc(sx, sy, 1.5 + Math.sin(t * 0.03 + si) * 0.5, 0, Math.PI * 2); ctx.fill();
+    ctx.restore();
+  }
+}
+
 function buildCityMask(colHeights) {
   const mask = Array.from({length:ROWS}, () => new Array(COLS).fill(false));
   for (let c = 0; c < COLS; c++) {
@@ -6569,7 +6657,7 @@ function drawGrid(){
 
   // Ambient FX: composite behind grid for standard/frenzy/colourrun
   if (!cityPackActive && _ambientInitialized && _ambientCanvas &&
-      (activeChallengeMode === 'standard' || activeChallengeMode === 'frenzy' || activeChallengeMode === 'colourrun')) {
+      (activeChallengeMode === 'standard' || activeChallengeMode === 'frenzy' || activeChallengeMode === 'colourrun' || activeChallengeMode === 'fog' || activeChallengeMode === 'goldenfrog')) {
     ctx.drawImage(_ambientCanvas, 0, 0);
   }
 
@@ -6588,6 +6676,65 @@ function drawGrid(){
     }
   }
   for(let r=0;r<ROWS;r++)for(let c=0;c<COLS;c++)if(grid[r][c])drawTile(r,c,getTileColor(grid[r][c]),1,false,isGold);
+
+  // ─ FOG THE FROG: overlay fog on tiles ──────────────────────────────────────
+  if (activeChallengeMode === 'fog' && cm_fogTileAlpha.length) {
+    for (let r = 0; r < ROWS; r++) {
+      for (let c = 0; c < COLS; c++) {
+        const fogAlpha = _fogGetTileOpacity(r, c);
+        if (fogAlpha > 0.02) {
+          const x = c * CELL, y = r * CELL;
+          // Fog layer: green-purple tinted mist
+          ctx.save();
+          ctx.globalAlpha = Math.min(fogAlpha * 0.88, 0.92);
+          // Gradient: foggy green/purple breath
+          const fg = ctx.createRadialGradient(x+CELL/2, y+CELL/2, 0, x+CELL/2, y+CELL/2, CELL*0.8);
+          fg.addColorStop(0, 'rgba(120,200,100,0.9)');
+          fg.addColorStop(0.5, 'rgba(80,140,80,0.7)');
+          fg.addColorStop(1, 'rgba(40,80,60,0.5)');
+          ctx.fillStyle = fg;
+          ctx.beginPath(); ctx.roundRect(x+1, y+1, CELL-2, CELL-2, 3); ctx.fill();
+          // Blink frog eyes inside fog at low alpha cells
+          if (fogAlpha > 0.5 && Math.random() < 0.001) {
+            ctx.globalAlpha = 0.6;
+            ctx.fillStyle = 'rgba(100,255,60,1)';
+            ctx.beginPath(); ctx.arc(x + CELL*0.35, y + CELL*0.45, 2, 0, Math.PI*2); ctx.fill();
+            ctx.beginPath(); ctx.arc(x + CELL*0.65, y + CELL*0.45, 2, 0, Math.PI*2); ctx.fill();
+          }
+          ctx.restore();
+        }
+      }
+    }
+  }
+
+  // ─ GOLDEN FROG BLACKOUT: full board darkness ─────────────────────────
+  if (activeChallengeMode === 'goldenfrog' && cm_gfBlackoutActive) {
+    ctx.save();
+    ctx.globalAlpha = 0.92;
+    ctx.fillStyle = '#000';
+    ctx.fillRect(0, 0, W, H);
+    // Show small animated ✨ so player knows blackout is active
+    ctx.globalAlpha = 0.8;
+    ctx.fillStyle = '#FFD700';
+    ctx.font = 'bold 18px monospace';
+    ctx.textAlign = 'center';
+    ctx.fillText('✨ BLACKOUT ✨', W/2, H/2);
+    ctx.restore();
+  }
+
+  // ─ GOLDEN FROG SPLIT: vertical divider line ────────────────────────
+  if (activeChallengeMode === 'goldenfrog') {
+    const gfCfg = GF_LOCATIONS_CFG[Math.min(cm_gfLevel-1, 9)];
+    if (gfCfg && (gfCfg.mechanic === 'split' || gfCfg.mechanic === 'gauntlet')) {
+      ctx.save();
+      ctx.strokeStyle = 'rgba(255,215,0,0.45)';
+      ctx.lineWidth = 2;
+      ctx.setLineDash([6, 4]);
+      const splitX = Math.floor(COLS/2) * CELL;
+      ctx.beginPath(); ctx.moveTo(splitX, 0); ctx.lineTo(splitX, H); ctx.stroke();
+      ctx.restore();
+    }
+  }
 
   if(dragging&&dragShape&&hoverCell){
     const{r,c}=hoverCell;
@@ -6731,6 +6878,15 @@ function endDrag(cx,cy){
     // Pass actual placed absolute cells to colour run (for split-mode half-check)
     const _placedAbsolute = _placedShape.map(([dr, dc]) => [_placedCell.r + dr, _placedCell.c + dc]);
     onColourRunPlace(dragColor, _placedAbsolute);
+    // Fog the Frog: track last placed position for chase fog
+    if (activeChallengeMode === 'fog' && _placedAbsolute.length > 0) {
+      lastPlacedRow = _placedAbsolute[0][0]; lastPlacedCol = _placedAbsolute[0][1];
+    }
+    // Golden Frog: apply mirror + register ghost cells
+    if (activeChallengeMode === 'goldenfrog') {
+      _gfApplyMirror(_placedAbsolute);
+      for (const [r, c] of _placedAbsolute) _gfRegisterGhostCell(r, c);
+    }
 
     if(specialType){
       // Special brick: apply effect, skip normal scoring for now
@@ -6753,6 +6909,21 @@ function endDrag(cx,cy){
           const rr = lines.completedRows[0];
           const cc = Math.floor(Math.random() * COLS);
           setTimeout(() => spawnJumpingFrog('bonus', rr, cc), 100);
+        }
+        // Golden Frog: Rotation (L9/Gauntlet) + Gravity (L7/Gauntlet) on each line clear
+        if (activeChallengeMode === 'goldenfrog') {
+          const gfLineCfg = GF_LOCATIONS_CFG[Math.min(cm_gfLevel-1, 9)];
+          if (gfLineCfg && (gfLineCfg.mechanic === 'rotation' || gfLineCfg.mechanic === 'gauntlet')) {
+            setTimeout(_gfRotateBoard, 250);
+          }
+          if (gfLineCfg && (gfLineCfg.mechanic === 'gravity' || gfLineCfg.mechanic === 'gauntlet')) {
+            cm_gfGravityFlip = !cm_gfGravityFlip;
+            if (cm_gfGravityFlip) {
+              // Flip grid upside-down
+              grid.reverse();
+              showEventBanner('✨ VENICE — GRAVITY FLIPS!');
+            }
+          }
         }
       }else{combo=0;hideCombo();}
     }
@@ -6916,7 +7087,7 @@ function animateParticles(ts){
     drawGrid();
   }
   // Ambient FX: Tadpole pond, Frenzy weather, Golden Frog location
-  if (!cityPackActive && _ambientInitialized && (activeChallengeMode === 'standard' || activeChallengeMode === 'frenzy' || activeChallengeMode === 'colourrun')) {
+  if (!cityPackActive && _ambientInitialized && (activeChallengeMode === 'standard' || activeChallengeMode === 'frenzy' || activeChallengeMode === 'colourrun' || activeChallengeMode === 'fog' || activeChallengeMode === 'goldenfrog')) {
     _ambientDraw(ts);
     drawGrid();
   }
@@ -6983,7 +7154,7 @@ function startGame(){
   requestAnimationFrame(() => {
     calcLayout(); renderTray(); drawGrid();
     // Init ambient after canvas is sized
-    if (!cityPackActive && (activeChallengeMode === 'standard' || activeChallengeMode === 'frenzy' || activeChallengeMode === 'colourrun')) {
+    if (!cityPackActive && (activeChallengeMode === 'standard' || activeChallengeMode === 'frenzy' || activeChallengeMode === 'colourrun' || activeChallengeMode === 'fog' || activeChallengeMode === 'goldenfrog')) {
       _ambientInit(gridCanvas.width, gridCanvas.height);
     }
   });
@@ -6991,8 +7162,8 @@ function startGame(){
   const msgs = {
     standard: '🥚 TADPOLE · EASY — CLEAR ROWS!',
     frenzy:   '🐸 TREE FROG · FRENZY — BEAT THE TIMER!',
-    survival: '☠️ POISON DART · SURVIVAL — GLITCH FROG INCOMING!',
-    colourrun:'🌟 GOLDEN FROG · COLOUR RUN — MATCH 4!'
+    fog: '🌫️ FOG THE FROG — THE FOG IS RISING!',
+    goldenfrog:'✨ GOLDEN FROG — PRESTIGE MODE ACTIVATED!'
   };
   setTimeout(()=>showEventBanner(msgs[activeChallengeMode]||'🎮 GO!'), 500);
 }
@@ -7145,48 +7316,24 @@ function _ambientTreeFrog(cvs, ctx) {
 }
 
 // ── Poison Dart: glitch/survival ─────────────────────────────
+// ─ Fog the Frog: creeping fog ambient ───────────────────────────────
 function _ambientPoisonDart(cvs, ctx) {
-  let scanY = 0;
-  let glitchUntil = 0;
-  let t0 = null;
-  function draw(ts) {
-    if (!t0) t0 = ts;
-    const elapsed = ts - t0;
-    const W = cvs.width, H = cvs.height;
-    ctx.clearRect(0,0,W,H);
-    // Near-black background
-    ctx.fillStyle = '#050505'; ctx.fillRect(0,0,W,H);
-    // Red scan line
-    scanY = (scanY + 1.2) % H;
-    const grad = ctx.createLinearGradient(0, scanY-6, 0, scanY+6);
-    grad.addColorStop(0,'rgba(204,18,18,0)');
-    grad.addColorStop(0.5,'rgba(204,18,18,0.6)');
-    grad.addColorStop(1,'rgba(204,18,18,0)');
-    ctx.fillStyle = grad;
-    ctx.fillRect(0, scanY-6, W, 12);
-    // Glitch flash
-    if (ts > glitchUntil && Math.random() < 0.003) { glitchUntil = ts + 50; }
-    if (ts < glitchUntil) {
-      ctx.save();
-      ctx.globalCompositeOperation = 'difference';
-      ctx.fillStyle = 'rgba(255,40,40,0.9)';
-      ctx.fillRect(0,0,W,H);
-      ctx.restore();
-    }
-    // Red vignette
-    const vig = ctx.createRadialGradient(W/2,H/2, H*0.2, W/2,H/2, H*0.8);
-    vig.addColorStop(0,'rgba(0,0,0,0)');
-    vig.addColorStop(1,'rgba(180,0,0,0.35)');
-    ctx.fillStyle = vig; ctx.fillRect(0,0,W,H);
-    _shopAmbientRAFs.push(requestAnimationFrame(draw));
-  }
-  _shopAmbientRAFs.push(requestAnimationFrame(draw));
-}
-
-// ── Golden Frog: Dubai sunset ─────────────────────────────────
-function _ambientGoldenFrog(cvs, ctx) {
-  const particles = Array.from({length:25}, () => ({
-    x: Math.random(), y: 0.4+Math.random()*0.6, speed: 0.0005+Math.random()*0.001, size: 1+Math.random()*2
+  const fogClouds = Array.from({length:5}, (_, i) => ({
+    x: Math.random() * 1.2 - 0.1,
+    y: 0.2 + i * 0.16 + Math.random() * 0.08,
+    rx: 0.18 + Math.random() * 0.14,
+    ry: 0.06 + Math.random() * 0.04,
+    speed: 0.00012 + Math.random() * 0.0001,
+    alpha: 0.4 + Math.random() * 0.3,
+    phase: Math.random() * Math.PI * 2,
+    hue: 100 + Math.floor(Math.random() * 80), // green to purple range
+  }));
+  const eyes = Array.from({length:3}, () => ({
+    x: 0.15 + Math.random() * 0.7,
+    y: 0.3 + Math.random() * 0.5,
+    blinkAt: Math.random() * 4000,
+    blinkDur: 180,
+    lastBlink: 0,
   }));
   let t0 = null;
   function draw(ts) {
@@ -7194,40 +7341,118 @@ function _ambientGoldenFrog(cvs, ctx) {
     const elapsed = ts - t0;
     const W = cvs.width, H = cvs.height;
     ctx.clearRect(0,0,W,H);
-    // Desert amber/orange sky
+    // Dark enchanted woods background
     const bg = ctx.createLinearGradient(0,0,0,H);
-    bg.addColorStop(0,'#1a0a00'); bg.addColorStop(0.5,'#3d1a00'); bg.addColorStop(1,'#6b2e00');
+    bg.addColorStop(0,'#020805'); bg.addColorStop(1,'#050e03');
     ctx.fillStyle = bg; ctx.fillRect(0,0,W,H);
-    // Warm shimmer glow from bottom
-    const glow = ctx.createRadialGradient(W*0.5, H, 0, W*0.5, H, W*0.7);
-    glow.addColorStop(0,'rgba(255,160,20,0.3)');
-    glow.addColorStop(1,'rgba(255,100,0,0)');
-    ctx.fillStyle = glow; ctx.fillRect(0,0,W,H);
-    // Burj Khalifa silhouette (thin tapering tower on right)
-    const bx = W*0.85, bBase = H, bH = H*0.75;
-    ctx.beginPath();
-    ctx.moveTo(bx-W*0.018, bBase);
-    ctx.lineTo(bx-W*0.008, bBase-bH*0.6);
-    ctx.lineTo(bx-W*0.003, bBase-bH*0.85);
-    ctx.lineTo(bx, bBase-bH);
-    ctx.lineTo(bx+W*0.003, bBase-bH*0.85);
-    ctx.lineTo(bx+W*0.008, bBase-bH*0.6);
-    ctx.lineTo(bx+W*0.018, bBase);
-    ctx.closePath();
-    ctx.fillStyle = 'rgba(10,5,0,0.8)';
-    ctx.fill();
-    // Antenna
-    ctx.beginPath(); ctx.moveTo(bx, bBase-bH); ctx.lineTo(bx, bBase-bH-H*0.06);
-    ctx.strokeStyle = 'rgba(10,5,0,0.8)'; ctx.lineWidth = 2; ctx.stroke();
-    // Sand particles drifting right
-    particles.forEach(p => {
-      p.x += p.speed;
-      if (p.x > 1.1) p.x = -0.1;
+    // Fog clouds drifting
+    fogClouds.forEach(fc => {
+      fc.x += fc.speed;
+      if (fc.x > 1.2) fc.x = -0.2;
+      const pulse = 0.75 + 0.25 * Math.sin(elapsed * 0.001 + fc.phase);
+      ctx.save();
+      ctx.globalAlpha = fc.alpha * pulse;
+      const fg = ctx.createRadialGradient(
+        fc.x*W, fc.y*H, 0,
+        fc.x*W, fc.y*H, fc.rx*W
+      );
+      fg.addColorStop(0, 'hsl(' + fc.hue + ',55%,68%)');
+      fg.addColorStop(0.5, 'hsl(' + fc.hue + ',45%,40%)');
+      fg.addColorStop(1, 'rgba(0,0,0,0)');
+      ctx.fillStyle = fg;
       ctx.beginPath();
-      ctx.arc(p.x*W, p.y*H, p.size, 0, Math.PI*2);
-      ctx.fillStyle = 'rgba(255,180,60,0.5)';
+      ctx.ellipse(fc.x*W, fc.y*H, fc.rx*W, fc.ry*H, 0, 0, Math.PI*2);
       ctx.fill();
+      ctx.restore();
     });
+    // Blinking frog eyes in the fog
+    eyes.forEach(eye => {
+      const since = elapsed - eye.lastBlink;
+      const nextBlink = eye.blinkAt;
+      if (elapsed > eye.lastBlink + nextBlink) {
+        eye.lastBlink = elapsed;
+        eye.blinkAt = 1500 + Math.random() * 3500;
+      }
+      const eyeAlpha = (since < eye.blinkDur) ? (0.7 - (since / eye.blinkDur) * 0.7) : 0;
+      if (eyeAlpha > 0) {
+        ctx.save(); ctx.globalAlpha = eyeAlpha;
+        ctx.fillStyle = 'rgba(100,255,60,1)';
+        ctx.shadowColor = 'rgba(80,255,40,0.9)'; ctx.shadowBlur = 6;
+        ctx.beginPath(); ctx.arc(eye.x*W - 5, eye.y*H, 2.5, 0, Math.PI*2); ctx.fill();
+        ctx.beginPath(); ctx.arc(eye.x*W + 5, eye.y*H, 2.5, 0, Math.PI*2); ctx.fill();
+        ctx.restore();
+      }
+    });
+    // Dark vignette edges
+    const vig = ctx.createRadialGradient(W/2,H/2, H*0.2, W/2,H/2, H*0.8);
+    vig.addColorStop(0,'rgba(0,0,0,0)');
+    vig.addColorStop(1,'rgba(0,10,0,0.55)');
+    ctx.fillStyle = vig; ctx.fillRect(0,0,W,H);
+    _shopAmbientRAFs.push(requestAnimationFrame(draw));
+  }
+  _shopAmbientRAFs.push(requestAnimationFrame(draw));
+}
+
+// ── Golden Frog: luxury prestige ambient ────────────────────────────
+function _ambientGoldenFrog(cvs, ctx) {
+  const particles = Array.from({length:40}, () => ({
+    x: Math.random(), y: Math.random(),
+    angle: Math.random() * Math.PI * 2,
+    speed: 0.0003 + Math.random() * 0.0006,
+    r: 0.8 + Math.random() * 2.5,
+    alpha: 0.3 + Math.random() * 0.7,
+    phase: Math.random() * Math.PI * 2,
+    orbitR: 0.06 + Math.random() * 0.35, // orbit radius
+    orbitSpd: (Math.random() > 0.5 ? 1 : -1) * (0.0004 + Math.random() * 0.0008),
+  }));
+  let t0 = null;
+  function draw(ts) {
+    if (!t0) t0 = ts;
+    const elapsed = ts - t0;
+    const W = cvs.width, H = cvs.height;
+    ctx.clearRect(0,0,W,H);
+    // Deep royal dark background
+    const bg = ctx.createLinearGradient(0,0,W,H);
+    bg.addColorStop(0,'#06040a'); bg.addColorStop(0.5,'#0c0808'); bg.addColorStop(1,'#080608');
+    ctx.fillStyle = bg; ctx.fillRect(0,0,W,H);
+    // Radial golden glow at center
+    const glow = ctx.createRadialGradient(W/2, H*0.45, 0, W/2, H*0.45, W*0.6);
+    glow.addColorStop(0,'rgba(255,215,0,0.12)');
+    glow.addColorStop(0.5,'rgba(200,140,0,0.06)');
+    glow.addColorStop(1,'rgba(0,0,0,0)');
+    ctx.fillStyle = glow; ctx.fillRect(0,0,W,H);
+    // Orbiting gold particles
+    const cx2 = W/2, cy2 = H*0.45;
+    particles.forEach(p => {
+      p.angle += p.orbitSpd;
+      const px = cx2 + Math.cos(p.angle) * p.orbitR * W;
+      const py = cy2 + Math.sin(p.angle) * p.orbitR * H * 0.6;
+      const pulse = 0.5 + 0.5 * Math.sin(elapsed * 0.002 + p.phase);
+      ctx.save();
+      ctx.globalAlpha = p.alpha * pulse;
+      ctx.shadowColor = 'rgba(255,215,0,0.8)';
+      ctx.shadowBlur = 4;
+      ctx.fillStyle = Math.random() > 0.85 ? 'rgba(255,255,220,1)' : 'rgba(255,215,0,1)';
+      ctx.beginPath(); ctx.arc(px, py, p.r, 0, Math.PI*2); ctx.fill();
+      ctx.restore();
+    });
+    // Shimmer streaks
+    for (let si = 0; si < 4; si++) {
+      const sx = W * (0.2 + si * 0.2);
+      const sy = H * (0.15 + si * 0.17);
+      const streakAlpha = 0.08 + 0.08 * Math.sin(elapsed * 0.0012 + si * 1.2);
+      ctx.save(); ctx.globalAlpha = streakAlpha;
+      const sg = ctx.createLinearGradient(sx-30, sy, sx+30, sy+8);
+      sg.addColorStop(0,'rgba(255,215,0,0)'); sg.addColorStop(0.5,'rgba(255,215,0,1)'); sg.addColorStop(1,'rgba(255,215,0,0)');
+      ctx.fillStyle = sg;
+      ctx.fillRect(sx-30, sy, 60, 2);
+      ctx.restore();
+    }
+    // Golden vignette frame
+    const vig = ctx.createRadialGradient(W/2,H/2, H*0.15, W/2,H/2, H*0.9);
+    vig.addColorStop(0,'rgba(0,0,0,0)');
+    vig.addColorStop(1,'rgba(120,80,0,0.18)');
+    ctx.fillStyle = vig; ctx.fillRect(0,0,W,H);
     _shopAmbientRAFs.push(requestAnimationFrame(draw));
   }
   _shopAmbientRAFs.push(requestAnimationFrame(draw));
@@ -7394,10 +7619,10 @@ function buildShopUI(){
 
   // Tier metadata for new dark glass cards
   const TIER_META = {
-    tadpole:    { emoji:'🥚', sub:'Standard · Easy',       legal:'7-day free trial, then £0.99/year · Annual subscription · Cancel anytime in App Store Settings' },
-    treefrog:   { emoji:'🐸', sub:'Frenzy · Medium',       legal:'Annual subscription · Cancel anytime in App Store Settings' },
-    poisondart: { emoji:'🦎', sub:'Survival · Hard',       legal:'Annual subscription · Cancel anytime in App Store Settings' },
-    goldenfrog: { emoji:'✨', sub:'Colour Run · Expert',   legal:'Annual subscription · Cancel anytime in App Store Settings' },
+    tadpole:    { emoji:'🥚', sub:'Standard · Easy',          legal:'7-day free trial, then £0.99/year · Annual subscription · Cancel anytime in App Store Settings' },
+    treefrog:   { emoji:'🐸', sub:'Frenzy · Medium',          legal:'Annual subscription · Cancel anytime in App Store Settings' },
+    poisondart: { emoji:'🌫️', sub:'Fog the Frog · Hard',      legal:'Annual subscription · Cancel anytime in App Store Settings' },
+    goldenfrog: { emoji:'✨', sub:'Golden Frog · Expert',     legal:'Annual subscription · Cancel anytime in App Store Settings' },
     duopack:    { emoji:'🎮', sub:'Multiplayer · Monthly', legal:'Monthly subscription · Cancel anytime in App Store Settings' },
     citypack:   { emoji:'🏙️', sub:'10 Cities · All Modes', legal:'Annual subscription · Cancel anytime in App Store Settings' },
   };
@@ -7467,7 +7692,7 @@ function buildShopUI(){
     equipTier(tid);
     closeShop();
     // Set difficulty + challenge based on tier
-    const map = { tadpole:{diff:'easy',challenge:'standard'}, treefrog:{diff:'medium',challenge:'frenzy'}, poisondart:{diff:'hard',challenge:'survival'}, goldenfrog:{diff:'expert',challenge:'colourrun'} };
+    const map = { tadpole:{diff:'easy',challenge:'standard'}, treefrog:{diff:'medium',challenge:'frenzy'}, poisondart:{diff:'hard',challenge:'fog'}, goldenfrog:{diff:'expert',challenge:'goldenfrog'} };
     const m = map[tid] || {diff:'easy',challenge:'standard'};
     setDifficulty(m.diff);
     selectedChallenge = m.challenge;
@@ -8373,7 +8598,7 @@ function _updateMidZone(tier) {
       const city = CITY_PACK_CITIES[cityPackCityIdx];
       badge.textContent = city ? (city.emoji + ' ' + city.name) : 'CITY PACK';
     } else {
-      const modeLabel = {standard:'CLASSIC', frenzy:'FRENZY', survival:'SURVIVAL', colourrun:'COLOUR RUN'}[activeChallengeMode] || '';
+      const modeLabel = {standard:'CLASSIC', frenzy:'FRENZY', survival:'SURVIVAL', fog:'FOG THE FROG', colourrun:'COLOUR RUN', goldenfrog:'GOLDEN FROG'}[activeChallengeMode] || '';
       badge.textContent = tier.emoji + ' ' + tier.name + (modeLabel ? ' · ' + modeLabel : '');
     }
   }
@@ -9850,6 +10075,62 @@ function _duoDrawPondAmbient(ctx,W,H,rand) {
 
 function _duoDrawShakeFrogAmbient(ctx,W,H,rand) {
   var t=_duoAmbientT, level=_duoAmbientLevel;
+
+  // L1: Garden Pond — peaceful start
+  if (level === 1) {
+    var sg1=ctx.createLinearGradient(0,0,0,H);
+    sg1.addColorStop(0,'rgba(15,55,80,0.92)'); sg1.addColorStop(1,'rgba(20,70,100,0.90)');
+    ctx.fillStyle=sg1; ctx.fillRect(0,0,W,H);
+    // Gentle water shimmer
+    ctx.strokeStyle='rgba(120,200,255,0.12)'; ctx.lineWidth=1;
+    for(var wi=0;wi<5;wi++){
+      var wy=H*(0.55+wi*0.09)+Math.sin(t*0.02+wi)*4;
+      ctx.beginPath(); ctx.moveTo(0,wy); for(var wx=0;wx<W;wx+=12) ctx.lineTo(wx,wy+Math.sin(t*0.03+wx*0.04)*3); ctx.stroke();
+    }
+    // Lily pads
+    _dPondLilyPads.forEach(function(lp){
+      lp.x+=Math.sin(t*0.008+lp.phase)*0.15;
+      ctx.save(); ctx.globalAlpha=0.75;
+      ctx.fillStyle='rgba(30,90,30,0.85)';
+      ctx.beginPath(); ctx.ellipse(lp.x,lp.relY*H,lp.w/2,lp.h/2,0,0,Math.PI*2); ctx.fill();
+      if(lp.flower){ctx.fillStyle=lp.fc||'#ff88cc'; ctx.beginPath(); ctx.arc(lp.x,lp.relY*H-lp.h/2-3,3,0,Math.PI*2); ctx.fill();}
+      ctx.restore();
+    });
+    return;
+  }
+
+  // L10: The Storm — max intensity
+  if (level >= 10) {
+    ctx.fillStyle='rgba(2,2,5,0.99)'; ctx.fillRect(0,0,W,H);
+    ctx.strokeStyle='rgba(150,190,255,0.45)'; ctx.lineWidth=0.9;
+    for(var si=0;si<_dFrenzyRain.length;si++){
+      var rn2=_dFrenzyRain[si];
+      rn2.y+=rn2.speed*1.5; rn2.x+=rn2.speed*0.35;
+      if(rn2.y>H+20){rn2.y=-10; rn2.x=rand(-20,W);}
+      ctx.beginPath(); ctx.moveTo(rn2.x,rn2.y); ctx.lineTo(rn2.x+8,rn2.y+rn2.len*1.3); ctx.stroke();
+    }
+    // Frequent lightning
+    _dFrenzyLightningTimer--;
+    if(_dFrenzyLightningTimer<=0){
+      _dFrenzyLightningTimer=15+Math.floor(Math.random()*30);
+      _dFrenzyLightning={x:rand(W*0.1,W*0.9),life:10};
+    }
+    if(_dFrenzyLightning&&_dFrenzyLightning.life>0){
+      ctx.save(); ctx.globalAlpha=_dFrenzyLightning.life/10*0.95;
+      ctx.strokeStyle='#ffffff'; ctx.lineWidth=2;
+      ctx.beginPath(); var slx=_dFrenzyLightning.x,sly=0; ctx.moveTo(slx,sly);
+      for(var sk=0;sk<8;sk++){slx+=rand(-22,22);sly+=H/8;ctx.lineTo(slx,sly);}
+      ctx.stroke(); ctx.restore();
+      _dFrenzyLightning.life--;
+    }
+    // Red vignette
+    var stVig=ctx.createRadialGradient(W/2,H/2,H*0.15,W/2,H/2,H*0.9);
+    stVig.addColorStop(0,'rgba(0,0,0,0)'); stVig.addColorStop(1,'rgba(180,0,0,0.35)');
+    ctx.fillStyle=stVig; ctx.fillRect(0,0,W,H);
+    return;
+  }
+
+  // L2-9: escalating storm
   var r1=6,g1=10,b1=18;
   var skyGrad=ctx.createLinearGradient(0,0,0,H*0.55);
   skyGrad.addColorStop(0,'rgb('+r1+','+g1+','+b1+')');
@@ -10818,8 +11099,8 @@ function updateLockIcons() {
 const TIER_GAME_MAP = {
   tadpole:    { diff: 'easy',   challenge: 'standard' },
   treefrog:   { diff: 'medium', challenge: 'frenzy'   },
-  poisondart: { diff: 'hard',   challenge: 'survival' },
-  goldenfrog: { diff: 'expert', challenge: 'colourrun'},
+  poisondart: { diff: 'hard',   challenge: 'fog'       },
+  goldenfrog: { diff: 'expert', challenge: 'goldenfrog'},
 };
 
 function buildSoloSetupCards() {
@@ -10896,7 +11177,7 @@ document.getElementById('solo-back').addEventListener('click', () => showScreen(
 // ────────────────────────────────────────────────────────────────
 //  CHALLENGE MODES
 // ────────────────────────────────────────────────────────────────
-let activeChallengeMode = 'standard'; // 'standard'|'frenzy'|'survival'|'colourrun'
+let activeChallengeMode = 'standard'; // 'standard'|'frenzy'|'survival'|'fog'|'colourrun'|'goldenfrog'
 let cm_timer = null;
 let cm_secsLeft = 0;
 let cm_linesAtStart = 0;
@@ -10911,6 +11192,27 @@ let cm_splitMode = false;          // false = free-place, true = left/right spli
 let cm_splitLeftColor  = null;     // colour assigned to left half
 let cm_splitRightColor = null;     // colour assigned to right half
 const CR_SPLIT_COL = 5;            // columns 0-4 = left, 5-9 = right
+// Fog the Frog state
+let cm_fogTimer = null;
+let cm_fogPatches = [];            // array of fog patch objects
+let cm_fogLevel = 1;               // 1-10 controls location + coverage
+let cm_fogSurvivedSecs = 0;
+let cm_fogTileAlpha = [];          // per-cell fog opacity [row][col]
+// Golden Frog state
+let cm_gfTimer = null;
+let cm_gfMechTimer = null;
+let cm_gfLevel = 1;                // 1-10 controls location + mechanic
+let cm_gfMechActive = false;
+let cm_gfShrinkInterval = null;
+let cm_gfBlackoutTimer = null;
+let cm_gfBlackoutActive = false;
+let cm_gfConveyorTimer = null;
+let cm_gfGhostTimer = null;
+let cm_gfGhostCells = [];          // {r,c,placedAt} ghost cells
+let cm_gfQuakeOffset = {x:0, y:0};
+let cm_gfGravityFlip = false;
+let cm_gfRotateAngle = 0;
+let cm_gfGauntletTimers = [];
 
 function initChallengeMode() {
   // Clear any previous timers
@@ -11017,6 +11319,89 @@ function initChallengeMode() {
     }, 1000);
   }
 
+  // ────────────────────────────────────────────────────────────────
+  //  FOG THE FROG MODE
+  // ────────────────────────────────────────────────────────────────
+  if (activeChallengeMode === 'fog') {
+    cm_fogSurvivedSecs = 0;
+    cm_fogLevel = level || 1;
+    // Determine fog coverage % by level
+    const FOG_LEVELS = [
+      { name:'Enchanted Woods',    coverage:0.20, speed:0.4,  patches:1, behaviour:'drift_lr' },
+      { name:'Scottish Moors',     coverage:0.30, speed:0.5,  patches:1, behaviour:'swirl' },
+      { name:'Scottish Highlands', coverage:0.40, speed:0.55, patches:2, behaviour:'independent' },
+      { name:'Mediterranean Sea',  coverage:0.50, speed:0.6,  patches:2, behaviour:'opposite' },
+      { name:'Coral Reef',         coverage:0.55, speed:0.65, patches:2, behaviour:'pulse' },
+      { name:'Amazon',             coverage:0.60, speed:0.7,  patches:3, behaviour:'random' },
+      { name:'Sahara Night',       coverage:0.65, speed:0.75, patches:3, behaviour:'flash' },
+      { name:'Arctic',             coverage:0.70, speed:0.9,  patches:3, behaviour:'fast_swirl' },
+      { name:'Deep Ocean',         coverage:0.75, speed:0.95, patches:4, behaviour:'smothered' },
+      { name:'Above the Clouds',   coverage:0.80, speed:1.0,  patches:4, behaviour:'chase' },
+    ];
+    const fogCfg = FOG_LEVELS[Math.min(cm_fogLevel - 1, 9)];
+    // Init fog tile alpha grid
+    cm_fogTileAlpha = Array.from({length:ROWS}, () => new Array(COLS).fill(0));
+    // Init fog patches
+    cm_fogPatches = Array.from({length:fogCfg.patches}, (_, i) => ({
+      x: Math.random() * COLS,
+      y: Math.random() * ROWS,
+      vx: (Math.random() > 0.5 ? 1 : -1) * fogCfg.speed * (0.5 + Math.random() * 0.5),
+      vy: (Math.random() > 0.5 ? 0.3 : -0.3) * fogCfg.speed,
+      radius: COLS * 0.25 + i * 0.5,
+      behaviour: fogCfg.behaviour,
+      phase: i * Math.PI * 0.6,
+      flashTimer: 0,
+    }));
+    hud.classList.add('active');
+    document.getElementById('challenge-hud-icon').textContent = '🌫️';
+    updateFogHUD(fogCfg);
+    showEventBanner('🌫️ ' + fogCfg.name + ' — FOG INCOMING!');
+    // Per-second fog tick
+    cm_fogTimer = setInterval(() => {
+      if (!gameActive) { clearInterval(cm_fogTimer); return; }
+      cm_fogSurvivedSecs++;
+      // Advance fog patches
+      _fogAdvancePatches(fogCfg);
+      // Update tile alpha based on patch proximity
+      _fogUpdateTileAlpha(fogCfg.coverage);
+      if (cm_fogSurvivedSecs % 20 === 0) {
+        score += 150; updateUI();
+        showEventBanner('🌫️ THROUGH THE FOG! +150!');
+      }
+      updateFogHUD(fogCfg);
+      drawGrid();
+    }, 1000);
+  }
+
+  // ────────────────────────────────────────────────────────────────
+  //  GOLDEN FROG MODE
+  // ────────────────────────────────────────────────────────────────
+  if (activeChallengeMode === 'goldenfrog') {
+    cm_gfLevel = level || 1;
+    cm_gfBlackoutActive = false;
+    cm_gfGravityFlip = false;
+    cm_gfRotateAngle = 0;
+    cm_gfGhostCells = [];
+    cm_gfQuakeOffset = {x:0, y:0};
+    cm_gfGauntletTimers = [];
+    hud.classList.add('active');
+    document.getElementById('challenge-hud-icon').textContent = '✨';
+    const GF_LOCATIONS = [
+      'Dubai','Ibiza','Monaco','Tokyo','Paris',
+      'Maldives','Venice','New York','Bali','Amalfi'
+    ];
+    const GF_MECHANICS = [
+      'Split Board','Mirror Mode','Quake','Shrink','Blackout',
+      'Conveyor','Gravity Flip','Ghost Tiles','Rotation','The Gauntlet'
+    ];
+    const locName = GF_LOCATIONS[Math.min(cm_gfLevel-1, 9)];
+    const mechName = GF_MECHANICS[Math.min(cm_gfLevel-1, 9)];
+    updateGoldenFrogHUD(locName, mechName);
+    showEventBanner('✨ ' + locName.toUpperCase() + ' — ' + mechName.toUpperCase() + '!');
+    // Activate the current level mechanic
+    _gfActivateMechanic(cm_gfLevel);
+  }
+
   // Show dev skip button if in dev mode
   _showDevSkipIfDev();
 }
@@ -11035,6 +11420,21 @@ function updateSurvivalHUD() {
   document.getElementById('challenge-hud-text').textContent = 'SURVIVAL';
   const sub = document.getElementById('challenge-hud-sub');
   if(sub) sub.textContent = 'Survived ' + cm_survivedSecs + 's';
+  document.getElementById('challenge-hud-timer').textContent = '';
+}
+
+function updateFogHUD(fogCfg) {
+  const loc = fogCfg ? fogCfg.name : 'Fog';
+  document.getElementById('challenge-hud-text').textContent = '🌫️ FOG THE FROG';
+  const sub = document.getElementById('challenge-hud-sub');
+  if (sub) sub.textContent = loc + ' · ' + cm_fogSurvivedSecs + 's survived';
+  document.getElementById('challenge-hud-timer').textContent = '';
+}
+
+function updateGoldenFrogHUD(loc, mech) {
+  document.getElementById('challenge-hud-text').textContent = '✨ GOLDEN FROG';
+  const sub = document.getElementById('challenge-hud-sub');
+  if (sub) sub.textContent = (loc || '') + (mech ? ' · ' + mech : '');
   document.getElementById('challenge-hud-timer').textContent = '';
 }
 
@@ -11152,6 +11552,11 @@ function stopChallengeMode() {
   if (cm_timer) { clearInterval(cm_timer); cm_timer = null; }
   if (cm_survivalTimer) { clearInterval(cm_survivalTimer); cm_survivalTimer = null; }
   if (cm_colourPenaltyTimer) { clearInterval(cm_colourPenaltyTimer); cm_colourPenaltyTimer = null; }
+  // Fog the Frog cleanup
+  if (cm_fogTimer) { clearInterval(cm_fogTimer); cm_fogTimer = null; }
+  cm_fogPatches = []; cm_fogTileAlpha = []; cm_fogSurvivedSecs = 0;
+  // Golden Frog cleanup
+  _gfStopAllMechanics();
   document.getElementById('challenge-hud').classList.remove('active');
   document.getElementById('survival-bar-wrap').classList.remove('active');
   const flipBtn = document.getElementById('cr-flip-btn');
@@ -11159,6 +11564,7 @@ function stopChallengeMode() {
   const devSkipBtn = document.getElementById('dev-level-skip');
   if (devSkipBtn) devSkipBtn.style.display = 'none';
   cm_splitMode = false; cm_splitLeftColor = null; cm_splitRightColor = null;
+  cm_gfBlackoutActive = false; cm_gfGravityFlip = false; cm_gfGhostCells = [];
   activeChallengeMode = 'standard';
 }
 
@@ -11196,6 +11602,10 @@ function _devSkipLevel() {
   if (activeChallengeMode === 'frenzy') { cm_secsLeft = 1; }
   // Colour run: boost streak
   if (activeChallengeMode === 'colourrun') { cm_colourStreak += 4; }
+  // Fog the Frog: simulate fog survival time
+  if (activeChallengeMode === 'fog') { cm_fogSurvivedSecs += 20; }
+  // Golden Frog: log skip
+  if (activeChallengeMode === 'goldenfrog') { showToast('⏭ DEV: GF level ' + cm_gfLevel); }
   updateUI(); drawGrid();
   showToast('⏭ DEV: +10 lines, +5000 score');
 }
@@ -11222,6 +11632,301 @@ function closePause() {
   document.getElementById('pause-overlay').classList.add('hidden');
   gameActive = true;
   if (vsFrogActive) _vsFrogScheduleMove(); // resume frog AI
+}
+
+
+// ════════════════════════════════════════════════════════════════
+//  FOG THE FROG ENGINE
+// ════════════════════════════════════════════════════════════════
+
+// Advance fog patch positions each tick
+function _fogAdvancePatches(fogCfg) {
+  const t = (cm_fogSurvivedSecs || 0);
+  for (let i = 0; i < cm_fogPatches.length; i++) {
+    const p = cm_fogPatches[i];
+    const beh = fogCfg.behaviour;
+    if (beh === 'drift_lr') {
+      p.x += p.vx;
+      if (p.x > COLS + 2) p.x = -2;
+    } else if (beh === 'swirl') {
+      const angle = t * 0.05 + p.phase;
+      p.x = COLS * 0.5 + Math.cos(angle) * COLS * 0.35;
+      p.y = ROWS * 0.5 + Math.sin(angle) * ROWS * 0.3;
+    } else if (beh === 'independent') {
+      p.x += p.vx; p.y += p.vy;
+      if (p.x < -2 || p.x > COLS + 2) p.vx *= -1;
+      if (p.y < -1 || p.y > ROWS + 1) p.vy *= -1;
+    } else if (beh === 'opposite') {
+      if (i % 2 === 0) { p.x += Math.abs(p.vx); if (p.x > COLS + 2) p.x = -2; }
+      else { p.x -= Math.abs(p.vx); if (p.x < -2) p.x = COLS + 2; }
+    } else if (beh === 'pulse') {
+      p.radius = (COLS * 0.25 + i * 0.5) * (0.7 + 0.3 * Math.sin(t * 0.12 + p.phase));
+      p.x += p.vx * 0.5; p.y += p.vy * 0.5;
+      if (p.x < -2 || p.x > COLS + 2) p.vx *= -1;
+      if (p.y < -1 || p.y > ROWS + 1) p.vy *= -1;
+    } else if (beh === 'random') {
+      if (Math.random() < 0.15) { p.vx = (Math.random() > 0.5 ? 1 : -1) * fogCfg.speed * (0.4 + Math.random() * 0.6); }
+      if (Math.random() < 0.10) { p.vy = (Math.random() > 0.5 ? 0.4 : -0.4) * fogCfg.speed; }
+      p.x += p.vx; p.y += p.vy;
+      if (p.x < -2 || p.x > COLS + 2) { p.x = Math.random() * COLS; }
+      if (p.y < -1 || p.y > ROWS + 1) { p.y = Math.random() * ROWS; }
+    } else if (beh === 'flash') {
+      p.flashTimer = (p.flashTimer || 0) - 1;
+      if (Math.random() < 0.02) p.flashTimer = 60;
+      p.x += p.vx * 0.6; p.y += p.vy * 0.4;
+      if (p.x < -2 || p.x > COLS + 2) p.vx *= -1;
+      if (p.y < -1 || p.y > ROWS + 1) p.vy *= -1;
+    } else if (beh === 'fast_swirl') {
+      const angle2 = t * 0.15 + p.phase;
+      p.x = COLS * (0.3 + 0.4 * (i % 2)) + Math.cos(angle2) * COLS * 0.4;
+      p.y = ROWS * 0.5 + Math.sin(angle2 * 1.3) * ROWS * 0.35;
+    } else if (beh === 'smothered') {
+      p.x += p.vx * 0.2; p.y += p.vy * 0.1;
+      p.radius = COLS * (0.5 + i * 0.2);
+      if (p.x < -1 || p.x > COLS + 1) p.vx *= -1;
+      if (p.y < -0.5 || p.y > ROWS + 0.5) p.vy *= -1;
+    } else if (beh === 'chase') {
+      const lr = lastPlacedRow != null ? lastPlacedRow : ROWS / 2;
+      const lc = lastPlacedCol != null ? lastPlacedCol : COLS / 2;
+      const dx = lc - p.x, dy = lr - p.y;
+      const dist = Math.sqrt(dx * dx + dy * dy) + 0.1;
+      p.x += (dx / dist) * fogCfg.speed * 0.5;
+      p.y += (dy / dist) * fogCfg.speed * 0.3;
+    } else {
+      p.x += p.vx; p.y += p.vy;
+      if (p.x < -2 || p.x > COLS + 2) p.vx *= -1;
+      if (p.y < -1 || p.y > ROWS + 1) p.vy *= -1;
+    }
+  }
+}
+
+// Recompute per-cell fog opacity based on patch proximity
+function _fogUpdateTileAlpha(maxCoverage) {
+  for (let r = 0; r < ROWS; r++) {
+    for (let c = 0; c < COLS; c++) {
+      let maxAlpha = 0;
+      for (const p of cm_fogPatches) {
+        const dx = c - p.x, dy = r - p.y;
+        const dist = Math.sqrt(dx * dx + dy * dy);
+        const rad = p.radius || (COLS * 0.25);
+        let alpha;
+        if (p.behaviour === 'flash' && (p.flashTimer || 0) > 0) {
+          alpha = dist < rad * 1.5 ? 0.95 : 0;
+        } else {
+          alpha = Math.max(0, 1 - dist / rad);
+        }
+        maxAlpha = Math.max(maxAlpha, alpha);
+      }
+      const target = Math.min(maxAlpha, maxCoverage * 1.4);
+      cm_fogTileAlpha[r][c] = cm_fogTileAlpha[r][c] * 0.7 + target * 0.3;
+    }
+  }
+}
+
+// Returns fog opacity for a specific tile (0=clear, 1=fully hidden)
+function _fogGetTileOpacity(row, col) {
+  if (activeChallengeMode !== 'fog' || !cm_fogTileAlpha.length) return 0;
+  return (cm_fogTileAlpha[row] && cm_fogTileAlpha[row][col]) || 0;
+}
+
+// Last placed position for chase behaviour
+let lastPlacedRow = null, lastPlacedCol = null;
+
+// ════════════════════════════════════════════════════════════════
+//  GOLDEN FROG MECHANICS ENGINE
+// ════════════════════════════════════════════════════════════════
+
+const GF_LOCATIONS_CFG = [
+  { name:'Dubai',     mechanic:'split',    emoji:'🏄', bg:'#001833', accent:'#FFD700' },
+  { name:'Ibiza',     mechanic:'mirror',   emoji:'🌴', bg:'#0a0820', accent:'#ff6eb0' },
+  { name:'Monaco',    mechanic:'quake',    emoji:'🏎️', bg:'#0d0d20', accent:'#e8c850' },
+  { name:'Tokyo',     mechanic:'shrink',   emoji:'🏯', bg:'#080820', accent:'#ff3366' },
+  { name:'Paris',     mechanic:'blackout', emoji:'🗼', bg:'#0a0815', accent:'#a06fdc' },
+  { name:'Maldives',  mechanic:'conveyor', emoji:'🌊', bg:'#001a30', accent:'#00cfff' },
+  { name:'Venice',    mechanic:'gravity',  emoji:'🚤', bg:'#040c20', accent:'#66aaff' },
+  { name:'New York',  mechanic:'ghost',    emoji:'🌃', bg:'#080808', accent:'#ff9900' },
+  { name:'Bali',      mechanic:'rotation', emoji:'🌺', bg:'#0a1208', accent:'#88dd44' },
+  { name:'Amalfi',    mechanic:'gauntlet', emoji:'🌋', bg:'#100808', accent:'#FF4400' },
+];
+
+function _gfActivateMechanic(lvl) {
+  const cfg = GF_LOCATIONS_CFG[Math.min(lvl - 1, 9)];
+  if (!cfg) return;
+  const mech = cfg.mechanic;
+
+  if (mech === 'split') {
+    cm_gfMechActive = true;
+    showEventBanner('✨ DUBAI — THE BOARD SPLITS!');
+  }
+  else if (mech === 'mirror') {
+    cm_gfMechActive = true;
+    showEventBanner('✨ IBIZA — MIRROR MODE! Every move is doubled!');
+  }
+  else if (mech === 'quake') {
+    cm_gfMechTimer = setInterval(() => {
+      if (!gameActive) return;
+      let shakes = 0;
+      const quakeAnim = setInterval(() => {
+        shakes++;
+        cm_gfQuakeOffset = {x:(Math.random()-0.5)*12, y:(Math.random()-0.5)*8};
+        if (typeof gridCanvas !== 'undefined' && gridCanvas) {
+          gridCanvas.style.transform = 'translate(' + cm_gfQuakeOffset.x + 'px,' + cm_gfQuakeOffset.y + 'px)';
+        }
+        if (shakes > 14) {
+          clearInterval(quakeAnim);
+          cm_gfQuakeOffset = {x:0, y:0};
+          if (typeof gridCanvas !== 'undefined' && gridCanvas) gridCanvas.style.transform = '';
+        }
+      }, 60);
+      showEventBanner('✨ MONACO QUAKE!');
+    }, 8000);
+    cm_gfGauntletTimers.push(cm_gfMechTimer);
+  }
+  else if (mech === 'shrink') {
+    cm_gfShrinkInterval = setInterval(() => {
+      if (!gameActive) return;
+      grid.unshift(new Array(COLS).fill(0));
+      grid.pop();
+      drawGrid(); updateUI();
+      showEventBanner('✨ TOKYO SHRINK — BOARD CONTRACTS!');
+    }, 30000);
+    cm_gfGauntletTimers.push(cm_gfShrinkInterval);
+  }
+  else if (mech === 'blackout') {
+    cm_gfBlackoutTimer = setInterval(() => {
+      if (!gameActive) return;
+      cm_gfBlackoutActive = true;
+      drawGrid();
+      showEventBanner('✨ PARIS BLACKOUT!');
+      setTimeout(() => { cm_gfBlackoutActive = false; drawGrid(); }, 3000);
+    }, 8000);
+    cm_gfGauntletTimers.push(cm_gfBlackoutTimer);
+  }
+  else if (mech === 'conveyor') {
+    cm_gfConveyorTimer = setInterval(() => {
+      if (!gameActive) return;
+      for (let r = 0; r < ROWS; r++) { const row = grid[r]; row.push(row.shift()); }
+      drawGrid();
+      showEventBanner('✨ MALDIVES — CONVEYOR SHIFTS!');
+    }, 10000);
+    cm_gfGauntletTimers.push(cm_gfConveyorTimer);
+  }
+  else if (mech === 'gravity') {
+    cm_gfGravityFlip = false;
+    showEventBanner('✨ VENICE — GRAVITY FLIPS ON EACH CLEAR!');
+  }
+  else if (mech === 'ghost') {
+    cm_gfGhostTimer = setInterval(() => {
+      if (!gameActive) return;
+      const now = Date.now();
+      const expired = cm_gfGhostCells.filter(g => now - g.placedAt > 5000);
+      for (const g of expired) {
+        if (g.r >= 0 && g.r < ROWS && g.c >= 0 && g.c < COLS) grid[g.r][g.c] = 0;
+      }
+      cm_gfGhostCells = cm_gfGhostCells.filter(g => now - g.placedAt <= 5000);
+      if (expired.length > 0) drawGrid();
+    }, 500);
+    cm_gfGauntletTimers.push(cm_gfGhostTimer);
+    showEventBanner('✨ NEW YORK — GHOST TILES VANISH IN 5s!');
+  }
+  else if (mech === 'rotation') {
+    cm_gfRotateAngle = 0;
+    showEventBanner('✨ BALI — BOARD ROTATES ON EACH CLEAR!');
+  }
+  else if (mech === 'gauntlet') {
+    showEventBanner('✨ AMALFI — THE GAUNTLET! ALL MECHANICS ACTIVE!');
+    const qt = setInterval(() => {
+      if (!gameActive) return;
+      let shakes = 0;
+      const qa = setInterval(() => {
+        shakes++;
+        cm_gfQuakeOffset = {x:(Math.random()-0.5)*8, y:(Math.random()-0.5)*6};
+        if (typeof gridCanvas !== 'undefined' && gridCanvas) gridCanvas.style.transform = 'translate(' + cm_gfQuakeOffset.x + 'px,' + cm_gfQuakeOffset.y + 'px)';
+        if (shakes > 10) { clearInterval(qa); cm_gfQuakeOffset={x:0,y:0}; if (typeof gridCanvas !== 'undefined' && gridCanvas) gridCanvas.style.transform=''; }
+      }, 60);
+    }, 10000);
+    cm_gfGauntletTimers.push(qt);
+    const bt = setInterval(() => {
+      if (!gameActive) return;
+      cm_gfBlackoutActive = true; drawGrid();
+      setTimeout(() => { cm_gfBlackoutActive = false; drawGrid(); }, 2000);
+    }, 12000);
+    cm_gfGauntletTimers.push(bt);
+    const ct = setInterval(() => {
+      if (!gameActive) return;
+      for (let r = 0; r < ROWS; r++) { const row = grid[r]; row.push(row.shift()); }
+      drawGrid();
+    }, 15000);
+    cm_gfGauntletTimers.push(ct);
+    cm_gfGhostTimer = setInterval(() => {
+      if (!gameActive) return;
+      const now = Date.now();
+      const expired = cm_gfGhostCells.filter(g => now - g.placedAt > 4000);
+      for (const g of expired) { if (g.r >= 0 && g.r < ROWS && g.c >= 0 && g.c < COLS) grid[g.r][g.c] = 0; }
+      cm_gfGhostCells = cm_gfGhostCells.filter(g => now - g.placedAt <= 4000);
+      if (expired.length > 0) drawGrid();
+    }, 500);
+    cm_gfGauntletTimers.push(cm_gfGhostTimer);
+    cm_gfGravityFlip = false;
+    cm_gfRotateAngle = 0;
+  }
+}
+
+function _gfStopAllMechanics() {
+  if (cm_gfMechTimer) { clearInterval(cm_gfMechTimer); cm_gfMechTimer = null; }
+  if (cm_gfShrinkInterval) { clearInterval(cm_gfShrinkInterval); cm_gfShrinkInterval = null; }
+  if (cm_gfBlackoutTimer) { clearInterval(cm_gfBlackoutTimer); cm_gfBlackoutTimer = null; }
+  if (cm_gfConveyorTimer) { clearInterval(cm_gfConveyorTimer); cm_gfConveyorTimer = null; }
+  if (cm_gfGhostTimer) { clearInterval(cm_gfGhostTimer); cm_gfGhostTimer = null; }
+  for (const t of cm_gfGauntletTimers) clearInterval(t);
+  cm_gfGauntletTimers = [];
+  cm_gfBlackoutActive = false;
+  cm_gfGravityFlip = false;
+  cm_gfRotateAngle = 0;
+  cm_gfGhostCells = [];
+  cm_gfQuakeOffset = {x:0, y:0};
+  if (typeof gridCanvas !== 'undefined' && gridCanvas) gridCanvas.style.transform = '';
+}
+
+// Golden Frog: register a ghost cell when a tile is placed
+function _gfRegisterGhostCell(r, c) {
+  if (activeChallengeMode !== 'goldenfrog') return;
+  const cfg = GF_LOCATIONS_CFG[Math.min(cm_gfLevel-1, 9)];
+  if (!cfg) return;
+  if (cfg.mechanic === 'ghost' || cfg.mechanic === 'gauntlet') {
+    cm_gfGhostCells.push({r, c, placedAt: Date.now()});
+  }
+}
+
+// Golden Frog mirror: placing on left half mirrors to right
+function _gfApplyMirror(placedCells) {
+  if (activeChallengeMode !== 'goldenfrog') return;
+  const cfg = GF_LOCATIONS_CFG[Math.min(cm_gfLevel-1, 9)];
+  if (!cfg || (cfg.mechanic !== 'mirror' && cfg.mechanic !== 'gauntlet')) return;
+  for (const [r, c] of placedCells) {
+    const mirrorC = COLS - 1 - c;
+    if (mirrorC !== c && r >= 0 && r < ROWS && mirrorC >= 0 && mirrorC < COLS) {
+      if (grid[r][mirrorC] === 0) grid[r][mirrorC] = grid[r][c];
+    }
+  }
+}
+
+// Golden Frog rotation: rotate entire board 90deg clockwise on line clear
+function _gfRotateBoard() {
+  if (activeChallengeMode !== 'goldenfrog') return;
+  const cfg = GF_LOCATIONS_CFG[Math.min(cm_gfLevel-1, 9)];
+  if (!cfg || (cfg.mechanic !== 'rotation' && cfg.mechanic !== 'gauntlet')) return;
+  const newGrid = Array.from({length:ROWS}, () => new Array(COLS).fill(0));
+  for (let r = 0; r < ROWS; r++) {
+    for (let c = 0; c < COLS; c++) {
+      const nr = c, nc = ROWS - 1 - r;
+      if (nr < ROWS && nc < COLS) newGrid[nr][nc] = grid[r][c];
+    }
+  }
+  for (let r = 0; r < ROWS; r++) for (let c = 0; c < COLS; c++) grid[r][c] = newGrid[r][c];
+  cm_gfRotateAngle = (cm_gfRotateAngle + 90) % 360;
+  drawGrid();
+  showEventBanner('✨ BALI — BOARD ROTATES!');
 }
 
 // ── Penalty / Glitch functions ────────────────────────────────────
@@ -11413,7 +12118,9 @@ if(_qsBtn) _qsBtn.addEventListener('click', () => {
   else { setDifficulty(lastDiff); }
   if ((lastChallenge === 'frenzy' || lastChallenge === 'survival') && !canPlayFrenzy()) {
     activeChallengeMode = 'standard';
-  } else if (lastChallenge === 'colourrun' && !canPlayColourRun()) {
+  } else if (lastChallenge === 'fog' && !canPlaySurvival()) {
+    activeChallengeMode = 'standard';
+  } else if ((lastChallenge === 'colourrun' || lastChallenge === 'goldenfrog') && !canPlayColourRun()) {
     activeChallengeMode = 'standard';
   } else {
     activeChallengeMode = lastChallenge;
@@ -11724,8 +12431,8 @@ function updateSettingsToggles() {
     const tierDefs = [
       { id: 'tadpole',    emoji: '🥚', name: 'TADPOLE',     subtitle: 'Standard mode',    color: '#888' },
       { id: 'treefrog',   emoji: '🐸', name: 'TREE FROG',   subtitle: 'Frenzy mode',      color: '#F5A623' },
-      { id: 'poisondart', emoji: '☠️', name: 'POISON DART', subtitle: 'Survival mode',    color: '#CC1212' },
-      { id: 'goldenfrog', emoji: '✨', name: 'GOLDEN FROG', subtitle: 'Colour Run mode',  color: '#F5E000' },
+      { id: 'poisondart', emoji: '🌫️', name: 'FOG THE FROG', subtitle: 'Fog mode',         color: '#CC1212' },
+      { id: 'goldenfrog', emoji: '✨', name: 'GOLDEN FROG', subtitle: 'Prestige mode',     color: '#F5E000' },
       { id: 'duopack',    emoji: '👫', name: 'DUO MODE',    subtitle: 'Pond Battle · Shake the Frog · Frog Swap', color: '#4A90D9' },
     ];
     tierList.innerHTML = tierDefs.map(t => {
@@ -11960,7 +12667,7 @@ function checkResumeOnHome() {
       <span style="font-family:var(--font-display);font-size: var(--fs-body);font-weight:700;letter-spacing:0.1em;color:#F5E000;">GOLDEN FROG</span>
       <span style="margin-left:auto;font-family:var(--font-display);font-size: var(--fs-ui);color:rgba(255,255,255,0.5);">£1.99/yr</span>
     </div>
-    <div style="font-size: var(--fs-ui);color:rgba(255,255,255,0.45);line-height:1.5;margin-bottom:12px;">Unlocks Colour Run mode, Expert difficulty &amp; Frog Stamp. ×2.5 score multiplier.</div>
+    <div style="font-size: var(--fs-ui);color:rgba(255,255,255,0.45);line-height:1.5;margin-bottom:12px;">Unlocks Golden Frog prestige mode, 10 luxury locations &amp; all mechanics. ×2.5 score multiplier.</div>
     <button onclick="openShop()" style="width:100%;background:#F5E000;border:none;border-radius:10px;color:#000;font-family:var(--font-display);font-size: var(--fs-ui);font-weight:700;letter-spacing:0.12em;padding:10px;cursor:pointer;">UPGRADE NOW</button>
   </div>
   <!-- Cloud note -->
