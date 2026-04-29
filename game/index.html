@@ -812,10 +812,10 @@
       flex: 1;
       min-height: 0;
       display: flex;
-      align-items: flex-start;
+      align-items: center;
       justify-content: center;
       width: 100%;
-      padding: 8px 8px 0;
+      padding: 8px;
       box-sizing: border-box;
     }
 
@@ -3723,7 +3723,7 @@
           <div class="home-tier-sub">Hard · Colour Run + Blitz</div>
         </div>
         <div class="home-tier-right">
-          <span class="home-tier-price">£2.99</span>
+          <span class="home-tier-price">£1.99</span>
           <button class="home-tier-play-btn" aria-label="Play Poison Dart mode">PLAY</button>
         </div>
       </div>
@@ -3736,7 +3736,7 @@
           <div class="home-tier-sub">Expert · All modes unlocked</div>
         </div>
         <div class="home-tier-right">
-          <span class="home-tier-price">£4.99</span>
+          <span class="home-tier-price">£1.99</span>
           <button class="home-tier-play-btn" aria-label="Play Golden Frog mode">PLAY</button>
         </div>
       </div>
@@ -3954,7 +3954,7 @@
             <div class="htp-tier-name" style="color:#c084fc">Duo Mode</div>
             <div class="htp-tier-sub">Play a friend live — Race, Tile Attack, Survival Duel.</div>
           </div>
-          <div class="htp-tier-price" style="color:#c084fc">£4.99/mo</div>
+          <div class="htp-tier-price" style="color:#c084fc">£5.00/mo</div>
         </div>
       </div>
     </div>
@@ -4089,7 +4089,7 @@
           <div class="gtc-info">
             <div class="gtc-name">TREE FROG</div>
             <div class="gtc-sub">Medium · Frenzy · Beat the timer</div>
-            <div class="gtc-badge">Unlocks Tadpole too · £2.99/yr</div>
+            <div class="gtc-badge">Unlocks Tadpole too · £1.99/yr</div>
           </div>
         </div>
         <button class="gtc-play-btn" id="gtc-play-treefrog" aria-label="Play Tree Frog mode">▶ PLAY</button>
@@ -4102,7 +4102,7 @@
           <div class="gtc-info">
             <div class="gtc-name">POISON DART</div>
             <div class="gtc-sub">Hard · Survival · Glitch Frog attacks</div>
-            <div class="gtc-badge">Unlocks all below · £4.99/yr</div>
+            <div class="gtc-badge">Unlocks all below · £1.99/yr</div>
           </div>
         </div>
         <button class="gtc-play-btn" id="gtc-play-poisondart" aria-label="Play Poison Dart mode">▶ PLAY</button>
@@ -4908,29 +4908,29 @@ const TIERS = [
   },
   {
     id: 'treefrog', name: 'TREE FROG', emoji: '🐸', color: '#F5A623',
-    price: 2.99,
+    price: 1.99,
     annual: true,
     desc: 'Medium difficulty + Frenzy challenge unlocked.',
-    perks: ['Everything in Tadpole (both unlocked) · £2.99/year','Medium difficulty — faster pace','Frenzy mode: you have 3s per piece. Miss the timer? A penalty row is added to the top!','Neon green tile skin','BOMB power-up: blasts a 3×3 area clear','3 power-ups per game'],
+    perks: ['Everything in Tadpole (both unlocked) · £1.99/year','Medium difficulty — faster pace','Frenzy mode: you have 3s per piece. Miss the timer? A penalty row is added to the top!','Neon green tile skin','BOMB power-up: blasts a 3×3 area clear','3 power-ups per game'],
     gridTheme: { bg: '#050f05', gridLine: 'rgba(126,211,33,0.07)', corner: 'rgba(126,211,33,0.4)' },
     tileStyle: 'neon', powerup: { id:'bomb', label:'BOMB', icon:'💣', count:3 }, powerupCount: 3,
   },
   {
     id: 'poisondart', name: 'POISON DART', emoji: '🦎', color: '#CC1212',
-    price: 4.99,
+    price: 1.99,
     annual: true,
     desc: 'Hard mode + Survival challenge unlocked.',
-    perks: ['Everything in Tadpole + Tree Frog (all 3 unlocked) · £4.99/year','Hard difficulty — 1.8× score multiplier','Survival mode: tiles vanish after 12s. Board over 50% full? Glitch Frog drops extra tiles on you!','Toxic orange/red tile skin','VENOM power-up: wipes all tiles of one colour','5 power-ups per game'],
+    perks: ['Everything in Tadpole + Tree Frog (all 3 unlocked) · £1.99/year','Hard difficulty — 1.8× score multiplier','Survival mode: tiles vanish after 12s. Board over 50% full? Glitch Frog drops extra tiles on you!','Toxic orange/red tile skin','VENOM power-up: wipes all tiles of one colour','5 power-ups per game'],
     gridTheme: { bg: '#080808', gridLine: 'rgba(245,166,35,0.07)', corner: 'rgba(245,166,35,0.4)' },
     tileStyle: 'toxic', powerup: { id:'venom', label:'VENOM', icon:'☠️', count:5 }, powerupCount: 5,
     bonusMultiplier: 1.5,
   },
   {
     id: 'goldenfrog', name: 'GOLDEN FROG', emoji: '✨', color: '#F5E000',
-    price: 7.99,
+    price: 1.99,
     annual: true,
     desc: 'Expert mode + Colour Run. Everything unlocked.',
-    perks: ['Unlocks ALL 4 games — best value · £7.99/year','Expert difficulty — 2.5× score multiplier','Colour Run mode: match 4 tiles of the same colour in a row. Break the streak? Obstacle tiles drop in!','Gold holographic tile skin + starfield grid','STORM power-up: force-clears 2 full lines','5 power-ups per game'],
+    perks: ['Unlocks ALL 4 games — best value · £1.99/year each','Expert difficulty — 2.5× score multiplier','Colour Run mode: match 4 tiles of the same colour in a row. Break the streak? Obstacle tiles drop in!','Gold holographic tile skin + starfield grid','STORM power-up: force-clears 2 full lines','5 power-ups per game'],
     gridTheme: { bg: '#06060c', gridLine: 'rgba(255,215,0,0.06)', corner: 'rgba(255,215,0,0.4)' },
     tileStyle: 'gold', powerup: { id:'storm', label:'STORM', icon:'⚡', count:5 }, powerupCount: 5,
     bonusMultiplier: 2.0, starfield: true,
@@ -5091,7 +5091,7 @@ function updateTrialBanner() {
     banner.style.display = 'flex';
   } else if (ownedTiers.length <= 1) {
     // Trial expired, nothing owned
-    banner.innerHTML = '🔒 <strong>Free trial ended</strong> — upgrade from £2.99/yr to keep playing';
+    banner.innerHTML = '🔒 <strong>Free trial ended</strong> — upgrade from £1.99/yr to keep playing';
     banner.style.display = 'flex';
     banner.style.background = 'rgba(204,18,18,0.18)';
     banner.style.borderColor = 'rgba(204,18,18,0.5)';
@@ -8526,8 +8526,8 @@ function saveStreak(){
 // This adds paywall logic: certain features only show when premium.
 const PREMIUM_FEATURES = {
   morphBrick:  { tier:'tadpole',    price:'£1.99', desc:'Unlock the MORPH wildcard brick' },
-  angelBrick:  { tier:'treefrog',   price:'£2.99/yr', desc:'Unlock the ANGEL fill brick' },
-  hardMode:    { tier:'poisondart', price:'£4.99/yr', desc:'Unlock HARD difficulty + 1.8× score' },
+  angelBrick:  { tier:'treefrog',   price:'£1.99/yr', desc:'Unlock the ANGEL fill brick' },
+  hardMode:    { tier:'poisondart', price:'£1.99/yr', desc:'Unlock HARD difficulty + 1.8× score' },
 };
 
 function isPremiumUnlocked(feature){
@@ -8572,11 +8572,11 @@ function maybeGrantBonusSafe(){
 // ════════════════════════════════════════════════════════════════
 function trySetDifficulty(d){
   if(d === 'medium' && !canPlayMedium()){
-    showUpgradeModal('Medium difficulty requires Tree Frog tier (£2.99/yr).');
+    showUpgradeModal('Medium difficulty requires Tree Frog tier (£1.99/yr).');
     return;
   }
   if(d === 'hard' && !canPlayHard()){
-    showUpgradeModal('Hard difficulty (1.8× score) requires Poison Dart tier (£4.99/yr).');
+    showUpgradeModal('Hard difficulty (1.8× score) requires Poison Dart tier (£1.99/yr).');
     return;
   }
   if(d === 'expert' && !canPlayExpert()){
@@ -10724,7 +10724,7 @@ function buildSoloSetupCards() {
         const lb = document.createElement('div');
         lb.className = 'gtc-lock-badge';
         lb.style.cssText = 'position:absolute;top:8px;right:58px;font-size: var(--fs-label);letter-spacing:0.08em;color:#F7C948;background:rgba(247,201,72,0.12);border:1px solid rgba(247,201,72,0.25);border-radius:6px;padding:2px 6px;';
-        const priceMap = { treefrog:'£2.99/yr', poisondart:'£4.99/yr', goldenfrog:'£7.99/yr' };
+        const priceMap = { treefrog:'£1.99/yr', poisondart:'£1.99/yr', goldenfrog:'£1.99/yr' };
         lb.textContent = priceMap[tid] || '';
         card.appendChild(lb);
       }
@@ -11812,7 +11812,7 @@ function checkResumeOnHome() {
     <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">
       <span style="font-size: var(--fs-h3);">✨</span>
       <span style="font-family:var(--font-display);font-size: var(--fs-body);font-weight:700;letter-spacing:0.1em;color:#F5E000;">GOLDEN FROG</span>
-      <span style="margin-left:auto;font-family:var(--font-display);font-size: var(--fs-ui);color:rgba(255,255,255,0.5);">£7.99</span>
+      <span style="margin-left:auto;font-family:var(--font-display);font-size: var(--fs-ui);color:rgba(255,255,255,0.5);">£1.99/yr</span>
     </div>
     <div style="font-size: var(--fs-ui);color:rgba(255,255,255,0.45);line-height:1.5;margin-bottom:12px;">Unlocks Colour Run mode, Expert difficulty &amp; Frog Stamp. ×2.5 score multiplier.</div>
     <button onclick="openShop()" style="width:100%;background:#F5E000;border:none;border-radius:10px;color:#000;font-family:var(--font-display);font-size: var(--fs-ui);font-weight:700;letter-spacing:0.12em;padding:10px;cursor:pointer;">UPGRADE NOW</button>
