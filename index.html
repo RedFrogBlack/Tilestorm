@@ -4258,6 +4258,11 @@
         <canvas id="grid-canvas"></canvas>
       </div>
     </div>
+    <!-- Mid zone: fills the gap between grid and tray with ambient art -->
+    <div class="mid-zone" id="mid-zone">
+      <div class="mid-art-strip" id="mid-art-strip"></div>
+      <div class="mid-tier-badge" id="mid-tier-badge"></div>
+    </div>
     <div class="tray-section">
       <div class="tray-label">Drag to place</div>
       <div id="tray-wrap"></div>
@@ -4459,33 +4464,7 @@
       </div>
     </div>
 
-    <!-- Mode picker -->
-    <div class="mode-cards" id="mode-cards">
-      <div class="mode-card" data-mode="duel" style="--mode-color:#CC1212">
-        <div class="mode-icon">⚔️</div>
-        <div class="mode-info">
-          <div class="mode-name">⚔️ RACE</div>
-          <div class="mode-desc">Two boards, one winner. First to clear 10 rows takes the match.</div>
-        </div>
-        <div class="mode-check"></div>
-      </div>
-      <div class="mode-card" data-mode="hazard" style="--mode-color:#E62298">
-        <div class="mode-icon">💣</div>
-        <div class="mode-info">
-          <div class="mode-name">💣 TILE ATTACK</div>
-          <div class="mode-desc">Clear rows to send tile-glitch attacks straight to your opponent.</div>
-        </div>
-        <div class="mode-check"></div>
-      </div>
-      <div class="mode-card" data-mode="coop" style="--mode-color:#00C5CD">
-        <div class="mode-icon">🤝</div>
-        <div class="mode-info">
-          <div class="mode-name">🤝 SURVIVAL DUEL</div>
-          <div class="mode-desc">Shared board, alternating turns. Survive together as long as you can.</div>
-        </div>
-        <div class="mode-check"></div>
-      </div>
-    </div>
+    <!-- Mode picker hidden — replaced by new Duo game cards above -->
 
 
     <!-- ⚡ Duo Magic Powers carousel -->
@@ -6286,7 +6265,7 @@ function revealCitySkyline(city) {
 
 function startCityPackGame(cityIdx) {
   cityPackActive = true;
-  cityPackCityIdx = Math.min(cityIdx, CITY_PACK_CITIES.length - 1);
+  cityPackCityIdx = Math.min(cityIdx || 0, CITY_PACK_CITIES.length - 1);
   const city = CITY_PACK_CITIES[cityPackCityIdx];
   gridMask = buildCityMask(city.colHeights);
   const totalCells = city.colHeights.reduce((a,b)=>a+b,0);
@@ -8273,6 +8252,32 @@ function updateTierBadge(){
   const nm=document.getElementById('tier-badge-name');
   if(dot)dot.style.background=tier.color;
   if(nm)nm.textContent=tier.name+' EDITION';
+  // Also update mid-zone art strip + badge
+  _updateMidZone(tier);
+}
+
+function _updateMidZone(tier) {
+  const badge = document.getElementById('mid-tier-badge');
+  const strip = document.getElementById('mid-art-strip');
+  if (!tier) tier = equippedTier();
+  if (badge) {
+    // For duo games show duo context; for city pack show city; otherwise tier name + mode
+    if (currentDuoGame) {
+      const meta = DUO_GAME_META && DUO_GAME_META[currentDuoGame];
+      badge.textContent = meta ? (meta.emoji + ' ' + meta.name + ' · LVL ' + (currentDuoLevel||1)) : 'DUO';
+    } else if (cityPackActive) {
+      const city = CITY_PACK_CITIES[cityPackCityIdx];
+      badge.textContent = city ? (city.emoji + ' ' + city.name) : 'CITY PACK';
+    } else {
+      const modeLabel = {standard:'CLASSIC', frenzy:'FRENZY', survival:'SURVIVAL', colourrun:'COLOUR RUN'}[activeChallengeMode] || '';
+      badge.textContent = tier.emoji + ' ' + tier.name + (modeLabel ? ' · ' + modeLabel : '');
+    }
+  }
+  if (strip) {
+    // Three colour bands using tier colour
+    const c = tier.color || '#CC1212';
+    strip.innerHTML = '<span style="background:'+c+';opacity:0.8"></span><span style="background:'+c+';opacity:0.4"></span><span style="background:'+c+';opacity:0.15"></span>';
+  }
 }
 
 // ════════════════════════════════════════════════════════════════
@@ -9195,8 +9200,13 @@ function startDuoGameMode() {
   startGame();
   if (currentDuoGame === 'shake_frog') _startDuoShake(currentDuoLevel);
   if (currentDuoGame === 'frog_swap')  _startDuoSwap(currentDuoLevel);
+  // Use double-rAF so duo ambient inits AFTER startGame's own rAF (which runs _ambientInit).
+  // Then immediately reset solo ambient so it doesn't bleed into duo games.
   requestAnimationFrame(function() {
-    if (gridCanvas) _duoAmbientInit(gridCanvas.width, gridCanvas.height, currentDuoGame, currentDuoLevel);
+    requestAnimationFrame(function() {
+      _ambientReset(); // kill solo ambient that startGame re-initialised
+      if (gridCanvas) _duoAmbientInit(gridCanvas.width, gridCanvas.height, currentDuoGame, currentDuoLevel);
+    });
   });
   var meta = DUO_GAME_META[currentDuoGame];
   setTimeout(function() { showEventBanner(meta.emoji + ' ' + meta.name + ' \u2014 LEVEL ' + currentDuoLevel + '!'); }, 800);
