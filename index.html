@@ -3368,7 +3368,7 @@
             <div class="htp-tier-name" style="color:#F5A623">Tree Frog</div>
             <div class="htp-tier-sub">Frenzy — race a countdown timer.</div>
           </div>
-          <div class="htp-tier-price">£2.99/yr</div>
+          <div class="htp-tier-price">£1.99/yr</div>
         </div>
         <div class="htp-tier-row">
           <div class="htp-tier-emoji">☠️</div>
@@ -3376,7 +3376,7 @@
             <div class="htp-tier-name" style="color:#CC1212">Poison Dart</div>
             <div class="htp-tier-sub">Survival — tiles vanish. How long can you last?</div>
           </div>
-          <div class="htp-tier-price">£4.99/yr</div>
+          <div class="htp-tier-price">£1.99/yr</div>
         </div>
         <div class="htp-tier-row">
           <div class="htp-tier-emoji">🌟</div>
@@ -3384,7 +3384,15 @@
             <div class="htp-tier-name" style="color:#F5E000">Golden Frog</div>
             <div class="htp-tier-sub">Colour Run + all modes. Everything unlocked.</div>
           </div>
-          <div class="htp-tier-price">£7.99/yr</div>
+          <div class="htp-tier-price">£1.99/yr</div>
+        </div>
+        <div class="htp-tier-row">
+          <div class="htp-tier-emoji">🏙️</div>
+          <div class="htp-tier-info">
+            <div class="htp-tier-name" style="color:#4DAAFF">City Pack</div>
+            <div class="htp-tier-sub">10 cities · Animated skies · All modes</div>
+          </div>
+          <div class="htp-tier-price" style="color:#4DAAFF">£1.99/yr</div>
         </div>
         <div class="htp-tier-row">
           <div class="htp-tier-emoji">👫</div>
@@ -3553,7 +3561,7 @@
           <div class="gtc-info">
             <div class="gtc-name">GOLDEN FROG</div>
             <div class="gtc-sub">Expert · Colour Run · Frog Stamp</div>
-            <div class="gtc-badge gtc-badge-gold">✦ Unlocks ALL 4 games · £7.99</div>
+            <div class="gtc-badge gtc-badge-gold">✦ Unlocks ALL 4 games · £1.99/yr each or £7.99/yr all</div>
           </div>
         </div>
         <button class="gtc-play-btn" id="gtc-play-goldenfrog" aria-label="Play Golden Frog mode">▶ PLAY</button>
@@ -4384,7 +4392,8 @@ const TIERS = [
   },
   {
     id: 'citypack', name: 'CITY PACK', emoji: '🏙️', color: '#4A9EFF',
-    price: 3.99, annual: false,
+    price: 1.99, annual: true,
+    desc: 'Annual subscription · 10 cities · Animated skies · All modes.',
     tagline: 'Play on shaped city skyline boards',
     perks: [
       '10 iconic city skylines as shaped playing boards',
@@ -4396,6 +4405,7 @@ const TIERS = [
     tileStyle: 'classic',
     bonusMultiplier: 1.5,
     isCityPack: true,
+    // com.redfrogblackart.croakdown.citypack
   },
 ];
 
@@ -6460,7 +6470,7 @@ function buildShopUI(){
     if (tier.isCityPack) {
       btnHtml = owned
         ? `<button class="tier-buy-btn" style="background:#4A9EFF;color:#000" onclick="closeShop();startCityPackGame(0);">▶ PLAY CITIES</button>`
-        : `<button class="tier-buy-btn buy" data-buy="${idx}">BUY £3.99</button>`;
+        : `<button class="tier-buy-btn buy" data-buy="${idx}">BUY £1.99/yr</button>`;
     } else {
       btnHtml = owned ? (isEquipped?`<button class="tier-buy-btn" style="background:#CC1212;color:#fff" data-play="${tier.id}">▶ PLAY</button>`:`<button class="tier-buy-btn equip" data-equip="${tier.id}">EQUIP</button>`) : `<button class="tier-buy-btn buy" data-buy="${idx}">BUY</button>`;
     }
@@ -6488,6 +6498,42 @@ function buildShopUI(){
     activeChallengeMode = m.challenge; // set AFTER startGame (stopChallengeMode resets it)
     initChallengeMode();
   }));
+
+  // ── CROAKDOWN COMPLETE bundle card ────────────────────────────
+  // com.redfrogblackart.croakdown.allpacks
+  const bundleConn = document.createElement('div');
+  bundleConn.className = 'tier-connector';
+  bundleConn.style.setProperty('--from-color', '#4A9EFF');
+  bundleConn.style.setProperty('--to-color', '#FFD700');
+  bundleConn.innerHTML = '<div class="tier-connector-arrow">▼</div>';
+  path.appendChild(bundleConn);
+
+  const bundleCard = document.createElement('div');
+  bundleCard.className = 'tier-card';
+  bundleCard.style.cssText = 'background: linear-gradient(135deg, #1a0a00 0%, #2a1200 50%, #1a0800 100%); border: 1.5px solid #C49A00; position:relative; overflow:hidden;';
+  bundleCard.innerHTML = `
+    <div style="position:absolute;top:8px;right:8px;background:linear-gradient(135deg,#FFD700,#FF6600);color:#000;font-family:var(--font-display);font-size:0.55rem;font-weight:700;padding:3px 7px;border-radius:20px;letter-spacing:0.05em;">\u2b50 BEST VALUE</div>
+    <div class="tier-frog-svg" style="font-size:2.2rem;line-height:1;padding:4px 0;">\u{1F31F}</div>
+    <div class="tier-info">
+      <div class="tier-name-row">
+        <div class="tier-name" style="color:#FFD700">CROAKDOWN COMPLETE</div>
+      </div>
+      <div class="tier-desc" style="color:rgba(255,215,0,0.7)">All 5 packs &middot; Everything unlocked</div>
+      <div class="tier-perks">
+        <span class="tier-perk">All 4 solo game tiers (Tadpole through Golden Frog)</span>
+        <span class="tier-perk">City Pack &mdash; 10 cities with animated skies</span>
+        <span class="tier-perk">Every mode, difficulty &amp; tile skin unlocked</span>
+      </div>
+    </div>
+    <div class="tier-price-col">
+      <div class="tier-price" style="color:#FFD700">£7.99<small style="font-size:0.5rem;opacity:0.7">/yr</small></div>
+      <button class="tier-buy-btn buy" id="btn-buy-allpacks" style="background:linear-gradient(135deg,#FFD700,#FF8C00);color:#000;font-weight:700;">GET EVERYTHING &mdash; £7.99/yr</button>
+      <div style="font-size:0.6rem;color:rgba(255,215,0,0.5);margin-top:4px;text-align:center;">Annual subscription &middot; Includes all game packs + City Pack &middot; Cancel anytime</div>
+    </div>
+  `;
+  path.appendChild(bundleCard);
+  const allpacksBtn = document.getElementById('btn-buy-allpacks');
+  if (allpacksBtn) allpacksBtn.addEventListener('click', () => showToast('\ud83c\udf1f CROAKDOWN COMPLETE — coming soon!'));
 }
 
 function openShop(tab){
@@ -8104,6 +8150,10 @@ function endDuoGame(result) {
   document.getElementById('coop-turn-banner').classList.remove('visible');
   showEmojiBar(false);
   gameActive = false;
+  // Progressive duo level unlock: unlock next level when game session ends
+  if (currentDuoGame && currentDuoLevel) {
+    setDuoLevelUnlocked(currentDuoGame, currentDuoLevel + 1);
+  }
   // Show result on game over screen
   const msgs = {
     win: '🏆 YOU WIN!',
@@ -8156,6 +8206,15 @@ const DUO_GAME_META = {
 let currentDuoGame = null;   // 'pond_battle' | 'shake_frog' | 'frog_swap'
 let currentDuoLevel = null;  // 1-10
 
+// ── Duo level progress helpers ─────────────────────────────────
+function getDuoLevelUnlocked(gameId) {
+  return parseInt(localStorage.getItem('duo_progress_' + gameId) || '1');
+}
+function setDuoLevelUnlocked(gameId, level) {
+  var current = getDuoLevelUnlocked(gameId);
+  if (level > current) localStorage.setItem('duo_progress_' + gameId, level);
+}
+
 // Swap timer state
 let _duoSwapTimer = null;
 // Shake interval state
@@ -8176,17 +8235,24 @@ function openDuoLevelSelect(gameId) {
   if (!meta) return;
 
   document.getElementById('duo-levels-title').textContent = meta.emoji + ' ' + meta.name;
-  document.getElementById('duo-levels-subtitle').textContent = 'Select a level — Levels 6–10 unlock soon';
+
+  var unlockedMax = (localStorage.getItem('cd_dev_unlock') === '1') ? 10 : getDuoLevelUnlocked(gameId);
+  var subtitleText = unlockedMax >= 10 ? 'All levels unlocked' : 'Level ' + (unlockedMax + 1) + ' unlocks after completing level ' + unlockedMax;
+  document.getElementById('duo-levels-subtitle').textContent = subtitleText;
 
   var grid = document.getElementById('duo-level-grid');
   grid.innerHTML = '';
   meta.levels.forEach(function(lv) {
+    var isUnlocked = lv.n <= unlockedMax;
+    var isNext = lv.n === unlockedMax + 1; // "coming next" hint
     var btn = document.createElement('button');
-    btn.className = 'duo-level-btn' + (lv.n > 5 ? ' locked' : '');
+    btn.className = 'duo-level-btn' + (!isUnlocked ? ' locked' : '');
     btn.setAttribute('aria-label', 'Level ' + lv.n + ' ' + lv.env);
-    if (lv.n > 5) {
+    if (!isUnlocked) {
       btn.disabled = true;
-      btn.innerHTML = '<span class="lvl-num">\ud83d\udd12</span><span class="lvl-env">' + lv.env + '</span>';
+      var lockIcon = isNext ? '\ud83d\udd13' : '\ud83d\udd12'; // open lock for "next"
+      btn.innerHTML = '<span class="lvl-num">' + lockIcon + '</span><span class="lvl-env">' + lv.env + (isNext ? ' \u2014 next' : '') + '</span>';
+      if (isNext) btn.style.opacity = '0.6';
     } else {
       btn.innerHTML = '<span class="lvl-num">' + lv.n + '</span><span class="lvl-env">' + lv.env + '</span>';
       btn.style.borderColor = meta.color + '55';
@@ -8298,6 +8364,27 @@ function _fireDuoSwap() {
     banner.classList.add('show');
     setTimeout(function() { banner.classList.remove('show'); }, 1500);
   }
+
+  // Trigger portal burst FX in duo ambient
+  if (_duoAmbientReady && _duoAmbientGame === 'frog_swap') {
+    _dSwapFlashT = 1.0;
+    _dSwapLastFlash = _duoAmbientT;
+    // Spawn 14 burst particles radiating from portal centre
+    var _bW = _duoAmbientCanvas ? _duoAmbientCanvas.width : 400;
+    var _bH = _duoAmbientCanvas ? _duoAmbientCanvas.height : 600;
+    var _bPX = _bW * 0.5, _bPY = _bH * 0.5;
+    _dSwapPortalBursts = [];
+    for (var _bi = 0; _bi < 14; _bi++) {
+      var _bA = (_bi / 14) * Math.PI * 2;
+      var _bSpeed = 3 + Math.random() * 4;
+      _dSwapPortalBursts.push({
+        x: _bPX, y: _bPY,
+        vx: Math.cos(_bA) * _bSpeed,
+        vy: Math.sin(_bA) * _bSpeed,
+        r: 3 + Math.random() * 4
+      });
+    }
+  }
 }
 
 // ── Duo Ambient FX ───────────────────────────────────────────────
@@ -8315,6 +8402,19 @@ let _dPondLilyPads = [], _dPondStars = [], _dPondClouds = [];
 // Weather state
 let _dFrenzyRain = [], _dFrenzyLightningTimer = 0, _dFrenzyLightning = null;
 let _dFrenzyDebris = [];
+// FrogSwap rich ambient state
+let _dSwapParticles = [];       // generic particle pool
+let _dSwapPortalBursts = [];    // swap-flash burst particles
+let _dSwapFlashT = 0;           // 0→1 burst timer (decrements each frame)
+let _dSwapLastFlash = -999;     // _duoAmbientT at last swap fire
+let _dSwapAuroraPhase = 0;      // aurora sweep offset
+// PondBattle rich ambient state
+let _dPBRipples2 = [], _dPBRippleLast = 0;
+let _dPBParticles = [];         // fish, dragonflies, biolum, mist
+let _dPBLightningTimer = 0, _dPBLightning = null;
+let _dPBRain = [];
+let _dPBFloodLeft = 0, _dPBFloodRight = 0;  // 0–1 flood fill per side
+let _dPBFloodRise = 0;          // L10 rising water height fraction
 
 function _duoAmbientInit(W, H, game, level) {
   _duoAmbientCanvas = document.createElement('canvas');
@@ -8324,6 +8424,7 @@ function _duoAmbientInit(W, H, game, level) {
   _duoAmbientGame = game; _duoAmbientLevel = level;
   var rand = function(a,b){return a+Math.random()*(b-a);};
 
+  // ── Existing pond/shake state ──────────────────────────────────
   _dPondStars = Array.from({length:18}, function(){return{x:rand(0,W),y:rand(0,H*0.5),r:rand(0.5,1.3),phase:rand(0,Math.PI*2),speed:rand(0.015,0.03)};});
   _dPondClouds = Array.from({length:3}, function(){return{x:rand(0,W),y:rand(20,H*0.3),rx:rand(50,80),ry:rand(12,18),speed:rand(0.07,0.16),alpha:rand(0.08,0.15)};});
   _dPondLilyPads = [
@@ -8340,12 +8441,85 @@ function _duoAmbientInit(W, H, game, level) {
   _dFrenzyDebris = Array.from({length:Math.min(level,8)}, function(){return{x:rand(0,W),y:rand(0,H*0.8),vx:rand(1+level*0.3,4+level*0.5),vy:rand(-0.5,0.5),rot:rand(0,Math.PI*2),rotSpeed:rand(0.04,0.12),w:rand(3,9),h:rand(2,5)};});
   _dFrenzyLightningTimer = 0; _dFrenzyLightning = null;
 
+  // ── FrogSwap rich ambient ──────────────────────────────────────
+  if (game === 'frog_swap') {
+    _dSwapParticles = [];
+    _dSwapPortalBursts = [];
+    _dSwapFlashT = 0;
+    _dSwapLastFlash = -999;
+    _dSwapAuroraPhase = 0;
+    // Populate base particles for current level
+    var swapCount = 35 + level * 8;
+    for (var si = 0; si < swapCount; si++) {
+      _dSwapParticles.push({
+        x: rand(0, W), y: rand(0, H),
+        vx: rand(-0.6, 0.6), vy: rand(-0.8, -0.1),
+        r: rand(1, 3.5), alpha: rand(0.3, 0.9),
+        hue: rand(200, 320),
+        phase: rand(0, Math.PI * 2),
+        type: si % 5  // 0=firefly, 1=sparkle, 2=bubble, 3=ash, 4=lava
+      });
+    }
+  }
+
+  // ── PondBattle rich ambient ────────────────────────────────────
+  if (game === 'pond_battle') {
+    _dPBRipples2 = []; _dPBRippleLast = 0;
+    _dPBFloodLeft = 0; _dPBFloodRight = 0;
+    _dPBFloodRise = 0;
+    _dPBLightningTimer = 0; _dPBLightning = null;
+    var pbRain = 30 + level * 6;
+    _dPBRain = Array.from({length: pbRain}, function(){
+      return {x:rand(-10,W), y:rand(-H,H), len:rand(8,18), speed:rand(6+level*0.7,12+level), alpha:rand(0.2,0.6)};
+    });
+    _dPBParticles = [];
+    // Lily pads L1-3
+    if (level <= 3) {
+      for (var li2 = 0; li2 < 5; li2++) {
+        _dPBParticles.push({type:'lilypad', x:rand(W*0.05,W*0.95), y:rand(H*0.55,H*0.92), w:rand(30,52), h:rand(8,14), phase:rand(0,6.28), flower: Math.random()>0.5, fc: Math.random()>0.5?'#ff88cc':'#ffdd44'});
+      }
+      // Dragonflies L2-3
+      if (level >= 2) {
+        for (var di2 = 0; di2 < 4; di2++) {
+          _dPBParticles.push({type:'dragonfly', x:rand(0,W), y:rand(H*0.35,H*0.65), vx:rand(0.8,2.2)*(Math.random()>0.5?1:-1), vy:0, phase:rand(0,6.28)});
+        }
+      }
+    }
+    // Fish L7
+    if (level === 7) {
+      for (var fi = 0; fi < 8; fi++) {
+        _dPBParticles.push({type:'fish', x:rand(0,W), y:rand(H*0.5,H*0.92), vx:rand(0.5,1.8)*(Math.random()>0.5?1:-1), vy:0, phase:rand(0,6.28), hue:rand(160,320), r:rand(4,8)});
+      }
+      // Bioluminescent
+      for (var bi = 0; bi < 25; bi++) {
+        _dPBParticles.push({type:'biolum', x:rand(0,W), y:rand(H*0.45,H), vx:rand(-0.3,0.3), vy:rand(-0.4,-0.1), phase:rand(0,6.28), r:rand(1.5,3.5), hue:rand(160,200)});
+      }
+    }
+    // Mist L4-5
+    if (level >= 4 && level <= 5) {
+      for (var mi = 0; mi < 10; mi++) {
+        _dPBParticles.push({type:'mist', x:rand(0,W), y:rand(H*0.3,H*0.7), vy:rand(-0.5,-0.15), vx:rand(-0.2,0.2), r:rand(20,50), phase:rand(0,6.28)});
+      }
+    }
+    // Phosphorescent L9
+    if (level >= 9) {
+      for (var pi2 = 0; pi2 < 30; pi2++) {
+        _dPBParticles.push({type:'biolum', x:rand(0,W), y:rand(0,H), vx:rand(-0.2,0.2), vy:rand(-0.3,-0.05), phase:rand(0,6.28), r:rand(1,3), hue:rand(160,220)});
+      }
+    }
+  }
+
   _duoAmbientReady = true;
 }
 
 function _duoAmbientReset() {
   _duoAmbientReady = false;
   _duoAmbientCanvas = null; _duoAmbientCtx = null;
+  _dSwapParticles = []; _dSwapPortalBursts = [];
+  _dSwapFlashT = 0; _dSwapLastFlash = -999;
+  _dPBRipples2 = []; _dPBParticles = []; _dPBRain = [];
+  _dPBLightningTimer = 0; _dPBLightning = null;
+  _dPBFloodLeft = 0; _dPBFloodRight = 0; _dPBFloodRise = 0;
 }
 
 function _duoAmbientDraw(timestamp) {
@@ -8371,46 +8545,280 @@ function _duoAmbientDraw(timestamp) {
 
 function _duoDrawPondAmbient(ctx,W,H,rand) {
   var t = _duoAmbientT;
-  var POND_TOP = H*0.62;
-  var skyGrad = ctx.createLinearGradient(0,0,0,POND_TOP);
-  skyGrad.addColorStop(0,'#0a1a3a'); skyGrad.addColorStop(1,'#1a4060');
-  ctx.fillStyle = skyGrad; ctx.fillRect(0,0,W,POND_TOP);
-  for (var i=0;i<_dPondStars.length;i++) {
-    var s=_dPondStars[i];
-    var a=0.3+(Math.sin(s.phase+t*s.speed)*0.5+0.5)*0.6;
-    ctx.beginPath(); ctx.arc(s.x,s.y,s.r,0,Math.PI*2);
-    ctx.fillStyle='rgba(255,255,255,'+(a*0.7).toFixed(2)+')'; ctx.fill();
+  var ambT = t / 60;
+  var level = _duoAmbientLevel;
+
+  // ── Background sky + water ─────────────────────────────────────────
+  var POND_TOP = H * 0.55;
+
+  if (level <= 3) {
+    // L1-3: Lily Pond / River / Mangrove — blue-green water, soft sky
+    var skyCol1 = level===1?'rgba(20,50,80,0.92)':level===2?'rgba(10,40,60,0.92)':'rgba(8,30,20,0.95)';
+    var skyCol2 = level===1?'rgba(30,80,120,0.88)':level===2?'rgba(15,60,80,0.88)':'rgba(12,45,25,0.90)';
+    var sg=ctx.createLinearGradient(0,0,0,POND_TOP);
+    sg.addColorStop(0,skyCol1); sg.addColorStop(1,skyCol2);
+    ctx.fillStyle=sg; ctx.fillRect(0,0,W,POND_TOP);
+    // Stars (L1)
+    if(level===1){
+      for(var si2=0;si2<_dPondStars.length;si2++){
+        var s=_dPondStars[si2], sa=0.3+(Math.sin(s.phase+t*s.speed)*0.5+0.5)*0.6;
+        ctx.beginPath(); ctx.arc(s.x,s.y,s.r,0,Math.PI*2);
+        ctx.fillStyle='rgba(255,255,255,'+(sa*0.7).toFixed(2)+')'; ctx.fill();
+      }
+    }
+    // Clouds L1-2
+    if(level<=2){
+      for(var ci5=0;ci5<_dPondClouds.length;ci5++){
+        var c5=_dPondClouds[ci5]; c5.x+=c5.speed; if(c5.x>W+110) c5.x=-120;
+        ctx.save(); ctx.globalAlpha=c5.alpha;
+        ctx.beginPath(); ctx.ellipse(c5.x,c5.y,c5.rx,c5.ry,0,0,Math.PI*2);
+        ctx.fillStyle='rgba(200,220,255,1)'; ctx.fill(); ctx.restore();
+      }
+    }
+    var waterCol1=level===1?'rgba(10,50,90,0.95)':level===2?'rgba(8,60,80,0.95)':'rgba(6,40,20,0.97)';
+    var waterCol2=level===1?'rgba(4,28,55,0.97)':level===2?'rgba(3,40,50,0.97)':'rgba(3,20,10,0.98)';
+    var wg=ctx.createLinearGradient(0,POND_TOP,0,H);
+    wg.addColorStop(0,waterCol1); wg.addColorStop(1,waterCol2);
+    ctx.fillStyle=wg; ctx.fillRect(0,POND_TOP,W,H-POND_TOP);
+
+  } else if (level <= 5) {
+    // L4-5: Waterfall / Estuary — turbulent blue-green
+    var wfg=ctx.createLinearGradient(0,0,0,H);
+    wfg.addColorStop(0,level===4?'rgba(15,50,70,0.92)':'rgba(20,40,50,0.94)');
+    wfg.addColorStop(1,level===4?'rgba(5,35,60,0.97)':'rgba(8,25,40,0.97)');
+    ctx.fillStyle=wfg; ctx.fillRect(0,0,W,H);
+    // Waterfall streaks from top
+    ctx.strokeStyle='rgba(200,230,255,0.35)'; ctx.lineWidth=1;
+    for(var wfi=0;wfi<12;wfi++){
+      var wfx=W*(0.05+wfi*0.08), wfspeed=2+wfi*0.3+level*0.4;
+      var wfy=((t*wfspeed*0.5+wfi*H/12)%(H+60))-30;
+      ctx.beginPath(); ctx.moveTo(wfx,wfy); ctx.lineTo(wfx+rand(-3,3),wfy+30+rand(0,20)); ctx.stroke();
+    }
+    // Mist particles
+    _dPBParticles.forEach(function(p){
+      if(p.type!=='mist') return;
+      p.y+=p.vy; p.x+=p.vx+Math.sin(ambT+p.phase)*0.3;
+      if(p.y<0) p.y=H*0.8;
+      ctx.save(); ctx.globalAlpha=0.08+Math.sin(ambT+p.phase)*0.04;
+      ctx.fillStyle='rgba(200,230,255,1)';
+      ctx.beginPath(); ctx.ellipse(p.x,p.y,p.r,p.r*0.4,0,0,Math.PI*2); ctx.fill();
+      ctx.restore();
+    });
+
+  } else if (level === 6) {
+    // L6: Swamp — murky green water, darker sky
+    var swpg=ctx.createLinearGradient(0,0,0,H);
+    swpg.addColorStop(0,'rgba(8,20,8,0.97)'); swpg.addColorStop(1,'rgba(5,25,5,0.98)');
+    ctx.fillStyle=swpg; ctx.fillRect(0,0,W,H);
+    // Fog
+    for(var fogi=0;fogi<5;fogi++){
+      var fx2=((ambT*30+fogi*W/5)%(W+80))-40;
+      ctx.save(); ctx.globalAlpha=0.10;
+      ctx.fillStyle='rgba(100,160,80,1)';
+      ctx.beginPath(); ctx.ellipse(fx2,H*(0.5+fogi*0.08),60,15,0,0,Math.PI*2); ctx.fill();
+      ctx.restore();
+    }
+
+  } else if (level === 7) {
+    // L7: Coral Reef — deep blue underwater
+    var crg=ctx.createLinearGradient(0,0,0,H);
+    crg.addColorStop(0,'rgba(0,10,40,0.98)'); crg.addColorStop(1,'rgba(0,20,60,0.97)');
+    ctx.fillStyle=crg; ctx.fillRect(0,0,W,H);
+    // Coral shapes at bottom (branching bezier curves)
+    var coralCols=['rgba(255,80,120,0.7)','rgba(255,150,50,0.7)','rgba(200,60,80,0.7)','rgba(255,180,60,0.6)'];
+    for(var cori=0;cori<6;cori++){
+      var corx=W*(0.08+cori*0.16), corBase=H*0.95;
+      ctx.strokeStyle=coralCols[cori%coralCols.length]; ctx.lineWidth=2.5;
+      for(var corb=0;corb<3;corb++){
+        var bAngle=(-0.5+corb*0.5)*1.2;
+        ctx.beginPath(); ctx.moveTo(corx,corBase);
+        ctx.bezierCurveTo(corx+Math.cos(bAngle+ambT*0.1)*10,corBase-20,
+          corx+Math.cos(bAngle+ambT*0.1)*18,corBase-40,
+          corx+Math.cos(bAngle)*20+rand(-5,5),corBase-55-cori*3);
+        ctx.stroke();
+      }
+    }
+    // Biolum particles
+    _dPBParticles.forEach(function(p){
+      if(p.type!=='biolum') return;
+      p.y+=p.vy; p.x+=p.vx+Math.sin(ambT*0.8+p.phase)*0.3;
+      if(p.y<0){p.y=H; p.x=rand(0,W);}
+      ctx.save(); ctx.shadowColor='hsl('+p.hue+',100%,60%)'; ctx.shadowBlur=10;
+      ctx.beginPath(); ctx.arc(p.x,p.y,p.r,0,Math.PI*2);
+      ctx.fillStyle='hsl('+p.hue+',100%,65%)'; ctx.fill();
+      ctx.restore();
+    });
+
+  } else if (level === 8) {
+    // L8: Storm Sea — heavy rain, dark waves, lightning
+    var stg=ctx.createLinearGradient(0,0,0,H);
+    stg.addColorStop(0,'rgba(5,8,15,0.98)'); stg.addColorStop(1,'rgba(8,15,25,0.97)');
+    ctx.fillStyle=stg; ctx.fillRect(0,0,W,H);
+    // Dark sine waves
+    ctx.strokeStyle='rgba(30,60,100,0.5)'; ctx.lineWidth=2.5;
+    for(var wi=0;wi<5;wi++){
+      ctx.beginPath(); ctx.moveTo(0,H*(0.4+wi*0.12)+Math.sin(ambT+wi)*8);
+      for(var wx=0;wx<=W;wx+=8){
+        ctx.lineTo(wx,H*(0.4+wi*0.12)+Math.sin(ambT*1.2+wx*0.02+wi)*10);
+      }
+      ctx.stroke();
+    }
+    // Heavy rain
+    ctx.strokeStyle='rgba(160,200,255,0.3)'; ctx.lineWidth=0.8;
+    _dPBRain.forEach(function(rn){
+      rn.y+=rn.speed; rn.x+=rn.speed*0.2;
+      if(rn.y>H+10){rn.y=-10; rn.x=rand(-10,W);}
+      ctx.beginPath(); ctx.moveTo(rn.x,rn.y); ctx.lineTo(rn.x+5,rn.y+rn.len); ctx.stroke();
+    });
+    // Lightning
+    _dPBLightningTimer--;
+    if(_dPBLightningTimer<=0){
+      _dPBLightningTimer=40+Math.floor(Math.random()*80);
+      _dPBLightning={x:rand(W*0.1,W*0.9),life:8};
+    }
+    if(_dPBLightning&&_dPBLightning.life>0){
+      ctx.save(); ctx.globalAlpha=_dPBLightning.life/8*0.9;
+      ctx.strokeStyle='#e8f0ff'; ctx.lineWidth=1.8;
+      ctx.beginPath(); var llx=_dPBLightning.x, lly=0; ctx.moveTo(llx,lly);
+      for(var lk=0;lk<7;lk++){llx+=rand(-20,20);lly+=H/7;ctx.lineTo(llx,lly);}
+      ctx.stroke(); ctx.restore();
+      _dPBLightning.life--;
+    }
+
+  } else if (level === 9) {
+    // L9: Deep Ocean — near-black, phosphorescent only
+    ctx.fillStyle='rgba(0,2,8,0.99)'; ctx.fillRect(0,0,W,H);
+    _dPBParticles.forEach(function(p){
+      if(p.type!=='biolum') return;
+      p.y+=p.vy; p.x+=p.vx;
+      if(p.y<0){p.y=H; p.x=rand(0,W);}
+      ctx.save(); ctx.shadowColor='hsl('+p.hue+',90%,55%)'; ctx.shadowBlur=8;
+      ctx.beginPath(); ctx.arc(p.x,p.y,p.r,0,Math.PI*2);
+      ctx.fillStyle='hsl('+p.hue+',90%,60%)'; ctx.fill();
+      ctx.restore();
+    });
+
+  } else if (level >= 10) {
+    // L10: The Flood — all at max + flood rising + red vignette + FLOODING text
+    var flg=ctx.createLinearGradient(0,0,0,H);
+    flg.addColorStop(0,'rgba(3,5,12,0.98)'); flg.addColorStop(1,'rgba(5,10,20,0.97)');
+    ctx.fillStyle=flg; ctx.fillRect(0,0,W,H);
+    // Heavy rain
+    ctx.strokeStyle='rgba(140,180,255,0.35)'; ctx.lineWidth=0.8;
+    _dPBRain.forEach(function(rn){
+      rn.y+=rn.speed*1.3; rn.x+=rn.speed*0.22;
+      if(rn.y>H+10){rn.y=-10; rn.x=rand(-10,W);}
+      ctx.beginPath(); ctx.moveTo(rn.x,rn.y); ctx.lineTo(rn.x+6,rn.y+rn.len); ctx.stroke();
+    });
+    // Phosphorescent
+    _dPBParticles.forEach(function(p){
+      if(p.type!=='biolum') return;
+      p.y+=p.vy*1.2; p.x+=p.vx;
+      if(p.y<0){p.y=H; p.x=rand(0,W);}
+      ctx.save(); ctx.shadowColor='hsl('+p.hue+',90%,55%)'; ctx.shadowBlur=8;
+      ctx.beginPath(); ctx.arc(p.x,p.y,p.r,0,Math.PI*2);
+      ctx.fillStyle='hsl('+p.hue+',90%,60%)'; ctx.fill();
+      ctx.restore();
+    });
+    // Rising flood water
+    _dPBFloodRise = Math.min(1, _dPBFloodRise + 0.0003);
+    var riseH = H * _dPBFloodRise * 0.6;
+    var floodFill=ctx.createLinearGradient(0,H-riseH,0,H);
+    floodFill.addColorStop(0,'rgba(20,60,180,0.28)'); floodFill.addColorStop(1,'rgba(10,30,120,0.45)');
+    ctx.fillStyle=floodFill; ctx.fillRect(0,H-riseH,W,riseH);
+    // Red vignette
+    var vig=ctx.createRadialGradient(W/2,H/2,H*0.2,W/2,H/2,H*0.8);
+    vig.addColorStop(0,'rgba(180,0,0,0)'); vig.addColorStop(1,'rgba(180,0,0,0.35)');
+    ctx.fillStyle=vig; ctx.fillRect(0,0,W,H);
+    // FLOODING text flash
+    if(Math.floor(ambT*2)%2===0){
+      ctx.save(); ctx.globalAlpha=0.7;
+      ctx.fillStyle='#cc0000'; ctx.font='bold 18px monospace';
+      ctx.textAlign='center'; ctx.fillText('FLOODING',W/2,H*0.08);
+      ctx.restore();
+    }
   }
-  for (var ci=0;ci<_dPondClouds.length;ci++) {
-    var c=_dPondClouds[ci]; c.x+=c.speed; if(c.x>W+110) c.x=-120;
-    ctx.save(); ctx.globalAlpha=c.alpha;
-    ctx.beginPath(); ctx.ellipse(c.x,c.y,c.rx,c.ry,0,0,Math.PI*2);
-    ctx.fillStyle='rgba(200,220,255,1)'; ctx.fill(); ctx.restore();
+
+  // ── Ripple rings (L1–5 + L10) ────────────────────────────────────────
+  if (level <= 5 || level === 10) {
+    var rippleInterval = level<=3 ? 22+Math.random()*28 : 12+Math.random()*15;
+    if(t-_dPBRippleLast > rippleInterval){
+      _dPBRipples2.push({x:rand(W*0.08,W*0.92),y:rand(H*0.45,H*0.92),r:3,maxR:rand(20,45),alpha:0.55});
+      _dPBRippleLast=t;
+    }
+    _dPBRipples2 = _dPBRipples2.filter(function(rp){
+      rp.r += level<=3 ? 0.7 : 1.1; rp.alpha -= 0.014;
+      if(rp.alpha<=0) return false;
+      ctx.beginPath(); ctx.ellipse(rp.x,rp.y,rp.r,rp.r*0.3,0,0,Math.PI*2);
+      ctx.strokeStyle='rgba(100,180,255,'+rp.alpha.toFixed(2)+')'; ctx.lineWidth=1; ctx.stroke();
+      return true;
+    });
   }
-  var wGrad=ctx.createLinearGradient(0,POND_TOP,0,H);
-  wGrad.addColorStop(0,'#0a2a50'); wGrad.addColorStop(1,'#041828');
-  ctx.fillStyle=wGrad; ctx.fillRect(0,POND_TOP,W,H-POND_TOP);
-  if(t-_dPondLastRipple>18+Math.random()*25) {
-    _dPondRipples.push({x:rand(W*0.1,W*0.9),y:rand(POND_TOP+10,H-20),r:3,maxR:rand(22,40),alpha:0.6});
-    _dPondLastRipple=t;
+
+  // ── Lily pads + dragonflies (L1–3) ─────────────────────────────────
+  if (level <= 3) {
+    _dPBParticles.forEach(function(p){
+      if(p.type==='lilypad'){
+        p.y += Math.sin(ambT*0.3+p.phase)*0.08;
+        ctx.save();
+        ctx.beginPath(); ctx.ellipse(p.x,p.y,p.w/2,p.h/2,0,0,Math.PI*2);
+        ctx.fillStyle='rgba(25,80,25,0.85)'; ctx.fill();
+        ctx.strokeStyle='rgba(40,110,40,0.5)'; ctx.lineWidth=0.7; ctx.stroke();
+        if(p.flower){
+          ctx.beginPath(); ctx.arc(p.x,p.y-p.h/2-3,3,0,Math.PI*2);
+          ctx.fillStyle=p.fc; ctx.fill();
+        }
+        ctx.restore();
+      } else if(p.type==='dragonfly'){
+        p.x+=p.vx; p.y+=Math.sin(ambT*3+p.phase)*0.6;
+        if(p.x>W+15) p.x=-15;
+        if(p.x<-15) p.x=W+15;
+        ctx.save(); ctx.translate(p.x,p.y); ctx.rotate(p.vx>0?0:Math.PI);
+        ctx.strokeStyle='rgba(100,220,200,0.7)'; ctx.lineWidth=1;
+        ctx.beginPath(); ctx.moveTo(-6,0); ctx.lineTo(6,0); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(-2,0); ctx.lineTo(-8,-5); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(-2,0); ctx.lineTo(-8,5); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(2,0); ctx.lineTo(8,-5); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(2,0); ctx.lineTo(8,5); ctx.stroke();
+        ctx.restore();
+      }
+    });
   }
-  _dPondRipples=_dPondRipples.filter(function(rp){
-    rp.r+=0.7; rp.alpha-=0.018;
-    if(rp.alpha<=0) return false;
-    ctx.beginPath(); ctx.ellipse(rp.x,rp.y,rp.r,rp.r*0.32,0,0,Math.PI*2);
-    ctx.strokeStyle='rgba(100,180,255,'+rp.alpha.toFixed(2)+')'; ctx.lineWidth=1; ctx.stroke();
-    return true;
-  });
-  for (var li=0;li<_dPondLilyPads.length;li++) {
-    var lp=_dPondLilyPads[li];
-    var ly=lp.relY*H+Math.sin(t*0.008+lp.phase)*2;
-    ctx.save();
-    ctx.beginPath(); ctx.ellipse(lp.x,ly,lp.w/2,lp.h/2,0,0,Math.PI*2);
-    ctx.fillStyle='rgba(30,90,30,0.85)'; ctx.fill();
-    ctx.strokeStyle='rgba(50,120,50,0.5)'; ctx.lineWidth=0.8; ctx.stroke();
-    if(lp.flower){ctx.beginPath();ctx.arc(lp.x,ly-lp.h/2-3,3.5,0,Math.PI*2);ctx.fillStyle=lp.fc;ctx.fill();}
-    ctx.restore();
+
+  // ── Fish (L7) ─────────────────────────────────────────────────────
+  if (level === 7) {
+    _dPBParticles.forEach(function(p){
+      if(p.type!=='fish') return;
+      p.x+=p.vx; p.y+=Math.sin(ambT*0.8+p.phase)*0.4;
+      if(p.x>W+10) p.x=-10;
+      if(p.x<-10) p.x=W+10;
+      ctx.save(); ctx.translate(p.x,p.y); ctx.rotate(p.vx>0?0:Math.PI);
+      ctx.fillStyle='hsla('+p.hue+',70%,55%,0.75)';
+      ctx.beginPath(); ctx.ellipse(0,0,p.r*2,p.r,0,0,Math.PI*2); ctx.fill();
+      ctx.beginPath(); ctx.moveTo(-p.r*2,0); ctx.lineTo(-p.r*2-5,-4); ctx.lineTo(-p.r*2-5,4); ctx.closePath();
+      ctx.fill();
+      ctx.restore();
+    });
   }
+
+  // ── Flood bars (both sides, all levels for pond_battle) ───────────
+  // Slowly increment flood values
+  _dPBFloodLeft  = Math.min(1, _dPBFloodLeft  + 0.00015 * (1+level*0.15));
+  _dPBFloodRight = Math.min(1, _dPBFloodRight + 0.00012 * (1+level*0.15));
+
+  // Left flood bar (left edge)
+  var fbH = H * _dPBFloodLeft;
+  var floodBarGrad = ctx.createLinearGradient(0,H-fbH,0,H);
+  floodBarGrad.addColorStop(0,'rgba(50,120,255,0.45)'); floodBarGrad.addColorStop(1,'rgba(20,60,200,0.7)');
+  ctx.fillStyle = floodBarGrad;
+  ctx.fillRect(0, H-fbH, 8, fbH);
+
+  // Right flood bar (right edge)
+  var fbH2 = H * _dPBFloodRight;
+  var floodBarGrad2 = ctx.createLinearGradient(0,H-fbH2,0,H);
+  floodBarGrad2.addColorStop(0,'rgba(50,120,255,0.45)'); floodBarGrad2.addColorStop(1,'rgba(20,60,200,0.7)');
+  ctx.fillStyle = floodBarGrad2;
+  ctx.fillRect(W-8, H-fbH2, 8, fbH2);
 }
 
 function _duoDrawShakeFrogAmbient(ctx,W,H,rand) {
@@ -8464,18 +8872,432 @@ function _duoDrawShakeFrogAmbient(ctx,W,H,rand) {
   }
 }
 
+// ── FrogSwap: 10 rich level environments ─────────────────────────────────
 function _duoDrawFrogSwapAmbient(ctx,W,H) {
-  var t=_duoAmbientT;
-  var grad=ctx.createLinearGradient(0,0,W,H);
-  grad.addColorStop(0,'rgba(60,10,100,0.85)');
-  grad.addColorStop(0.5,'rgba(100,20,160,0.7)');
-  grad.addColorStop(1,'rgba(40,5,80,0.85)');
-  ctx.fillStyle=grad; ctx.fillRect(0,0,W,H);
-  for(var si=0;si<5;si++){
-    var sy=H*(0.2+si*0.15)+Math.sin(t*0.01+si)*8;
-    ctx.beginPath(); ctx.moveTo(0,sy); ctx.lineTo(W,sy);
-    ctx.strokeStyle='rgba(192,132,252,'+(0.04+Math.sin(t*0.012+si)*0.03).toFixed(3)+')';
-    ctx.lineWidth=1.2; ctx.stroke();
+  var ambT = _duoAmbientT / 60; // seconds-ish
+  var t = _duoAmbientT;
+  var level = _duoAmbientLevel;
+  var rand = function(a,b){return a+Math.random()*(b-a);};
+
+  // Portal centre: horizontal mid, vertical mid of canvas
+  var PX = W * 0.5;
+  var PY = H * 0.5;
+
+  // Portal config per level
+  var portalCfg = [
+    null, // index 0 unused
+    {r1:18,r2:28,col:'rgba(180,100,255,', glow:'rgba(180,100,255,0.25)', speed:0.6},  // L1
+    {r1:20,r2:32,col:'rgba(140,80,240,',  glow:'rgba(140,80,240,0.28)',  speed:0.7},  // L2
+    {r1:24,r2:38,col:'rgba(60,220,100,',  glow:'rgba(60,220,100,0.28)',  speed:0.8},  // L3
+    {r1:26,r2:42,col:'rgba(80,200,220,',  glow:'rgba(80,200,220,0.30)',  speed:0.9},  // L4
+    {r1:30,r2:48,col:'rgba(255,200,30,',  glow:'rgba(255,200,30,0.30)',  speed:1.0},  // L5
+    {r1:34,r2:54,col:'rgba(255,185,30,',  glow:'rgba(255,185,30,0.32)',  speed:1.1},  // L6
+    {r1:38,r2:60,col:'rgba(100,220,255,', glow:'rgba(100,220,255,0.32)', speed:1.3},  // L7
+    {r1:42,r2:66,col:'rgba(255,100,30,',  glow:'rgba(255,100,30,0.35)',  speed:1.5},  // L8
+    {r1:48,r2:76,col:'rgba(80,255,220,',  glow:'rgba(80,255,220,0.38)',  speed:1.8},  // L9
+    {r1:56,r2:88,col:'rgba(255,255,255,', glow:'rgba(200,100,255,0.45)', speed:2.5},  // L10
+  ];
+  var pc = portalCfg[Math.min(level, 10)];
+
+  // ── Draw the background environment ──────────────────────────────────
+  if (level === 1) {
+    // Garden Pond: peach->lavender sky, green hedges, fireflies, petals
+    var sg = ctx.createLinearGradient(0,0,0,H);
+    sg.addColorStop(0,'rgba(255,200,160,0.9)'); sg.addColorStop(1,'rgba(200,160,230,0.9)');
+    ctx.fillStyle=sg; ctx.fillRect(0,0,W,H);
+    // Green hedges bottom
+    ctx.fillStyle='rgba(40,100,40,0.85)';
+    ctx.fillRect(0,H*0.8,W,H*0.2);
+    for(var hi=0;hi<6;hi++){
+      ctx.beginPath(); ctx.arc(W*hi/5,H*0.82,W*0.09,0,Math.PI*2); ctx.fill();
+    }
+    // Pond shimmer bottom centre
+    var shim=ctx.createLinearGradient(W*0.3,H*0.85,W*0.7,H*0.95);
+    shim.addColorStop(0,'rgba(100,180,255,0)'); shim.addColorStop(0.5,'rgba(150,220,255,'+(0.3+Math.sin(ambT*2)*0.1).toFixed(2)+')'); shim.addColorStop(1,'rgba(100,180,255,0)');
+    ctx.fillStyle=shim; ctx.fillRect(W*0.3,H*0.85,W*0.4,H*0.1);
+    // Firefly dots
+    _dSwapParticles.forEach(function(p,i){
+      if(i%5!==0) return;
+      p.y += p.vy * 0.4; p.x += Math.sin(ambT+p.phase)*0.4;
+      if(p.y<0) p.y=H;
+      var ga=0.5+Math.sin(ambT*3+p.phase)*0.5;
+      ctx.beginPath(); ctx.arc(p.x,p.y,p.r*0.8,0,Math.PI*2);
+      ctx.fillStyle='rgba(255,255,100,'+( ga*0.8).toFixed(2)+')'; ctx.fill();
+    });
+    // Petals drifting diagonally
+    _dSwapParticles.forEach(function(p,i){
+      if(i%5!==1) return;
+      p.x += 0.6; p.y += 0.3+Math.sin(ambT+p.phase)*0.2;
+      if(p.x>W+5){p.x=-5; p.y=rand(0,H*0.7);}
+      ctx.save(); ctx.translate(p.x,p.y); ctx.rotate(ambT+p.phase);
+      ctx.fillStyle='rgba(255,160,200,0.7)';
+      ctx.beginPath(); ctx.ellipse(0,0,4,2,0,0,Math.PI*2); ctx.fill();
+      ctx.restore();
+    });
+
+  } else if (level === 2) {
+    // Rainforest: dark green canopy, birds, rain, purple sparkles
+    var rg=ctx.createLinearGradient(0,0,0,H);
+    rg.addColorStop(0,'rgba(10,40,15,0.95)'); rg.addColorStop(1,'rgba(20,60,20,0.9)');
+    ctx.fillStyle=rg; ctx.fillRect(0,0,W,H);
+    // Canopy top
+    ctx.fillStyle='rgba(20,70,20,0.9)';
+    for(var ci2=0;ci2<8;ci2++){
+      ctx.beginPath(); ctx.arc(W*ci2/7,H*0.08,W*0.12,0,Math.PI*2); ctx.fill();
+    }
+    // Canopy bottom
+    for(var ci3=0;ci3<8;ci3++){
+      ctx.beginPath(); ctx.arc(W*ci3/7,H*0.92,W*0.10,0,Math.PI*2); ctx.fill();
+    }
+    // Rain diagonal lines
+    ctx.strokeStyle='rgba(180,220,255,0.18)'; ctx.lineWidth=0.8;
+    _dSwapParticles.forEach(function(p,i){
+      if(i%5!==2) return;
+      p.y+=2.5; p.x+=0.8; if(p.y>H+10){p.y=-10;p.x=rand(0,W);}
+      ctx.beginPath(); ctx.moveTo(p.x,p.y); ctx.lineTo(p.x+5,p.y+12); ctx.stroke();
+    });
+    // Birds (triangles) flying across
+    _dSwapParticles.forEach(function(p,i){
+      if(i%5!==3) return;
+      p.x += 1.2+p.r*0.3; p.y += Math.sin(ambT+p.phase)*0.5;
+      if(p.x>W+10){p.x=-10; p.y=rand(H*0.1,H*0.6);}
+      ctx.save(); ctx.translate(p.x,p.y);
+      ctx.fillStyle='hsl('+(p.hue%60+160)+',80%,55%)';
+      ctx.beginPath(); ctx.moveTo(0,-4); ctx.lineTo(8,0); ctx.lineTo(0,2); ctx.closePath(); ctx.fill();
+      ctx.restore();
+    });
+    // Purple sparkles
+    _dSwapParticles.forEach(function(p,i){
+      if(i%5!==4) return;
+      p.y-=0.5; if(p.y<0){p.y=H;p.x=rand(0,W);}
+      var ga=0.5+Math.sin(ambT*4+p.phase)*0.5;
+      ctx.beginPath(); ctx.arc(p.x,p.y,p.r*0.7,0,Math.PI*2);
+      ctx.fillStyle='rgba(200,100,255,'+( ga*0.7).toFixed(2)+')'; ctx.fill();
+    });
+
+  } else if (level === 3) {
+    // Swamp: murky green, fog wisps, glowing eyes, bubbles, portal glow
+    var swg=ctx.createLinearGradient(0,0,0,H);
+    swg.addColorStop(0,'rgba(10,25,8,0.97)'); swg.addColorStop(1,'rgba(15,40,10,0.95)');
+    ctx.fillStyle=swg; ctx.fillRect(0,0,W,H);
+    // Fog wisps
+    _dSwapParticles.forEach(function(p,i){
+      if(i%5!==0) return;
+      p.x += 0.3+p.r*0.1;
+      if(p.x>W+60){p.x=-60; p.y=rand(H*0.2,H*0.8);}
+      ctx.save();
+      ctx.globalAlpha=0.12+Math.sin(ambT*0.5+p.phase)*0.06;
+      ctx.fillStyle='rgba(140,200,140,1)';
+      ctx.beginPath(); ctx.ellipse(p.x,p.y,40+p.r*5,10+p.r*2,0,0,Math.PI*2); ctx.fill();
+      ctx.restore();
+    });
+    // Glowing eye pairs (random blink)
+    _dSwapParticles.forEach(function(p,i){
+      if(i%5!==1) return;
+      var blink = Math.sin(ambT*2+p.phase)>0.6 ? 0.9 : 0.0;
+      if(blink>0){
+        ctx.fillStyle='rgba(60,255,60,'+blink+')';
+        ctx.beginPath(); ctx.arc(p.x-4,p.y,2.5,0,Math.PI*2); ctx.fill();
+        ctx.beginPath(); ctx.arc(p.x+4,p.y,2.5,0,Math.PI*2); ctx.fill();
+      }
+    });
+    // Bubbles rising
+    _dSwapParticles.forEach(function(p,i){
+      if(i%5!==2) return;
+      p.y-=0.6+p.r*0.2; if(p.y<0){p.y=H;p.x=rand(0,W);}
+      ctx.beginPath(); ctx.arc(p.x,p.y,p.r,0,Math.PI*2);
+      ctx.strokeStyle='rgba(100,200,100,0.5)'; ctx.lineWidth=0.8; ctx.stroke();
+    });
+    // Portal area green glow
+    var eg=ctx.createRadialGradient(PX,PY,0,PX,PY,60);
+    eg.addColorStop(0,'rgba(50,255,80,0.22)'); eg.addColorStop(1,'rgba(50,255,80,0)');
+    ctx.fillStyle=eg; ctx.fillRect(0,0,W,H);
+
+  } else if (level === 4) {
+    // River Bank: blue/teal, reed shapes, ripple rings, frog silhouettes
+    var rbg=ctx.createLinearGradient(0,0,0,H);
+    rbg.addColorStop(0,'rgba(20,60,90,0.92)'); rbg.addColorStop(1,'rgba(10,50,70,0.95)');
+    ctx.fillStyle=rbg; ctx.fillRect(0,0,W,H);
+    // Animated horizontal streaks (river flow)
+    for(var ri2=0;ri2<8;ri2++){
+      var rx=((ambT*80+ri2*W/8)%W);
+      var ry=H*(0.4+ri2*0.07);
+      ctx.beginPath(); ctx.moveTo(rx,ry); ctx.lineTo(rx+40,ry);
+      ctx.strokeStyle='rgba(80,180,220,0.22)'; ctx.lineWidth=1.2; ctx.stroke();
+    }
+    // Reeds left+right
+    for(var rei=0;rei<5;rei++){
+      var reedX=W*0.04+rei*W*0.018;
+      ctx.strokeStyle='rgba(80,120,60,0.7)'; ctx.lineWidth=2;
+      ctx.beginPath(); ctx.moveTo(reedX,H); ctx.lineTo(reedX+Math.sin(ambT+rei)*3,H*0.5);
+      ctx.stroke();
+      ctx.fillStyle='rgba(60,40,20,0.6)';
+      ctx.beginPath(); ctx.ellipse(reedX+Math.sin(ambT+rei)*3,H*0.5,4,10,0,0,Math.PI*2); ctx.fill();
+    }
+    for(var rei2=0;rei2<5;rei2++){
+      var reedX2=W*0.96-rei2*W*0.018;
+      ctx.strokeStyle='rgba(80,120,60,0.7)'; ctx.lineWidth=2;
+      ctx.beginPath(); ctx.moveTo(reedX2,H); ctx.lineTo(reedX2+Math.sin(ambT+rei2+2)*3,H*0.5);
+      ctx.stroke();
+      ctx.fillStyle='rgba(60,40,20,0.6)';
+      ctx.beginPath(); ctx.ellipse(reedX2,H*0.5,4,10,0,0,Math.PI*2); ctx.fill();
+    }
+    // Frog silhouettes on lily pads bottom
+    for(var fri=0;fri<3;fri++){
+      var fx=W*(0.2+fri*0.3), fy=H*0.88+Math.sin(ambT+fri)*2;
+      ctx.fillStyle='rgba(20,80,20,0.55)';
+      ctx.beginPath(); ctx.ellipse(fx,fy,18,5,0,0,Math.PI*2); ctx.fill();
+      ctx.beginPath(); ctx.arc(fx,fy-8,7,0,Math.PI*2); ctx.fill();
+    }
+
+  } else if (level === 5) {
+    // Jungle: dark green, vines, flowers, heavy fireflies, gold sparkle rain
+    var jg=ctx.createLinearGradient(0,0,0,H);
+    jg.addColorStop(0,'rgba(5,25,5,0.98)'); jg.addColorStop(1,'rgba(8,35,8,0.96)');
+    ctx.fillStyle=jg; ctx.fillRect(0,0,W,H);
+    // Dense trees left+right
+    ctx.fillStyle='rgba(15,50,10,0.9)';
+    for(var ti=0;ti<4;ti++){
+      ctx.beginPath(); ctx.arc(W*0.05+ti*W*0.03,H*0.4+ti*H*0.1,W*0.07,0,Math.PI*2); ctx.fill();
+      ctx.beginPath(); ctx.arc(W*0.95-ti*W*0.03,H*0.4+ti*H*0.1,W*0.07,0,Math.PI*2); ctx.fill();
+    }
+    // Vines from top
+    for(var vi=0;vi<6;vi++){
+      var vx=W*(0.05+vi*0.18);
+      ctx.beginPath(); ctx.moveTo(vx,0);
+      ctx.bezierCurveTo(vx+Math.sin(ambT*0.4+vi)*12, H*0.25, vx+Math.sin(ambT*0.3+vi+1)*10, H*0.5, vx+Math.sin(ambT*0.5+vi)*8, H*0.7);
+      ctx.strokeStyle='rgba(40,100,20,0.6)'; ctx.lineWidth=2.5; ctx.stroke();
+    }
+    // Bright flower dots on edges
+    for(var fli=0;fli<8;fli++){
+      var flx = fli<4 ? W*0.05+fli*W*0.03 : W*0.95-( fli-4)*W*0.03;
+      var fly = H*(0.3+fli*0.08);
+      ctx.beginPath(); ctx.arc(flx,fly,5,0,Math.PI*2);
+      ctx.fillStyle=fli%2===0?'rgba(255,80,150,0.8)':'rgba(255,140,30,0.8)'; ctx.fill();
+    }
+    // Heavy fireflies
+    _dSwapParticles.forEach(function(p,i){
+      if(i%3!==0) return;
+      p.y-=0.5; p.x+=Math.sin(ambT+p.phase)*0.6;
+      if(p.y<0){p.y=H; p.x=rand(0,W);}
+      var ga=0.4+Math.sin(ambT*4+p.phase)*0.6;
+      ctx.beginPath(); ctx.arc(p.x,p.y,p.r*0.9,0,Math.PI*2);
+      ctx.fillStyle='rgba(255,255,80,'+( ga*0.9).toFixed(2)+')'; ctx.fill();
+    });
+    // Gold sparkle rain
+    _dSwapParticles.forEach(function(p,i){
+      if(i%5!==4) return;
+      p.y+=1.2; if(p.y>H){p.y=-5; p.x=rand(0,W);}
+      ctx.beginPath(); ctx.arc(p.x,p.y,p.r*0.8,0,Math.PI*2);
+      ctx.fillStyle='rgba(255,215,0,0.7)'; ctx.fill();
+    });
+
+  } else if (level === 6) {
+    // Desert Oasis: amber/brown, sand streaks, palm trees, stars, oasis shimmer
+    var dg=ctx.createLinearGradient(0,0,0,H);
+    dg.addColorStop(0,'rgba(80,45,10,0.95)'); dg.addColorStop(0.6,'rgba(140,90,30,0.9)'); dg.addColorStop(1,'rgba(100,60,15,0.95)');
+    ctx.fillStyle=dg; ctx.fillRect(0,0,W,H);
+    // Stars
+    for(var sti=0;sti<20;sti++){
+      var stx=W*(sti/20+0.01), sty=H*(0.05+Math.sin(sti*7.3)*0.18);
+      var sta=0.4+Math.sin(ambT*2+sti)*0.4;
+      ctx.beginPath(); ctx.arc(stx,sty,1,0,Math.PI*2);
+      ctx.fillStyle='rgba(255,255,220,'+sta.toFixed(2)+')'; ctx.fill();
+    }
+    // Sand streaks blowing right
+    ctx.strokeStyle='rgba(220,180,80,0.25)'; ctx.lineWidth=0.8;
+    _dSwapParticles.forEach(function(p,i){
+      if(i%5!==0) return;
+      p.x+=1.8; if(p.x>W+20){p.x=-20; p.y=rand(H*0.3,H*0.9);}
+      ctx.beginPath(); ctx.moveTo(p.x,p.y); ctx.lineTo(p.x+15+p.r*3,p.y); ctx.stroke();
+    });
+    // Palm tree silhouettes left+right
+    function drawPalm(px,py){
+      ctx.strokeStyle='rgba(60,35,10,0.8)'; ctx.lineWidth=5;
+      ctx.beginPath(); ctx.moveTo(px,py); ctx.lineTo(px+5,py-H*0.22); ctx.stroke();
+      ctx.strokeStyle='rgba(40,100,20,0.7)'; ctx.lineWidth=2;
+      for(var pl=0;pl<5;pl++){
+        var a=pl/5*Math.PI-0.3;
+        ctx.beginPath(); ctx.moveTo(px+5,py-H*0.22);
+        ctx.lineTo(px+5+Math.cos(a)*30,py-H*0.22+Math.sin(a)*15);
+        ctx.stroke();
+      }
+    }
+    drawPalm(W*0.08,H*0.85); drawPalm(W*0.92,H*0.85);
+    // Oasis shimmer pool
+    var og=ctx.createRadialGradient(PX,H*0.87,0,PX,H*0.87,W*0.12);
+    og.addColorStop(0,'rgba(80,180,220,'+(0.35+Math.sin(ambT*1.5)*0.08).toFixed(2)+')');
+    og.addColorStop(1,'rgba(80,180,220,0)');
+    ctx.fillStyle=og; ctx.beginPath(); ctx.ellipse(PX,H*0.88,W*0.12,H*0.04,0,0,Math.PI*2); ctx.fill();
+
+  } else if (level === 7) {
+    // Arctic: ice blue/white sky, aurora ribbons, snow streaks, ice crystals
+    var ag=ctx.createLinearGradient(0,0,0,H);
+    ag.addColorStop(0,'rgba(140,200,230,0.95)'); ag.addColorStop(0.5,'rgba(180,220,240,0.9)'); ag.addColorStop(1,'rgba(100,160,200,0.95)');
+    ctx.fillStyle=ag; ctx.fillRect(0,0,W,H);
+    // Aurora ribbons (4 bezier arcs)
+    var auroraCols=['rgba(80,255,120,','rgba(180,80,255,','rgba(40,200,220,','rgba(255,180,80,','rgba(100,255,200,'];
+    _dSwapAuroraPhase += 0.005;
+    for(var aui=0;aui<5;aui++){
+      var auY=H*(0.08+aui*0.06)+Math.sin(ambT*0.4+aui*1.3+_dSwapAuroraPhase)*H*0.05;
+      var auAlpha=0.18+Math.sin(ambT*0.6+aui)*0.12;
+      ctx.beginPath();
+      ctx.moveTo(0,auY);
+      ctx.bezierCurveTo(W*0.25,auY+Math.sin(ambT*0.5+aui)*20,W*0.75,auY+Math.cos(ambT*0.4+aui)*20,W,auY);
+      ctx.strokeStyle=auroraCols[aui]+auAlpha.toFixed(2)+')'; ctx.lineWidth=8+aui*2; ctx.stroke();
+    }
+    // Horizontal snow streaks
+    ctx.strokeStyle='rgba(255,255,255,0.35)'; ctx.lineWidth=0.7;
+    _dSwapParticles.forEach(function(p,i){
+      if(i%4!==0) return;
+      p.x-=2.5+p.r; if(p.x<-20){p.x=W+10; p.y=rand(0,H);}
+      ctx.beginPath(); ctx.moveTo(p.x,p.y); ctx.lineTo(p.x+12+p.r*2,p.y); ctx.stroke();
+    });
+    // Ice crystal polygons on edges
+    _dSwapParticles.forEach(function(p,i){
+      if(i%8!==0 && i%8!==1) return;
+      var cx2=i<_dSwapParticles.length*0.5 ? p.r*6 : W-p.r*6;
+      ctx.save(); ctx.translate(cx2,p.y); ctx.rotate(ambT*0.3+p.phase);
+      ctx.beginPath();
+      for(var ick=0;ick<6;ick++){var a2=ick/6*Math.PI*2; ctx.lineTo(Math.cos(a2)*(5+p.r),Math.sin(a2)*(5+p.r));}
+      ctx.closePath(); ctx.strokeStyle='rgba(200,240,255,0.45)'; ctx.lineWidth=0.8; ctx.stroke();
+      ctx.restore();
+    });
+
+  } else if (level === 8) {
+    // Volcanic: dark red/black, magma cracks, lava drips, ash particles
+    var vlg=ctx.createLinearGradient(0,0,0,H);
+    vlg.addColorStop(0,'rgba(10,2,2,0.98)'); vlg.addColorStop(0.7,'rgba(30,5,2,0.96)'); vlg.addColorStop(1,'rgba(60,10,2,0.95)');
+    ctx.fillStyle=vlg; ctx.fillRect(0,0,W,H);
+    // Magma crack lines at bottom (glowing bezier)
+    for(var mci=0;mci<5;mci++){
+      var mcx=W*(0.05+mci*0.2);
+      var glow=0.4+Math.sin(ambT*2+mci)*0.3;
+      ctx.save(); ctx.shadowColor='rgba(255,100,0,0.8)'; ctx.shadowBlur=12;
+      ctx.beginPath();
+      ctx.moveTo(mcx,H);
+      ctx.bezierCurveTo(mcx+rand(-20,20),H-30,mcx+rand(-15,15),H-60,mcx+rand(-10,10),H-80);
+      ctx.strokeStyle='rgba(255,'+(80+mci*15)+',0,'+glow.toFixed(2)+')'; ctx.lineWidth=3; ctx.stroke();
+      ctx.restore();
+    }
+    // Lava drips from top edges
+    _dSwapParticles.forEach(function(p,i){
+      if(i%5!==0 && i%5!==1) return;
+      p.y+=1.2+p.r*0.4; if(p.y>H+5){p.y=-5; p.x=rand(0,W*0.2)+(i%2===0?0:W*0.8);}
+      ctx.beginPath(); ctx.arc(p.x,p.y,p.r,0,Math.PI*2);
+      ctx.fillStyle='rgba(255,'+(80+Math.floor(p.r*15))+',0,0.85)'; ctx.fill();
+    });
+    // Ash particles floating up
+    _dSwapParticles.forEach(function(p,i){
+      if(i%5!==2) return;
+      p.y-=0.6+p.r*0.15; p.x+=Math.sin(ambT+p.phase)*0.4;
+      if(p.y<0){p.y=H; p.x=rand(0,W);}
+      ctx.beginPath(); ctx.arc(p.x,p.y,p.r*0.6,0,Math.PI*2);
+      ctx.fillStyle='rgba(120,100,90,0.5)'; ctx.fill();
+    });
+
+  } else if (level === 9) {
+    // Deep Jungle: near-black, silhouette trees, bioluminescent, occasional flash
+    ctx.fillStyle='rgba(2,5,2,0.99)'; ctx.fillRect(0,0,W,H);
+    // Dense black silhouette trees
+    ctx.fillStyle='rgba(5,15,5,1)';
+    for(var dti=0;dti<5;dti++){
+      var dtx=W*0.02+dti*W*0.04;
+      var dth=H*(0.3+dti*0.05);
+      ctx.fillRect(dtx,H-dth,W*0.025,dth);
+      ctx.beginPath(); ctx.arc(dtx+W*0.012,H-dth,W*0.035,0,Math.PI*2); ctx.fill();
+    }
+    for(var dti2=0;dti2<5;dti2++){
+      var dtx2=W*0.98-dti2*W*0.04;
+      var dth2=H*(0.3+dti2*0.05);
+      ctx.fillRect(dtx2,H-dth2,W*0.025,dth2);
+      ctx.beginPath(); ctx.arc(dtx2+W*0.012,H-dth2,W*0.035,0,Math.PI*2); ctx.fill();
+    }
+    // Bioluminescent particles (cyan+green glowing dots)
+    _dSwapParticles.forEach(function(p,i){
+      p.y-=0.3+p.r*0.1; p.x+=Math.sin(ambT*0.8+p.phase)*0.3;
+      if(p.y<0){p.y=H; p.x=rand(0,W);}
+      var hue2=i%2===0?170:140;
+      ctx.save(); ctx.shadowColor='hsl('+hue2+',100%,60%)'; ctx.shadowBlur=12;
+      ctx.beginPath(); ctx.arc(p.x,p.y,p.r,0,Math.PI*2);
+      ctx.fillStyle='hsl('+hue2+',100%,65%)'; ctx.fill();
+      ctx.restore();
+    });
+    // Occasional flash
+    if(Math.sin(ambT*0.7)*Math.sin(ambT*1.3)>0.85){
+      ctx.fillStyle='rgba(100,255,150,0.04)'; ctx.fillRect(0,0,W,H);
+    }
+
+  } else if (level === 10) {
+    // The Storm: dark chaos, energy streaks, vortex particles, lightning, bg shift
+    var bgShift=Math.sin(ambT*0.5)*0.5+0.5;
+    var sr=Math.floor(15+bgShift*40), sg2=Math.floor(0+bgShift*5), sb=Math.floor(20+bgShift*10);
+    ctx.fillStyle='rgba('+sr+','+sg2+','+sb+',0.97)'; ctx.fillRect(0,0,W,H);
+    // 20 energy streaks toward centre portal
+    _dSwapParticles.forEach(function(p,i){
+      if(i>=20) return;
+      var dx=PX-p.x, dy=PY-p.y, dist=Math.sqrt(dx*dx+dy*dy);
+      p.x+=dx/dist*(2+p.r*0.5); p.y+=dy/dist*(2+p.r*0.5);
+      if(dist<8){p.x=rand(0,W)*(Math.random()>0.5?0:1)+rand(0,W)*(Math.random()>0.5?0.9:0.1); p.y=rand(0,H)*(Math.random()>0.5?0:1)+rand(0,H)*(Math.random()>0.5?0.9:0.1);}
+      ctx.beginPath(); ctx.moveTo(p.x,p.y); ctx.lineTo(p.x+dx/dist*15,p.y+dy/dist*15);
+      ctx.strokeStyle=i%2===0?'rgba(200,100,255,0.6)':'rgba(255,200,50,0.6)'; ctx.lineWidth=1.5; ctx.stroke();
+    });
+    // Vortex particle system around portal
+    _dSwapParticles.forEach(function(p,i){
+      if(i<20) return;
+      var vortAngle=ambT*(2+p.r*0.3)+p.phase;
+      var vortR=20+p.r*8+Math.sin(ambT+p.phase)*10;
+      p.x=PX+Math.cos(vortAngle)*vortR; p.y=PY+Math.sin(vortAngle)*vortR;
+      ctx.beginPath(); ctx.arc(p.x,p.y,p.r*0.9,0,Math.PI*2);
+      ctx.fillStyle=i%3===0?'rgba(200,100,255,0.7)':i%3===1?'rgba(255,200,50,0.7)':'rgba(255,255,255,0.5)'; ctx.fill();
+    });
+    // Lightning bolts
+    if(Math.random()<0.015){
+      var lbx=rand(W*0.1,W*0.9), lby=0;
+      ctx.save(); ctx.strokeStyle='rgba(255,220,255,0.9)'; ctx.lineWidth=2;
+      ctx.shadowColor='rgba(255,200,255,1)'; ctx.shadowBlur=15;
+      ctx.beginPath(); ctx.moveTo(lbx,lby);
+      for(var lbs=0;lbs<8;lbs++){lbx+=rand(-20,20);lby+=H/8;ctx.lineTo(lbx,lby);}
+      ctx.stroke(); ctx.restore();
+    }
+  }
+
+  // ── Draw SWAP PORTAL (all levels) ────────────────────────────────────
+  if (pc) {
+    var pr1=pc.r1, pr2=pc.r2;
+    // Glow
+    var portalGlowR = pr2*2.2 + (level-1)*2;
+    var pg=ctx.createRadialGradient(PX,PY,0,PX,PY,portalGlowR);
+    pg.addColorStop(0,pc.glow); pg.addColorStop(1,'rgba(0,0,0,0)');
+    ctx.fillStyle=pg; ctx.fillRect(PX-portalGlowR,PY-portalGlowR,portalGlowR*2,portalGlowR*2);
+    // Outer ring (counter-clockwise)
+    ctx.beginPath(); ctx.arc(PX,PY,pr2,0,Math.PI*2);
+    ctx.strokeStyle=pc.col+'0.6)'; ctx.lineWidth=3+level*0.3;
+    ctx.save(); ctx.translate(PX,PY); ctx.rotate(-ambT*pc.speed); ctx.translate(-PX,-PY);
+    ctx.setLineDash([8+level,4]); ctx.stroke(); ctx.setLineDash([]);
+    ctx.restore();
+    // Inner ring (clockwise)
+    ctx.save(); ctx.translate(PX,PY); ctx.rotate(ambT*pc.speed*1.4); ctx.translate(-PX,-PY);
+    ctx.beginPath(); ctx.arc(PX,PY,pr1,0,Math.PI*2);
+    ctx.strokeStyle=pc.col+'0.8)'; ctx.lineWidth=2+level*0.2;
+    ctx.setLineDash([5+level,3]); ctx.stroke(); ctx.setLineDash([]);
+    ctx.restore();
+    // Inner glow/fill
+    var ig=ctx.createRadialGradient(PX,PY,0,PX,PY,pr1);
+    ig.addColorStop(0,pc.col+(0.35+level*0.025).toFixed(2)+')');
+    ig.addColorStop(1,pc.col+'0.05)');
+    ctx.fillStyle=ig; ctx.beginPath(); ctx.arc(PX,PY,pr1,0,Math.PI*2); ctx.fill();
+
+    // ── Swap flash burst ──────────────────────────────────────────────
+    if (_dSwapFlashT > 0) {
+      var burstAlpha = _dSwapFlashT;
+      _dSwapPortalBursts.forEach(function(b){
+        b.x += b.vx; b.y += b.vy;
+        ctx.beginPath(); ctx.arc(b.x,b.y,b.r*(2-_dSwapFlashT),0,Math.PI*2);
+        ctx.fillStyle=pc.col+( burstAlpha*0.9).toFixed(2)+')'; ctx.fill();
+      });
+      _dSwapFlashT = Math.max(0, _dSwapFlashT - 0.04);
+    }
   }
 }
 
