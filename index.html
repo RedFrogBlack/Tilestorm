@@ -3600,6 +3600,7 @@
   #screen-title #btn-sound-home {
     z-index: 10;
   }
+  #shop-panel-tiers { display: block; overflow-y: auto; }
   </style>
 </head>
 <body>
@@ -7452,9 +7453,9 @@ function closeShop(){
 function switchShopTab(tab) {
   // 'citypack' is a tier — open tiers tab and scroll to it after build
   const scrollToCity = (tab === 'citypack');
-  const isTiers = (tab === 'tiers' || scrollToCity);
-  document.getElementById('shop-panel-tiers').style.display  = isTiers ? '' : 'none';
-  document.getElementById('shop-panel-powers').style.display = isTiers ? 'none' : '';
+  const isTiers = (tab === 'tiers' || tab === 'packs' || scrollToCity);
+  document.getElementById('shop-panel-tiers').style.display  = isTiers ? 'block' : 'none';
+  document.getElementById('shop-panel-powers').style.display = isTiers ? 'none' : 'block';
   document.getElementById('shop-tab-tiers').classList.toggle('active', isTiers);
   document.getElementById('shop-tab-powers').classList.toggle('active', !isTiers);
   if (!isTiers) buildPowersPanel();
@@ -11370,7 +11371,7 @@ function showSessionResult(matchResults, myWins, oppWins) {
 window.addEventListener('resize',()=>{calcLayout();if(gameActive){renderTray();drawGrid();}particleCanvas.width=window.innerWidth;particleCanvas.height=window.innerHeight;});
 
 // Boot
-calcLayout();updateTierBadge();loadStreak();requestAnimationFrame(animateParticles);initTrial();updateTrialBanner();updateLockIcons();showScreen('screen-title');
+calcLayout();updateTierBadge();loadStreak();requestAnimationFrame(animateParticles);initTrial();updateTrialBanner();updateLockIcons();showScreen('screen-title');setTimeout(()=>showScreen('screen-title'),100);
 
 // ── Early audio unlock ──────────────────────────────────────────────────────
 // iOS/mobile browsers suspend AudioContext until a user gesture.
@@ -11987,6 +11988,8 @@ function checkResumeOnHome() {
   var _homeActive = false;
 
   function _homeAnimInit() {
+    if (window._homeAnimRunning) return;
+    window._homeAnimRunning = true;
     _homeCanvas = document.getElementById('home-bg-canvas');
     if (!_homeCanvas) return;
     var screen = document.getElementById('screen-title');
@@ -12046,6 +12049,7 @@ function checkResumeOnHome() {
   }
 
   function _homeAnimStop() {
+    window._homeAnimRunning = false;
     _homeActive = false;
     if (_homeRAF) { cancelAnimationFrame(_homeRAF); _homeRAF = null; }
     if (_homeCtx && _homeCanvas) {
@@ -12075,12 +12079,15 @@ function checkResumeOnHome() {
   });
 
   // Kick off on initial page load (screen-title is shown by boot code)
-  setTimeout(function() {
-    var st = document.getElementById('screen-title');
-    if (st && !st.classList.contains('hidden')) {
-      _homeAnimInit();
-    }
-  }, 200);
+  // Run at 200ms, 500ms and 1000ms to ensure it catches the right state
+  [200, 500, 1000].forEach(function(delay) {
+    setTimeout(function() {
+      var st = document.getElementById('screen-title');
+      if (st && !st.classList.contains('hidden') && !window._homeAnimRunning) {
+        _homeAnimInit();
+      }
+    }, delay);
+  });
 })();
   </script>
 </body>
