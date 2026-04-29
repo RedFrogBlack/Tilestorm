@@ -147,6 +147,447 @@
     }
     .screen.hidden { display: none !important; }
 
+    /* ════════════════════════════════════════════════════════════════
+       LOADING SCREEN (cold-start splash)
+       Shown on app launch only — hidden once window.load fires + min 1.5s.
+       Respects prefers-reduced-motion.
+    ════════════════════════════════════════════════════════════════ */
+    #screen-loading {
+      position: fixed; inset: 0; z-index: 9999;
+      background: #080808;
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      overflow: hidden;
+      /* Always shown until JS hides it; if JS fails to load, the user still sees brand. */
+    }
+    #screen-loading.is-hiding {
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 360ms ease-out;
+    }
+    #screen-loading::before {
+      content: "";
+      position: absolute; inset: 0;
+      background: linear-gradient(180deg, #0a0a0a 0%, #1a0505 60%, #080808 100%);
+      pointer-events: none;
+    }
+    /* City silhouette — scrolls horizontally behind the frog */
+    .loading-city-strip {
+      position: absolute;
+      bottom: 0;
+      left: 0; right: 0;
+      height: 110px;
+      overflow: hidden;
+      opacity: 0.20;
+      pointer-events: none;
+    }
+    .loading-city-strip svg {
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      height: 100%;
+      width: 200%;
+      animation: cityScroll 22s linear infinite;
+    }
+    @keyframes cityScroll {
+      from { transform: translateX(0); }
+      to   { transform: translateX(-50%); }
+    }
+    /* City ticker — full route shown as horizontal scroll, anchored above skyline */
+    .loading-city-ticker {
+      position: absolute;
+      bottom: 116px;
+      left: 0; right: 0;
+      height: 14px;
+      overflow: hidden;
+      pointer-events: none;
+      mask-image: linear-gradient(90deg, transparent 0%, #000 18%, #000 82%, transparent 100%);
+      -webkit-mask-image: linear-gradient(90deg, transparent 0%, #000 18%, #000 82%, transparent 100%);
+    }
+    .loading-city-ticker-track {
+      position: absolute;
+      top: 0; left: 0;
+      white-space: nowrap;
+      animation: cityTicker 28s linear infinite;
+      font-family: var(--font-display, 'Oswald', sans-serif);
+      font-size: 11px;
+      font-weight: 500;
+      letter-spacing: 0.34em;
+      color: rgba(204,18,18,0.65);
+      text-transform: uppercase;
+    }
+    .loading-city-ticker-track span { padding: 0 22px; }
+    .loading-city-ticker-track .sep { color: rgba(204,18,18,0.3); padding: 0 4px; }
+    @keyframes cityTicker {
+      from { transform: translateX(0); }
+      to   { transform: translateX(-50%); }
+    }
+    /* Centred brand stack — frog + logo + bar all live in this group */
+    .loading-stack {
+      position: relative;
+      z-index: 5;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 22px;
+      transform: translateY(-24px); /* lift slightly above optical centre */
+    }
+    /* Frog hero — RFBA brand frog (climbing tree-frog silhouette).
+       Subtle hover + breathe so it feels alive without acting like a bouncing mascot. */
+    .loading-frog-wrap {
+      position: relative;
+      z-index: 5;
+      width: 132px;
+      height: 88px;
+      animation: frogHover 3.2s ease-in-out infinite;
+    }
+    .loading-frog-wrap img {
+      width: 100%;
+      height: 100%;
+      display: block;
+      object-fit: contain;
+      animation: frogBreathe 3.2s ease-in-out infinite;
+      filter: drop-shadow(0 6px 18px rgba(204,18,18,0.35));
+    }
+    @keyframes frogHover {
+      0%, 100% { transform: translateY(0)   rotate(-1.2deg); }
+      50%      { transform: translateY(-8px) rotate(1.2deg); }
+    }
+    @keyframes frogBreathe {
+      0%, 100% { transform: scale(1);     }
+      50%      { transform: scale(1.035); }
+    }
+    /* Logo area */
+    .loading-logo-area {
+      position: relative;
+      z-index: 5;
+      display: flex; flex-direction: column; align-items: center;
+    }
+    .loading-game-title {
+      font-family: var(--font-display, 'Oswald', sans-serif);
+      font-size: 36px;
+      font-weight: 700;
+      letter-spacing: 0.14em;
+      color: #ffffff;
+      line-height: 1;
+    }
+    .loading-game-title span { color: #CC1212; }
+    .loading-sub {
+      font-family: var(--font-body, 'DM Sans', sans-serif);
+      font-size: 10px;
+      letter-spacing: 0.3em;
+      color: #666;
+      margin-top: 8px;
+      text-transform: uppercase;
+    }
+    /* Progress bar */
+    .loading-bar-group {
+      display: flex; flex-direction: column; align-items: center; gap: 8px;
+    }
+    .loading-bar-wrap {
+      position: relative;
+      z-index: 5;
+      width: 160px;
+      height: 3px;
+      background: rgba(255,255,255,0.08);
+      border-radius: 2px;
+      overflow: hidden;
+    }
+    .loading-bar-fill {
+      height: 100%;
+      width: 0%;
+      background: #CC1212;
+      border-radius: 2px;
+      transition: width 220ms ease-out;
+      box-shadow: 0 0 8px rgba(204,18,18,0.5);
+    }
+    .loading-pct {
+      position: relative;
+      z-index: 5;
+      font-family: var(--font-body, 'DM Sans', sans-serif);
+      font-size: 10px;
+      color: #555;
+      letter-spacing: 0.18em;
+      font-variant-numeric: tabular-nums;
+    }
+    /* Reduced motion — disable hover / scroll, keep static brand */
+    @media (prefers-reduced-motion: reduce) {
+      .loading-city-strip svg,
+      .loading-frog-wrap,
+      .loading-frog-wrap img,
+      .loading-city-ticker-track {
+        animation: none !important;
+      }
+      .loading-frog-wrap { transform: none !important; }
+    }
+
+    /* ══════════════════════════════════════════════════════════════════
+       SCREEN B — HOME (replacement)
+       Hero brand stack + 3 large nav buttons + bottom utility row.
+       Wraps inside #screen-title. Keeps the existing animated bg canvas.
+    ═════════════════════════════════════════════════════════════════ */
+    .home-v2 {
+      display: flex;
+      flex-direction: column;
+      align-items: stretch;
+      width: 100%;
+      max-width: 480px;
+      margin: 0 auto;
+      padding: 28px 18px 18px;
+      gap: 18px;
+      min-height: 100%;
+    }
+    .home-v2 .home-hero {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 0 4px;
+    }
+    .home-v2 .home-brand {
+      font-family: var(--font-display, 'Oswald', sans-serif);
+      font-size: 9px;
+      font-weight: 700;
+      letter-spacing: 0.32em;
+      text-transform: uppercase;
+      color: rgba(204,18,18,0.65);
+    }
+    .home-v2 .home-logo-text {
+      font-family: var(--font-display, 'Oswald', sans-serif);
+      font-size: clamp(2rem, 8vw, 2.6rem);
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      color: #ffffff;
+      line-height: 1;
+      text-transform: uppercase;
+      margin-top: 2px;
+    }
+    .home-v2 .home-logo-text span { color: #CC1212; }
+    .home-v2 .home-frog-hero {
+      width: 96px;
+      height: 64px;
+      margin: 10px 0 6px;
+      animation: homeFrogHover 4s ease-in-out infinite;
+      filter: drop-shadow(0 8px 22px rgba(204,18,18,0.32));
+    }
+    .home-v2 .home-frog-hero img {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+      display: block;
+    }
+    @keyframes homeFrogHover {
+      0%, 100% { transform: translateY(0)   rotate(-1deg); }
+      50%      { transform: translateY(-4px) rotate(1deg); }
+    }
+    .home-v2 .home-tagline-v2 {
+      font-family: var(--font-body, 'DM Sans', sans-serif);
+      font-size: 10px;
+      letter-spacing: 0.22em;
+      text-transform: uppercase;
+      color: rgba(255,255,255,0.4);
+      margin-top: 2px;
+    }
+
+    /* Resume card — sits between hero and nav when a saved game exists */
+    .home-v2 .home-resume {
+      display: none;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 12px 14px;
+      border-radius: 14px;
+      background: rgba(204,18,18,0.10);
+      border: 1px solid rgba(204,18,18,0.4);
+    }
+    .home-v2 .home-resume.is-visible { display: flex; }
+    .home-v2 .home-resume-text {
+      flex: 1;
+      min-width: 0;
+    }
+    .home-v2 .home-resume-title {
+      font-family: var(--font-display, 'Oswald', sans-serif);
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.14em;
+      color: #CC1212;
+      text-transform: uppercase;
+    }
+    .home-v2 .home-resume-detail {
+      font-size: 10px;
+      color: rgba(255,255,255,0.55);
+      margin-top: 2px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .home-v2 .home-resume-btn {
+      flex-shrink: 0;
+      background: #CC1212;
+      color: #fff;
+      border: 0;
+      border-radius: 10px;
+      padding: 9px 14px;
+      font-family: var(--font-display, 'Oswald', sans-serif);
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.12em;
+      cursor: pointer;
+    }
+    .home-v2 .home-resume-btn:active { transform: scale(0.96); }
+
+    /* Trial banner inline override — keep existing #trial-banner working */
+    .home-v2 #trial-banner {
+      position: static;
+      width: auto;
+      margin: 0 auto;
+      align-self: center;
+    }
+
+    /* Three large nav buttons */
+    .home-v2 .home-nav-stack {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    .home-v2 .home-nav-btn {
+      position: relative;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      padding: 16px 18px;
+      border-radius: 16px;
+      border: 1px solid rgba(255,255,255,0.08);
+      background: linear-gradient(135deg, #161616 0%, #0e0e0e 100%);
+      color: #fff;
+      cursor: pointer;
+      text-decoration: none;
+      overflow: hidden;
+      min-height: 64px;
+      transition: transform 120ms ease-out, border-color 200ms ease-out;
+    }
+    .home-v2 .home-nav-btn:hover { border-color: rgba(255,255,255,0.18); }
+    .home-v2 .home-nav-btn:active { transform: scale(0.985); }
+    .home-v2 .home-nav-btn:focus-visible {
+      outline: 2px solid rgba(255,255,255,0.5);
+      outline-offset: 2px;
+    }
+    .home-v2 .home-nav-left {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      min-width: 0;
+    }
+    .home-v2 .home-nav-icon {
+      font-size: 24px;
+      line-height: 1;
+      flex-shrink: 0;
+    }
+    .home-v2 .home-nav-text { min-width: 0; }
+    .home-v2 .home-nav-title {
+      font-family: var(--font-display, 'Oswald', sans-serif);
+      font-size: 15px;
+      font-weight: 800;
+      letter-spacing: 0.10em;
+      line-height: 1;
+      text-transform: uppercase;
+    }
+    .home-v2 .home-nav-sub {
+      font-size: 11px;
+      color: rgba(255,255,255,0.55);
+      margin-top: 4px;
+      letter-spacing: 0.02em;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .home-v2 .home-nav-chevron {
+      font-size: 22px;
+      color: rgba(255,255,255,0.3);
+      flex-shrink: 0;
+      line-height: 1;
+    }
+    /* Accent variants */
+    .home-v2 .home-nav-btn[data-accent="solo"] {
+      background: linear-gradient(135deg, #1f1605 0%, #100a02 100%);
+      border-color: rgba(247,201,72,0.28);
+    }
+    .home-v2 .home-nav-btn[data-accent="solo"] .home-nav-title  { color: #F7C948; }
+    .home-v2 .home-nav-btn[data-accent="solo"]::before {
+      content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 3px;
+      background: #F7C948;
+    }
+    .home-v2 .home-nav-btn[data-accent="duo"] {
+      background: linear-gradient(135deg, #1a0e2e 0%, #0d0719 100%);
+      border-color: rgba(155,89,208,0.34);
+    }
+    .home-v2 .home-nav-btn[data-accent="duo"] .home-nav-title   { color: #C58FF0; }
+    .home-v2 .home-nav-btn[data-accent="duo"]::before {
+      content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 3px;
+      background: #9B59D0;
+    }
+    .home-v2 .home-nav-btn[data-accent="htp"] {
+      background: linear-gradient(135deg, #051625 0%, #030c14 100%);
+      border-color: rgba(74,158,255,0.28);
+    }
+    .home-v2 .home-nav-btn[data-accent="htp"] .home-nav-title   { color: #6FB5FF; }
+    .home-v2 .home-nav-btn[data-accent="htp"]::before {
+      content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 3px;
+      background: #4A9EFF;
+    }
+
+    /* Bottom utility row — SETTINGS / SOUND */
+    .home-v2 .home-bottom-row-v2 {
+      display: flex;
+      gap: 10px;
+      margin-top: auto;
+      padding-top: 4px;
+    }
+    .home-v2 .home-util-btn {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      padding: 13px 0;
+      border-radius: 12px;
+      background: rgba(255,255,255,0.04);
+      border: 1px solid rgba(255,255,255,0.08);
+      color: rgba(255,255,255,0.65);
+      font-family: var(--font-display, 'Oswald', sans-serif);
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.16em;
+      text-transform: uppercase;
+      cursor: pointer;
+    }
+    .home-v2 .home-util-btn:hover {
+      background: rgba(255,255,255,0.07);
+      color: #fff;
+    }
+    .home-v2 .home-util-btn:active { transform: scale(0.98); }
+    .home-v2 .home-util-btn .util-icon { font-size: 14px; line-height: 1; }
+    /* Override the legacy absolute-positioned #btn-sound-home so it sits in-row */
+    .home-v2 #btn-sound-home {
+      position: static;
+      top: auto; right: auto;
+      width: auto; height: auto;
+      border-radius: 12px;
+      font-size: inherit;
+      color: rgba(255,255,255,0.65);
+    }
+    .home-v2 #btn-sound-home:hover { background: rgba(255,255,255,0.07); }
+    /* Per-OS aria-live region for sound state — keeps screen readers in sync */
+    .home-v2 .sr-only {
+      position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
+      overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0;
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .home-v2 .home-frog-hero { animation: none !important; }
+    }
+
     /* ── Signature screen transition — slide-up + fade ──────────────── */
     /* Screens entering: start slightly below, fade + slide up into place */
     @keyframes screenEnter {
@@ -543,6 +984,434 @@
       border-radius: var(--radius-xs);
       padding: 2px 6px;
     }
+
+    /* ═══ Solo / Duo Shop-card system v3 (premium, mockup-aligned) ═══ */
+    .solo-setup-headerbar {
+      display: flex; align-items: center; gap: 10px;
+      padding: 14px 4px 4px; flex-wrap: wrap;
+    }
+    .solo-trial-chip {
+      margin-left: auto;
+      font-family: var(--font-display);
+      font-size: var(--fs-micro); font-weight: 800;
+      letter-spacing: 0.14em; text-transform: uppercase;
+      color: #6dda6d;
+      background: rgba(80,200,80,0.15);
+      border: 1px solid rgba(80,200,80,0.35);
+      border-radius: 999px;
+      padding: 5px 11px;
+      display: none;
+    }
+    .solo-trial-chip.is-visible { display: inline-block; }
+
+    /* Stack of pack cards */
+    .pack-list {
+      display: flex; flex-direction: column;
+      gap: 16px;
+      width: 100%;
+      padding: 8px 4px 0;
+      box-sizing: border-box;
+    }
+
+    /* Single detailed pack card */
+    .pack-card {
+      --accent: #888;
+      --accent-glow: rgba(255,255,255,0.04);
+      position: relative;
+      background: linear-gradient(180deg, rgba(255,255,255,0.04) 0%, rgba(255,255,255,0.02) 100%);
+      border: 1px solid rgba(255,255,255,0.10);
+      border-radius: 18px;
+      padding: 18px 18px 16px;
+      overflow: hidden;
+      transition: transform 220ms var(--ease-out, cubic-bezier(0.16,1,0.3,1)), border-color 220ms;
+    }
+    .pack-card.tadpole   { --accent: #34C759; --accent-glow: rgba(52,199,89,0.10); }
+    .pack-card.treefrog  { --accent: #F5A623; --accent-glow: rgba(245,166,35,0.08); }
+    .pack-card.fog       { --accent: #6B8F71; --accent-glow: rgba(107,143,113,0.10); }
+    .pack-card.golden    { --accent: #F7C948; --accent-glow: rgba(247,201,72,0.10); }
+    .pack-card.city      { --accent: #4A9EFF; --accent-glow: rgba(74,158,255,0.12); }
+    .pack-card.duo-pack  { --accent: #9B59D0; --accent-glow: rgba(155,89,208,0.12); }
+
+    /* Left accent rail — visible only on owned/active card */
+    .pack-card::after {
+      content: '';
+      position: absolute;
+      left: 0; top: 0; bottom: 0;
+      width: 3px;
+      background: var(--accent);
+      opacity: 0;
+      transition: opacity 220ms;
+    }
+    .pack-card.is-owned::after,
+    .pack-card.is-trial::after { opacity: 1; }
+    .pack-card.is-owned { border-color: color-mix(in srgb, var(--accent) 35%, rgba(255,255,255,0.08)); }
+    .pack-card.is-trial { border-color: rgba(80,200,80,0.30); }
+
+    /* Soft hint-style animated background per pack */
+    .pack-bg {
+      position: absolute; inset: 0;
+      pointer-events: none;
+      opacity: 0.55;
+      z-index: 0;
+      mix-blend-mode: screen;
+    }
+    .pack-card.is-locked .pack-bg { opacity: 0.18; filter: saturate(0.4); }
+    .pack-card > * { position: relative; z-index: 1; }
+
+    /* Tadpole — gentle green ripple */
+    .pack-bg.tadpole-bg {
+      background:
+        radial-gradient(circle at 18% 78%, rgba(52,199,89,0.22), transparent 38%),
+        radial-gradient(circle at 82% 22%, rgba(52,199,89,0.10), transparent 42%);
+      animation: bgRipple 7s ease-in-out infinite;
+    }
+    @keyframes bgRipple {
+      0%,100% { transform: scale(1); opacity: 0.55; }
+      50%     { transform: scale(1.08); opacity: 0.75; }
+    }
+
+    /* Tree Frog — frenzy timer pulse */
+    .pack-bg.treefrog-bg {
+      background:
+        radial-gradient(circle at 50% 50%, rgba(245,166,35,0.18), transparent 55%),
+        radial-gradient(circle at 12% 12%, rgba(245,166,35,0.10), transparent 30%);
+      animation: bgFrenzy 1.6s ease-in-out infinite;
+    }
+    @keyframes bgFrenzy {
+      0%,100% { opacity: 0.45; }
+      50%     { opacity: 0.85; }
+    }
+
+    /* Fog the Frog — drifting clouds */
+    .pack-bg.fog-bg {
+      background:
+        radial-gradient(ellipse 60% 30% at 30% 70%, rgba(180,200,190,0.22), transparent 70%),
+        radial-gradient(ellipse 70% 40% at 70% 35%, rgba(140,170,155,0.18), transparent 70%);
+      background-size: 220% 220%;
+      animation: bgFogDrift 14s ease-in-out infinite;
+    }
+    @keyframes bgFogDrift {
+      0%   { background-position: 0% 50%, 100% 50%; }
+      50%  { background-position: 50% 30%, 50% 70%; }
+      100% { background-position: 0% 50%, 100% 50%; }
+    }
+
+    /* Golden Frog — colour shimmer */
+    .pack-bg.golden-bg {
+      background:
+        linear-gradient(120deg,
+          rgba(247,201,72,0) 0%,
+          rgba(247,201,72,0.18) 35%,
+          rgba(255,235,150,0.10) 50%,
+          rgba(247,201,72,0.18) 65%,
+          rgba(247,201,72,0) 100%);
+      background-size: 220% 100%;
+      animation: bgShimmer 6s linear infinite;
+    }
+    @keyframes bgShimmer {
+      from { background-position: 220% 0; }
+      to   { background-position: -120% 0; }
+    }
+
+    /* Duo — purple flow */
+    .pack-bg.duo-bg {
+      background:
+        radial-gradient(circle at 25% 25%, rgba(155,89,208,0.22), transparent 50%),
+        radial-gradient(circle at 75% 75%, rgba(155,89,208,0.14), transparent 55%);
+      animation: bgRipple 9s ease-in-out infinite;
+    }
+
+    /* City Pack — soft skyline silhouette + slow drifting sky glow */
+    .pack-bg.city-bg {
+      background:
+        linear-gradient(180deg, rgba(74,158,255,0.18) 0%, rgba(74,158,255,0.04) 55%, transparent 70%),
+        linear-gradient(to top,
+          rgba(74,158,255,0.55) 0,
+          rgba(74,158,255,0.55) 14px,
+          transparent 14px),
+        linear-gradient(to top,
+          transparent calc(100% - 22px),
+          rgba(74,158,255,0.40) calc(100% - 22px),
+          rgba(74,158,255,0.40) calc(100% - 8px),
+          transparent calc(100% - 8px));
+      background-size: 100% 100%, 22px 100%, 38px 100%;
+      background-position: center, 0 100%, 12px 100%;
+      background-repeat: no-repeat, repeat-x, repeat-x;
+      animation: cityDrift 12s ease-in-out infinite;
+      opacity: 0.40;
+    }
+    @keyframes cityDrift {
+      0%, 100% { background-position: center, 0 100%, 12px 100%; opacity: 0.36; }
+      50%      { background-position: center, 14px 100%, 0 100%; opacity: 0.50; }
+    }
+
+    /* Card top: emoji + badge */
+    .pc-top {
+      display: flex; align-items: flex-start; justify-content: space-between;
+      margin-bottom: 14px;
+    }
+    .pc-emoji {
+      width: 56px; height: 56px;
+      border-radius: 14px;
+      background: rgba(255,255,255,0.06);
+      border: 1px solid rgba(255,255,255,0.10);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 30px; line-height: 1;
+      flex-shrink: 0;
+    }
+    .pc-badges {
+      display: flex; flex-direction: column;
+      align-items: flex-end; gap: 4px;
+    }
+    .pc-badge {
+      font-family: var(--font-display);
+      font-size: var(--fs-micro);
+      font-weight: 800;
+      letter-spacing: 0.10em;
+      text-transform: uppercase;
+      padding: 4px 11px;
+      border-radius: 999px;
+      white-space: nowrap;
+    }
+    .pc-badge.trial-badge {
+      background: rgba(80,200,80,0.15);
+      color: #6dda6d;
+      border: 1px solid rgba(80,200,80,0.32);
+    }
+    .pc-badge.owned-badge {
+      background: rgba(52,199,89,0.15);
+      color: #34C759;
+      border: 1px solid rgba(52,199,89,0.40);
+    }
+    .pc-badge.locked-badge {
+      background: rgba(255,255,255,0.05);
+      color: rgba(255,255,255,0.45);
+      border: 1px solid rgba(255,255,255,0.12);
+    }
+
+    /* Card name + subtitle */
+    .pc-name {
+      font-family: var(--font-display);
+      font-size: var(--fs-h3);
+      font-weight: 800;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: #fff;
+      display: flex; align-items: center; gap: 9px;
+      margin-bottom: 2px;
+    }
+    .pc-name .pc-tier-dot {
+      width: 8px; height: 8px;
+      border-radius: 50%;
+      background: var(--accent);
+      box-shadow: 0 0 6px var(--accent);
+      flex-shrink: 0;
+    }
+    .pc-subtitle {
+      font-size: var(--fs-ui);
+      color: rgba(255,255,255,0.55);
+      letter-spacing: 0.02em;
+      margin-bottom: 14px;
+    }
+
+    /* Price */
+    .pc-price {
+      font-family: var(--font-display);
+      font-size: var(--fs-h2);
+      font-weight: 800;
+      letter-spacing: -0.01em;
+      color: var(--accent);
+      line-height: 1;
+    }
+    .pc-price-unit {
+      font-size: 0.55em;
+      font-weight: 500;
+      color: rgba(255,255,255,0.45);
+      margin-left: 1px;
+    }
+    .pc-price-sub {
+      font-size: var(--fs-label);
+      color: rgba(255,255,255,0.45);
+      margin-top: 4px;
+      margin-bottom: 14px;
+    }
+
+    /* Features list */
+    .pc-features {
+      list-style: none;
+      display: flex; flex-direction: column; gap: 7px;
+      margin: 0 0 16px 0;
+      padding: 0;
+    }
+    .pc-features li {
+      display: flex; align-items: center; gap: 10px;
+      font-size: var(--fs-ui);
+      color: rgba(255,255,255,0.72);
+      letter-spacing: 0.01em;
+    }
+    .pc-features li::before {
+      content: '';
+      width: 18px; height: 18px;
+      flex-shrink: 0;
+      border-radius: 50%;
+      background: rgba(255,255,255,0.04) url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 10'><path d='M1 5l3 3 7-7' stroke='%2334C759' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round' fill='none'/></svg>") center/12px no-repeat;
+      border: 1px solid rgba(52,199,89,0.30);
+    }
+
+    /* CTA button */
+    .pc-cta {
+      width: 100%;
+      height: 50px;
+      border-radius: 14px;
+      border: none;
+      font-family: var(--font-display);
+      font-size: var(--fs-ui);
+      font-weight: 800;
+      letter-spacing: 0.10em;
+      text-transform: uppercase;
+      cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      gap: 8px;
+      transition: transform 160ms var(--ease-out, cubic-bezier(0.16,1,0.3,1)), box-shadow 220ms;
+      position: relative; overflow: hidden;
+    }
+    .pc-cta::before {
+      content: '';
+      position: absolute; inset: 0;
+      background: linear-gradient(180deg, rgba(255,255,255,0.10) 0%, transparent 60%);
+      pointer-events: none;
+    }
+    .pc-cta:active { transform: scale(0.98); }
+    .pc-cta.cta-trial {
+      background: linear-gradient(135deg, #1f9b1f, #237823);
+      color: #fff;
+      box-shadow: 0 6px 20px rgba(30,160,30,0.30);
+    }
+    .pc-cta.cta-unlock {
+      background: linear-gradient(135deg, #CC1212, #A00E0E);
+      color: #fff;
+      box-shadow: 0 6px 20px rgba(204,18,18,0.30);
+    }
+    .pc-cta.cta-unlock-golden {
+      background: linear-gradient(135deg, #F7C948, #C99800);
+      color: #1a1100;
+      box-shadow: 0 6px 20px rgba(247,201,72,0.30);
+    }
+    .pc-cta.cta-play {
+      background: linear-gradient(135deg, #34C759, #1f9b1f);
+      color: #fff;
+      box-shadow: 0 6px 20px rgba(52,199,89,0.30);
+    }
+    .pc-cta.cta-purple {
+      background: linear-gradient(135deg, #9B59D0, #6D2DAA);
+      color: #fff;
+      box-shadow: 0 6px 20px rgba(155,89,208,0.30);
+    }
+
+    .pc-legal {
+      font-size: var(--fs-micro);
+      color: rgba(255,255,255,0.35);
+      text-align: center;
+      margin-top: 8px;
+      line-height: 1.45;
+    }
+
+    /* Purchase-success banner */
+    .pack-success-banner {
+      display: none;
+      align-items: center; gap: 12px;
+      padding: 13px 14px;
+      background: linear-gradient(90deg, rgba(52,199,89,0.18), rgba(52,199,89,0.04));
+      border: 1px solid rgba(52,199,89,0.45);
+      border-radius: 14px;
+      margin-top: 10px;
+      animation: psbIn 0.35s cubic-bezier(0.2,0.8,0.2,1.0);
+    }
+    .pack-success-banner.is-visible { display: flex; }
+    .psb-icon { font-size: 22px; flex-shrink: 0; }
+    .psb-text {
+      font-family: var(--font-display);
+      font-size: var(--fs-ui); font-weight: 800;
+      letter-spacing: 0.10em; color: #34C759;
+    }
+    .psb-sub {
+      font-size: var(--fs-label);
+      color: rgba(255,255,255,0.55);
+      margin-top: 1px;
+    }
+    @keyframes psbIn {
+      from { opacity: 0; transform: translateY(-8px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    /* Magic Powers section header */
+    .powers-header-v3 {
+      font-family: var(--font-display);
+      font-size: var(--fs-label);
+      font-weight: 800;
+      letter-spacing: 0.16em;
+      text-transform: uppercase;
+      color: rgba(255,255,255,0.45);
+      padding: 22px 4px 10px;
+    }
+    /* Compact power card row */
+    .power-row {
+      display: flex; align-items: center; gap: 14px;
+      padding: 14px 16px;
+      background: rgba(255,255,255,0.03);
+      border: 1px solid rgba(255,255,255,0.10);
+      border-radius: 16px;
+      margin-bottom: 10px;
+      transition: transform 160ms, border-color 220ms;
+      cursor: pointer;
+    }
+    .power-row:active { transform: scale(0.99); }
+    .power-row .pr-icon {
+      width: 44px; height: 44px;
+      border-radius: 12px;
+      background: linear-gradient(135deg, rgba(255,255,255,0.06), rgba(255,255,255,0.02));
+      border: 1px solid rgba(255,255,255,0.12);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 20px;
+      flex-shrink: 0;
+    }
+    .power-row .pr-info {
+      flex: 1; min-width: 0;
+    }
+    .power-row .pr-name {
+      font-family: var(--font-display);
+      font-size: var(--fs-ui);
+      font-weight: 800;
+      letter-spacing: 0.10em;
+      color: #fff;
+      margin-bottom: 2px;
+    }
+    .power-row .pr-desc {
+      font-size: var(--fs-label);
+      color: rgba(255,255,255,0.50);
+      line-height: 1.4;
+    }
+    .power-row .pr-price {
+      font-family: var(--font-display);
+      font-size: var(--fs-ui);
+      font-weight: 800;
+      color: var(--pr-accent, #F7C948);
+      flex-shrink: 0;
+      white-space: nowrap;
+    }
+    .power-row.spark { --pr-accent: #F7C948; }
+    .power-row.surge { --pr-accent: #F97316; }
+    .power-row.storm { --pr-accent: #CC1212; }
+
+    /* Footer note (under everything) */
+    .solo-footer-note {
+      text-align: center;
+      font-size: var(--fs-label);
+      color: rgba(255,255,255,0.38);
+      letter-spacing: 0.02em;
+      padding: 18px 0 24px;
+      line-height: 1.5;
+    }
     /* Challenge mode cards */
     .challenge-grid {
       display: grid;
@@ -601,15 +1470,21 @@
     #btn-solo-start:active { transform: translateY(0); }
     /* Challenge active UI in-game */
     #challenge-hud {
-      width: 100%;
-      max-width: 480px;
-      background: linear-gradient(90deg, #8B0000, #CC1212);
+      width: calc(100% - 16px);
+      max-width: 460px;
+      margin: 6px 8px 0;
+      background: linear-gradient(90deg, color-mix(in srgb, var(--mode-accent, #CC1212) 60%, #08080a), color-mix(in srgb, var(--mode-accent, #CC1212) 32%, #08080a));
+      border: 1px solid color-mix(in srgb, var(--mode-accent, #CC1212) 50%, rgba(255,255,255,0.10));
+      border-radius: 12px;
+      box-shadow: 0 4px 16px var(--mode-accent-glow, rgba(204,18,18,0.3));
       display: none;
       align-items: center;
       justify-content: space-between;
       padding: 8px 14px;
       box-sizing: border-box;
       flex-shrink: 0;
+      backdrop-filter: blur(6px);
+      -webkit-backdrop-filter: blur(6px);
     }
     #challenge-hud.active { display: flex; }
     #challenge-hud-left { display: flex; flex-direction: column; }
@@ -1146,7 +2021,7 @@
     /* Shop pack card — dark glass with ambient canvas */
     .shop-pack-card {
       position: relative; overflow: hidden;
-      background: transparent;
+      background: rgba(255,255,255,0.04);
       border: 1px solid rgba(255,255,255,0.08);
       border-radius: 16px;
       margin-bottom: 12px;
@@ -1159,19 +2034,11 @@
     .shop-card-canvas {
       position: absolute; inset: 0;
       width: 100%; height: 100%;
-      opacity: 1;
+      opacity: 0.18;
       pointer-events: none;
-    }
-    /* Dark scrim so text stays legible over the ambient canvas */
-    .shop-card-scrim {
-      position: absolute; inset: 0;
-      background: rgba(0,0,0,0.52);
-      border-radius: 16px;
-      pointer-events: none;
-      z-index: 0;
     }
     .shop-card-content {
-      position: relative; z-index: 2;
+      position: relative; z-index: 1;
       display: flex; align-items: flex-start; justify-content: space-between; gap: 12px;
       margin-bottom: 10px;
     }
@@ -1207,7 +2074,7 @@
     .shop-card-btn.city-play:hover { background: #67b3ff; }
     .shop-card-btn.bundle-btn { background: linear-gradient(135deg,#FFD700,#FF8C00); color: #000; font-weight: 700; }
     .shop-card-features {
-      position: relative; z-index: 2;
+      position: relative; z-index: 1;
       list-style: none; padding: 0; margin: 0 0 8px;
       display: flex; flex-wrap: wrap; gap: 4px;
     }
@@ -1220,7 +2087,7 @@
     }
     .shop-card-frog { flex-shrink: 0; width: 40px; height: 40px; }
     .shop-card-legal {
-      position: relative; z-index: 2;
+      position: relative; z-index: 1;
       font-size: 0.6rem; color: rgba(255,255,255,0.28); line-height: 1.5;
       margin: 4px 0 0;
     }
@@ -3411,7 +4278,7 @@
   }
   .home-tier-card[data-tier="tadpole"]    { border-color: #888888; border-left-color: #888888; }
   .home-tier-card[data-tier="treefrog"]   { border-color: rgba(245,166,35,0.5); border-left-color: #F5A623; }
-  .home-tier-card[data-tier="poisondart"] { border-color: rgba(204,18,18,0.5);  border-left-color: #CC1212; }
+  .home-tier-card[data-tier="poisondart"] { border-color: rgba(107,143,113,0.55);  border-left-color: #6B8F71; }
   .home-tier-card[data-tier="goldenfrog"] { border-color: rgba(245,224,0,0.5);  border-left-color: #F5E000; }
 
   .home-tier-emoji {
@@ -3612,9 +4479,547 @@
     z-index: 10;
   }
   #shop-panel-tiers { display: block; overflow-y: auto; }
+
+  /* ══ PREMIUM v3 SOLO PACK CARDS · enhances .game-tier-card ══ */
+  .game-tier-card {
+    padding: 18px 18px 16px !important;
+    border-radius: 18px !important;
+    background: linear-gradient(180deg, rgba(255,255,255,0.045) 0%, rgba(255,255,255,0.018) 100%) !important;
+    border: 1px solid rgba(255,255,255,0.10) !important;
+    transition: transform 220ms cubic-bezier(0.16,1,0.3,1), border-color 220ms, box-shadow 220ms !important;
+  }
+  /* Per-tier glow underlay */
+  .game-tier-card .gtc-anim-bg {
+    position: absolute; inset: 0;
+    pointer-events: none;
+    z-index: 0;
+    opacity: 0.45;
+    mix-blend-mode: screen;
+    border-radius: inherit;
+    overflow: hidden;
+  }
+  .game-tier-card .gtc-anim-bg.tadpole {
+    background:
+      radial-gradient(circle at 18% 78%, rgba(52,199,89,0.28), transparent 40%),
+      radial-gradient(circle at 82% 22%, rgba(52,199,89,0.14), transparent 45%);
+    animation: gtcRipple 7s ease-in-out infinite;
+  }
+  .game-tier-card .gtc-anim-bg.treefrog {
+    background:
+      radial-gradient(circle at 50% 50%, rgba(245,166,35,0.22), transparent 60%),
+      radial-gradient(circle at 12% 12%, rgba(245,166,35,0.12), transparent 32%);
+    animation: gtcFrenzy 1.7s ease-in-out infinite;
+  }
+  .game-tier-card .gtc-anim-bg.poisondart {
+    background:
+      radial-gradient(ellipse 60% 30% at 30% 70%, rgba(180,200,190,0.24), transparent 70%),
+      radial-gradient(ellipse 70% 40% at 70% 35%, rgba(140,170,155,0.20), transparent 70%);
+    background-size: 220% 220%;
+    animation: gtcFog 14s ease-in-out infinite;
+  }
+  .game-tier-card .gtc-anim-bg.goldenfrog {
+    background: linear-gradient(120deg,
+      rgba(247,201,72,0) 0%,
+      rgba(247,201,72,0.22) 35%,
+      rgba(255,235,150,0.14) 50%,
+      rgba(247,201,72,0.22) 65%,
+      rgba(247,201,72,0) 100%);
+    background-size: 240% 100%;
+    animation: gtcShimmer 6s linear infinite;
+  }
+  .game-tier-card .gtc-anim-bg.citypack {
+    background:
+      linear-gradient(180deg, rgba(74,158,255,0.22) 0%, rgba(74,158,255,0.05) 55%, transparent 70%),
+      linear-gradient(to top, rgba(74,158,255,0.55) 0, rgba(74,158,255,0.55) 12px, transparent 12px),
+      linear-gradient(to top, transparent calc(100% - 18px), rgba(74,158,255,0.40) calc(100% - 18px), rgba(74,158,255,0.40) calc(100% - 6px), transparent calc(100% - 6px));
+    background-size: 100% 100%, 22px 100%, 38px 100%;
+    background-position: center, 0 100%, 12px 100%;
+    background-repeat: no-repeat, repeat-x, repeat-x;
+    opacity: 0.45;
+    animation: gtcCity 12s ease-in-out infinite;
+  }
+  @keyframes gtcRipple { 0%,100% { transform: scale(1); opacity: 0.45; } 50% { transform: scale(1.07); opacity: 0.7; } }
+  @keyframes gtcFrenzy { 0%,100% { opacity: 0.40; } 50% { opacity: 0.80; } }
+  @keyframes gtcFog { 0% { background-position: 0% 50%, 100% 50%; } 50% { background-position: 50% 30%, 50% 70%; } 100% { background-position: 0% 50%, 100% 50%; } }
+  @keyframes gtcShimmer { from { background-position: 240% 0; } to { background-position: -140% 0; } }
+  @keyframes gtcCity { 0%,100% { background-position: center, 0 100%, 12px 100%; opacity: 0.40; } 50% { background-position: center, 14px 100%, 0 100%; opacity: 0.55; } }
+
+  /* Card content above the bg */
+  .game-tier-card > * { position: relative; z-index: 1; }
+
+  /* Larger emoji block, glassy */
+  .game-tier-card .gtc-emoji {
+    width: 56px; height: 56px;
+    border-radius: 14px;
+    background: rgba(255,255,255,0.06);
+    border: 1px solid rgba(255,255,255,0.10);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 28px !important; line-height: 1;
+    flex-shrink: 0;
+  }
+  .game-tier-card .gtc-name {
+    font-size: 17px !important;
+    letter-spacing: 0.10em !important;
+    display: flex; align-items: center; gap: 10px;
+  }
+  .game-tier-card .gtc-name::before {
+    content: '';
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    background: var(--tc);
+    box-shadow: 0 0 6px var(--tc);
+    flex-shrink: 0;
+  }
+  .game-tier-card .gtc-sub {
+    font-size: 13px !important;
+    color: rgba(255,255,255,0.58) !important;
+    margin-top: 2px;
+  }
+
+  /* Right slot — price / owned / trial pill */
+  .game-tier-card .gtc-right {
+    display: flex; flex-direction: column;
+    align-items: flex-end; gap: 4px;
+    flex-shrink: 0;
+  }
+  .gtc-free-stack { display: flex; flex-direction: column; align-items: flex-end; gap: 2px; }
+  .gtc-free-pill {
+    font-family: var(--font-display);
+    font-size: 11px; font-weight: 800;
+    letter-spacing: 0.12em; text-transform: uppercase;
+    color: #6dda6d;
+    background: rgba(80,200,80,0.16);
+    border: 1px solid rgba(80,200,80,0.40);
+    border-radius: 999px;
+    padding: 4px 10px;
+  }
+  .gtc-free-after {
+    font-size: 11px;
+    color: rgba(255,255,255,0.45);
+    letter-spacing: 0.04em;
+  }
+  .gtc-owned-badge {
+    font-family: var(--font-display);
+    font-size: 11px; font-weight: 800;
+    letter-spacing: 0.14em; text-transform: uppercase;
+    color: #34C759;
+    background: rgba(52,199,89,0.15);
+    border: 1px solid rgba(52,199,89,0.45);
+    border-radius: 999px;
+    padding: 5px 11px;
+    white-space: nowrap;
+  }
+  .gtc-price {
+    font-family: var(--font-display);
+    font-size: 22px; font-weight: 800;
+    color: var(--tc);
+    line-height: 1;
+    letter-spacing: -0.01em;
+  }
+  .gtc-price-sub {
+    font-size: 0.55em;
+    color: rgba(255,255,255,0.45);
+    font-weight: 500;
+    margin-left: 2px;
+  }
+  .gtc-lock-icon {
+    font-size: 12px;
+    color: rgba(255,255,255,0.40);
+    margin-top: 2px;
+  }
+
+  /* State-specific accents */
+  .game-tier-card.owned-v2 {
+    border-color: color-mix(in srgb, var(--tc) 38%, rgba(255,255,255,0.10)) !important;
+    box-shadow: 0 0 0 1px color-mix(in srgb, var(--tc) 18%, transparent) inset;
+  }
+  .game-tier-card.free-trial-v2 {
+    border-color: rgba(80,200,80,0.36) !important;
+    box-shadow: 0 0 0 1px rgba(80,200,80,0.16) inset;
+  }
+  .game-tier-card.locked-v2 {
+    border-color: rgba(255,255,255,0.10) !important;
+  }
+  .game-tier-card.locked-v2 .gtc-anim-bg { opacity: 0.20; filter: saturate(0.45); }
+  .game-tier-card.locked-v2 .gtc-name { color: rgba(255,255,255,0.78) !important; }
+  .game-tier-card.locked-v2 .gtc-sub { color: rgba(255,255,255,0.42) !important; }
+
+  .game-tier-card:active { transform: scale(0.99); }
+
+  /* Hide the standalone PLAY button — the whole card is tappable */
+  .game-tier-card .gtc-play-btn { display: none !important; }
+
+  /* Solo/Duo screen-level polish */
+  #screen-solo-setup .solo-setup-title {
+    font-family: var(--font-display);
+    font-size: 18px; font-weight: 800;
+    letter-spacing: 0.10em; text-transform: uppercase;
+    color: #fff;
+  }
+  #screen-solo-setup .solo-back-btn {
+    width: 38px; height: 38px;
+    border-radius: 12px;
+    background: rgba(255,255,255,0.06);
+    border: 1px solid rgba(255,255,255,0.10);
+    color: #fff;
+    font-size: 18px; line-height: 1;
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer;
+  }
+  #screen-solo-setup .solo-back-btn:active { transform: scale(0.95); }
+  #screen-solo-setup .solo-footer-note {
+    font-size: 11px;
+    color: rgba(255,255,255,0.32);
+    text-align: center;
+    line-height: 1.5;
+    padding: 18px 8px 12px;
+  }
+
+  /* Section divider for powers */
+  #solo-powers-section .screen-powers-label,
+  #screen-duo-lobby .screen-powers-label {
+    font-family: var(--font-display);
+    font-size: 12px; font-weight: 800;
+    letter-spacing: 0.18em; text-transform: uppercase;
+    color: rgba(255,255,255,0.45) !important;
+    padding: 22px 4px 10px;
+  }
+
+  /* DUO LOBBY — premium polish for game cards */
+  #screen-duo-lobby .duo-game-card {
+    background: linear-gradient(180deg, rgba(255,255,255,0.045), rgba(255,255,255,0.018)) !important;
+    border: 1px solid rgba(255,255,255,0.10) !important;
+    border-left-width: 3px !important;
+    border-radius: 16px !important;
+    padding: 16px 16px !important;
+    transition: transform 200ms cubic-bezier(0.16,1,0.3,1), border-color 220ms !important;
+    position: relative;
+    overflow: hidden;
+  }
+  #screen-duo-lobby .duo-game-card::before {
+    content: '';
+    position: absolute; inset: 0;
+    background: radial-gradient(circle at 8% 50%, color-mix(in srgb, var(--duo-card-accent, #9B59D0) 18%, transparent), transparent 60%);
+    pointer-events: none; opacity: 0.55;
+  }
+  #screen-duo-lobby .duo-game-card > * { position: relative; z-index: 1; }
+  #screen-duo-lobby .duo-game-card:active { transform: scale(0.99); }
+  #screen-duo-lobby .duo-game-card-name {
+    font-size: 15px !important;
+    letter-spacing: 0.10em !important;
+  }
+  #screen-duo-lobby .duo-game-card-desc {
+    font-size: 12.5px !important;
+    color: rgba(255,255,255,0.55) !important;
+    line-height: 1.45 !important;
+  }
+  #screen-duo-lobby .duo-game-card-emoji {
+    width: 54px; height: 54px;
+    border-radius: 14px;
+    background: rgba(255,255,255,0.06);
+    border: 1px solid rgba(255,255,255,0.10);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 26px !important;
+    flex-shrink: 0;
+  }
+  #screen-duo-lobby .duo-game-card-btn {
+    background: rgba(255,255,255,0.04) !important;
+    border-radius: 10px !important;
+    padding: 8px 12px !important;
+    font-size: 11px !important;
+    letter-spacing: 0.14em !important;
+  }
+
+  /* ══ PREMIUM POLISH · In-game look-and-feel ══ */
+
+  /* CSS variables that change per mode — set on body via JS */
+  body {
+    --mode-accent: #CC1212;
+    --mode-accent-soft: rgba(204,18,18,0.18);
+    --mode-accent-glow: rgba(204,18,18,0.35);
+  }
+  body[data-mode="standard"]  { --mode-accent: #34C759; --mode-accent-soft: rgba(52,199,89,0.18);  --mode-accent-glow: rgba(52,199,89,0.35); }
+  body[data-mode="frenzy"]    { --mode-accent: #F5A623; --mode-accent-soft: rgba(245,166,35,0.20); --mode-accent-glow: rgba(245,166,35,0.45); }
+  body[data-mode="survival"]  { --mode-accent: #6B8F71; --mode-accent-soft: rgba(107,143,113,0.22); --mode-accent-glow: rgba(107,143,113,0.40); }
+  body[data-mode="colourrun"] { --mode-accent: #F7C948; --mode-accent-soft: rgba(247,201,72,0.20); --mode-accent-glow: rgba(247,201,72,0.45); }
+  body[data-mode="citypack"]  { --mode-accent: #4A9EFF; --mode-accent-soft: rgba(74,158,255,0.18); --mode-accent-glow: rgba(74,158,255,0.40); }
+  body[data-mode="duo"]       { --mode-accent: #9B59D0; --mode-accent-soft: rgba(155,89,208,0.18); --mode-accent-glow: rgba(155,89,208,0.40); }
+
+  /* Top bar — dark glass + per-mode underglow */
+  .game-topbar {
+    background: linear-gradient(180deg, #0c0c0e 0%, #07070a 100%) !important;
+    border-bottom: 1px solid rgba(255,255,255,0.06) !important;
+    box-shadow:
+      inset 0 -1px 0 var(--mode-accent-soft),
+      0 1px 0 rgba(0,0,0,0.6),
+      0 8px 22px -10px var(--mode-accent-glow);
+    transition: box-shadow 380ms ease;
+  }
+  /* Subtle scanline accent strip below the topbar (1px) */
+  .game-topbar::after {
+    content: "";
+    position: absolute; left: 0; right: 0; bottom: -2px; height: 2px;
+    background: linear-gradient(90deg, transparent 0%, var(--mode-accent) 50%, transparent 100%);
+    opacity: 0.42;
+    pointer-events: none;
+  }
+
+  /* Stat pills — raised glass with crisp typography */
+  .stat-pill {
+    background: linear-gradient(180deg, rgba(255,255,255,0.04) 0%, rgba(255,255,255,0.012) 100%) !important;
+    border: 1px solid rgba(255,255,255,0.07) !important;
+    border-radius: 8px !important;
+    padding: 4px 8px !important;
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.04), 0 1px 0 rgba(0,0,0,0.4);
+    transition: transform 220ms ease, box-shadow 220ms ease, border-color 220ms ease;
+  }
+  .stat-pill .s-label {
+    color: rgba(255,255,255,0.42) !important;
+    letter-spacing: 0.14em !important;
+    font-weight: 600 !important;
+  }
+  .stat-pill .s-val {
+    color: #fff !important;
+    text-shadow: 0 0 10px var(--mode-accent-glow);
+    font-weight: 800 !important;
+    letter-spacing: 0.04em !important;
+  }
+  /* Brief "score bump" flash when score changes */
+  .stat-pill.bump {
+    transform: translateY(-1px) scale(1.04);
+    border-color: var(--mode-accent) !important;
+    box-shadow:
+      inset 0 1px 0 rgba(255,255,255,0.08),
+      0 4px 14px -4px var(--mode-accent-glow);
+  }
+  .stat-pill .s-val.bump-val {
+    animation: statPop 480ms cubic-bezier(.22,1.4,.36,1);
+  }
+  @keyframes statPop {
+    0%   { transform: scale(1); }
+    32%  { transform: scale(1.18); text-shadow: 0 0 18px var(--mode-accent-glow); }
+    100% { transform: scale(1); }
+  }
+
+  /* Combo badge — add per-mode glow */
+  .combo-badge {
+    background: linear-gradient(135deg, var(--mode-accent), color-mix(in srgb, var(--mode-accent) 55%, #000)) !important;
+    box-shadow:
+      0 6px 18px -4px var(--mode-accent-glow),
+      inset 0 1px 0 rgba(255,255,255,0.18);
+    color: #fff !important;
+    text-shadow: 0 1px 2px rgba(0,0,0,0.4);
+  }
+
+  /* Event banner — mode-tinted glass with smoother spring */
+  #event-banner {
+    background: linear-gradient(135deg,
+      color-mix(in srgb, var(--mode-accent) 10%, #0a0a0d 90%),
+      color-mix(in srgb, var(--mode-accent) 5%, #050507 95%)) !important;
+    border: 1px solid color-mix(in srgb, var(--mode-accent) 60%, transparent) !important;
+    color: var(--mode-accent) !important;
+    box-shadow:
+      0 12px 38px -8px var(--mode-accent-glow),
+      inset 0 1px 0 rgba(255,255,255,0.05) !important;
+    text-shadow: 0 0 12px var(--mode-accent-glow);
+    backdrop-filter: blur(6px);
+  }
+
+  /* Mid-tier badge — the chip below the playfield */
+  #mid-tier-badge {
+    border: 1px solid color-mix(in srgb, var(--mode-accent) 45%, transparent) !important;
+    background: linear-gradient(180deg, rgba(255,255,255,0.03), rgba(255,255,255,0.01)) !important;
+    box-shadow: 0 0 0 1px rgba(0,0,0,0.4), 0 6px 18px -8px var(--mode-accent-glow) !important;
+    transition: box-shadow 320ms ease, border-color 320ms ease;
+  }
+  #mid-tier-badge.level-up-pulse {
+    animation: tierPulse 900ms ease;
+  }
+  @keyframes tierPulse {
+    0%   { box-shadow: 0 0 0 0 var(--mode-accent-glow); border-color: var(--mode-accent); }
+    50%  { box-shadow: 0 0 0 14px transparent; border-color: var(--mode-accent); }
+    100% { box-shadow: 0 0 0 0 transparent; }
+  }
+
+  /* Level-up ribbon — slides across screen on level change */
+  #level-up-ribbon {
+    position: fixed; left: 0; right: 0; top: 38%;
+    z-index: 120;
+    pointer-events: none;
+    text-align: center;
+    font-family: var(--font-display);
+    font-size: clamp(1.4rem, 5vw, 2rem);
+    font-weight: 800;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: #fff;
+    text-shadow: 0 0 24px var(--mode-accent-glow), 0 2px 4px rgba(0,0,0,0.6);
+    opacity: 0;
+    transform: translateY(8px) scale(0.96);
+    transition: opacity 320ms ease, transform 480ms cubic-bezier(.22,1.4,.36,1);
+  }
+  #level-up-ribbon.show {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+  #level-up-ribbon .lur-num {
+    color: var(--mode-accent);
+    text-shadow: 0 0 32px var(--mode-accent-glow);
+  }
+
+  /* Score float text — add subtle drop shadow */
+  .float-text {
+    text-shadow: 0 0 12px var(--mode-accent-glow), 0 1px 2px rgba(0,0,0,0.6);
+  }
   </style>
 </head>
 <body>
+
+<!-- ════════════ COLD-START LOADING SCREEN ════════════
+     Renders before any other UI on first paint.
+     Hidden by initLoadingScreen() once window 'load' fires + min display elapsed.
+     Survives JS failure: if init never runs, the brand is still on screen. -->
+<div id="screen-loading" role="status" aria-live="polite" aria-label="Croakdown is loading">
+  <!-- Scrolling city silhouette (decorative) -->
+  <div class="loading-city-strip" aria-hidden="true">
+    <svg viewBox="0 0 400 80" preserveAspectRatio="none">
+      <!-- Two copies side-by-side so the scroll loops seamlessly -->
+      <g fill="#ffffff">
+        <!-- copy 1 (0-200) -->
+        <rect x="0"   y="40" width="8"  height="40"/>
+        <rect x="10"  y="30" width="12" height="50"/>
+        <rect x="24"  y="45" width="6"  height="35"/>
+        <rect x="32"  y="25" width="4"  height="55"/>
+        <polygon points="34,25 36,15 38,25"/>
+        <rect x="40"  y="38" width="10" height="42"/>
+        <rect x="52"  y="32" width="8"  height="48"/>
+        <rect x="62"  y="42" width="14" height="38"/>
+        <rect x="78"  y="28" width="6"  height="52"/>
+        <rect x="86"  y="36" width="10" height="44"/>
+        <rect x="98"  y="22" width="5"  height="58"/>
+        <rect x="105" y="34" width="9"  height="46"/>
+        <rect x="116" y="40" width="12" height="40"/>
+        <rect x="130" y="30" width="7"  height="50"/>
+        <rect x="139" y="46" width="10" height="34"/>
+        <rect x="151" y="24" width="5"  height="56"/>
+        <rect x="158" y="38" width="8"  height="42"/>
+        <rect x="168" y="32" width="10" height="48"/>
+        <rect x="180" y="42" width="6"  height="38"/>
+        <rect x="188" y="28" width="12" height="52"/>
+        <!-- copy 2 (200-400, identical) -->
+        <rect x="200" y="40" width="8"  height="40"/>
+        <rect x="210" y="30" width="12" height="50"/>
+        <rect x="224" y="45" width="6"  height="35"/>
+        <rect x="232" y="25" width="4"  height="55"/>
+        <polygon points="234,25 236,15 238,25"/>
+        <rect x="240" y="38" width="10" height="42"/>
+        <rect x="252" y="32" width="8"  height="48"/>
+        <rect x="262" y="42" width="14" height="38"/>
+        <rect x="278" y="28" width="6"  height="52"/>
+        <rect x="286" y="36" width="10" height="44"/>
+        <rect x="298" y="22" width="5"  height="58"/>
+        <rect x="305" y="34" width="9"  height="46"/>
+        <rect x="316" y="40" width="12" height="40"/>
+        <rect x="330" y="30" width="7"  height="50"/>
+        <rect x="339" y="46" width="10" height="34"/>
+        <rect x="351" y="24" width="5"  height="56"/>
+        <rect x="358" y="38" width="8"  height="42"/>
+        <rect x="368" y="32" width="10" height="48"/>
+        <rect x="380" y="42" width="6"  height="38"/>
+        <rect x="388" y="28" width="12" height="52"/>
+      </g>
+    </svg>
+  </div>
+
+  <!-- City ticker (route through the world) — horizontal scroll -->
+  <div class="loading-city-ticker" aria-hidden="true">
+    <div class="loading-city-ticker-track">
+      <span>LONDON</span><span class="sep">→</span><span>DUBAI</span><span class="sep">→</span><span>TOKYO</span><span class="sep">→</span><span>PARIS</span><span class="sep">→</span><span>NEW YORK</span><span class="sep">→</span><span>LONDON</span><span class="sep">→</span><span>DUBAI</span><span class="sep">→</span><span>TOKYO</span><span class="sep">→</span><span>PARIS</span><span class="sep">→</span><span>NEW YORK</span><span class="sep">→</span>
+    </div>
+  </div>
+
+  <!-- Centred brand stack — frog + logo + progress -->
+  <div class="loading-stack">
+  <!-- Brand frog — RFBA logo frog (silhouette, brand red), gently hovering -->
+  <div class="loading-frog-wrap" aria-hidden="true">
+    <img src="rfba-frog-red.png" alt="" width="360" height="237" decoding="async" fetchpriority="high">
+  </div>
+
+  <!-- Logo area -->
+  <div class="loading-logo-area">
+    <div class="loading-game-title">CROAK<span>DOWN</span></div>
+    <div class="loading-sub">By RedFrogBlack</div>
+  </div>
+
+  <!-- Progress -->
+  <div class="loading-bar-group">
+    <div class="loading-bar-wrap" aria-hidden="true">
+      <div class="loading-bar-fill" id="loading-bar-fill"></div>
+    </div>
+    <div class="loading-pct" id="loading-pct">LOADING… 0%</div>
+  </div>
+  </div><!-- /.loading-stack -->
+</div>
+
+<script>
+  /* Loading-screen lifecycle.
+     Drives the progress bar from 0 → 100% over the actual page-load time,
+     enforces a minimum 1500ms display so the bounce animation can play,
+     then fades the splash and reveals the app.
+     Cycles the city label name in sync with the strip scroll. */
+  (function initLoadingScreen() {
+    var el      = document.getElementById('screen-loading');
+    var fill    = document.getElementById('loading-bar-fill');
+    var pctEl   = document.getElementById('loading-pct');
+    if (!el) return;
+
+    var MIN_MS = 1500;
+    var startedAt = Date.now();
+    var loaded = false;
+    var fakeProgress = 0;
+
+    function setPct(v){
+      v = Math.max(0, Math.min(100, Math.round(v)));
+      if (fill)  fill.style.width = v + '%';
+      if (pctEl) pctEl.textContent = 'LOADING… ' + v + '%';
+    }
+
+    // Animate the bar towards a soft cap until window.load fires.
+    var tick = setInterval(function(){
+      // Aim to crawl to ~80% before real load completes
+      if (!loaded && fakeProgress < 80) {
+        fakeProgress += Math.max(1, (80 - fakeProgress) * 0.06);
+        setPct(fakeProgress);
+      }
+    }, 90);
+
+    function finish(){
+      var elapsed = Date.now() - startedAt;
+      var wait = Math.max(0, MIN_MS - elapsed);
+      // Fill the rest smoothly
+      setPct(100);
+      setTimeout(function(){
+        clearInterval(tick);
+        el.classList.add('is-hiding');
+        setTimeout(function(){
+          el.parentNode && el.parentNode.removeChild(el);
+        }, 380);
+      }, wait);
+    }
+
+    if (document.readyState === 'complete') {
+      loaded = true;
+      finish();
+    } else {
+      window.addEventListener('load', function(){
+        loaded = true;
+        finish();
+      });
+      // Safety net: if 'load' never fires (e.g. asset failure), force finish at 8s
+      setTimeout(function(){ if (!loaded) { loaded = true; finish(); } }, 8000);
+    }
+  })();
+</script>
 
 <canvas id="particle-canvas"></canvas>
 <canvas id="drag-ghost"></canvas>
@@ -3650,165 +5055,103 @@
   <!-- Animated background canvas — sits behind all content -->
   <canvas id="home-bg-canvas"></canvas>
 
-  <!-- Sound toggle — top right -->
-  <button id="btn-sound-home" title="Toggle sound" aria-label="Toggle sound">🔊</button>
-
-  <!-- Hidden JS hooks -->
+  <!-- Hidden JS hooks (kept so existing flows continue to function) -->
   <span id="streak-val" style="display:none;">0</span>
+  <span id="streak-val-home" style="display:none;">0</span>
+  <span id="title-best-val" style="display:none;">0</span>
   <div id="title-tier-badge" class="tier-badge-title" style="display:none;">
     <div class="tb-dot" id="tier-badge-dot" style="background:#666"></div>
     <span id="tier-badge-name">TADPOLE EDITION</span>
   </div>
+  <!-- Hidden routing buttons — existing handlers still drive nav -->
+  <button id="btn-solo"        style="display:none;" aria-label="Start solo play"></button>
+  <button id="btn-duo-mode"    style="display:none;" aria-label="Open duo multiplayer mode"></button>
+  <button id="btn-how-to-play" style="display:none;" aria-label="How to play Croakdown"></button>
+  <button id="btn-shop-home"   style="display:none;" aria-label="Open magic powers shop"></button>
 
-  <!-- Logo area -->
-  <div class="home-logo-wrap">
-    <div class="home-logo-badge">
-      <img src="./rfba-logo.png" alt="RFBA" />
+  <!-- ============ SCREEN B — HOME ============ -->
+  <div class="home-v2">
+
+    <!-- Hero: brand label → logo → frog → tagline -->
+    <div class="home-hero">
+      <div class="home-brand">Red Frog Black</div>
+      <div class="home-logo-text">CROAK<span>DOWN</span></div>
+      <div class="home-frog-hero" aria-hidden="true">
+        <img src="rfba-frog-red.png" alt="" width="360" height="237" decoding="async">
+      </div>
+      <div class="home-tagline-v2">Unleash your playful side</div>
     </div>
-    <div class="home-logo-title">CROAKDOWN</div>
-    <div class="home-logo-tagline">Unleash Your Playful Side</div>
-  </div>
 
-  <!-- Main content -->
-  <div class="home-content-wrap">
-
-    <!-- Trial banner -->
+    <!-- Trial banner (shown only during active free trial) -->
     <div id="trial-banner"><span id="trial-banner-icon">⏳</span><span id="trial-banner-text">7 days free trial remaining</span></div>
 
-    <!-- Score pill -->
-    <div class="home-score-pill">
-      <div class="home-score-item">
-        <div class="home-score-label">🏆 BEST</div>
-        <div class="home-score-val" id="title-best-val">0</div>
+    <!-- Resume card — shown only if a saved game exists. Visibility toggled
+         by checkResumeOnHome() via the .is-visible class. -->
+    <div id="resume-game-banner" class="home-resume" role="region" aria-label="Resume saved game">
+      <div class="home-resume-text">
+        <div class="home-resume-title">▶ Game in progress</div>
+        <div class="home-resume-detail" id="resume-banner-detail">Tap to continue</div>
       </div>
-      <div class="home-score-divider"></div>
-      <div class="home-score-item">
-        <div class="home-score-label">🔥 STREAK</div>
-        <div class="home-score-val red" id="streak-val-home">0</div>
-      </div>
+      <button class="home-resume-btn" onclick="resumeSavedGame()" aria-label="Resume saved game">RESUME</button>
     </div>
 
-    <!-- Resume banner (shown if saved game exists) -->
-    <div id="resume-game-banner" style="display:none;background:rgba(204,18,18,0.12);border:1.5px solid rgba(204,18,18,0.4);border-radius:14px;padding:16px 18px;margin-bottom:16px;align-items:center;justify-content:space-between;gap:12px;width:100%;">
-      <div>
-        <div style="font-family:var(--font-display);font-size:var(--fs-ui);font-weight:700;letter-spacing:0.1em;color:#CC1212;margin-bottom:2px;">▶ GAME IN PROGRESS</div>
-        <div id="resume-banner-detail" style="font-size:var(--fs-label);color:rgba(255,255,255,0.5);">Tap to continue</div>
-      </div>
-      <button onclick="resumeSavedGame()" aria-label="Resume saved game" style="background:#CC1212;border:none;border-radius:10px;color:#fff;font-family:var(--font-display);font-size:var(--fs-ui);font-weight:700;letter-spacing:0.1em;padding:10px 16px;cursor:pointer;white-space:nowrap;">RESUME</button>
-    </div>
+    <!-- Three large nav buttons -->
+    <nav class="home-nav-stack" aria-label="Main menu">
 
-    <!-- Game mode cards -->
-    <div class="home-tier-cards">
-
-      <!-- Tadpole — free -->
-      <div class="home-tier-card" data-tier="tadpole" onclick="document.getElementById('btn-solo').click()">
-        <div class="home-tier-emoji">🥚</div>
-        <div class="home-tier-text">
-          <div class="home-tier-name">Tadpole</div>
-          <div class="home-tier-sub">Easy · Classic mode</div>
-        </div>
-        <div class="home-tier-right">
-          <span class="home-tier-price free">FREE</span>
-          <button class="home-tier-play-btn" aria-label="Play Tadpole mode">PLAY</button>
-        </div>
-      </div>
-
-      <!-- Tree Frog -->
-      <div class="home-tier-card" data-tier="treefrog" onclick="document.getElementById('btn-solo').click()">
-        <div class="home-tier-emoji">🐸</div>
-        <div class="home-tier-text">
-          <div class="home-tier-name">Tree Frog</div>
-          <div class="home-tier-sub">Medium · Frenzy + Timed</div>
-        </div>
-        <div class="home-tier-right">
-          <span class="home-tier-price">£1.99</span>
-          <button class="home-tier-play-btn" aria-label="Play Tree Frog mode">PLAY</button>
-        </div>
-      </div>
-
-      <!-- Fog the Frog -->
-      <div class="home-tier-card" data-tier="poisondart" onclick="document.getElementById('btn-solo').click()">
-        <div class="home-tier-emoji">🌫️</div>
-        <div class="home-tier-text">
-          <div class="home-tier-name">Fog the Frog</div>
-          <div class="home-tier-sub">Hard · Fog · 10 Haunted Locations</div>
-        </div>
-        <div class="home-tier-right">
-          <span class="home-tier-price">£1.99</span>
-          <button class="home-tier-play-btn" aria-label="Play Fog the Frog mode">PLAY</button>
-        </div>
-      </div>
-
-      <!-- Golden Frog -->
-      <div class="home-tier-card" data-tier="goldenfrog" onclick="document.getElementById('btn-solo').click()">
-        <div class="home-tier-emoji">✨</div>
-        <div class="home-tier-text">
-          <div class="home-tier-name">Golden Frog</div>
-          <div class="home-tier-sub">Expert · 10 Luxury Locations</div>
-        </div>
-        <div class="home-tier-right">
-          <span class="home-tier-price">£1.99</span>
-          <button class="home-tier-play-btn" aria-label="Play Golden Frog mode">PLAY</button>
-        </div>
-      </div>
-
-      <!-- City Pack -->
-      <div class="home-tier-card" data-tier="citypack" onclick="tierOwned('citypack') ? startCityPackGame(0) : openShop('tiers', true)" style="border-color:rgba(74,158,255,0.5);border-left-color:#4A9EFF;">
-        <div class="home-tier-emoji">🏙️</div>
-        <div class="home-tier-text">
-          <div class="home-tier-name">City Pack</div>
-          <div class="home-tier-sub">10 Cities · Skyline boards</div>
-        </div>
-        <div class="home-tier-right">
-          <span class="home-tier-price">£1.99</span>
-          <button class="home-tier-play-btn" aria-label="Play City Pack" style="background:#4A9EFF;">PLAY</button>
-        </div>
-      </div>
-    </div>
-
-    <!-- Duo banner -->
-    <div style="margin:12px 0 4px;padding:14px 16px;background:linear-gradient(135deg,rgba(123,63,190,0.18),rgba(90,30,160,0.12));border:1.5px solid rgba(123,63,190,0.45);border-radius:14px;display:flex;align-items:center;justify-content:space-between;gap:12px;cursor:pointer;" onclick="document.getElementById('btn-duo-mode').click()" aria-label="Open Duo multiplayer">
-      <div style="display:flex;align-items:center;gap:10px;">
-        <span style="font-size:22px;">🎮</span>
-        <div>
-          <div style="font-family:var(--font-display);font-size:var(--fs-ui);font-weight:700;letter-spacing:0.12em;color:#c084fc;">DUO MODE</div>
-          <div style="font-size:var(--fs-label);color:rgba(255,255,255,0.5);letter-spacing:0.06em;">Play with a friend · £5/mo</div>
-        </div>
-      </div>
-      <button style="background:#7B3FBE;border:none;border-radius:8px;color:#fff;font-family:var(--font-display);font-size:var(--fs-label);font-weight:700;letter-spacing:0.1em;padding:8px 14px;cursor:pointer;">PLAY</button>
-    </div>
-
-    <!-- Magic Powers strip -->
-    <div class="home-powers-strip">
-      <div class="home-powers-label">⚡ Magic Powers</div>
-      <button class="home-powers-pill" onclick="openShop('powers')" aria-label="Buy Spark power">⚡ SPARK <span style="opacity:0.6;">£0.99</span></button>
-      <button class="home-powers-pill" onclick="openShop('powers')" aria-label="Buy Surge power">⚡⚡ SURGE <span style="opacity:0.6;">£1.49</span></button>
-      <button class="home-powers-pill" onclick="openShop('powers')" aria-label="Buy Storm power">⚡⚡⚡ STORM <span style="opacity:0.6;">£1.99</span></button>
-    </div>
-
-    <!-- DUO + HOW TO hidden buttons (still wired for JS handlers) -->
-    <button id="btn-solo" style="display:none;" aria-label="Start solo play"></button>
-    <button id="btn-duo-mode" style="display:none;" aria-label="Open duo multiplayer mode"></button>
-    <button id="btn-how-to-play" style="display:none;" aria-label="How to play Croakdown"></button>
-    <button id="btn-shop-home" style="display:none;" aria-label="Open magic powers shop"></button>
-
-    <!-- Bottom navigation bar -->
-    <nav class="home-nav-bar" aria-label="Home navigation">
-      <button class="home-nav-tab active" onclick="" aria-label="Play tab">
-        <span class="home-nav-tab-icon">🎮</span>
-        <span class="home-nav-tab-label">Play</span>
+      <button class="home-nav-btn" data-accent="solo"
+              onclick="document.getElementById('btn-solo').click()"
+              aria-label="Solo play — choose a game pack">
+        <span class="home-nav-left">
+          <span class="home-nav-icon" aria-hidden="true">🎮</span>
+          <span class="home-nav-text">
+            <span class="home-nav-title">Solo Play</span>
+            <span class="home-nav-sub" id="home-solo-sub">5 game packs · from free</span>
+          </span>
+        </span>
+        <span class="home-nav-chevron" aria-hidden="true">›</span>
       </button>
-      <button class="home-nav-tab" onclick="document.getElementById('btn-how-to-play').click()" aria-label="Scores / How to play">
-        <span class="home-nav-tab-icon">🏆</span>
-        <span class="home-nav-tab-label">Scores</span>
+
+      <button class="home-nav-btn" data-accent="duo"
+              onclick="document.getElementById('btn-duo-mode').click()"
+              aria-label="Duo mode — play with a friend">
+        <span class="home-nav-left">
+          <span class="home-nav-icon" aria-hidden="true">🤝</span>
+          <span class="home-nav-text">
+            <span class="home-nav-title">Duo Mode</span>
+            <span class="home-nav-sub" id="home-duo-sub">Play with a friend · £5/mo</span>
+          </span>
+        </span>
+        <span class="home-nav-chevron" aria-hidden="true">›</span>
       </button>
-      <button class="home-nav-tab" id="btn-settings-home" aria-label="Open settings">
-        <span class="home-nav-tab-icon">⚙️</span>
-        <span class="home-nav-tab-label">Settings</span>
+
+      <button class="home-nav-btn" data-accent="htp"
+              onclick="document.getElementById('btn-how-to-play').click()"
+              aria-label="How to play — rules, frogs, powers">
+        <span class="home-nav-left">
+          <span class="home-nav-icon" aria-hidden="true">📖</span>
+          <span class="home-nav-text">
+            <span class="home-nav-title">How to Play</span>
+            <span class="home-nav-sub">Rules, frogs, powers</span>
+          </span>
+        </span>
+        <span class="home-nav-chevron" aria-hidden="true">›</span>
       </button>
+
     </nav>
 
-  </div>
+    <!-- Bottom utility row — SETTINGS / SOUND -->
+    <div class="home-bottom-row-v2">
+      <button class="home-util-btn" id="btn-settings-home" aria-label="Open settings">
+        <span class="util-icon" aria-hidden="true">⚙️</span>
+        <span>Settings</span>
+      </button>
+      <button class="home-util-btn" id="btn-sound-home" aria-label="Toggle sound" aria-pressed="true">
+        <span class="util-icon" id="btn-sound-icon" aria-hidden="true">🔊</span>
+        <span id="btn-sound-label">Sound</span>
+      </button>
+    </div>
+
+  </div><!-- /.home-v2 -->
 </div>
 
 <!-- ════════════ HOW TO PLAY OVERLAY ════════════ -->
@@ -3961,10 +5304,10 @@
           <div class="htp-tier-price">£1.99/yr</div>
         </div>
         <div class="htp-tier-row">
-          <div class="htp-tier-emoji">☠️</div>
+          <div class="htp-tier-emoji">🌫️</div>
           <div class="htp-tier-info">
-            <div class="htp-tier-name" style="color:#CC1212">Poison Dart</div>
-            <div class="htp-tier-sub">Fog the Frog — fog drifts across the board. Can you see through it?</div>
+            <div class="htp-tier-name" style="color:#6B8F71">Fog the Frog</div>
+            <div class="htp-tier-sub">Survival — fog drifts in, tiles vanish. How long can you last?</div>
           </div>
           <div class="htp-tier-price">£1.99/yr</div>
         </div>
@@ -3972,7 +5315,7 @@
           <div class="htp-tier-emoji">🌟</div>
           <div class="htp-tier-info">
             <div class="htp-tier-name" style="color:#F5E000">Golden Frog</div>
-            <div class="htp-tier-sub">Golden Frog — 10 luxury locations, each with a unique board mechanic.</div>
+            <div class="htp-tier-sub">Colour Run + all modes. Everything unlocked.</div>
           </div>
           <div class="htp-tier-price">£1.99/yr</div>
         </div>
@@ -4097,91 +5440,123 @@
   <div class="title-art-strips"></div>
   <div class="solo-setup-inner">
     <!-- Header -->
-    <div class="solo-setup-header">
+    <div class="solo-setup-headerbar">
       <button class="solo-back-btn" id="solo-back" aria-label="Back to home">←</button>
-      <div class="solo-setup-title">🎮 Choose Your Game</div>
+      <div class="solo-setup-title">🎮 Choose Your Pack</div>
+      <span class="solo-trial-chip" id="solo-trial-chip">7-Day Free Trial</span>
+    </div>
+
+    <!-- Purchase success banner (shown after a successful unlock) -->
+    <div class="pack-success-banner" id="pack-success-banner">
+      <div class="psb-icon">✅</div>
+      <div>
+        <div class="psb-text" id="psb-text">PACK UNLOCKED</div>
+        <div class="psb-sub">Your subscription is active</div>
+      </div>
     </div>
 
     <!-- 4 Game Cards (tap to play immediately) -->
     <div id="solo-game-cards" style="display:flex;flex-direction:column;gap:12px;width:100%;padding:0 4px;box-sizing:border-box;">
 
       <!-- TADPOLE -->
-      <div class="game-tier-card" data-tier="tadpole" id="gtc-tadpole" style="--tc:#888888">
+      <div class="game-tier-card" data-tier="tadpole" id="gtc-tadpole" style="--tc:#34C759">
+        <div class="gtc-anim-bg tadpole" aria-hidden="true"></div>
         <div class="gtc-left">
           <div class="gtc-emoji">🥚</div>
           <div class="gtc-info">
             <div class="gtc-name">TADPOLE</div>
-            <div class="gtc-sub">Easy · Standard · Clear rows</div>
-            <div class="gtc-badge free-badge">FREE 7 DAYS → £0.99</div>
+            <div class="gtc-sub">Classic · Clear rows, beat your score</div>
           </div>
         </div>
-        <button class="gtc-play-btn" id="gtc-play-tadpole" aria-label="Play Tadpole mode">▶ PLAY</button>
+        <div class="gtc-right" id="gtc-right-tadpole"></div>
+        <button class="gtc-play-btn" id="gtc-play-tadpole" aria-label="Play Tadpole mode" hidden>▶ PLAY</button>
       </div>
 
       <!-- TREE FROG -->
       <div class="game-tier-card" data-tier="treefrog" id="gtc-treefrog" style="--tc:#F5A623">
+        <div class="gtc-anim-bg treefrog" aria-hidden="true"></div>
         <div class="gtc-left">
           <div class="gtc-emoji">🐸</div>
           <div class="gtc-info">
             <div class="gtc-name">TREE FROG</div>
-            <div class="gtc-sub">Medium · Frenzy · Beat the timer</div>
-            <div class="gtc-badge">Unlocks Tadpole too · £1.99/yr</div>
+            <div class="gtc-sub">Frenzy · Race the countdown timer</div>
           </div>
         </div>
-        <button class="gtc-play-btn" id="gtc-play-treefrog" aria-label="Play Tree Frog mode">▶ PLAY</button>
+        <div class="gtc-right" id="gtc-right-treefrog"></div>
+        <button class="gtc-play-btn" id="gtc-play-treefrog" aria-label="Play Tree Frog mode" hidden>▶ PLAY</button>
       </div>
 
-      <!-- POISON DART -->
-      <div class="game-tier-card" data-tier="poisondart" id="gtc-poisondart" style="--tc:#CC1212">
+      <!-- FOG THE FROG -->
+      <div class="game-tier-card" data-tier="poisondart" id="gtc-poisondart" style="--tc:#6B8F71">
+        <div class="gtc-anim-bg poisondart" aria-hidden="true"></div>
         <div class="gtc-left">
           <div class="gtc-emoji">🌫️</div>
           <div class="gtc-info">
             <div class="gtc-name">FOG THE FROG</div>
-            <div class="gtc-sub">Hard · Fog · 10 Haunted Locations</div>
-            <div class="gtc-badge">Unlocks all below · £1.99/yr</div>
+            <div class="gtc-sub">Hard · Fog drifts across the board</div>
           </div>
         </div>
-        <button class="gtc-play-btn" id="gtc-play-poisondart" aria-label="Play Fog the Frog mode">▶ PLAY</button>
+        <div class="gtc-right" id="gtc-right-poisondart"></div>
+        <button class="gtc-play-btn" id="gtc-play-poisondart" aria-label="Play Fog the Frog mode" hidden>▶ PLAY</button>
       </div>
 
       <!-- GOLDEN FROG -->
-      <div class="game-tier-card" data-tier="goldenfrog" id="gtc-goldenfrog" style="--tc:#F5E000">
+      <div class="game-tier-card" data-tier="goldenfrog" id="gtc-goldenfrog" style="--tc:#F7C948">
+        <div class="gtc-anim-bg goldenfrog" aria-hidden="true"></div>
         <div class="gtc-left">
           <div class="gtc-emoji">✨</div>
           <div class="gtc-info">
             <div class="gtc-name">GOLDEN FROG</div>
-            <div class="gtc-sub">Expert · 10 Luxury Locations · Prestige</div>
-            <div class="gtc-badge gtc-badge-gold">✦ Unlocks ALL 4 games · £1.99/yr each or £7.99/yr all</div>
+            <div class="gtc-sub">Expert · 10 luxury locations</div>
           </div>
         </div>
-        <button class="gtc-play-btn" id="gtc-play-goldenfrog" aria-label="Play Golden Frog mode">▶ PLAY</button>
+        <div class="gtc-right" id="gtc-right-goldenfrog"></div>
+        <button class="gtc-play-btn" id="gtc-play-goldenfrog" aria-label="Play Golden Frog mode" hidden>▶ PLAY</button>
       </div>
 
+      <!-- CITY PACK -->
+      <div class="game-tier-card" data-tier="citypack" id="gtc-citypack" style="--tc:#4A9EFF">
+        <div class="gtc-anim-bg citypack" aria-hidden="true"></div>
+        <div class="gtc-left">
+          <div class="gtc-emoji">🏙️</div>
+          <div class="gtc-info">
+            <div class="gtc-name">CITY PACK</div>
+            <div class="gtc-sub">Skyline boards · 10 cities · Animated skies</div>
+          </div>
+        </div>
+        <div class="gtc-right" id="gtc-right-citypack"></div>
+        <button class="gtc-play-btn" id="gtc-play-citypack" aria-label="Play City Pack mode" hidden>▶ PLAY</button>
+      </div>
+
+    </div>
 
     <!-- ⚡ Magic Powers carousel -->
     <div class="screen-powers-section" id="solo-powers-section">
-      <div class="screen-powers-label">⚡ Magic Powers · from £0.99/yr</div>
+      <div class="screen-powers-label">⚡ Magic Powers (add-on)</div>
       <div class="power-carousel" id="power-carousel-solo" style="padding-bottom:12px;">
         <div class="power-card" style="--pc:#F7C948" onclick="openShop('powers')">
           <div class="power-card-icon">⚡</div>
           <div class="power-card-name">SPARK</div>
-          <div class="power-card-desc">Clears your fullest row — 1 use / 30s.</div>
+          <div class="power-card-desc">Clears your fullest row — 1 use every 30 seconds.</div>
           <div class="power-card-footer"><span class="power-card-price">£0.99/yr</span><span class="power-card-tag ptag-solo">ANNUAL</span></div>
         </div>
         <div class="power-card" style="--pc:#F97316" onclick="openShop('powers')">
           <div class="power-card-icon">⚡⚡</div>
           <div class="power-card-name">SURGE</div>
-          <div class="power-card-desc">Clears 2 fullest rows — 2 uses / 30s.</div>
+          <div class="power-card-desc">Clears your two fullest rows — 2 uses every 30 seconds.</div>
           <div class="power-card-footer"><span class="power-card-price">£1.49/yr</span><span class="power-card-tag ptag-solo">ANNUAL</span></div>
         </div>
         <div class="power-card" style="--pc:#CC1212" onclick="openShop('powers')">
           <div class="power-card-icon">⚡⚡⚡</div>
           <div class="power-card-name">STORM</div>
-          <div class="power-card-desc">Clears 3 fullest rows — 3 uses / 30s.</div>
+          <div class="power-card-desc">Clears your three fullest rows — 3 uses every 30 seconds.</div>
           <div class="power-card-footer"><span class="power-card-price">£1.99/yr</span><span class="power-card-tag ptag-solo">ANNUAL</span></div>
         </div>
       </div>
     </div>
+
+    <!-- Footer note -->
+    <div class="solo-footer-note">Tap any pack to subscribe via App Store · Subscriptions renew annually</div>
 
   </div>
 </div>
@@ -4474,7 +5849,7 @@
     <!-- Duo Game Cards -->
     <div class="duo-game-cards-section">
       <div class="duo-game-cards-label">🎮 Choose Your Game</div>
-      <div class="duo-game-card" style="border-left-color:#F5A623;" onclick="openDuoLevelSelect('pond_battle')" aria-label="Select Pond Battle">
+      <div class="duo-game-card" style="border-left-color:#F5A623;--duo-card-accent:#F5A623;" onclick="openDuoLevelSelect('pond_battle')" aria-label="Select Pond Battle">
         <div class="duo-game-card-emoji">🌊</div>
         <div class="duo-game-card-info">
           <div class="duo-game-card-name">Pond Battle</div>
@@ -4482,7 +5857,7 @@
         </div>
         <button class="duo-game-card-btn" style="border-color:#F5A623;color:#F5A623;">SELECT</button>
       </div>
-      <div class="duo-game-card" style="border-left-color:#CC1212;" onclick="openDuoLevelSelect('shake_frog')" aria-label="Select Shake the Frog">
+      <div class="duo-game-card" style="border-left-color:#CC1212;--duo-card-accent:#CC1212;" onclick="openDuoLevelSelect('shake_frog')" aria-label="Select Shake the Frog">
         <div class="duo-game-card-emoji">🐸</div>
         <div class="duo-game-card-info">
           <div class="duo-game-card-name">Shake the Frog</div>
@@ -4490,7 +5865,7 @@
         </div>
         <button class="duo-game-card-btn" style="border-color:#CC1212;color:#CC1212;">SELECT</button>
       </div>
-      <div class="duo-game-card" style="border-left-color:#9333EA;" onclick="openDuoLevelSelect('frog_swap')" aria-label="Select Frog Swap">
+      <div class="duo-game-card" style="border-left-color:#9333EA;--duo-card-accent:#9333EA;" onclick="openDuoLevelSelect('frog_swap')" aria-label="Select Frog Swap">
         <div class="duo-game-card-emoji">🔀</div>
         <div class="duo-game-card-info">
           <div class="duo-game-card-name">Frog Swap</div>
@@ -4931,12 +6306,12 @@ const TIERS = [
     tileStyle: 'neon', powerup: { id:'bomb', label:'BOMB', icon:'💣', count:3 }, powerupCount: 3,
   },
   {
-    id: 'poisondart', name: 'FOG THE FROG', emoji: '🌫️', color: '#CC1212',
+    id: 'poisondart', name: 'FOG THE FROG', emoji: '🌫️', color: '#6B8F71',
     price: 1.99,
     annual: true,
-    desc: 'Hard mode + Fog the Frog challenge unlocked.',
-    perks: ['Everything in Tadpole + Tree Frog (all 3 unlocked) · £1.99/year','Hard difficulty — 1.8× score multiplier','Fog mode: a creeping fog drifts across the board — tiles fade and vanish beneath it. 10 haunted locations from Enchanted Woods to Above the Clouds!','Toxic orange/red tile skin','VENOM power-up: wipes all tiles of one colour','5 power-ups per game'],
-    gridTheme: { bg: '#080808', gridLine: 'rgba(245,166,35,0.07)', corner: 'rgba(245,166,35,0.4)' },
+    desc: 'Hard mode + Survival challenge unlocked.',
+    perks: ['Everything in Tadpole + Tree Frog (all 3 unlocked) · £1.99/year','Hard difficulty — 1.8× score multiplier','Survival mode: tiles vanish after 12s. Board over 50% full? Fog the Frog drops extra tiles on you!','Misted fog tile skin · ember accents','VENOM power-up: wipes all tiles of one colour','5 power-ups per game'],
+    gridTheme: { bg: '#0A0F0E', gridLine: 'rgba(107,143,113,0.07)', corner: 'rgba(107,143,113,0.45)' },
     tileStyle: 'toxic', powerup: { id:'venom', label:'VENOM', icon:'☠️', count:5 }, powerupCount: 5,
     bonusMultiplier: 1.5,
   },
@@ -4944,8 +6319,8 @@ const TIERS = [
     id: 'goldenfrog', name: 'GOLDEN FROG', emoji: '✨', color: '#F5E000',
     price: 1.99,
     annual: true,
-    desc: 'Expert prestige mode. 10 luxury locations. Everything unlocked.',
-    perks: ['Unlocks ALL 4 games — best value · £1.99/year each','Expert difficulty — 2.5× score multiplier','Golden Frog mode: 10 luxury world locations, each with a completely different board mechanic — Split, Mirror, Quake, Shrink, Blackout, Conveyor, Gravity, Ghost, Rotation, The Gauntlet','Gold holographic tile skin + starfield grid','STORM power-up: force-clears 2 full lines','5 power-ups per game'],
+    desc: 'Expert mode + Colour Run. Everything unlocked.',
+    perks: ['Unlocks ALL 4 games — best value · £1.99/year each','Expert difficulty — 2.5× score multiplier','Colour Run mode: match 4 tiles of the same colour in a row. Break the streak? Obstacle tiles drop in!','Gold holographic tile skin + starfield grid','STORM power-up: force-clears 2 full lines','5 power-ups per game'],
     gridTheme: { bg: '#06060c', gridLine: 'rgba(255,215,0,0.06)', corner: 'rgba(255,215,0,0.4)' },
     tileStyle: 'gold', powerup: { id:'storm', label:'STORM', icon:'⚡', count:5 }, powerupCount: 5,
     bonusMultiplier: 2.0, starfield: true,
@@ -5878,10 +7253,6 @@ function _ambientDraw(timestamp) {
     _drawFrenzyAmbient(ctx, W, H, rand, lerp);
   } else if (activeChallengeMode === 'colourrun') {
     _drawGoldenAmbient(ctx, W, H, rand, lerp);
-  } else if (activeChallengeMode === 'fog') {
-    _drawFogAmbient(ctx, W, H, rand, lerp);
-  } else if (activeChallengeMode === 'goldenfrog') {
-    _drawGoldenFrogAmbient(ctx, W, H, rand, lerp);
   }
 }
 
@@ -6276,90 +7647,6 @@ function _drawGoldenAmbient(ctx, W, H, rand, lerp) {
   }
 }
 
-
-// ─ Fog the Frog in-game ambient (overlays on grid via _ambientDraw) ─────────────
-function _drawFogAmbient(ctx, W, H, rand, lerp) {
-  const t = _ambientT;
-  // Enchanted woods background tones that shift by level
-  const fogLvl = Math.min(cm_fogLevel || 1, 10);
-  // Sky transitions from green forest (L1) to deep ocean dark (L9) to above clouds white (L10)
-  let skyTop, skyBot;
-  if (fogLvl <= 3) { skyTop = 'rgba(4,12,4,0.92)';  skyBot = 'rgba(8,20,6,0.90)'; }
-  else if (fogLvl <= 6) { skyTop = 'rgba(2,8,10,0.93)';  skyBot = 'rgba(4,15,12,0.91)'; }
-  else if (fogLvl <= 8) { skyTop = 'rgba(2,4,8,0.94)';   skyBot = 'rgba(3,8,16,0.92)'; }
-  else if (fogLvl === 9) { skyTop = 'rgba(0,1,4,0.97)';   skyBot = 'rgba(0,2,6,0.95)'; }
-  else { skyTop = 'rgba(18,22,28,0.90)'; skyBot = 'rgba(28,32,40,0.88)'; } // above clouds: lighter
-
-  const bg = ctx.createLinearGradient(0, 0, 0, H);
-  bg.addColorStop(0, skyTop); bg.addColorStop(1, skyBot);
-  ctx.fillStyle = bg; ctx.fillRect(0, 0, W, H);
-
-  // Ambient fog wisps drifting slowly
-  const numWisps = 3 + Math.floor(fogLvl / 3);
-  for (let wi = 0; wi < numWisps; wi++) {
-    const wx = ((t * (0.3 + wi * 0.12) + wi * W / numWisps) % (W + 80)) - 40;
-    const wy = H * (0.2 + wi * 0.14) + Math.sin(t * 0.008 + wi) * 12;
-    const wAlpha = (0.08 + 0.04 * Math.sin(t * 0.012 + wi)) * Math.min(fogLvl / 5, 1);
-    const hue = fogLvl <= 5 ? 120 : fogLvl <= 8 ? 160 : 180; // green → teal → blue
-    ctx.save();
-    ctx.globalAlpha = wAlpha;
-    const wg = ctx.createRadialGradient(wx, wy, 0, wx, wy, 55 + wi * 8);
-    wg.addColorStop(0, 'hsl(' + hue + ',50%,65%)');
-    wg.addColorStop(1, 'rgba(0,0,0,0)');
-    ctx.fillStyle = wg;
-    ctx.beginPath(); ctx.ellipse(wx, wy, 60 + wi * 10, 20 + wi * 3, 0, 0, Math.PI * 2); ctx.fill();
-    ctx.restore();
-  }
-
-  // Frog eyes blinking in fog
-  if (fogLvl >= 3 && Math.floor(t / 45) % 3 === 0) {
-    const ex = W * (0.3 + Math.sin(t * 0.005) * 0.2);
-    const ey = H * (0.4 + Math.cos(t * 0.007) * 0.15);
-    const eyeA = (Math.sin(t * 0.3) + 1) * 0.5 * 0.5;
-    ctx.save(); ctx.globalAlpha = eyeA;
-    ctx.shadowColor = 'rgba(80,255,40,0.9)'; ctx.shadowBlur = 8;
-    ctx.fillStyle = 'rgba(100,255,60,1)';
-    ctx.beginPath(); ctx.arc(ex - 4, ey, 2, 0, Math.PI * 2); ctx.fill();
-    ctx.beginPath(); ctx.arc(ex + 4, ey, 2, 0, Math.PI * 2); ctx.fill();
-    ctx.restore();
-  }
-}
-
-// ─ Golden Frog in-game ambient ────────────────────────────────────────────────
-function _drawGoldenFrogAmbient(ctx, W, H, rand, lerp) {
-  const t = _ambientT;
-  const gfLvl = Math.min(cm_gfLevel || 1, 10);
-  const gfCfg = (typeof GF_LOCATIONS_CFG !== 'undefined') ? GF_LOCATIONS_CFG[gfLvl - 1] : null;
-  const accentHex = gfCfg ? gfCfg.accent : '#FFD700';
-  const bgHex = gfCfg ? gfCfg.bg : '#06060c';
-
-  // Deep background from location config
-  const bg = ctx.createLinearGradient(0, 0, W, H);
-  bg.addColorStop(0, bgHex);
-  bg.addColorStop(1, bgHex);
-  ctx.fillStyle = bg; ctx.fillRect(0, 0, W, H);
-
-  // Pulsing accent glow
-  const glowAlpha = 0.08 + 0.04 * Math.sin(t * 0.03);
-  const glow = ctx.createRadialGradient(W / 2, H * 0.4, 0, W / 2, H * 0.4, W * 0.7);
-  glow.addColorStop(0, accentHex.replace('#', 'rgba(').split('').join('') + ',0)'); // fallback
-  glow.addColorStop(0, 'rgba(255,215,0,' + glowAlpha + ')');
-  glow.addColorStop(1, 'rgba(0,0,0,0)');
-  ctx.fillStyle = glow; ctx.fillRect(0, 0, W, H);
-
-  // Gold sparkles
-  for (let si = 0; si < 6; si++) {
-    const sx = ((t * (0.4 + si * 0.15) * (si % 2 === 0 ? 1 : -1) + si * W / 6 + W) % (W + 20)) - 10;
-    const sy = H * (0.15 + si * 0.14) + Math.sin(t * 0.02 + si * 1.3) * 18;
-    const sparkA = (0.3 + 0.3 * Math.sin(t * 0.05 + si)) * 0.6;
-    ctx.save(); ctx.globalAlpha = sparkA;
-    ctx.fillStyle = '#FFD700';
-    ctx.shadowColor = 'rgba(255,215,0,0.8)'; ctx.shadowBlur = 6;
-    ctx.beginPath(); ctx.arc(sx, sy, 1.5 + Math.sin(t * 0.03 + si) * 0.5, 0, Math.PI * 2); ctx.fill();
-    ctx.restore();
-  }
-}
-
 function buildCityMask(colHeights) {
   const mask = Array.from({length:ROWS}, () => new Array(COLS).fill(false));
   for (let c = 0; c < COLS; c++) {
@@ -6403,7 +7690,6 @@ function startCityPackGame(cityIdx) {
     // Init sky engine now that gridCanvas dimensions are set
     _skyInit(gridCanvas.width, gridCanvas.height);
     updateCityPackHUD();
-    _showDevSkipIfDev(); // show DEV button for city pack
     setTimeout(()=>showEventBanner(city.emoji+' '+city.name+' — FILL THE SKYLINE!'), 300);
   });
 }
@@ -6657,7 +7943,7 @@ function drawGrid(){
 
   // Ambient FX: composite behind grid for standard/frenzy/colourrun
   if (!cityPackActive && _ambientInitialized && _ambientCanvas &&
-      (activeChallengeMode === 'standard' || activeChallengeMode === 'frenzy' || activeChallengeMode === 'colourrun' || activeChallengeMode === 'fog' || activeChallengeMode === 'goldenfrog')) {
+      (activeChallengeMode === 'standard' || activeChallengeMode === 'frenzy' || activeChallengeMode === 'colourrun')) {
     ctx.drawImage(_ambientCanvas, 0, 0);
   }
 
@@ -6676,65 +7962,6 @@ function drawGrid(){
     }
   }
   for(let r=0;r<ROWS;r++)for(let c=0;c<COLS;c++)if(grid[r][c])drawTile(r,c,getTileColor(grid[r][c]),1,false,isGold);
-
-  // ─ FOG THE FROG: overlay fog on tiles ──────────────────────────────────────
-  if (activeChallengeMode === 'fog' && cm_fogTileAlpha.length) {
-    for (let r = 0; r < ROWS; r++) {
-      for (let c = 0; c < COLS; c++) {
-        const fogAlpha = _fogGetTileOpacity(r, c);
-        if (fogAlpha > 0.02) {
-          const x = c * CELL, y = r * CELL;
-          // Fog layer: green-purple tinted mist
-          ctx.save();
-          ctx.globalAlpha = Math.min(fogAlpha * 0.88, 0.92);
-          // Gradient: foggy green/purple breath
-          const fg = ctx.createRadialGradient(x+CELL/2, y+CELL/2, 0, x+CELL/2, y+CELL/2, CELL*0.8);
-          fg.addColorStop(0, 'rgba(120,200,100,0.9)');
-          fg.addColorStop(0.5, 'rgba(80,140,80,0.7)');
-          fg.addColorStop(1, 'rgba(40,80,60,0.5)');
-          ctx.fillStyle = fg;
-          ctx.beginPath(); ctx.roundRect(x+1, y+1, CELL-2, CELL-2, 3); ctx.fill();
-          // Blink frog eyes inside fog at low alpha cells
-          if (fogAlpha > 0.5 && Math.random() < 0.001) {
-            ctx.globalAlpha = 0.6;
-            ctx.fillStyle = 'rgba(100,255,60,1)';
-            ctx.beginPath(); ctx.arc(x + CELL*0.35, y + CELL*0.45, 2, 0, Math.PI*2); ctx.fill();
-            ctx.beginPath(); ctx.arc(x + CELL*0.65, y + CELL*0.45, 2, 0, Math.PI*2); ctx.fill();
-          }
-          ctx.restore();
-        }
-      }
-    }
-  }
-
-  // ─ GOLDEN FROG BLACKOUT: full board darkness ─────────────────────────
-  if (activeChallengeMode === 'goldenfrog' && cm_gfBlackoutActive) {
-    ctx.save();
-    ctx.globalAlpha = 0.92;
-    ctx.fillStyle = '#000';
-    ctx.fillRect(0, 0, W, H);
-    // Show small animated ✨ so player knows blackout is active
-    ctx.globalAlpha = 0.8;
-    ctx.fillStyle = '#FFD700';
-    ctx.font = 'bold 18px monospace';
-    ctx.textAlign = 'center';
-    ctx.fillText('✨ BLACKOUT ✨', W/2, H/2);
-    ctx.restore();
-  }
-
-  // ─ GOLDEN FROG SPLIT: vertical divider line ────────────────────────
-  if (activeChallengeMode === 'goldenfrog') {
-    const gfCfg = GF_LOCATIONS_CFG[Math.min(cm_gfLevel-1, 9)];
-    if (gfCfg && (gfCfg.mechanic === 'split' || gfCfg.mechanic === 'gauntlet')) {
-      ctx.save();
-      ctx.strokeStyle = 'rgba(255,215,0,0.45)';
-      ctx.lineWidth = 2;
-      ctx.setLineDash([6, 4]);
-      const splitX = Math.floor(COLS/2) * CELL;
-      ctx.beginPath(); ctx.moveTo(splitX, 0); ctx.lineTo(splitX, H); ctx.stroke();
-      ctx.restore();
-    }
-  }
 
   if(dragging&&dragShape&&hoverCell){
     const{r,c}=hoverCell;
@@ -6878,15 +8105,6 @@ function endDrag(cx,cy){
     // Pass actual placed absolute cells to colour run (for split-mode half-check)
     const _placedAbsolute = _placedShape.map(([dr, dc]) => [_placedCell.r + dr, _placedCell.c + dc]);
     onColourRunPlace(dragColor, _placedAbsolute);
-    // Fog the Frog: track last placed position for chase fog
-    if (activeChallengeMode === 'fog' && _placedAbsolute.length > 0) {
-      lastPlacedRow = _placedAbsolute[0][0]; lastPlacedCol = _placedAbsolute[0][1];
-    }
-    // Golden Frog: apply mirror + register ghost cells
-    if (activeChallengeMode === 'goldenfrog') {
-      _gfApplyMirror(_placedAbsolute);
-      for (const [r, c] of _placedAbsolute) _gfRegisterGhostCell(r, c);
-    }
 
     if(specialType){
       // Special brick: apply effect, skip normal scoring for now
@@ -6909,21 +8127,6 @@ function endDrag(cx,cy){
           const rr = lines.completedRows[0];
           const cc = Math.floor(Math.random() * COLS);
           setTimeout(() => spawnJumpingFrog('bonus', rr, cc), 100);
-        }
-        // Golden Frog: Rotation (L9/Gauntlet) + Gravity (L7/Gauntlet) on each line clear
-        if (activeChallengeMode === 'goldenfrog') {
-          const gfLineCfg = GF_LOCATIONS_CFG[Math.min(cm_gfLevel-1, 9)];
-          if (gfLineCfg && (gfLineCfg.mechanic === 'rotation' || gfLineCfg.mechanic === 'gauntlet')) {
-            setTimeout(_gfRotateBoard, 250);
-          }
-          if (gfLineCfg && (gfLineCfg.mechanic === 'gravity' || gfLineCfg.mechanic === 'gauntlet')) {
-            cm_gfGravityFlip = !cm_gfGravityFlip;
-            if (cm_gfGravityFlip) {
-              // Flip grid upside-down
-              grid.reverse();
-              showEventBanner('✨ VENICE — GRAVITY FLIPS!');
-            }
-          }
         }
       }else{combo=0;hideCombo();}
     }
@@ -7040,11 +8243,85 @@ function showFloatText(text,rows,cols){
 }
 function showCombo(n){if(n<2)return;document.getElementById('combo-num').textContent=n;document.getElementById('combo-badge').classList.add('visible');}
 function hideCombo(){document.getElementById('combo-badge').classList.remove('visible');}
+// ── Premium polish helpers ────────────────────────────────────
+function _currentModeKey() {
+  if (typeof currentDuoGame !== 'undefined' && currentDuoGame) return 'duo';
+  if (typeof cityPackActive !== 'undefined' && cityPackActive) return 'citypack';
+  return (typeof activeChallengeMode !== 'undefined' && activeChallengeMode) || 'standard';
+}
+function _syncBodyMode() {
+  const m = _currentModeKey();
+  if (document.body && document.body.dataset.mode !== m) {
+    document.body.dataset.mode = m;
+  }
+}
+function _ensureLevelUpRibbon() {
+  let r = document.getElementById('level-up-ribbon');
+  if (!r) {
+    r = document.createElement('div');
+    r.id = 'level-up-ribbon';
+    r.innerHTML = '<span class="lur-text">LEVEL UP</span> · <span class="lur-num">2</span>';
+    document.body.appendChild(r);
+  }
+  return r;
+}
+function triggerLevelUpRibbon(newLevel) {
+  const r = _ensureLevelUpRibbon();
+  const num = r.querySelector('.lur-num');
+  if (num) num.textContent = newLevel;
+  // Also pulse the mid-tier badge
+  const badge = document.getElementById('mid-tier-badge');
+  if (badge) {
+    badge.classList.remove('level-up-pulse');
+    void badge.offsetWidth; // restart anim
+    badge.classList.add('level-up-pulse');
+  }
+  r.classList.remove('show');
+  void r.offsetWidth;
+  r.classList.add('show');
+  clearTimeout(window._lurHide);
+  window._lurHide = setTimeout(() => r.classList.remove('show'), 1400);
+}
+function bumpStatPill(pillId, valueChanged) {
+  const valEl = document.getElementById(pillId);
+  if (!valEl) return;
+  const pill = valEl.closest('.stat-pill');
+  if (!pill) return;
+  if (valueChanged) {
+    pill.classList.remove('bump');
+    valEl.classList.remove('bump-val');
+    void pill.offsetWidth;
+    pill.classList.add('bump');
+    valEl.classList.add('bump-val');
+    clearTimeout(pill._bumpT);
+    pill._bumpT = setTimeout(() => {
+      pill.classList.remove('bump');
+      valEl.classList.remove('bump-val');
+    }, 480);
+  }
+}
+let _prevScore = 0;
+let _prevLevel = 1;
+
 function updateUI(){
+  _syncBodyMode();
+  // Keep the mid-zone tier badge label in sync with the active challenge mode
+  if (typeof _updateMidZone === 'function') { try { _updateMidZone(); } catch(e){} }
+  const newScore = score;
+  const newLevel = level;
+  const scoreChanged = newScore !== _prevScore;
+  const levelChanged = newLevel > _prevLevel;
   document.getElementById('score-display').textContent=score.toLocaleString();
   document.getElementById('best-display').textContent=bestScore.toLocaleString();
   document.getElementById('level-display').textContent=level;
   document.getElementById('lines-display').textContent=linesCleared;
+  if (scoreChanged) bumpStatPill('score-display', true);
+  if (levelChanged) {
+    bumpStatPill('level-display', true);
+    triggerLevelUpRibbon(newLevel);
+  }
+  _prevScore = newScore;
+  _prevLevel = newLevel;
   // Update level progress bar (new under-topbar bar)
   const nextTarget = linesForNextLevel(linesCleared);
   const prevTarget = level > 1 ? LEVEL_THRESHOLDS[level-2] || 0 : 0;
@@ -7087,7 +8364,7 @@ function animateParticles(ts){
     drawGrid();
   }
   // Ambient FX: Tadpole pond, Frenzy weather, Golden Frog location
-  if (!cityPackActive && _ambientInitialized && (activeChallengeMode === 'standard' || activeChallengeMode === 'frenzy' || activeChallengeMode === 'colourrun' || activeChallengeMode === 'fog' || activeChallengeMode === 'goldenfrog')) {
+  if (!cityPackActive && _ambientInitialized && (activeChallengeMode === 'standard' || activeChallengeMode === 'frenzy' || activeChallengeMode === 'colourrun')) {
     _ambientDraw(ts);
     drawGrid();
   }
@@ -7126,7 +8403,7 @@ function showScreen(id){
     setTimeout(() => incoming.classList.remove('is-entering'), 400);
   }
 
-  if (id === 'screen-title')  { updateTrialBanner(); checkResumeOnHome(); }
+  if (id === 'screen-title')  { updateTrialBanner(); checkResumeOnHome(); updateHomeSubtitles(); }
   if (id === 'screen-profile'){ updateProfileScreen(); }
 }
 
@@ -7138,6 +8415,7 @@ function startGame(){
   ensureAudio(); // guarantee audio context is running before any game sounds fire
   clearVanishTimers();clearAdderFrogTimer();clearSpeedCountdown();stopChallenges();stopChallengeMode();
   initGrid();score=0;linesCleared=0;level=1;combo=0;particles=[];gameActive=true;powerupActive=false;
+  _prevScore = 0; _prevLevel = 1; // suppress ribbon on initial UI paint
   piecesPlaced=0;bonusEarnedThisGame=0;bonusQueue=[];hazardTimer=0;
   calcLayout();generateTray();updateUI();hideCombo();drawGrid();initPowerups();updateTierBadge();updateDiffIndicator();
   activePowerId = null;
@@ -7154,7 +8432,7 @@ function startGame(){
   requestAnimationFrame(() => {
     calcLayout(); renderTray(); drawGrid();
     // Init ambient after canvas is sized
-    if (!cityPackActive && (activeChallengeMode === 'standard' || activeChallengeMode === 'frenzy' || activeChallengeMode === 'colourrun' || activeChallengeMode === 'fog' || activeChallengeMode === 'goldenfrog')) {
+    if (!cityPackActive && (activeChallengeMode === 'standard' || activeChallengeMode === 'frenzy' || activeChallengeMode === 'colourrun')) {
       _ambientInit(gridCanvas.width, gridCanvas.height);
     }
   });
@@ -7162,8 +8440,8 @@ function startGame(){
   const msgs = {
     standard: '🥚 TADPOLE · EASY — CLEAR ROWS!',
     frenzy:   '🐸 TREE FROG · FRENZY — BEAT THE TIMER!',
-    fog: '🌫️ FOG THE FROG — THE FOG IS RISING!',
-    goldenfrog:'✨ GOLDEN FROG — PRESTIGE MODE ACTIVATED!'
+    survival: '🌫️ FOG THE FROG · SURVIVAL — BEAT THE FOG!',
+    colourrun:'🌟 GOLDEN FROG · COLOUR RUN — MATCH 4!'
   };
   setTimeout(()=>showEventBanner(msgs[activeChallengeMode]||'🎮 GO!'), 500);
 }
@@ -7220,7 +8498,6 @@ function _shopAmbientInit() {
       case 'treefrog':    _ambientTreeFrog(cvs, ctx);    break;
       case 'poisondart':  _ambientPoisonDart(cvs, ctx);  break;
       case 'goldenfrog':  _ambientGoldenFrog(cvs, ctx);  break;
-      case 'duopack':    _ambientDuoPack(cvs, ctx);     break;
       case 'citypack':    _ambientCityPack(cvs, ctx);    break;
       case 'complete':    _ambientComplete(cvs, ctx);    break;
       default: break;
@@ -7315,95 +8592,49 @@ function _ambientTreeFrog(cvs, ctx) {
   _shopAmbientRAFs.push(requestAnimationFrame(draw));
 }
 
-// ── Poison Dart: glitch/survival ─────────────────────────────
-// ─ Fog the Frog: creeping fog ambient ───────────────────────────────
+// ── Fog the Frog: glitch/survival ────────────────────────────
 function _ambientPoisonDart(cvs, ctx) {
-  const fogClouds = Array.from({length:5}, (_, i) => ({
-    x: Math.random() * 1.2 - 0.1,
-    y: 0.2 + i * 0.16 + Math.random() * 0.08,
-    rx: 0.18 + Math.random() * 0.14,
-    ry: 0.06 + Math.random() * 0.04,
-    speed: 0.00012 + Math.random() * 0.0001,
-    alpha: 0.4 + Math.random() * 0.3,
-    phase: Math.random() * Math.PI * 2,
-    hue: 100 + Math.floor(Math.random() * 80), // green to purple range
-  }));
-  const eyes = Array.from({length:3}, () => ({
-    x: 0.15 + Math.random() * 0.7,
-    y: 0.3 + Math.random() * 0.5,
-    blinkAt: Math.random() * 4000,
-    blinkDur: 180,
-    lastBlink: 0,
-  }));
+  let scanY = 0;
+  let glitchUntil = 0;
   let t0 = null;
   function draw(ts) {
     if (!t0) t0 = ts;
     const elapsed = ts - t0;
     const W = cvs.width, H = cvs.height;
     ctx.clearRect(0,0,W,H);
-    // Dark enchanted woods background
-    const bg = ctx.createLinearGradient(0,0,0,H);
-    bg.addColorStop(0,'#020805'); bg.addColorStop(1,'#050e03');
-    ctx.fillStyle = bg; ctx.fillRect(0,0,W,H);
-    // Fog clouds drifting
-    fogClouds.forEach(fc => {
-      fc.x += fc.speed;
-      if (fc.x > 1.2) fc.x = -0.2;
-      const pulse = 0.75 + 0.25 * Math.sin(elapsed * 0.001 + fc.phase);
+    // Near-black background
+    ctx.fillStyle = '#050505'; ctx.fillRect(0,0,W,H);
+    // Red scan line
+    scanY = (scanY + 1.2) % H;
+    const grad = ctx.createLinearGradient(0, scanY-6, 0, scanY+6);
+    grad.addColorStop(0,'rgba(204,18,18,0)');
+    grad.addColorStop(0.5,'rgba(204,18,18,0.6)');
+    grad.addColorStop(1,'rgba(204,18,18,0)');
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, scanY-6, W, 12);
+    // Glitch flash
+    if (ts > glitchUntil && Math.random() < 0.003) { glitchUntil = ts + 50; }
+    if (ts < glitchUntil) {
       ctx.save();
-      ctx.globalAlpha = fc.alpha * pulse;
-      const fg = ctx.createRadialGradient(
-        fc.x*W, fc.y*H, 0,
-        fc.x*W, fc.y*H, fc.rx*W
-      );
-      fg.addColorStop(0, 'hsl(' + fc.hue + ',55%,68%)');
-      fg.addColorStop(0.5, 'hsl(' + fc.hue + ',45%,40%)');
-      fg.addColorStop(1, 'rgba(0,0,0,0)');
-      ctx.fillStyle = fg;
-      ctx.beginPath();
-      ctx.ellipse(fc.x*W, fc.y*H, fc.rx*W, fc.ry*H, 0, 0, Math.PI*2);
-      ctx.fill();
+      ctx.globalCompositeOperation = 'difference';
+      ctx.fillStyle = 'rgba(255,40,40,0.9)';
+      ctx.fillRect(0,0,W,H);
       ctx.restore();
-    });
-    // Blinking frog eyes in the fog
-    eyes.forEach(eye => {
-      const since = elapsed - eye.lastBlink;
-      const nextBlink = eye.blinkAt;
-      if (elapsed > eye.lastBlink + nextBlink) {
-        eye.lastBlink = elapsed;
-        eye.blinkAt = 1500 + Math.random() * 3500;
-      }
-      const eyeAlpha = (since < eye.blinkDur) ? (0.7 - (since / eye.blinkDur) * 0.7) : 0;
-      if (eyeAlpha > 0) {
-        ctx.save(); ctx.globalAlpha = eyeAlpha;
-        ctx.fillStyle = 'rgba(100,255,60,1)';
-        ctx.shadowColor = 'rgba(80,255,40,0.9)'; ctx.shadowBlur = 6;
-        ctx.beginPath(); ctx.arc(eye.x*W - 5, eye.y*H, 2.5, 0, Math.PI*2); ctx.fill();
-        ctx.beginPath(); ctx.arc(eye.x*W + 5, eye.y*H, 2.5, 0, Math.PI*2); ctx.fill();
-        ctx.restore();
-      }
-    });
-    // Dark vignette edges
+    }
+    // Red vignette
     const vig = ctx.createRadialGradient(W/2,H/2, H*0.2, W/2,H/2, H*0.8);
     vig.addColorStop(0,'rgba(0,0,0,0)');
-    vig.addColorStop(1,'rgba(0,10,0,0.55)');
+    vig.addColorStop(1,'rgba(180,0,0,0.35)');
     ctx.fillStyle = vig; ctx.fillRect(0,0,W,H);
     _shopAmbientRAFs.push(requestAnimationFrame(draw));
   }
   _shopAmbientRAFs.push(requestAnimationFrame(draw));
 }
 
-// ── Golden Frog: luxury prestige ambient ────────────────────────────
+// ── Golden Frog: Dubai sunset ─────────────────────────────────
 function _ambientGoldenFrog(cvs, ctx) {
-  const particles = Array.from({length:40}, () => ({
-    x: Math.random(), y: Math.random(),
-    angle: Math.random() * Math.PI * 2,
-    speed: 0.0003 + Math.random() * 0.0006,
-    r: 0.8 + Math.random() * 2.5,
-    alpha: 0.3 + Math.random() * 0.7,
-    phase: Math.random() * Math.PI * 2,
-    orbitR: 0.06 + Math.random() * 0.35, // orbit radius
-    orbitSpd: (Math.random() > 0.5 ? 1 : -1) * (0.0004 + Math.random() * 0.0008),
+  const particles = Array.from({length:25}, () => ({
+    x: Math.random(), y: 0.4+Math.random()*0.6, speed: 0.0005+Math.random()*0.001, size: 1+Math.random()*2
   }));
   let t0 = null;
   function draw(ts) {
@@ -7411,48 +8642,40 @@ function _ambientGoldenFrog(cvs, ctx) {
     const elapsed = ts - t0;
     const W = cvs.width, H = cvs.height;
     ctx.clearRect(0,0,W,H);
-    // Deep royal dark background
-    const bg = ctx.createLinearGradient(0,0,W,H);
-    bg.addColorStop(0,'#06040a'); bg.addColorStop(0.5,'#0c0808'); bg.addColorStop(1,'#080608');
+    // Desert amber/orange sky
+    const bg = ctx.createLinearGradient(0,0,0,H);
+    bg.addColorStop(0,'#1a0a00'); bg.addColorStop(0.5,'#3d1a00'); bg.addColorStop(1,'#6b2e00');
     ctx.fillStyle = bg; ctx.fillRect(0,0,W,H);
-    // Radial golden glow at center
-    const glow = ctx.createRadialGradient(W/2, H*0.45, 0, W/2, H*0.45, W*0.6);
-    glow.addColorStop(0,'rgba(255,215,0,0.12)');
-    glow.addColorStop(0.5,'rgba(200,140,0,0.06)');
-    glow.addColorStop(1,'rgba(0,0,0,0)');
+    // Warm shimmer glow from bottom
+    const glow = ctx.createRadialGradient(W*0.5, H, 0, W*0.5, H, W*0.7);
+    glow.addColorStop(0,'rgba(255,160,20,0.3)');
+    glow.addColorStop(1,'rgba(255,100,0,0)');
     ctx.fillStyle = glow; ctx.fillRect(0,0,W,H);
-    // Orbiting gold particles
-    const cx2 = W/2, cy2 = H*0.45;
+    // Burj Khalifa silhouette (thin tapering tower on right)
+    const bx = W*0.85, bBase = H, bH = H*0.75;
+    ctx.beginPath();
+    ctx.moveTo(bx-W*0.018, bBase);
+    ctx.lineTo(bx-W*0.008, bBase-bH*0.6);
+    ctx.lineTo(bx-W*0.003, bBase-bH*0.85);
+    ctx.lineTo(bx, bBase-bH);
+    ctx.lineTo(bx+W*0.003, bBase-bH*0.85);
+    ctx.lineTo(bx+W*0.008, bBase-bH*0.6);
+    ctx.lineTo(bx+W*0.018, bBase);
+    ctx.closePath();
+    ctx.fillStyle = 'rgba(10,5,0,0.8)';
+    ctx.fill();
+    // Antenna
+    ctx.beginPath(); ctx.moveTo(bx, bBase-bH); ctx.lineTo(bx, bBase-bH-H*0.06);
+    ctx.strokeStyle = 'rgba(10,5,0,0.8)'; ctx.lineWidth = 2; ctx.stroke();
+    // Sand particles drifting right
     particles.forEach(p => {
-      p.angle += p.orbitSpd;
-      const px = cx2 + Math.cos(p.angle) * p.orbitR * W;
-      const py = cy2 + Math.sin(p.angle) * p.orbitR * H * 0.6;
-      const pulse = 0.5 + 0.5 * Math.sin(elapsed * 0.002 + p.phase);
-      ctx.save();
-      ctx.globalAlpha = p.alpha * pulse;
-      ctx.shadowColor = 'rgba(255,215,0,0.8)';
-      ctx.shadowBlur = 4;
-      ctx.fillStyle = Math.random() > 0.85 ? 'rgba(255,255,220,1)' : 'rgba(255,215,0,1)';
-      ctx.beginPath(); ctx.arc(px, py, p.r, 0, Math.PI*2); ctx.fill();
-      ctx.restore();
+      p.x += p.speed;
+      if (p.x > 1.1) p.x = -0.1;
+      ctx.beginPath();
+      ctx.arc(p.x*W, p.y*H, p.size, 0, Math.PI*2);
+      ctx.fillStyle = 'rgba(255,180,60,0.5)';
+      ctx.fill();
     });
-    // Shimmer streaks
-    for (let si = 0; si < 4; si++) {
-      const sx = W * (0.2 + si * 0.2);
-      const sy = H * (0.15 + si * 0.17);
-      const streakAlpha = 0.08 + 0.08 * Math.sin(elapsed * 0.0012 + si * 1.2);
-      ctx.save(); ctx.globalAlpha = streakAlpha;
-      const sg = ctx.createLinearGradient(sx-30, sy, sx+30, sy+8);
-      sg.addColorStop(0,'rgba(255,215,0,0)'); sg.addColorStop(0.5,'rgba(255,215,0,1)'); sg.addColorStop(1,'rgba(255,215,0,0)');
-      ctx.fillStyle = sg;
-      ctx.fillRect(sx-30, sy, 60, 2);
-      ctx.restore();
-    }
-    // Golden vignette frame
-    const vig = ctx.createRadialGradient(W/2,H/2, H*0.15, W/2,H/2, H*0.9);
-    vig.addColorStop(0,'rgba(0,0,0,0)');
-    vig.addColorStop(1,'rgba(120,80,0,0.18)');
-    ctx.fillStyle = vig; ctx.fillRect(0,0,W,H);
     _shopAmbientRAFs.push(requestAnimationFrame(draw));
   }
   _shopAmbientRAFs.push(requestAnimationFrame(draw));
@@ -7546,83 +8769,18 @@ function _ambientComplete(cvs, ctx) {
   _shopAmbientRAFs.push(requestAnimationFrame(draw));
 }
 
-// ── Duo Pack: purple water arena ────────────────────────────
-function _ambientDuoPack(cvs, ctx) {
-  const waves = Array.from({length:5}, (_,i) => ({ phase: i * Math.PI * 0.4, speed: 0.0008 + i*0.0002, amp: 0.04 + i*0.01 }));
-  const sparks = Array.from({length:12}, () => ({
-    x: Math.random(), y: 0.15 + Math.random()*0.55,
-    vx: (Math.random()-0.5)*0.003, vy: -0.002 - Math.random()*0.003,
-    life: Math.random(), decay: 0.004 + Math.random()*0.004, r: 1 + Math.random()*2
-  }));
-  let t0 = null;
-  function draw(ts) {
-    if (!t0) t0 = ts;
-    const elapsed = ts - t0;
-    const W = cvs.width, H = cvs.height;
-    ctx.clearRect(0,0,W,H);
-    // Deep purple gradient background
-    const bg = ctx.createLinearGradient(0,0,W,H);
-    bg.addColorStop(0,'#0d0022'); bg.addColorStop(0.5,'#1a0040'); bg.addColorStop(1,'#0a001a');
-    ctx.fillStyle = bg; ctx.fillRect(0,0,W,H);
-    // Rippling water surface (lower half)
-    const waterY = H * 0.55;
-    ctx.save();
-    ctx.beginPath();
-    ctx.moveTo(0, H);
-    waves.forEach((w, wi) => {
-      if (wi === 0) {
-        ctx.moveTo(0, waterY + Math.sin(elapsed * w.speed + w.phase) * w.amp * H);
-      }
-    });
-    for (let x = 0; x <= W; x += 4) {
-      let y = waterY;
-      waves.forEach(w => { y += Math.sin((x/W) * Math.PI*3 + elapsed * w.speed + w.phase) * w.amp * H; });
-      ctx.lineTo(x, y);
-    }
-    ctx.lineTo(W, H); ctx.lineTo(0, H); ctx.closePath();
-    const waterGrad = ctx.createLinearGradient(0, waterY, 0, H);
-    waterGrad.addColorStop(0,'rgba(120,40,220,0.5)'); waterGrad.addColorStop(1,'rgba(60,10,120,0.8)');
-    ctx.fillStyle = waterGrad; ctx.fill();
-    ctx.restore();
-    // Horizontal water sheen
-    for (let x = 0; x <= W; x += 4) {
-      let y = waterY;
-      waves.forEach(w => { y += Math.sin((x/W)*Math.PI*3 + elapsed*w.speed + w.phase)*w.amp*H; });
-      if (x % 20 === 0) {
-        ctx.beginPath(); ctx.arc(x, y, 1.5, 0, Math.PI*2);
-        ctx.fillStyle = 'rgba(200,160,255,0.6)'; ctx.fill();
-      }
-    }
-    // Floating spark particles
-    sparks.forEach(p => {
-      p.x += p.vx; p.y += p.vy; p.life -= p.decay;
-      if (p.life <= 0 || p.x < 0 || p.x > 1) {
-        p.x = Math.random(); p.y = 0.35 + Math.random()*0.5;
-        p.vx = (Math.random()-0.5)*0.003; p.vy = -0.002 - Math.random()*0.003;
-        p.life = 0.6 + Math.random()*0.4;
-      }
-      ctx.beginPath(); ctx.arc(p.x*W, p.y*H, p.r, 0, Math.PI*2);
-      ctx.fillStyle = `rgba(180,100,255,${p.life * 0.9})`; ctx.fill();
-    });
-    // Purple vignette pulse
-    const pulse = (Math.sin(elapsed*0.0015)+1)*0.5;
-    const vig = ctx.createRadialGradient(W/2,H/2,H*0.1, W/2,H/2,H*0.8);
-    vig.addColorStop(0,'rgba(0,0,0,0)'); vig.addColorStop(1,`rgba(80,0,160,${0.2 + pulse*0.1})`);
-    ctx.fillStyle=vig; ctx.fillRect(0,0,W,H);
-    _shopAmbientRAFs.push(requestAnimationFrame(draw));
-  }
-  _shopAmbientRAFs.push(requestAnimationFrame(draw));
-}
+// duopack — no ambient (not in shop v2), but keep slot for safety
+function _ambientDuoPack(cvs, ctx) { /* placeholder */ }
 
 function buildShopUI(){
   const path=document.getElementById('evolution-path');path.innerHTML='';
 
   // Tier metadata for new dark glass cards
   const TIER_META = {
-    tadpole:    { emoji:'🥚', sub:'Standard · Easy',          legal:'7-day free trial, then £0.99/year · Annual subscription · Cancel anytime in App Store Settings' },
-    treefrog:   { emoji:'🐸', sub:'Frenzy · Medium',          legal:'Annual subscription · Cancel anytime in App Store Settings' },
-    poisondart: { emoji:'🌫️', sub:'Fog the Frog · Hard',      legal:'Annual subscription · Cancel anytime in App Store Settings' },
-    goldenfrog: { emoji:'✨', sub:'Golden Frog · Expert',     legal:'Annual subscription · Cancel anytime in App Store Settings' },
+    tadpole:    { emoji:'🥚', sub:'Standard · Easy',       legal:'7-day free trial, then £0.99/year · Annual subscription · Cancel anytime in App Store Settings' },
+    treefrog:   { emoji:'🐸', sub:'Frenzy · Medium',       legal:'Annual subscription · Cancel anytime in App Store Settings' },
+    poisondart: { emoji:'🌫️', sub:'Survival · Hard',       legal:'Annual subscription · Cancel anytime in App Store Settings' },
+    goldenfrog: { emoji:'✨', sub:'Colour Run · Expert',   legal:'Annual subscription · Cancel anytime in App Store Settings' },
     duopack:    { emoji:'🎮', sub:'Multiplayer · Monthly', legal:'Monthly subscription · Cancel anytime in App Store Settings' },
     citypack:   { emoji:'🏙️', sub:'10 Cities · All Modes', legal:'Annual subscription · Cancel anytime in App Store Settings' },
   };
@@ -7667,7 +8825,6 @@ function buildShopUI(){
 
     card.innerHTML = `
       <canvas class="shop-card-canvas"></canvas>
-      <div class="shop-card-scrim"></div>
       <div class="shop-card-content">
         <div class="shop-card-left">
           <div class="shop-card-emoji">${meta.emoji || tier.emoji || ''}</div>
@@ -7692,7 +8849,7 @@ function buildShopUI(){
     equipTier(tid);
     closeShop();
     // Set difficulty + challenge based on tier
-    const map = { tadpole:{diff:'easy',challenge:'standard'}, treefrog:{diff:'medium',challenge:'frenzy'}, poisondart:{diff:'hard',challenge:'fog'}, goldenfrog:{diff:'expert',challenge:'goldenfrog'} };
+    const map = { tadpole:{diff:'easy',challenge:'standard'}, treefrog:{diff:'medium',challenge:'frenzy'}, poisondart:{diff:'hard',challenge:'survival'}, goldenfrog:{diff:'expert',challenge:'colourrun'} };
     const m = map[tid] || {diff:'easy',challenge:'standard'};
     setDifficulty(m.diff);
     selectedChallenge = m.challenge;
@@ -7719,8 +8876,7 @@ function buildShopUI(){
   bundleCard.style.borderLeft = '3px solid #FFD700';
   bundleCard.innerHTML = `
     <canvas class="shop-card-canvas"></canvas>
-    <div class="shop-card-scrim"></div>
-    <div style="position:absolute;top:8px;right:8px;z-index:2;background:linear-gradient(135deg,#FFD700,#FF6600);color:#000;font-family:var(--font-display);font-size:0.55rem;font-weight:700;padding:3px 7px;border-radius:20px;letter-spacing:0.05em;z-index:2;">⭐ BEST VALUE</div>
+    <div style="position:absolute;top:8px;right:8px;background:linear-gradient(135deg,#FFD700,#FF6600);color:#000;font-family:var(--font-display);font-size:0.55rem;font-weight:700;padding:3px 7px;border-radius:20px;letter-spacing:0.05em;z-index:2;">⭐ BEST VALUE</div>
     <div class="shop-card-content">
       <div class="shop-card-left">
         <div class="shop-card-emoji">🌟</div>
@@ -8598,7 +9754,7 @@ function _updateMidZone(tier) {
       const city = CITY_PACK_CITIES[cityPackCityIdx];
       badge.textContent = city ? (city.emoji + ' ' + city.name) : 'CITY PACK';
     } else {
-      const modeLabel = {standard:'CLASSIC', frenzy:'FRENZY', survival:'SURVIVAL', fog:'FOG THE FROG', colourrun:'COLOUR RUN', goldenfrog:'GOLDEN FROG'}[activeChallengeMode] || '';
+      const modeLabel = {standard:'CLASSIC', frenzy:'FRENZY', survival:'SURVIVAL', colourrun:'COLOUR RUN'}[activeChallengeMode] || '';
       badge.textContent = tier.emoji + ' ' + tier.name + (modeLabel ? ' · ' + modeLabel : '');
     }
   }
@@ -8763,7 +9919,7 @@ function maybeHazard(){
   shuffle(empty);
   empty.slice(0, numAdd).forEach(([r,c]) => grid[r][c] = Math.floor(Math.random()*6)+1);
   flashHazard();
-  showEventBanner('☠️  GLITCH FROG STRIKES!');
+  showEventBanner('🌫️  FOG STRIKES — EXTRA TILES INCOMING!');
   drawGrid();
   if(checkGameOver()) setTimeout(triggerGameOver, 400);
 }
@@ -8910,7 +10066,7 @@ function trySetDifficulty(d){
     return;
   }
   if(d === 'hard' && !canPlayHard()){
-    showUpgradeModal('Hard difficulty (1.8× score) requires Poison Dart tier (£1.99/yr).');
+    showUpgradeModal('Hard difficulty (1.8× score) requires Fog the Frog tier (£1.99/yr).');
     return;
   }
   if(d === 'expert' && !canPlayExpert()){
@@ -9544,7 +10700,6 @@ function startDuoGameMode() {
   });
   var meta = DUO_GAME_META[currentDuoGame];
   setTimeout(function() { showEventBanner(meta.emoji + ' ' + meta.name + ' \u2014 LEVEL ' + currentDuoLevel + '!'); }, 800);
-  _showDevSkipIfDev(); // show DEV button for duo games
 }
 
 // ── Board Shake (Shake the Frog) ─────────────────────────────────
@@ -10075,62 +11230,6 @@ function _duoDrawPondAmbient(ctx,W,H,rand) {
 
 function _duoDrawShakeFrogAmbient(ctx,W,H,rand) {
   var t=_duoAmbientT, level=_duoAmbientLevel;
-
-  // L1: Garden Pond — peaceful start
-  if (level === 1) {
-    var sg1=ctx.createLinearGradient(0,0,0,H);
-    sg1.addColorStop(0,'rgba(15,55,80,0.92)'); sg1.addColorStop(1,'rgba(20,70,100,0.90)');
-    ctx.fillStyle=sg1; ctx.fillRect(0,0,W,H);
-    // Gentle water shimmer
-    ctx.strokeStyle='rgba(120,200,255,0.12)'; ctx.lineWidth=1;
-    for(var wi=0;wi<5;wi++){
-      var wy=H*(0.55+wi*0.09)+Math.sin(t*0.02+wi)*4;
-      ctx.beginPath(); ctx.moveTo(0,wy); for(var wx=0;wx<W;wx+=12) ctx.lineTo(wx,wy+Math.sin(t*0.03+wx*0.04)*3); ctx.stroke();
-    }
-    // Lily pads
-    _dPondLilyPads.forEach(function(lp){
-      lp.x+=Math.sin(t*0.008+lp.phase)*0.15;
-      ctx.save(); ctx.globalAlpha=0.75;
-      ctx.fillStyle='rgba(30,90,30,0.85)';
-      ctx.beginPath(); ctx.ellipse(lp.x,lp.relY*H,lp.w/2,lp.h/2,0,0,Math.PI*2); ctx.fill();
-      if(lp.flower){ctx.fillStyle=lp.fc||'#ff88cc'; ctx.beginPath(); ctx.arc(lp.x,lp.relY*H-lp.h/2-3,3,0,Math.PI*2); ctx.fill();}
-      ctx.restore();
-    });
-    return;
-  }
-
-  // L10: The Storm — max intensity
-  if (level >= 10) {
-    ctx.fillStyle='rgba(2,2,5,0.99)'; ctx.fillRect(0,0,W,H);
-    ctx.strokeStyle='rgba(150,190,255,0.45)'; ctx.lineWidth=0.9;
-    for(var si=0;si<_dFrenzyRain.length;si++){
-      var rn2=_dFrenzyRain[si];
-      rn2.y+=rn2.speed*1.5; rn2.x+=rn2.speed*0.35;
-      if(rn2.y>H+20){rn2.y=-10; rn2.x=rand(-20,W);}
-      ctx.beginPath(); ctx.moveTo(rn2.x,rn2.y); ctx.lineTo(rn2.x+8,rn2.y+rn2.len*1.3); ctx.stroke();
-    }
-    // Frequent lightning
-    _dFrenzyLightningTimer--;
-    if(_dFrenzyLightningTimer<=0){
-      _dFrenzyLightningTimer=15+Math.floor(Math.random()*30);
-      _dFrenzyLightning={x:rand(W*0.1,W*0.9),life:10};
-    }
-    if(_dFrenzyLightning&&_dFrenzyLightning.life>0){
-      ctx.save(); ctx.globalAlpha=_dFrenzyLightning.life/10*0.95;
-      ctx.strokeStyle='#ffffff'; ctx.lineWidth=2;
-      ctx.beginPath(); var slx=_dFrenzyLightning.x,sly=0; ctx.moveTo(slx,sly);
-      for(var sk=0;sk<8;sk++){slx+=rand(-22,22);sly+=H/8;ctx.lineTo(slx,sly);}
-      ctx.stroke(); ctx.restore();
-      _dFrenzyLightning.life--;
-    }
-    // Red vignette
-    var stVig=ctx.createRadialGradient(W/2,H/2,H*0.15,W/2,H/2,H*0.9);
-    stVig.addColorStop(0,'rgba(0,0,0,0)'); stVig.addColorStop(1,'rgba(180,0,0,0.35)');
-    ctx.fillStyle=stVig; ctx.fillRect(0,0,W,H);
-    return;
-  }
-
-  // L2-9: escalating storm
   var r1=6,g1=10,b1=18;
   var skyGrad=ctx.createLinearGradient(0,0,0,H*0.55);
   skyGrad.addColorStop(0,'rgb('+r1+','+g1+','+b1+')');
@@ -11099,38 +12198,76 @@ function updateLockIcons() {
 const TIER_GAME_MAP = {
   tadpole:    { diff: 'easy',   challenge: 'standard' },
   treefrog:   { diff: 'medium', challenge: 'frenzy'   },
-  poisondart: { diff: 'hard',   challenge: 'fog'       },
-  goldenfrog: { diff: 'expert', challenge: 'goldenfrog'},
+  poisondart: { diff: 'hard',   challenge: 'survival' },
+  goldenfrog: { diff: 'expert', challenge: 'colourrun'},
 };
 
 function buildSoloSetupCards() {
-  // Mark cards as owned/locked
-  ['tadpole','treefrog','poisondart','goldenfrog'].forEach(tid => {
+  // Pricing per pack
+  const PACK_PRICE = {
+    tadpole: '£0.99',
+    treefrog: '£1.99',
+    poisondart: '£1.99',
+    goldenfrog: '£1.99',
+    citypack: '£1.99'
+  };
+
+  // "On trial" means: trial still has days left, AND no paid pack has been purchased yet.
+  // (Tadpole is in the default ownedTiers array, so we treat it as “trial” until a real purchase is made.)
+  const hasPaidPack = ['treefrog','poisondart','goldenfrog','citypack'].some(t => ownedTiers.includes(t));
+  const userOnTrial = trialActive() && !hasPaidPack;
+
+  // Toggle 7-Day Free Trial chip in the header
+  const trialChip = document.getElementById('solo-trial-chip');
+  if (trialChip) trialChip.classList.toggle('is-visible', !!userOnTrial);
+
+  ['tadpole','treefrog','poisondart','goldenfrog','citypack'].forEach(tid => {
     const card = document.getElementById('gtc-' + tid);
-    const playBtn = document.getElementById('gtc-play-' + tid);
-    if (!card || !playBtn) return;
-    const owned = tierOwned(tid) || (tid === 'tadpole' && trialActive());
-    if (owned) {
-      card.classList.add('owned');
-      card.classList.remove('locked');
-      playBtn.classList.remove('locked');
-      playBtn.textContent = '▶ PLAY';
+    const right = document.getElementById('gtc-right-' + tid);
+    if (!card || !right) return;
+
+    // Reset visual state classes
+    card.classList.remove('owned','locked','owned-v2','locked-v2','free-trial-v2');
+
+    // Tadpole-specific: show free trial pill while user is on trial; otherwise check tierOwned
+    const isTadpole = (tid === 'tadpole');
+    const owned = isTadpole ? hasPaidPack : tierOwned(tid);
+    const onTrial = (isTadpole && userOnTrial);
+
+    if (onTrial) {
+      card.classList.add('free-trial-v2');
+      right.innerHTML = '<div class="gtc-free-stack"><span class="gtc-free-pill">Free 7 Days</span><span class="gtc-free-after">then £0.99/yr</span></div>';
+    } else if (owned) {
+      card.classList.add('owned-v2');
+      right.innerHTML = '<span class="gtc-owned-badge">Owned ✓</span>';
     } else {
-      card.classList.add('locked');
-      card.classList.remove('owned');
-      playBtn.classList.add('locked');
-      playBtn.textContent = '🔒 UNLOCK';
-      // Add lock badge
-      if (!card.querySelector('.gtc-lock-badge')) {
-        const lb = document.createElement('div');
-        lb.className = 'gtc-lock-badge';
-        lb.style.cssText = 'position:absolute;top:8px;right:58px;font-size: var(--fs-label);letter-spacing:0.08em;color:#F7C948;background:rgba(247,201,72,0.12);border:1px solid rgba(247,201,72,0.25);border-radius:6px;padding:2px 6px;';
-        const priceMap = { treefrog:'£1.99/yr', poisondart:'£1.99/yr', goldenfrog:'£1.99/yr' };
-        lb.textContent = priceMap[tid] || '';
-        card.appendChild(lb);
-      }
+      card.classList.add('locked-v2');
+      const price = PACK_PRICE[tid] || '£1.99';
+      right.innerHTML = '<span class="gtc-price">' + price + '<span class="gtc-price-sub">/yr</span></span><span class="gtc-lock-icon">🔒</span>';
     }
+
+    // Remove any old lock-badge appended by the previous version
+    const oldBadge = card.querySelector('.gtc-lock-badge');
+    if (oldBadge) oldBadge.remove();
   });
+}
+
+// Show purchase-success banner after a tier unlock; auto-hides after 4s
+function showPackUnlockedBanner(tid) {
+  const banner = document.getElementById('pack-success-banner');
+  const txt = document.getElementById('psb-text');
+  if (!banner || !txt) return;
+  const NAMES = {
+    tadpole: 'TADPOLE UNLOCKED',
+    treefrog: 'TREE FROG UNLOCKED',
+    poisondart: 'FOG THE FROG UNLOCKED',
+    goldenfrog: 'GOLDEN FROG UNLOCKED',
+    citypack: 'CITY PACK UNLOCKED'
+  };
+  txt.textContent = NAMES[tid] || 'PACK UNLOCKED';
+  banner.classList.add('is-visible');
+  clearTimeout(window._psbHideTimer);
+  window._psbHideTimer = setTimeout(() => banner.classList.remove('is-visible'), 4000);
 }
 
 function openSoloSetup() {
@@ -11140,7 +12277,7 @@ function openSoloSetup() {
 }
 
 // Wire up game card play buttons
-['tadpole','treefrog','poisondart','goldenfrog'].forEach(tid => {
+['tadpole','treefrog','poisondart','goldenfrog','citypack'].forEach(tid => {
   const playBtn = document.getElementById('gtc-play-' + tid);
   if (!playBtn) return;
   playBtn.addEventListener('click', (e) => {
@@ -11149,6 +12286,14 @@ function openSoloSetup() {
     if (!owned) {
       const tierIdx = TIERS.findIndex(t => t.id === tid);
       if (tierIdx >= 0) openPurchaseModal(tierIdx);
+      return;
+    }
+    // City Pack uses its own dedicated game loop — start it directly.
+    if (tid === 'citypack') {
+      equipTier(tid);
+      ensureAudio();
+      if (!checkAccessBeforeStart()) return;
+      startCityPackGame(0);
       return;
     }
     // Equip tier and set difficulty+challenge then start
@@ -11177,7 +12322,7 @@ document.getElementById('solo-back').addEventListener('click', () => showScreen(
 // ────────────────────────────────────────────────────────────────
 //  CHALLENGE MODES
 // ────────────────────────────────────────────────────────────────
-let activeChallengeMode = 'standard'; // 'standard'|'frenzy'|'survival'|'fog'|'colourrun'|'goldenfrog'
+let activeChallengeMode = 'standard'; // 'standard'|'frenzy'|'survival'|'colourrun'
 let cm_timer = null;
 let cm_secsLeft = 0;
 let cm_linesAtStart = 0;
@@ -11192,27 +12337,6 @@ let cm_splitMode = false;          // false = free-place, true = left/right spli
 let cm_splitLeftColor  = null;     // colour assigned to left half
 let cm_splitRightColor = null;     // colour assigned to right half
 const CR_SPLIT_COL = 5;            // columns 0-4 = left, 5-9 = right
-// Fog the Frog state
-let cm_fogTimer = null;
-let cm_fogPatches = [];            // array of fog patch objects
-let cm_fogLevel = 1;               // 1-10 controls location + coverage
-let cm_fogSurvivedSecs = 0;
-let cm_fogTileAlpha = [];          // per-cell fog opacity [row][col]
-// Golden Frog state
-let cm_gfTimer = null;
-let cm_gfMechTimer = null;
-let cm_gfLevel = 1;                // 1-10 controls location + mechanic
-let cm_gfMechActive = false;
-let cm_gfShrinkInterval = null;
-let cm_gfBlackoutTimer = null;
-let cm_gfBlackoutActive = false;
-let cm_gfConveyorTimer = null;
-let cm_gfGhostTimer = null;
-let cm_gfGhostCells = [];          // {r,c,placedAt} ghost cells
-let cm_gfQuakeOffset = {x:0, y:0};
-let cm_gfGravityFlip = false;
-let cm_gfRotateAngle = 0;
-let cm_gfGauntletTimers = [];
 
 function initChallengeMode() {
   // Clear any previous timers
@@ -11319,89 +12443,6 @@ function initChallengeMode() {
     }, 1000);
   }
 
-  // ────────────────────────────────────────────────────────────────
-  //  FOG THE FROG MODE
-  // ────────────────────────────────────────────────────────────────
-  if (activeChallengeMode === 'fog') {
-    cm_fogSurvivedSecs = 0;
-    cm_fogLevel = level || 1;
-    // Determine fog coverage % by level
-    const FOG_LEVELS = [
-      { name:'Enchanted Woods',    coverage:0.20, speed:0.4,  patches:1, behaviour:'drift_lr' },
-      { name:'Scottish Moors',     coverage:0.30, speed:0.5,  patches:1, behaviour:'swirl' },
-      { name:'Scottish Highlands', coverage:0.40, speed:0.55, patches:2, behaviour:'independent' },
-      { name:'Mediterranean Sea',  coverage:0.50, speed:0.6,  patches:2, behaviour:'opposite' },
-      { name:'Coral Reef',         coverage:0.55, speed:0.65, patches:2, behaviour:'pulse' },
-      { name:'Amazon',             coverage:0.60, speed:0.7,  patches:3, behaviour:'random' },
-      { name:'Sahara Night',       coverage:0.65, speed:0.75, patches:3, behaviour:'flash' },
-      { name:'Arctic',             coverage:0.70, speed:0.9,  patches:3, behaviour:'fast_swirl' },
-      { name:'Deep Ocean',         coverage:0.75, speed:0.95, patches:4, behaviour:'smothered' },
-      { name:'Above the Clouds',   coverage:0.80, speed:1.0,  patches:4, behaviour:'chase' },
-    ];
-    const fogCfg = FOG_LEVELS[Math.min(cm_fogLevel - 1, 9)];
-    // Init fog tile alpha grid
-    cm_fogTileAlpha = Array.from({length:ROWS}, () => new Array(COLS).fill(0));
-    // Init fog patches
-    cm_fogPatches = Array.from({length:fogCfg.patches}, (_, i) => ({
-      x: Math.random() * COLS,
-      y: Math.random() * ROWS,
-      vx: (Math.random() > 0.5 ? 1 : -1) * fogCfg.speed * (0.5 + Math.random() * 0.5),
-      vy: (Math.random() > 0.5 ? 0.3 : -0.3) * fogCfg.speed,
-      radius: COLS * 0.25 + i * 0.5,
-      behaviour: fogCfg.behaviour,
-      phase: i * Math.PI * 0.6,
-      flashTimer: 0,
-    }));
-    hud.classList.add('active');
-    document.getElementById('challenge-hud-icon').textContent = '🌫️';
-    updateFogHUD(fogCfg);
-    showEventBanner('🌫️ ' + fogCfg.name + ' — FOG INCOMING!');
-    // Per-second fog tick
-    cm_fogTimer = setInterval(() => {
-      if (!gameActive) { clearInterval(cm_fogTimer); return; }
-      cm_fogSurvivedSecs++;
-      // Advance fog patches
-      _fogAdvancePatches(fogCfg);
-      // Update tile alpha based on patch proximity
-      _fogUpdateTileAlpha(fogCfg.coverage);
-      if (cm_fogSurvivedSecs % 20 === 0) {
-        score += 150; updateUI();
-        showEventBanner('🌫️ THROUGH THE FOG! +150!');
-      }
-      updateFogHUD(fogCfg);
-      drawGrid();
-    }, 1000);
-  }
-
-  // ────────────────────────────────────────────────────────────────
-  //  GOLDEN FROG MODE
-  // ────────────────────────────────────────────────────────────────
-  if (activeChallengeMode === 'goldenfrog') {
-    cm_gfLevel = level || 1;
-    cm_gfBlackoutActive = false;
-    cm_gfGravityFlip = false;
-    cm_gfRotateAngle = 0;
-    cm_gfGhostCells = [];
-    cm_gfQuakeOffset = {x:0, y:0};
-    cm_gfGauntletTimers = [];
-    hud.classList.add('active');
-    document.getElementById('challenge-hud-icon').textContent = '✨';
-    const GF_LOCATIONS = [
-      'Dubai','Ibiza','Monaco','Tokyo','Paris',
-      'Maldives','Venice','New York','Bali','Amalfi'
-    ];
-    const GF_MECHANICS = [
-      'Split Board','Mirror Mode','Quake','Shrink','Blackout',
-      'Conveyor','Gravity Flip','Ghost Tiles','Rotation','The Gauntlet'
-    ];
-    const locName = GF_LOCATIONS[Math.min(cm_gfLevel-1, 9)];
-    const mechName = GF_MECHANICS[Math.min(cm_gfLevel-1, 9)];
-    updateGoldenFrogHUD(locName, mechName);
-    showEventBanner('✨ ' + locName.toUpperCase() + ' — ' + mechName.toUpperCase() + '!');
-    // Activate the current level mechanic
-    _gfActivateMechanic(cm_gfLevel);
-  }
-
   // Show dev skip button if in dev mode
   _showDevSkipIfDev();
 }
@@ -11420,21 +12461,6 @@ function updateSurvivalHUD() {
   document.getElementById('challenge-hud-text').textContent = 'SURVIVAL';
   const sub = document.getElementById('challenge-hud-sub');
   if(sub) sub.textContent = 'Survived ' + cm_survivedSecs + 's';
-  document.getElementById('challenge-hud-timer').textContent = '';
-}
-
-function updateFogHUD(fogCfg) {
-  const loc = fogCfg ? fogCfg.name : 'Fog';
-  document.getElementById('challenge-hud-text').textContent = '🌫️ FOG THE FROG';
-  const sub = document.getElementById('challenge-hud-sub');
-  if (sub) sub.textContent = loc + ' · ' + cm_fogSurvivedSecs + 's survived';
-  document.getElementById('challenge-hud-timer').textContent = '';
-}
-
-function updateGoldenFrogHUD(loc, mech) {
-  document.getElementById('challenge-hud-text').textContent = '✨ GOLDEN FROG';
-  const sub = document.getElementById('challenge-hud-sub');
-  if (sub) sub.textContent = (loc || '') + (mech ? ' · ' + mech : '');
   document.getElementById('challenge-hud-timer').textContent = '';
 }
 
@@ -11552,11 +12578,6 @@ function stopChallengeMode() {
   if (cm_timer) { clearInterval(cm_timer); cm_timer = null; }
   if (cm_survivalTimer) { clearInterval(cm_survivalTimer); cm_survivalTimer = null; }
   if (cm_colourPenaltyTimer) { clearInterval(cm_colourPenaltyTimer); cm_colourPenaltyTimer = null; }
-  // Fog the Frog cleanup
-  if (cm_fogTimer) { clearInterval(cm_fogTimer); cm_fogTimer = null; }
-  cm_fogPatches = []; cm_fogTileAlpha = []; cm_fogSurvivedSecs = 0;
-  // Golden Frog cleanup
-  _gfStopAllMechanics();
   document.getElementById('challenge-hud').classList.remove('active');
   document.getElementById('survival-bar-wrap').classList.remove('active');
   const flipBtn = document.getElementById('cr-flip-btn');
@@ -11564,35 +12585,13 @@ function stopChallengeMode() {
   const devSkipBtn = document.getElementById('dev-level-skip');
   if (devSkipBtn) devSkipBtn.style.display = 'none';
   cm_splitMode = false; cm_splitLeftColor = null; cm_splitRightColor = null;
-  cm_gfBlackoutActive = false; cm_gfGravityFlip = false; cm_gfGhostCells = [];
   activeChallengeMode = 'standard';
 }
 
-// Dev skip — bumps level/score to simulate progression, works for ALL game modes
+// Dev skip — bumps level/score to simulate progression
 function _devSkipLevel() {
   if (localStorage.getItem('cd_dev_unlock') !== '1') return;
-
-  // City Pack: advance to next city
-  if (cityPackActive) {
-    showToast('⏭ DEV: next city');
-    advanceCityPackLevel();
-    return;
-  }
-
-  // Duo: jump to next level
-  if (currentDuoGame && currentDuoLevel) {
-    const nextLevel = Math.min(currentDuoLevel + 1, 10);
-    showToast('⏭ DEV: duo level ' + nextLevel);
-    currentDuoLevel = nextLevel;
-    // unlock it so lobby reflects progress
-    const key = 'cd_duo_lvl_' + currentDuoGame;
-    const cur = parseInt(localStorage.getItem(key) || '1');
-    if (nextLevel > cur) localStorage.setItem(key, String(nextLevel));
-    startDuoGameMode();
-    return;
-  }
-
-  // Solo (all modes including standard): add lines + score
+  // Simulate clearing 10 lines worth of progress
   const fakeLines = 10;
   linesCleared += fakeLines;
   score += fakeLines * 500;
@@ -11602,10 +12601,6 @@ function _devSkipLevel() {
   if (activeChallengeMode === 'frenzy') { cm_secsLeft = 1; }
   // Colour run: boost streak
   if (activeChallengeMode === 'colourrun') { cm_colourStreak += 4; }
-  // Fog the Frog: simulate fog survival time
-  if (activeChallengeMode === 'fog') { cm_fogSurvivedSecs += 20; }
-  // Golden Frog: log skip
-  if (activeChallengeMode === 'goldenfrog') { showToast('⏭ DEV: GF level ' + cm_gfLevel); }
   updateUI(); drawGrid();
   showToast('⏭ DEV: +10 lines, +5000 score');
 }
@@ -11615,8 +12610,7 @@ function _showDevSkipIfDev() {
   const btn = document.getElementById('dev-level-skip');
   if (!btn) return;
   const isDev = localStorage.getItem('cd_dev_unlock') === '1';
-  // Show for ALL game modes when dev is active — including standard, city pack, duo
-  btn.style.display = isDev && gameActive ? 'inline-block' : 'none';
+  btn.style.display = isDev && gameActive && activeChallengeMode !== 'standard' ? 'inline-block' : 'none';
 }
 
 // ── Pause menu ───────────────────────────────────────────────────
@@ -11632,301 +12626,6 @@ function closePause() {
   document.getElementById('pause-overlay').classList.add('hidden');
   gameActive = true;
   if (vsFrogActive) _vsFrogScheduleMove(); // resume frog AI
-}
-
-
-// ════════════════════════════════════════════════════════════════
-//  FOG THE FROG ENGINE
-// ════════════════════════════════════════════════════════════════
-
-// Advance fog patch positions each tick
-function _fogAdvancePatches(fogCfg) {
-  const t = (cm_fogSurvivedSecs || 0);
-  for (let i = 0; i < cm_fogPatches.length; i++) {
-    const p = cm_fogPatches[i];
-    const beh = fogCfg.behaviour;
-    if (beh === 'drift_lr') {
-      p.x += p.vx;
-      if (p.x > COLS + 2) p.x = -2;
-    } else if (beh === 'swirl') {
-      const angle = t * 0.05 + p.phase;
-      p.x = COLS * 0.5 + Math.cos(angle) * COLS * 0.35;
-      p.y = ROWS * 0.5 + Math.sin(angle) * ROWS * 0.3;
-    } else if (beh === 'independent') {
-      p.x += p.vx; p.y += p.vy;
-      if (p.x < -2 || p.x > COLS + 2) p.vx *= -1;
-      if (p.y < -1 || p.y > ROWS + 1) p.vy *= -1;
-    } else if (beh === 'opposite') {
-      if (i % 2 === 0) { p.x += Math.abs(p.vx); if (p.x > COLS + 2) p.x = -2; }
-      else { p.x -= Math.abs(p.vx); if (p.x < -2) p.x = COLS + 2; }
-    } else if (beh === 'pulse') {
-      p.radius = (COLS * 0.25 + i * 0.5) * (0.7 + 0.3 * Math.sin(t * 0.12 + p.phase));
-      p.x += p.vx * 0.5; p.y += p.vy * 0.5;
-      if (p.x < -2 || p.x > COLS + 2) p.vx *= -1;
-      if (p.y < -1 || p.y > ROWS + 1) p.vy *= -1;
-    } else if (beh === 'random') {
-      if (Math.random() < 0.15) { p.vx = (Math.random() > 0.5 ? 1 : -1) * fogCfg.speed * (0.4 + Math.random() * 0.6); }
-      if (Math.random() < 0.10) { p.vy = (Math.random() > 0.5 ? 0.4 : -0.4) * fogCfg.speed; }
-      p.x += p.vx; p.y += p.vy;
-      if (p.x < -2 || p.x > COLS + 2) { p.x = Math.random() * COLS; }
-      if (p.y < -1 || p.y > ROWS + 1) { p.y = Math.random() * ROWS; }
-    } else if (beh === 'flash') {
-      p.flashTimer = (p.flashTimer || 0) - 1;
-      if (Math.random() < 0.02) p.flashTimer = 60;
-      p.x += p.vx * 0.6; p.y += p.vy * 0.4;
-      if (p.x < -2 || p.x > COLS + 2) p.vx *= -1;
-      if (p.y < -1 || p.y > ROWS + 1) p.vy *= -1;
-    } else if (beh === 'fast_swirl') {
-      const angle2 = t * 0.15 + p.phase;
-      p.x = COLS * (0.3 + 0.4 * (i % 2)) + Math.cos(angle2) * COLS * 0.4;
-      p.y = ROWS * 0.5 + Math.sin(angle2 * 1.3) * ROWS * 0.35;
-    } else if (beh === 'smothered') {
-      p.x += p.vx * 0.2; p.y += p.vy * 0.1;
-      p.radius = COLS * (0.5 + i * 0.2);
-      if (p.x < -1 || p.x > COLS + 1) p.vx *= -1;
-      if (p.y < -0.5 || p.y > ROWS + 0.5) p.vy *= -1;
-    } else if (beh === 'chase') {
-      const lr = lastPlacedRow != null ? lastPlacedRow : ROWS / 2;
-      const lc = lastPlacedCol != null ? lastPlacedCol : COLS / 2;
-      const dx = lc - p.x, dy = lr - p.y;
-      const dist = Math.sqrt(dx * dx + dy * dy) + 0.1;
-      p.x += (dx / dist) * fogCfg.speed * 0.5;
-      p.y += (dy / dist) * fogCfg.speed * 0.3;
-    } else {
-      p.x += p.vx; p.y += p.vy;
-      if (p.x < -2 || p.x > COLS + 2) p.vx *= -1;
-      if (p.y < -1 || p.y > ROWS + 1) p.vy *= -1;
-    }
-  }
-}
-
-// Recompute per-cell fog opacity based on patch proximity
-function _fogUpdateTileAlpha(maxCoverage) {
-  for (let r = 0; r < ROWS; r++) {
-    for (let c = 0; c < COLS; c++) {
-      let maxAlpha = 0;
-      for (const p of cm_fogPatches) {
-        const dx = c - p.x, dy = r - p.y;
-        const dist = Math.sqrt(dx * dx + dy * dy);
-        const rad = p.radius || (COLS * 0.25);
-        let alpha;
-        if (p.behaviour === 'flash' && (p.flashTimer || 0) > 0) {
-          alpha = dist < rad * 1.5 ? 0.95 : 0;
-        } else {
-          alpha = Math.max(0, 1 - dist / rad);
-        }
-        maxAlpha = Math.max(maxAlpha, alpha);
-      }
-      const target = Math.min(maxAlpha, maxCoverage * 1.4);
-      cm_fogTileAlpha[r][c] = cm_fogTileAlpha[r][c] * 0.7 + target * 0.3;
-    }
-  }
-}
-
-// Returns fog opacity for a specific tile (0=clear, 1=fully hidden)
-function _fogGetTileOpacity(row, col) {
-  if (activeChallengeMode !== 'fog' || !cm_fogTileAlpha.length) return 0;
-  return (cm_fogTileAlpha[row] && cm_fogTileAlpha[row][col]) || 0;
-}
-
-// Last placed position for chase behaviour
-let lastPlacedRow = null, lastPlacedCol = null;
-
-// ════════════════════════════════════════════════════════════════
-//  GOLDEN FROG MECHANICS ENGINE
-// ════════════════════════════════════════════════════════════════
-
-const GF_LOCATIONS_CFG = [
-  { name:'Dubai',     mechanic:'split',    emoji:'🏄', bg:'#001833', accent:'#FFD700' },
-  { name:'Ibiza',     mechanic:'mirror',   emoji:'🌴', bg:'#0a0820', accent:'#ff6eb0' },
-  { name:'Monaco',    mechanic:'quake',    emoji:'🏎️', bg:'#0d0d20', accent:'#e8c850' },
-  { name:'Tokyo',     mechanic:'shrink',   emoji:'🏯', bg:'#080820', accent:'#ff3366' },
-  { name:'Paris',     mechanic:'blackout', emoji:'🗼', bg:'#0a0815', accent:'#a06fdc' },
-  { name:'Maldives',  mechanic:'conveyor', emoji:'🌊', bg:'#001a30', accent:'#00cfff' },
-  { name:'Venice',    mechanic:'gravity',  emoji:'🚤', bg:'#040c20', accent:'#66aaff' },
-  { name:'New York',  mechanic:'ghost',    emoji:'🌃', bg:'#080808', accent:'#ff9900' },
-  { name:'Bali',      mechanic:'rotation', emoji:'🌺', bg:'#0a1208', accent:'#88dd44' },
-  { name:'Amalfi',    mechanic:'gauntlet', emoji:'🌋', bg:'#100808', accent:'#FF4400' },
-];
-
-function _gfActivateMechanic(lvl) {
-  const cfg = GF_LOCATIONS_CFG[Math.min(lvl - 1, 9)];
-  if (!cfg) return;
-  const mech = cfg.mechanic;
-
-  if (mech === 'split') {
-    cm_gfMechActive = true;
-    showEventBanner('✨ DUBAI — THE BOARD SPLITS!');
-  }
-  else if (mech === 'mirror') {
-    cm_gfMechActive = true;
-    showEventBanner('✨ IBIZA — MIRROR MODE! Every move is doubled!');
-  }
-  else if (mech === 'quake') {
-    cm_gfMechTimer = setInterval(() => {
-      if (!gameActive) return;
-      let shakes = 0;
-      const quakeAnim = setInterval(() => {
-        shakes++;
-        cm_gfQuakeOffset = {x:(Math.random()-0.5)*12, y:(Math.random()-0.5)*8};
-        if (typeof gridCanvas !== 'undefined' && gridCanvas) {
-          gridCanvas.style.transform = 'translate(' + cm_gfQuakeOffset.x + 'px,' + cm_gfQuakeOffset.y + 'px)';
-        }
-        if (shakes > 14) {
-          clearInterval(quakeAnim);
-          cm_gfQuakeOffset = {x:0, y:0};
-          if (typeof gridCanvas !== 'undefined' && gridCanvas) gridCanvas.style.transform = '';
-        }
-      }, 60);
-      showEventBanner('✨ MONACO QUAKE!');
-    }, 8000);
-    cm_gfGauntletTimers.push(cm_gfMechTimer);
-  }
-  else if (mech === 'shrink') {
-    cm_gfShrinkInterval = setInterval(() => {
-      if (!gameActive) return;
-      grid.unshift(new Array(COLS).fill(0));
-      grid.pop();
-      drawGrid(); updateUI();
-      showEventBanner('✨ TOKYO SHRINK — BOARD CONTRACTS!');
-    }, 30000);
-    cm_gfGauntletTimers.push(cm_gfShrinkInterval);
-  }
-  else if (mech === 'blackout') {
-    cm_gfBlackoutTimer = setInterval(() => {
-      if (!gameActive) return;
-      cm_gfBlackoutActive = true;
-      drawGrid();
-      showEventBanner('✨ PARIS BLACKOUT!');
-      setTimeout(() => { cm_gfBlackoutActive = false; drawGrid(); }, 3000);
-    }, 8000);
-    cm_gfGauntletTimers.push(cm_gfBlackoutTimer);
-  }
-  else if (mech === 'conveyor') {
-    cm_gfConveyorTimer = setInterval(() => {
-      if (!gameActive) return;
-      for (let r = 0; r < ROWS; r++) { const row = grid[r]; row.push(row.shift()); }
-      drawGrid();
-      showEventBanner('✨ MALDIVES — CONVEYOR SHIFTS!');
-    }, 10000);
-    cm_gfGauntletTimers.push(cm_gfConveyorTimer);
-  }
-  else if (mech === 'gravity') {
-    cm_gfGravityFlip = false;
-    showEventBanner('✨ VENICE — GRAVITY FLIPS ON EACH CLEAR!');
-  }
-  else if (mech === 'ghost') {
-    cm_gfGhostTimer = setInterval(() => {
-      if (!gameActive) return;
-      const now = Date.now();
-      const expired = cm_gfGhostCells.filter(g => now - g.placedAt > 5000);
-      for (const g of expired) {
-        if (g.r >= 0 && g.r < ROWS && g.c >= 0 && g.c < COLS) grid[g.r][g.c] = 0;
-      }
-      cm_gfGhostCells = cm_gfGhostCells.filter(g => now - g.placedAt <= 5000);
-      if (expired.length > 0) drawGrid();
-    }, 500);
-    cm_gfGauntletTimers.push(cm_gfGhostTimer);
-    showEventBanner('✨ NEW YORK — GHOST TILES VANISH IN 5s!');
-  }
-  else if (mech === 'rotation') {
-    cm_gfRotateAngle = 0;
-    showEventBanner('✨ BALI — BOARD ROTATES ON EACH CLEAR!');
-  }
-  else if (mech === 'gauntlet') {
-    showEventBanner('✨ AMALFI — THE GAUNTLET! ALL MECHANICS ACTIVE!');
-    const qt = setInterval(() => {
-      if (!gameActive) return;
-      let shakes = 0;
-      const qa = setInterval(() => {
-        shakes++;
-        cm_gfQuakeOffset = {x:(Math.random()-0.5)*8, y:(Math.random()-0.5)*6};
-        if (typeof gridCanvas !== 'undefined' && gridCanvas) gridCanvas.style.transform = 'translate(' + cm_gfQuakeOffset.x + 'px,' + cm_gfQuakeOffset.y + 'px)';
-        if (shakes > 10) { clearInterval(qa); cm_gfQuakeOffset={x:0,y:0}; if (typeof gridCanvas !== 'undefined' && gridCanvas) gridCanvas.style.transform=''; }
-      }, 60);
-    }, 10000);
-    cm_gfGauntletTimers.push(qt);
-    const bt = setInterval(() => {
-      if (!gameActive) return;
-      cm_gfBlackoutActive = true; drawGrid();
-      setTimeout(() => { cm_gfBlackoutActive = false; drawGrid(); }, 2000);
-    }, 12000);
-    cm_gfGauntletTimers.push(bt);
-    const ct = setInterval(() => {
-      if (!gameActive) return;
-      for (let r = 0; r < ROWS; r++) { const row = grid[r]; row.push(row.shift()); }
-      drawGrid();
-    }, 15000);
-    cm_gfGauntletTimers.push(ct);
-    cm_gfGhostTimer = setInterval(() => {
-      if (!gameActive) return;
-      const now = Date.now();
-      const expired = cm_gfGhostCells.filter(g => now - g.placedAt > 4000);
-      for (const g of expired) { if (g.r >= 0 && g.r < ROWS && g.c >= 0 && g.c < COLS) grid[g.r][g.c] = 0; }
-      cm_gfGhostCells = cm_gfGhostCells.filter(g => now - g.placedAt <= 4000);
-      if (expired.length > 0) drawGrid();
-    }, 500);
-    cm_gfGauntletTimers.push(cm_gfGhostTimer);
-    cm_gfGravityFlip = false;
-    cm_gfRotateAngle = 0;
-  }
-}
-
-function _gfStopAllMechanics() {
-  if (cm_gfMechTimer) { clearInterval(cm_gfMechTimer); cm_gfMechTimer = null; }
-  if (cm_gfShrinkInterval) { clearInterval(cm_gfShrinkInterval); cm_gfShrinkInterval = null; }
-  if (cm_gfBlackoutTimer) { clearInterval(cm_gfBlackoutTimer); cm_gfBlackoutTimer = null; }
-  if (cm_gfConveyorTimer) { clearInterval(cm_gfConveyorTimer); cm_gfConveyorTimer = null; }
-  if (cm_gfGhostTimer) { clearInterval(cm_gfGhostTimer); cm_gfGhostTimer = null; }
-  for (const t of cm_gfGauntletTimers) clearInterval(t);
-  cm_gfGauntletTimers = [];
-  cm_gfBlackoutActive = false;
-  cm_gfGravityFlip = false;
-  cm_gfRotateAngle = 0;
-  cm_gfGhostCells = [];
-  cm_gfQuakeOffset = {x:0, y:0};
-  if (typeof gridCanvas !== 'undefined' && gridCanvas) gridCanvas.style.transform = '';
-}
-
-// Golden Frog: register a ghost cell when a tile is placed
-function _gfRegisterGhostCell(r, c) {
-  if (activeChallengeMode !== 'goldenfrog') return;
-  const cfg = GF_LOCATIONS_CFG[Math.min(cm_gfLevel-1, 9)];
-  if (!cfg) return;
-  if (cfg.mechanic === 'ghost' || cfg.mechanic === 'gauntlet') {
-    cm_gfGhostCells.push({r, c, placedAt: Date.now()});
-  }
-}
-
-// Golden Frog mirror: placing on left half mirrors to right
-function _gfApplyMirror(placedCells) {
-  if (activeChallengeMode !== 'goldenfrog') return;
-  const cfg = GF_LOCATIONS_CFG[Math.min(cm_gfLevel-1, 9)];
-  if (!cfg || (cfg.mechanic !== 'mirror' && cfg.mechanic !== 'gauntlet')) return;
-  for (const [r, c] of placedCells) {
-    const mirrorC = COLS - 1 - c;
-    if (mirrorC !== c && r >= 0 && r < ROWS && mirrorC >= 0 && mirrorC < COLS) {
-      if (grid[r][mirrorC] === 0) grid[r][mirrorC] = grid[r][c];
-    }
-  }
-}
-
-// Golden Frog rotation: rotate entire board 90deg clockwise on line clear
-function _gfRotateBoard() {
-  if (activeChallengeMode !== 'goldenfrog') return;
-  const cfg = GF_LOCATIONS_CFG[Math.min(cm_gfLevel-1, 9)];
-  if (!cfg || (cfg.mechanic !== 'rotation' && cfg.mechanic !== 'gauntlet')) return;
-  const newGrid = Array.from({length:ROWS}, () => new Array(COLS).fill(0));
-  for (let r = 0; r < ROWS; r++) {
-    for (let c = 0; c < COLS; c++) {
-      const nr = c, nc = ROWS - 1 - r;
-      if (nr < ROWS && nc < COLS) newGrid[nr][nc] = grid[r][c];
-    }
-  }
-  for (let r = 0; r < ROWS; r++) for (let c = 0; c < COLS; c++) grid[r][c] = newGrid[r][c];
-  cm_gfRotateAngle = (cm_gfRotateAngle + 90) % 360;
-  drawGrid();
-  showEventBanner('✨ BALI — BOARD ROTATES!');
 }
 
 // ── Penalty / Glitch functions ────────────────────────────────────
@@ -12118,9 +12817,7 @@ if(_qsBtn) _qsBtn.addEventListener('click', () => {
   else { setDifficulty(lastDiff); }
   if ((lastChallenge === 'frenzy' || lastChallenge === 'survival') && !canPlayFrenzy()) {
     activeChallengeMode = 'standard';
-  } else if (lastChallenge === 'fog' && !canPlaySurvival()) {
-    activeChallengeMode = 'standard';
-  } else if ((lastChallenge === 'colourrun' || lastChallenge === 'goldenfrog') && !canPlayColourRun()) {
+  } else if (lastChallenge === 'colourrun' && !canPlayColourRun()) {
     activeChallengeMode = 'standard';
   } else {
     activeChallengeMode = lastChallenge;
@@ -12231,25 +12928,21 @@ calcLayout();updateTierBadge();loadStreak();requestAnimationFrame(animateParticl
     if (!audioCtx) {
       audioCtx = new (window.AudioContext || window.webkitAudioContext)();
     }
-    const _doUnlock = () => {
-      // Play a silent buffer — required to fully unblock iOS audio policy
-      try {
-        const buf = audioCtx.createBuffer(1, 1, 22050);
-        const src = audioCtx.createBufferSource();
-        src.buffer = buf;
-        src.connect(audioCtx.destination);
-        src.start(0);
-      } catch(e) {}
-      // Only remove listeners once audio is actually running
-      if (audioCtx.state === 'running') {
-        document.removeEventListener('touchstart', _earlyAudioUnlock, true);
-        document.removeEventListener('mousedown',  _earlyAudioUnlock, true);
-      }
-    };
     if (audioCtx.state === 'suspended') {
-      audioCtx.resume().then(_doUnlock).catch(()=>{});
-    } else {
-      _doUnlock();
+      audioCtx.resume().catch(()=>{});
+    }
+    // Play a silent buffer to fully unblock iOS audio policy
+    try {
+      const buf = audioCtx.createBuffer(1, 1, 22050);
+      const src = audioCtx.createBufferSource();
+      src.buffer = buf;
+      src.connect(audioCtx.destination);
+      src.start(0);
+    } catch(e) {}
+    // Once running, remove the listeners — audio is unlocked
+    if (audioCtx.state === 'running') {
+      document.removeEventListener('touchstart', _earlyAudioUnlock, true);
+      document.removeEventListener('mousedown',  _earlyAudioUnlock, true);
     }
   }
   document.addEventListener('touchstart', _earlyAudioUnlock, true);
@@ -12431,8 +13124,8 @@ function updateSettingsToggles() {
     const tierDefs = [
       { id: 'tadpole',    emoji: '🥚', name: 'TADPOLE',     subtitle: 'Standard mode',    color: '#888' },
       { id: 'treefrog',   emoji: '🐸', name: 'TREE FROG',   subtitle: 'Frenzy mode',      color: '#F5A623' },
-      { id: 'poisondart', emoji: '🌫️', name: 'FOG THE FROG', subtitle: 'Fog mode',         color: '#CC1212' },
-      { id: 'goldenfrog', emoji: '✨', name: 'GOLDEN FROG', subtitle: 'Prestige mode',     color: '#F5E000' },
+      { id: 'poisondart', emoji: '🌫️', name: 'FOG THE FROG', subtitle: 'Survival mode',    color: '#6B8F71' },
+      { id: 'goldenfrog', emoji: '✨', name: 'GOLDEN FROG', subtitle: 'Colour Run mode',  color: '#F5E000' },
       { id: 'duopack',    emoji: '👫', name: 'DUO MODE',    subtitle: 'Pond Battle · Shake the Frog · Frog Swap', color: '#4A90D9' },
     ];
     tierList.innerHTML = tierDefs.map(t => {
@@ -12610,10 +13303,48 @@ function checkResumeOnHome() {
   const saved = loadSavedGame();
   const banner = document.getElementById('resume-game-banner');
   const detail = document.getElementById('resume-banner-detail');
-  if (banner) banner.style.display = saved ? 'flex' : 'none';
+  if (banner) {
+    // Screen B uses .is-visible toggle so the new flex layout is preserved.
+    // Also clear any inline style left over from older versions.
+    banner.style.display = '';
+    banner.classList.toggle('is-visible', !!saved);
+  }
   if (saved && detail) {
     const modeName = (saved.activeChallengeMode || 'standard').toUpperCase();
     detail.textContent = `${modeName} · Score ${(saved.score||0).toLocaleString()} · Level ${saved.level||1} · Saved ${saved.savedAt||''}`;
+  }
+}
+
+/* Refresh the dynamic subtitles on the new home screen (Screen B).
+   Pulls owned-tier counts and Duo-subscription state so the user sees
+   their progress at a glance without re-rendering the whole screen. */
+function updateHomeSubtitles() {
+  try {
+    const soloSub = document.getElementById('home-solo-sub');
+    const duoSub  = document.getElementById('home-duo-sub');
+    if (soloSub) {
+      // Solo packs (5): tadpole, treefrog, poisondart (Fog the Frog), goldenfrog, citypack
+      const SOLO_PACKS = ['tadpole', 'treefrog', 'poisondart', 'goldenfrog', 'citypack'];
+      const ownedSolo = (typeof ownedTiers !== 'undefined' && Array.isArray(ownedTiers))
+        ? SOLO_PACKS.filter(id => ownedTiers.includes(id)).length
+        : 0;
+      if (ownedSolo === 0) {
+        soloSub.textContent = '5 game packs · from free';
+      } else if (ownedSolo === SOLO_PACKS.length) {
+        soloSub.textContent = 'All 5 packs unlocked';
+      } else {
+        const remaining = SOLO_PACKS.length - ownedSolo;
+        soloSub.textContent = `${ownedSolo} of 5 unlocked · +${remaining} available`;
+      }
+    }
+    if (duoSub) {
+      // Note: isDuoSubscriber must check tierOwned('duopack') — do not hardcode true.
+      const subbed = (typeof isDuoSubscriber === 'function') && isDuoSubscriber();
+      duoSub.textContent = subbed ? 'Subscribed · 3 live games' : 'Play with a friend · £5/mo';
+    }
+  } catch (e) {
+    // Defensive: never let a home-render failure break navigation.
+    if (window.console) console.warn('updateHomeSubtitles failed', e);
   }
 }
 
@@ -12667,7 +13398,7 @@ function checkResumeOnHome() {
       <span style="font-family:var(--font-display);font-size: var(--fs-body);font-weight:700;letter-spacing:0.1em;color:#F5E000;">GOLDEN FROG</span>
       <span style="margin-left:auto;font-family:var(--font-display);font-size: var(--fs-ui);color:rgba(255,255,255,0.5);">£1.99/yr</span>
     </div>
-    <div style="font-size: var(--fs-ui);color:rgba(255,255,255,0.45);line-height:1.5;margin-bottom:12px;">Unlocks Golden Frog prestige mode, 10 luxury locations &amp; all mechanics. ×2.5 score multiplier.</div>
+    <div style="font-size: var(--fs-ui);color:rgba(255,255,255,0.45);line-height:1.5;margin-bottom:12px;">Unlocks Colour Run mode, Expert difficulty &amp; Frog Stamp. ×2.5 score multiplier.</div>
     <button onclick="openShop()" style="width:100%;background:#F5E000;border:none;border-radius:10px;color:#000;font-family:var(--font-display);font-size: var(--fs-ui);font-weight:700;letter-spacing:0.12em;padding:10px;cursor:pointer;">UPGRADE NOW</button>
   </div>
   <!-- Cloud note -->
@@ -12707,11 +13438,11 @@ function checkResumeOnHome() {
   </div>
 </div>
 
-<!-- Glitch Frog overlay — fixed position, always on top -->
+<!-- Fog Strike overlay — fixed position, always on top -->
 <div id="glitch-frog-overlay">
   <div class="glitch-frog-inner">
-    <div class="glitch-frog-emoji">☠️🐸</div>
-    <div class="glitch-frog-text">GLITCH FROG ATTACK!</div>
+    <div class="glitch-frog-emoji">🌫️🐸</div>
+    <div class="glitch-frog-text">FOG STRIKES!</div>
     <div class="glitch-frog-sub">Board over 50% — tiles added!</div>
   </div>
 </div>
@@ -12941,6 +13672,272 @@ function checkResumeOnHome() {
       }
     }, delay);
   });
+})();
+
+/* ═══════════════════════════════════════════════════════════════════
+   DEV MODE — testing harness for Klara
+   Activate by:
+     • Adding ?dev=1 to the URL, OR
+     • Long-pressing (or holding click for 1.2s) the RFB logo on Home
+   When active:
+     • All packs auto-unlock (Tadpole, Tree Frog, Fog the Frog, Golden, City Pack, Duo)
+     • Floating DEV strip appears in-game with NEXT / PREV / END LEVEL buttons
+     • Keyboard shortcuts work in any game:
+         ]   = next level / next city / next duo level
+         [   = previous level
+         \\  = end current level immediately (force complete)
+         D   = toggle DEV strip visibility
+   ═══════════════════════════════════════════════════════════════════ */
+(function(){
+  const DEV_KEY = 'ts_dev_mode';
+
+  function isDev() {
+    try { return localStorage.getItem(DEV_KEY) === '1'; } catch(e){ return false; }
+  }
+
+  function setDev(on) {
+    try { localStorage.setItem(DEV_KEY, on ? '1' : '0'); } catch(e){}
+    if (on) {
+      // Unlock everything
+      try {
+        const ALL = ['tadpole','treefrog','poisondart','goldenfrog','citypack','duopack','spark','surge','storm'];
+        if (typeof ownedTiers !== 'undefined') {
+          window.ownedTiers = Array.from(new Set([...(ownedTiers||[]), ...ALL]));
+          localStorage.setItem('ts_owned_tiers', JSON.stringify(window.ownedTiers));
+        }
+        if (typeof saveOwned === 'function') saveOwned();
+        if (typeof updateHomeSubtitles === 'function') updateHomeSubtitles();
+        if (typeof buildSoloSetupCards === 'function') buildSoloSetupCards();
+      } catch(e){ console.warn('dev unlock failed', e); }
+    }
+    showDevToast(on ? 'DEV MODE ON' : 'DEV MODE OFF');
+    updateDevChip();
+    if (on) ensureDevStrip(); else removeDevStrip();
+  }
+
+  function showDevToast(msg) {
+    let t = document.getElementById('dev-toast');
+    if (!t) {
+      t = document.createElement('div');
+      t.id = 'dev-toast';
+      t.style.cssText = 'position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:#7c3aed;color:#fff;font-family:Oswald,system-ui,sans-serif;font-weight:800;font-size:14px;letter-spacing:0.18em;text-transform:uppercase;padding:14px 22px;border-radius:12px;z-index:99999;box-shadow:0 8px 24px rgba(124,58,237,0.5);transition:opacity 0.3s;pointer-events:none;';
+      document.body.appendChild(t);
+    }
+    t.textContent = msg;
+    t.style.opacity = '1';
+    clearTimeout(t._h);
+    t._h = setTimeout(() => { t.style.opacity = '0'; }, 1400);
+  }
+
+  // Persistent badge in top-right when dev mode active
+  function updateDevChip() {
+    let chip = document.getElementById('dev-chip');
+    if (isDev()) {
+      if (!chip) {
+        chip = document.createElement('div');
+        chip.id = 'dev-chip';
+        chip.style.cssText = 'position:fixed;top:6px;right:6px;background:#7c3aed;color:#fff;font-family:Oswald,system-ui,sans-serif;font-weight:800;font-size:10px;letter-spacing:0.18em;padding:3px 8px;border-radius:6px;z-index:99998;box-shadow:0 2px 8px rgba(124,58,237,0.5);cursor:pointer;';
+        chip.textContent = 'DEV';
+        chip.title = 'Click to disable DEV mode';
+        chip.onclick = () => setDev(false);
+        document.body.appendChild(chip);
+      }
+    } else if (chip) {
+      chip.remove();
+    }
+  }
+
+  // Floating in-game DEV strip
+  function ensureDevStrip() {
+    let s = document.getElementById('dev-strip');
+    if (s) return s;
+    s = document.createElement('div');
+    s.id = 'dev-strip';
+    s.style.cssText = 'position:fixed;left:50%;bottom:8px;transform:translateX(-50%);display:none;gap:6px;background:rgba(20,15,30,0.92);border:1px solid rgba(124,58,237,0.55);border-radius:10px;padding:6px 8px;z-index:99996;backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);box-shadow:0 6px 18px rgba(0,0,0,0.5);font-family:Oswald,system-ui,sans-serif;';
+    s.innerHTML = ''
+      + '<button data-act="prev"  style="background:#5b21b6;color:#fff;border:none;border-radius:6px;padding:6px 10px;font-weight:800;font-size:11px;letter-spacing:0.12em;cursor:pointer;">◀ PREV</button>'
+      + '<button data-act="end"   style="background:#7c3aed;color:#fff;border:none;border-radius:6px;padding:6px 10px;font-weight:800;font-size:11px;letter-spacing:0.12em;cursor:pointer;">END LVL</button>'
+      + '<button data-act="next"  style="background:#5b21b6;color:#fff;border:none;border-radius:6px;padding:6px 10px;font-weight:800;font-size:11px;letter-spacing:0.12em;cursor:pointer;">NEXT ▶</button>'
+      + '<span id="dev-strip-info" style="color:#c4b5fd;font-size:10px;letter-spacing:0.12em;align-self:center;padding:0 6px;"></span>';
+    document.body.appendChild(s);
+    s.addEventListener('click', (e) => {
+      const b = e.target.closest('button');
+      if (!b) return;
+      const act = b.dataset.act;
+      if (act === 'next') devNextLevel();
+      else if (act === 'prev') devPrevLevel();
+      else if (act === 'end') devEndLevel();
+    });
+    return s;
+  }
+
+  function removeDevStrip() {
+    const s = document.getElementById('dev-strip');
+    if (s) s.remove();
+  }
+
+  // Show / hide strip based on whether a game screen is active
+  function syncDevStrip() {
+    if (!isDev()) return;
+    const s = ensureDevStrip();
+    const onGame = !document.getElementById('screen-game')?.classList.contains('hidden');
+    s.style.display = onGame ? 'flex' : 'none';
+    const info = document.getElementById('dev-strip-info');
+    if (info && onGame) info.textContent = devLevelLabel();
+  }
+
+  function devLevelLabel() {
+    try {
+      if (typeof currentDuoGame !== 'undefined' && currentDuoGame) {
+        return (currentDuoGame.toUpperCase().replace('_',' ')) + ' · LVL ' + (currentDuoLevel || 1) + '/10';
+      }
+      if (typeof cityPackActive !== 'undefined' && cityPackActive) {
+        const total = (typeof CITY_PACK_CITIES !== 'undefined') ? CITY_PACK_CITIES.length : 10;
+        return 'CITY ' + ((cityPackCityIdx||0)+1) + '/' + total;
+      }
+      return 'LVL ' + (typeof level !== 'undefined' ? level : 1) + '/50';
+    } catch(e){ return ''; }
+  }
+
+  // ── Skip implementations ─────────────────────────────────────
+
+  function devNextLevel() {
+    try {
+      // Duo flow
+      if (typeof currentDuoGame !== 'undefined' && currentDuoGame) {
+        const next = Math.min((currentDuoLevel||1) + 1, 10);
+        if (next === currentDuoLevel) { showDevToast('LAST DUO LEVEL'); return; }
+        window.currentDuoLevel = next;
+        if (typeof setDuoLevelUnlocked === 'function') setDuoLevelUnlocked(currentDuoGame, next);
+        if (typeof startDuoGameMode === 'function') startDuoGameMode();
+        showDevToast('DUO LVL ' + next);
+        return;
+      }
+      // City Pack flow
+      if (typeof cityPackActive !== 'undefined' && cityPackActive) {
+        const total = CITY_PACK_CITIES.length;
+        const next = Math.min((cityPackCityIdx||0) + 1, total - 1);
+        if (next === cityPackCityIdx) { showDevToast('LAST CITY'); return; }
+        if (typeof startCityPackGame === 'function') startCityPackGame(next);
+        showDevToast('CITY ' + (next+1) + '/' + total);
+        return;
+      }
+      // Solo flow — bump linesCleared to next threshold
+      if (typeof level !== 'undefined' && typeof LEVEL_THRESHOLDS !== 'undefined') {
+        const nextLv = Math.min(level + 1, LEVEL_THRESHOLDS.length);
+        const target = LEVEL_THRESHOLDS[nextLv - 1];
+        window.linesCleared = target;
+        window.level = nextLv;
+        // bonus score so it feels right
+        if (typeof score !== 'undefined') window.score = score + 100 * (nextLv - 1);
+        if (typeof updateUI === 'function') updateUI();
+        if (typeof draw === 'function') draw();
+        showDevToast('SOLO LVL ' + nextLv);
+      }
+    } catch(e){ console.warn('devNext failed', e); }
+  }
+
+  function devPrevLevel() {
+    try {
+      if (typeof currentDuoGame !== 'undefined' && currentDuoGame) {
+        const prev = Math.max((currentDuoLevel||1) - 1, 1);
+        window.currentDuoLevel = prev;
+        if (typeof startDuoGameMode === 'function') startDuoGameMode();
+        showDevToast('DUO LVL ' + prev);
+        return;
+      }
+      if (typeof cityPackActive !== 'undefined' && cityPackActive) {
+        const prev = Math.max((cityPackCityIdx||0) - 1, 0);
+        if (typeof startCityPackGame === 'function') startCityPackGame(prev);
+        showDevToast('CITY ' + (prev+1));
+        return;
+      }
+      if (typeof level !== 'undefined' && typeof LEVEL_THRESHOLDS !== 'undefined') {
+        const prevLv = Math.max(level - 1, 1);
+        const target = LEVEL_THRESHOLDS[prevLv - 1];
+        window.linesCleared = target;
+        window.level = prevLv;
+        if (typeof updateUI === 'function') updateUI();
+        if (typeof draw === 'function') draw();
+        showDevToast('SOLO LVL ' + prevLv);
+      }
+    } catch(e){ console.warn('devPrev failed', e); }
+  }
+
+  // "End level" — fires the natural completion path so banners / next-screen show
+  function devEndLevel() {
+    try {
+      if (typeof currentDuoGame !== 'undefined' && currentDuoGame) {
+        // Trigger a duo-side completion: jump to next then back, simpler — just call next
+        devNextLevel();
+        return;
+      }
+      if (typeof cityPackActive !== 'undefined' && cityPackActive) {
+        if (typeof showEventBanner === 'function') showEventBanner('✅ '+CITY_PACK_CITIES[cityPackCityIdx].name+' COMPLETE!');
+        setTimeout(devNextLevel, 600);
+        return;
+      }
+      // Solo — same as next
+      devNextLevel();
+    } catch(e){ console.warn('devEnd failed', e); }
+  }
+
+  // ── Keyboard shortcuts ──────────────────────────────────────
+  document.addEventListener('keydown', (e) => {
+    if (!isDev()) return;
+    if (e.target && /input|textarea/i.test(e.target.tagName)) return;
+    if (e.key === ']') { e.preventDefault(); devNextLevel(); }
+    else if (e.key === '[') { e.preventDefault(); devPrevLevel(); }
+    else if (e.key === '\\') { e.preventDefault(); devEndLevel(); }
+    else if (e.key === 'd' || e.key === 'D') {
+      e.preventDefault();
+      const s = document.getElementById('dev-strip');
+      if (s) s.style.display = (s.style.display === 'none' || !s.style.display) ? 'flex' : 'none';
+    }
+  });
+
+  // ── Long-press logo to enable / disable ─────────────────────
+  function bindLogoLongPress() {
+    // Try common selectors for the home logo / brand frog
+    const candidates = ['.title-frog', '#title-frog', '.home-frog', '.brand-frog-logo', '.title-art-strips'];
+    let target = null;
+    for (const sel of candidates) {
+      target = document.querySelector(sel);
+      if (target) break;
+    }
+    // Fallback: top-of-home title text
+    if (!target) target = document.querySelector('#screen-title h1, #screen-title .title-mark');
+    // Final fallback: the home screen itself, top region
+    if (!target) target = document.getElementById('screen-title');
+    if (!target) return;
+    let timer = null;
+    const start = (e) => { timer = setTimeout(() => setDev(!isDev()), 1200); };
+    const cancel = () => { if (timer) { clearTimeout(timer); timer = null; } };
+    target.addEventListener('pointerdown', start);
+    target.addEventListener('pointerup', cancel);
+    target.addEventListener('pointerleave', cancel);
+    target.addEventListener('pointercancel', cancel);
+  }
+
+  // ── URL flag ─────────────────────────────────────────────────
+  try {
+    const params = new URLSearchParams(location.search);
+    if (params.get('dev') === '1') setDev(true);
+  } catch(e){}
+
+  // ── Init on DOMContentLoaded so home elements exist ─────────
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', () => { updateDevChip(); bindLogoLongPress(); if (isDev()) setDev(true); });
+  } else {
+    updateDevChip(); bindLogoLongPress(); if (isDev()) setDev(true);
+  }
+
+  // Keep DEV strip in sync with screen changes
+  setInterval(syncDevStrip, 400);
+
+  // Expose a console helper for power users
+  window.devOn  = () => setDev(true);
+  window.devOff = () => setDev(false);
 })();
   </script>
 </body>
