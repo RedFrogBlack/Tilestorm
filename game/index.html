@@ -3739,6 +3739,31 @@
           <button class="home-tier-play-btn" aria-label="Play Golden Frog mode">PLAY</button>
         </div>
       </div>
+
+      <!-- City Pack -->
+      <div class="home-tier-card" data-tier="citypack" onclick="tierOwned('citypack') ? startCityPackGame(0) : openShop('tiers', true)" style="border-color:rgba(74,158,255,0.5);border-left-color:#4A9EFF;">
+        <div class="home-tier-emoji">🏙️</div>
+        <div class="home-tier-text">
+          <div class="home-tier-name">City Pack</div>
+          <div class="home-tier-sub">10 Cities · Skyline boards</div>
+        </div>
+        <div class="home-tier-right">
+          <span class="home-tier-price">£1.99</span>
+          <button class="home-tier-play-btn" aria-label="Play City Pack" style="background:#4A9EFF;">PLAY</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Duo banner -->
+    <div style="margin:12px 0 4px;padding:14px 16px;background:linear-gradient(135deg,rgba(123,63,190,0.18),rgba(90,30,160,0.12));border:1.5px solid rgba(123,63,190,0.45);border-radius:14px;display:flex;align-items:center;justify-content:space-between;gap:12px;cursor:pointer;" onclick="document.getElementById('btn-duo-mode').click()" aria-label="Open Duo multiplayer">
+      <div style="display:flex;align-items:center;gap:10px;">
+        <span style="font-size:22px;">🎮</span>
+        <div>
+          <div style="font-family:var(--font-display);font-size:var(--fs-ui);font-weight:700;letter-spacing:0.12em;color:#c084fc;">DUO MODE</div>
+          <div style="font-size:var(--fs-label);color:rgba(255,255,255,0.5);letter-spacing:0.06em;">Play with a friend · £5/mo</div>
+        </div>
+      </div>
+      <button style="background:#7B3FBE;border:none;border-radius:8px;color:#fff;font-family:var(--font-display);font-size:var(--fs-label);font-weight:700;letter-spacing:0.1em;padding:8px 14px;cursor:pointer;">PLAY</button>
     </div>
 
     <!-- Magic Powers strip -->
@@ -4918,7 +4943,7 @@ const TIERS = [
     price: 5.00,
     subscription: true,
     desc: 'Play with a friend anywhere. £5/month per player.',
-    perks: ['Race mode — first player to clear 10 lines wins','Tile Attack mode — clearing lines sends hazard tiles to your opponent','Survival Duel — co-op: survive together on one shared board','Connect instantly with a 4-letter room code','No server needed — plays directly phone to phone'],
+    perks: ['Pond Battle — head-to-head on the water, clear the most tiles across 10 aquatic levels','Shake the Frog — the board shakes harder each level, keep your cool','Frog Swap — every few seconds your piece tray swaps with your opponent\'s','Connect instantly with a 4-letter room code','No server needed — plays directly phone to phone'],
     gridTheme: { bg: '#0e0518', gridLine: 'rgba(192,132,252,0.06)', corner: 'rgba(192,132,252,0.4)' },
     tileStyle: 'classic', powerup: null, powerupCount: 0,
   },
@@ -7452,7 +7477,6 @@ const POWER_DEFS = [
   { id:'spark',  icon:'⚡',   name:'SPARK',  desc:'Clears your fullest row — 1 use per 30s',      price:0.99, annual:true, windowMax:1 },
   { id:'surge',  icon:'⚡⚡',  name:'SURGE',  desc:'Clears your 2 fullest rows — 2 uses per 30s',  price:1.49, annual:true, windowMax:2 },
   { id:'storm',  icon:'⚡⚡⚡', name:'STORM',  desc:'Clears your 3 fullest rows — 3 uses per 30s',  price:1.99, annual:true, windowMax:3 },
-  { id:'daily',  icon:'🎁',   name:'DAILY FREE', desc:'One free row clear — resets every day',       price:0,    annual:false, windowMax:1 },
 ];
 // Powers are year-long unlocks — not charge packs.
 // POWERS_OWNED_KEY: { powerId: expiryTimestamp (ms) } — 0 = daily token
@@ -9024,6 +9048,11 @@ function openDuoLobby() {
   document.getElementById('join-code-input').value = '';
   // Select first mode by default
   selectDuoMode('duel');
+  // Reset scroll to top so Pond Battle card is always first visible
+  var _lobby = document.getElementById('screen-duo-lobby');
+  if (_lobby) _lobby.scrollTop = 0;
+  var _lobbyInner = _lobby && _lobby.querySelector('.duo-lobby-inner');
+  if (_lobbyInner) _lobbyInner.scrollTop = 0;
   showScreen('screen-duo-lobby');
 }
 
@@ -11589,7 +11618,7 @@ function updateSettingsToggles() {
       { id: 'treefrog',   emoji: '🐸', name: 'TREE FROG',   subtitle: 'Frenzy mode',      color: '#F5A623' },
       { id: 'poisondart', emoji: '☠️', name: 'POISON DART', subtitle: 'Survival mode',    color: '#CC1212' },
       { id: 'goldenfrog', emoji: '✨', name: 'GOLDEN FROG', subtitle: 'Colour Run mode',  color: '#F5E000' },
-      { id: 'duopack',    emoji: '👫', name: 'DUO MODE',    subtitle: 'Race · Tile Attack · Survival Duel', color: '#4A90D9' },
+      { id: 'duopack',    emoji: '👫', name: 'DUO MODE',    subtitle: 'Pond Battle · Shake the Frog · Frog Swap', color: '#4A90D9' },
     ];
     tierList.innerHTML = tierDefs.map(t => {
       const owned = tierOwned(t.id) || (t.id === 'duopack' && isDuoSubscriber());
