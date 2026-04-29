@@ -6505,6 +6505,17 @@ function checkAccessBeforeStart() {
 
 // ── Player state ─────────────────────────────────────────────────
 let ownedTiers = loadOwnedTiers();
+// In-scope dev hook so dev mode can mutate the let-scoped ownedTiers
+window.__devUnlockAllTiers = function(){
+  try {
+    const ALL = ['tadpole','treefrog','poisondart','goldenfrog','citypack','duopack','spark','surge','storm'];
+    ownedTiers = Array.from(new Set([...(ownedTiers||[]), ...ALL]));
+    try { localStorage.setItem('ts_owned_tiers', JSON.stringify(ownedTiers)); } catch(_){}
+    if (typeof updateHomeSubtitles === 'function') updateHomeSubtitles();
+    if (typeof buildSoloSetupCards === 'function') buildSoloSetupCards();
+    return ownedTiers.slice();
+  } catch(e){ console.warn('__devUnlockAllTiers failed', e); return null; }
+};
 let equippedTierId = localStorage.getItem(EQUIPPED_KEY) || 'tadpole';
 let pendingPurchaseTierIdx = -1;
 let powerupsLeft = 0;
@@ -9798,6 +9809,14 @@ window.__devSoloSetLevel = function(targetLv){
     linesCleared = LEVEL_THRESHOLDS[lv - 1];
     level = lv;
     score = (score|0) + 100 * (lv - 1);
+    // Reset any in-flight challenge round so HUD/timer reflect the new level
+    try {
+      if (typeof cm_timer !== 'undefined' && cm_timer) { clearInterval(cm_timer); cm_timer = null; }
+      if (typeof cm_survivalTimer !== 'undefined' && cm_survivalTimer) { clearInterval(cm_survivalTimer); cm_survivalTimer = null; }
+      if (typeof cm_colourPenaltyTimer !== 'undefined' && cm_colourPenaltyTimer) { clearInterval(cm_colourPenaltyTimer); cm_colourPenaltyTimer = null; }
+      if (typeof cm_linesAtStart !== 'undefined') cm_linesAtStart = linesCleared;
+      if (typeof initChallengeMode === 'function') initChallengeMode();
+    } catch(_e){}
     if (typeof updateUI === 'function') updateUI();
     if (typeof draw === 'function') draw();
     return lv;
@@ -13712,16 +13731,11 @@ function updateHomeSubtitles() {
   function setDev(on) {
     try { localStorage.setItem(DEV_KEY, on ? '1' : '0'); } catch(e){}
     if (on) {
-      // Unlock everything
+      // Unlock everything via in-scope hook so the let-scoped ownedTiers actually mutates
       try {
-        const ALL = ['tadpole','treefrog','poisondart','goldenfrog','citypack','duopack','spark','surge','storm'];
-        if (typeof ownedTiers !== 'undefined') {
-          window.ownedTiers = Array.from(new Set([...(ownedTiers||[]), ...ALL]));
-          localStorage.setItem('ts_owned_tiers', JSON.stringify(window.ownedTiers));
+        if (typeof window.__devUnlockAllTiers === 'function') {
+          window.__devUnlockAllTiers();
         }
-        if (typeof saveOwned === 'function') saveOwned();
-        if (typeof updateHomeSubtitles === 'function') updateHomeSubtitles();
-        if (typeof buildSoloSetupCards === 'function') buildSoloSetupCards();
       } catch(e){ console.warn('dev unlock failed', e); }
     }
     showDevToast(on ? 'DEV MODE ON' : 'DEV MODE OFF');
