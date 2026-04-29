@@ -1146,7 +1146,7 @@
     /* Shop pack card — dark glass with ambient canvas */
     .shop-pack-card {
       position: relative; overflow: hidden;
-      background: rgba(255,255,255,0.04);
+      background: transparent;
       border: 1px solid rgba(255,255,255,0.08);
       border-radius: 16px;
       margin-bottom: 12px;
@@ -1159,11 +1159,19 @@
     .shop-card-canvas {
       position: absolute; inset: 0;
       width: 100%; height: 100%;
-      opacity: 0.55;
+      opacity: 1;
       pointer-events: none;
     }
+    /* Dark scrim so text stays legible over the ambient canvas */
+    .shop-card-scrim {
+      position: absolute; inset: 0;
+      background: rgba(0,0,0,0.52);
+      border-radius: 16px;
+      pointer-events: none;
+      z-index: 0;
+    }
     .shop-card-content {
-      position: relative; z-index: 1;
+      position: relative; z-index: 2;
       display: flex; align-items: flex-start; justify-content: space-between; gap: 12px;
       margin-bottom: 10px;
     }
@@ -1199,7 +1207,7 @@
     .shop-card-btn.city-play:hover { background: #67b3ff; }
     .shop-card-btn.bundle-btn { background: linear-gradient(135deg,#FFD700,#FF8C00); color: #000; font-weight: 700; }
     .shop-card-features {
-      position: relative; z-index: 1;
+      position: relative; z-index: 2;
       list-style: none; padding: 0; margin: 0 0 8px;
       display: flex; flex-wrap: wrap; gap: 4px;
     }
@@ -1212,7 +1220,7 @@
     }
     .shop-card-frog { flex-shrink: 0; width: 40px; height: 40px; }
     .shop-card-legal {
-      position: relative; z-index: 1;
+      position: relative; z-index: 2;
       font-size: 0.6rem; color: rgba(255,255,255,0.28); line-height: 1.5;
       margin: 4px 0 0;
     }
@@ -7433,6 +7441,7 @@ function buildShopUI(){
 
     card.innerHTML = `
       <canvas class="shop-card-canvas"></canvas>
+      <div class="shop-card-scrim"></div>
       <div class="shop-card-content">
         <div class="shop-card-left">
           <div class="shop-card-emoji">${meta.emoji || tier.emoji || ''}</div>
@@ -7484,7 +7493,8 @@ function buildShopUI(){
   bundleCard.style.borderLeft = '3px solid #FFD700';
   bundleCard.innerHTML = `
     <canvas class="shop-card-canvas"></canvas>
-    <div style="position:absolute;top:8px;right:8px;background:linear-gradient(135deg,#FFD700,#FF6600);color:#000;font-family:var(--font-display);font-size:0.55rem;font-weight:700;padding:3px 7px;border-radius:20px;letter-spacing:0.05em;z-index:2;">⭐ BEST VALUE</div>
+    <div class="shop-card-scrim"></div>
+    <div style="position:absolute;top:8px;right:8px;z-index:2;background:linear-gradient(135deg,#FFD700,#FF6600);color:#000;font-family:var(--font-display);font-size:0.55rem;font-weight:700;padding:3px 7px;border-radius:20px;letter-spacing:0.05em;z-index:2;">⭐ BEST VALUE</div>
     <div class="shop-card-content">
       <div class="shop-card-left">
         <div class="shop-card-emoji">🌟</div>
