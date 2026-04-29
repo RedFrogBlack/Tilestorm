@@ -4551,6 +4551,20 @@ let _skyMist = [];
 let _skyNeonFlickers = [];
 let _skyInitialized = false;
 
+// ── Ambient FX system (Tadpole / Frenzy / Golden Frog) ──────────
+let _ambientCanvas = null;
+let _ambientCtx = null;
+let _ambientInitialized = false;
+let _ambientT = 0;
+let _ambientLastTS = 0;
+// Tadpole pond state
+let _pondStars = [], _pondClouds = [], _pondLilyPads = [], _pondRipples = [], _pondDragonflies = [], _pondShimmerLines = [], _pondRainDrops = [], _pondSplashes = [];
+let _pondLastRipple = 0, _pondLastSplash = 0;
+// Frenzy weather state  
+let _frenzyRain = [], _frenzyWindStreaks = [], _frenzyDebris = [], _frenzyLightningTimer = 0, _frenzyLightning = null;
+// Golden ambient state
+let _goldenSandParticles = [], _goldenStars = [], _goldenShimmer = [];
+
 function _skyLerp(a,b,t){return a+(b-a)*t;}
 function _skyClamp(v,lo,hi){return Math.max(lo,Math.min(hi,v));}
 function _skyLerpC(c1,c2,t){return [Math.round(_skyLerp(c1[0],c2[0],t)),Math.round(_skyLerp(c1[1],c2[1],t)),Math.round(_skyLerp(c1[2],c2[2],t))];}
@@ -4980,6 +4994,462 @@ function _skyReset() {
 }
 // ── End Sky Animation Engine ───────────────────────────────────────────
 
+function _ambientInit(W, H) {
+  _ambientCanvas = document.createElement('canvas');
+  _ambientCanvas.width = W; _ambientCanvas.height = H;
+  _ambientCtx = _ambientCanvas.getContext('2d');
+  _ambientT = 0; _ambientLastTS = 0;
+
+  const rand = (a, b) => a + Math.random() * (b - a);
+
+  // Tadpole pond
+  _pondStars = Array.from({length:22}, () => ({ x:rand(0,W), y:rand(0,H*0.55), r:rand(0.5,1.4), phase:rand(0,Math.PI*2), speed:rand(0.015,0.032) }));
+  _pondClouds = Array.from({length:3}, () => ({ x:rand(0,W), y:rand(20,H*0.28), rx:rand(55,85), ry:rand(14,20), speed:rand(0.08,0.18), alpha:rand(0.09,0.16) }));
+  _pondLilyPads = [
+    { x:W*0.14, relY:0.73, w:50, h:15, phase:0,   flower:true,  fc:'#ff6eb0' },
+    { x:W*0.50, relY:0.83, w:58, h:17, phase:1.1,  flower:false },
+    { x:W*0.83, relY:0.76, w:44, h:13, phase:2.3,  flower:true,  fc:'#ffe066' },
+    { x:W*0.33, relY:0.91, w:36, h:10, phase:0.7,  flower:false },
+    { x:W*0.70, relY:0.94, w:40, h:11, phase:1.8,  flower:false },
+  ];
+  _pondRipples = []; _pondLastRipple = 0;
+  _pondDragonflies = Array.from({length:2}, () => ({ x:rand(0,W), baseY:rand(H*0.3,H*0.62), amp:rand(10,20), freq:rand(0.018,0.032), phase:rand(0,Math.PI*2), dir:Math.random()<0.5?1:-1, speed:rand(0.22,0.38), wingPhase:rand(0,Math.PI*2) }));
+  _pondShimmerLines = Array.from({length:7}, (_, i) => ({ y:H*0.66 + (H*0.34)*(i/7), phase:rand(0,Math.PI*2), speed:rand(0.008,0.02), alpha:rand(0.05,0.12) }));
+  _pondRainDrops = Array.from({length:65}, () => ({ x:rand(0,W), y:rand(0,H), len:rand(10,17), speed:rand(7,11), alpha:rand(0.2,0.5) }));
+  _pondSplashes = []; _pondLastSplash = 0;
+
+  // Frenzy weather
+  _frenzyRain = Array.from({length:90}, () => ({ x:rand(-20,W), y:rand(-H,H), len:rand(12,22), speed:rand(8,15), alpha:rand(0.3,0.7) }));
+  _frenzyWindStreaks = Array.from({length:15}, () => ({ x:rand(0,W), y:rand(0,H), speed:rand(4,9), len:rand(20,60), alpha:rand(0.1,0.3), life:0, maxLife:rand(20,50) }));
+  _frenzyDebris = Array.from({length:8}, () => ({ x:rand(0,W), y:rand(0,H*0.8), vx:rand(2,6), vy:rand(-1,1), rot:rand(0,Math.PI*2), rotSpeed:rand(0.05,0.15), w:rand(4,10), h:rand(2,5) }));
+  _frenzyLightningTimer = 0; _frenzyLightning = null;
+
+  // Golden / Dubai
+  _goldenSandParticles = Array.from({length:25}, () => ({ x:rand(0,W), y:rand(H*0.7,H), vx:rand(0.3,0.8), vy:rand(-0.1,0.1), alpha:rand(0.3,0.7), r:rand(0.5,1.5) }));
+  _goldenStars = Array.from({length:20}, () => ({ x:rand(0,W), y:rand(0,H*0.5), r:rand(0.4,1.2), phase:rand(0,Math.PI*2), speed:rand(0.01,0.025) }));
+  _goldenShimmer = Array.from({length:5}, (_, i) => ({ y:H*0.62 + i*8, phase:rand(0,Math.PI*2), speed:rand(0.006,0.015), alpha:rand(0.06,0.14) }));
+
+  _ambientInitialized = true;
+}
+
+function _ambientReset() {
+  _ambientInitialized = false;
+  _ambientCanvas = null; _ambientCtx = null;
+}
+
+function _ambientDraw(timestamp) {
+  if (!_ambientInitialized || !_ambientCtx) return;
+  const dt = Math.min((timestamp - _ambientLastTS) / 1000, 0.05);
+  _ambientLastTS = timestamp;
+  _ambientT++;
+
+  const ctx = _ambientCtx;
+  const W = _ambientCanvas.width, H = _ambientCanvas.height;
+  const rand = (a, b) => a + Math.random() * (b - a);
+  const lerp = (a, b, t) => a + (b - a) * Math.max(0, Math.min(1, t));
+
+  ctx.clearRect(0, 0, W, H);
+
+  if (activeChallengeMode === 'standard') {
+    _drawPondAmbient(ctx, W, H, rand, lerp);
+  } else if (activeChallengeMode === 'frenzy') {
+    _drawFrenzyAmbient(ctx, W, H, rand, lerp);
+  } else if (activeChallengeMode === 'colourrun') {
+    _drawGoldenAmbient(ctx, W, H, rand, lerp);
+  }
+}
+
+function _drawPondAmbient(ctx, W, H, rand, lerp) {
+  const CYCLE = 1800; // frames for full day cycle
+  const POND_TOP = H * 0.65;
+  const t = _ambientT;
+  const phase = t % CYCLE;
+
+  // Determine sky phase: 0=dawn(0-300) 1=day(300-900) 2=dusk(900-1200) 3=night(1200-1500) 4=rain(1500-1800)
+  let phaseIdx = phase < 300 ? 0 : phase < 900 ? 1 : phase < 1200 ? 2 : phase < 1500 ? 3 : 4;
+  let phaseT = phaseIdx===0 ? phase/300 : phaseIdx===1 ? (phase-300)/600 : phaseIdx===2 ? (phase-900)/300 : phaseIdx===3 ? (phase-1200)/300 : (phase-1500)/300;
+  const isRain = phaseIdx === 4;
+
+  // Sky colours per phase
+  const skyPalettes = [
+    { top:'#1a0a2e', mid:'#e05a1a', wTop:'#7a3a1a', wBot:'#3a1a0a', stars:0.3, moon:0 }, // dawn
+    { top:'#4a90d9', mid:'#7bc8f0', wTop:'#1a6090', wBot:'#0a3a5a', stars:0, moon:0 },    // day
+    { top:'#1a0a2e', mid:'#cc4a10', wTop:'#8a3020', wBot:'#3a1008', stars:0.2, moon:0 },  // dusk
+    { top:'#020818', mid:'#061228', wTop:'#041020', wBot:'#020810', stars:1, moon:1 },     // night
+    { top:'#061018', mid:'#0a1820', wTop:'#061418', wBot:'#030c10', stars:0, moon:0 },    // rain
+  ];
+  const blend = phaseT > 0.8 ? (phaseT - 0.8) / 0.2 : 0;
+  const cur = skyPalettes[phaseIdx], nxt = skyPalettes[(phaseIdx+1)%5];
+  const lerpHex = (c1, c2, t) => {
+    const r1=parseInt(c1.slice(1,3),16),g1=parseInt(c1.slice(3,5),16),b1=parseInt(c1.slice(5,7),16);
+    const r2=parseInt(c2.slice(1,3),16),g2=parseInt(c2.slice(3,5),16),b2=parseInt(c2.slice(5,7),16);
+    return `rgb(${Math.round(lerp(r1,r2,t))},${Math.round(lerp(g1,g2,t))},${Math.round(lerp(b1,b2,t))})`;
+  };
+  const skyTop = blend>0 ? lerpHex(cur.top, nxt.top, blend) : cur.top;
+  const skyMid = blend>0 ? lerpHex(cur.mid, nxt.mid, blend) : cur.mid;
+  const starAlpha = lerp(cur.stars, nxt.stars, blend);
+  const moonAlpha = lerp(cur.moon||0, nxt.moon||0, blend);
+
+  // Draw sky
+  const grad = ctx.createLinearGradient(0,0,0,POND_TOP);
+  grad.addColorStop(0, skyTop); grad.addColorStop(1, skyMid);
+  ctx.fillStyle = grad; ctx.fillRect(0,0,W,POND_TOP);
+
+  // Stars
+  if (starAlpha > 0) {
+    for (const s of _pondStars) {
+      const a = starAlpha * (0.3 + (Math.sin(s.phase + t*s.speed)*0.5+0.5)*0.6);
+      ctx.beginPath(); ctx.arc(s.x, s.y, s.r, 0, Math.PI*2);
+      ctx.fillStyle=`rgba(255,255,255,${a.toFixed(3)})`; ctx.fill();
+    }
+  }
+
+  // Moon
+  if (moonAlpha > 0) {
+    ctx.save(); ctx.globalAlpha = moonAlpha;
+    const mg = ctx.createRadialGradient(W*0.78,H*0.14,8,W*0.78,H*0.14,60);
+    mg.addColorStop(0,'rgba(255,253,220,0.25)'); mg.addColorStop(1,'rgba(255,253,220,0)');
+    ctx.fillStyle=mg; ctx.fillRect(0,0,W,H);
+    ctx.beginPath(); ctx.arc(W*0.78,H*0.14,13,0,Math.PI*2);
+    ctx.fillStyle='rgba(255,252,220,0.88)'; ctx.fill(); ctx.restore();
+  }
+
+  // Sun (day only)
+  if (phaseIdx===1) {
+    ctx.save(); ctx.globalAlpha = 0.85;
+    const sg = ctx.createRadialGradient(W*0.22,H*0.12,6,W*0.22,H*0.12,52);
+    sg.addColorStop(0,'rgba(255,230,120,0.5)'); sg.addColorStop(1,'rgba(255,200,60,0)');
+    ctx.fillStyle=sg; ctx.fillRect(0,0,W,H);
+    ctx.beginPath(); ctx.arc(W*0.22,H*0.12,13,0,Math.PI*2);
+    ctx.fillStyle='rgba(255,230,80,0.95)'; ctx.fill(); ctx.restore();
+  }
+
+  // Clouds
+  const cloudAlpha = phaseIdx===3 ? 0.05 : isRain ? 0.4 : 0.18;
+  for (const cl of _pondClouds) {
+    cl.x += cl.speed; if(cl.x > W+cl.rx) cl.x = -cl.rx;
+    ctx.save(); ctx.globalAlpha = cloudAlpha;
+    ctx.fillStyle = isRain ? 'rgba(50,70,80,0.8)' : 'rgba(200,220,255,0.6)';
+    ctx.beginPath(); ctx.ellipse(cl.x, cl.y, cl.rx, cl.ry, 0,0,Math.PI*2); ctx.fill();
+    ctx.restore();
+  }
+
+  // Water
+  const wTop = blend>0 ? lerpHex(cur.wTop, nxt.wTop, blend) : cur.wTop;
+  const wBot = blend>0 ? lerpHex(cur.wBot, nxt.wBot, blend) : cur.wBot;
+  const wg = ctx.createLinearGradient(0, POND_TOP, 0, H);
+  wg.addColorStop(0, wTop); wg.addColorStop(1, wBot);
+  ctx.fillStyle = wg; ctx.fillRect(0, POND_TOP, W, H-POND_TOP);
+  // Water surface glimmer
+  const rg = ctx.createLinearGradient(0, POND_TOP, 0, POND_TOP+28);
+  rg.addColorStop(0,'rgba(255,255,255,0.3)'); rg.addColorStop(1,'rgba(255,255,255,0)');
+  ctx.save(); ctx.globalAlpha=0.12; ctx.fillStyle=rg; ctx.fillRect(0,POND_TOP,W,28); ctx.restore();
+  // Shimmer
+  for (const sl of _pondShimmerLines) {
+    sl.phase += sl.speed;
+    const a = sl.alpha*(0.5+0.5*Math.sin(sl.phase));
+    const xo = Math.sin(sl.phase*0.7)*14;
+    ctx.save(); ctx.globalAlpha=a; ctx.strokeStyle='rgba(180,230,220,1)'; ctx.lineWidth=1;
+    ctx.beginPath(); ctx.moveTo(xo+10,sl.y); ctx.lineTo(xo+rand(28,55),sl.y); ctx.stroke(); ctx.restore();
+  }
+
+  // Rain
+  if (isRain) {
+    const rainProgress = Math.min(1, phaseT*3);
+    const ANGLE=0.12;
+    ctx.save(); ctx.strokeStyle='rgba(160,210,240,0.6)'; ctx.lineWidth=0.8;
+    for (const d of _pondRainDrops) {
+      d.y+=d.speed; d.x+=d.speed*ANGLE;
+      if(d.y>H){d.y=rand(-30,0);d.x=rand(0,W);}
+      ctx.globalAlpha=rainProgress*d.alpha;
+      ctx.beginPath(); ctx.moveTo(d.x,d.y); ctx.lineTo(d.x-d.len*ANGLE,d.y-d.len); ctx.stroke();
+    }
+    ctx.restore();
+    // Splashes
+    if(t-_pondLastSplash>8 && _pondSplashes.length<12){
+      _pondSplashes.push({x:rand(10,W-10),y:rand(POND_TOP+5,H-5),r:0.5,life:0});
+      _pondLastSplash=t;
+    }
+    for(let i=_pondSplashes.length-1;i>=0;i--){
+      const sp=_pondSplashes[i]; sp.r+=0.9; sp.life++;
+      const a=Math.max(0,0.5*(1-sp.life/20));
+      ctx.save(); ctx.globalAlpha=a*rainProgress; ctx.strokeStyle='rgba(200,230,240,0.8)'; ctx.lineWidth=0.7;
+      ctx.beginPath(); ctx.ellipse(sp.x,sp.y,sp.r,sp.r*0.3,0,0,Math.PI*2); ctx.stroke(); ctx.restore();
+      if(sp.life>20) _pondSplashes.splice(i,1);
+    }
+  }
+
+  // Ripples
+  const rippleInterval = isRain ? 14 : rand(140,250);
+  if(t-_pondLastRipple > rippleInterval && _pondRipples.length < (isRain?10:3)){
+    _pondRipples.push({x:rand(20,W-20),y:rand(POND_TOP+10,H-10),r:1.5,life:0,maxLife:isRain?60:100});
+    _pondLastRipple=t;
+  }
+  for(let i=_pondRipples.length-1;i>=0;i--){
+    const rp=_pondRipples[i]; rp.r+=isRain?0.8:0.55; rp.life++;
+    const a=Math.max(0,0.6*(1-rp.life/rp.maxLife));
+    ctx.beginPath(); ctx.ellipse(rp.x,rp.y,rp.r,rp.r*0.38,0,0,Math.PI*2);
+    ctx.strokeStyle=`rgba(180,220,210,${a.toFixed(3)})`; ctx.lineWidth=isRain?0.8:1; ctx.stroke();
+    if(rp.life>rp.maxLife) _pondRipples.splice(i,1);
+  }
+
+  // Lily pads
+  const lilyColor = phaseIdx===3 ? 'rgba(15,55,28,0.9)' : isRain ? 'rgba(12,48,22,0.85)' : 'rgba(22,80,38,0.92)';
+  for (const lp of _pondLilyPads) {
+    const bob = Math.sin(t*0.018+lp.phase)*2.5;
+    const ly = H*lp.relY + bob;
+    // Shadow
+    ctx.save(); ctx.globalAlpha=0.2; ctx.fillStyle='rgba(0,0,0,0.5)';
+    ctx.beginPath(); ctx.ellipse(lp.x+3,ly+4,lp.w*0.5,lp.h*0.35,0,0,Math.PI*2); ctx.fill(); ctx.restore();
+    // Pad
+    ctx.fillStyle=lilyColor; ctx.strokeStyle='rgba(60,130,70,0.5)'; ctx.lineWidth=1.2;
+    ctx.beginPath(); ctx.moveTo(lp.x,ly);
+    ctx.arc(lp.x,ly,lp.w*0.5,-Math.PI/2+0.38,-Math.PI/2-0.38+Math.PI*2); ctx.closePath();
+    ctx.fill(); ctx.stroke();
+    // Veins
+    ctx.save(); ctx.globalAlpha=0.2; ctx.strokeStyle='rgba(100,180,100,0.6)'; ctx.lineWidth=0.7;
+    for(let v=0;v<5;v++){const ang=-Math.PI/2+(v-2)*0.35; ctx.beginPath(); ctx.moveTo(lp.x,ly); ctx.lineTo(lp.x+Math.cos(ang)*lp.w*0.48,ly+Math.sin(ang)*lp.h*0.48); ctx.stroke();}
+    ctx.restore();
+    // Flower
+    if(lp.flower && phaseIdx!==3 && !isRain){
+      const fp=0.85+0.15*Math.sin(t*0.04+lp.phase);
+      ctx.save(); ctx.globalAlpha=fp*0.9;
+      for(let p=0;p<5;p++){const ang=(p/5)*Math.PI*2; ctx.fillStyle=lp.fc; ctx.beginPath(); ctx.ellipse(lp.x+Math.cos(ang)*5,ly-8+Math.sin(ang)*3,3.5,2.5,ang,0,Math.PI*2); ctx.fill();}
+      ctx.beginPath(); ctx.arc(lp.x,ly-8,2.5,0,Math.PI*2); ctx.fillStyle='#ffe066'; ctx.fill();
+      ctx.restore();
+    }
+  }
+
+  // Dragonflies (day only)
+  if(phaseIdx===1) {
+    for(const d of _pondDragonflies){
+      d.x+=d.speed*d.dir; if(d.x<-20)d.x=W+20; if(d.x>W+20)d.x=-20;
+      const y=d.baseY+Math.sin(t*d.freq+d.phase)*d.amp;
+      const wf=Math.sin(t*0.7+d.wingPhase)*1.5+4.5;
+      ctx.save(); ctx.translate(d.x,y); ctx.scale(d.dir,1); ctx.globalAlpha=0.75;
+      ctx.fillStyle='rgba(120,230,200,0.8)'; ctx.beginPath(); ctx.ellipse(0,0,3.5,1,0,0,Math.PI*2); ctx.fill();
+      ctx.fillStyle='rgba(190,245,255,0.3)';
+      ctx.beginPath(); ctx.ellipse(-1,-2,wf,1.6,-0.35,0,Math.PI*2); ctx.fill();
+      ctx.beginPath(); ctx.ellipse(-1,2,wf,1.6,0.35,0,Math.PI*2); ctx.fill();
+      ctx.restore();
+    }
+  }
+}
+
+function _drawFrenzyAmbient(ctx, W, H, rand, lerp) {
+  // progress: 0=calm(full timer), 1=chaos(0 seconds)
+  // cm_secsLeft is available globally; we need to know the starting seconds too
+  const totalSecs = 35; // approximate max frenzy seconds
+  const progress = Math.max(0, Math.min(1, 1 - (cm_secsLeft / totalSecs)));
+  const t = _ambientT;
+
+  // Sky colour lerp: calm blue → stormy dark
+  const skyTopCalm = [74, 144, 217], skyTopStorm = [13, 21, 32];
+  const skyBotCalm = [123, 200, 240], skyBotStorm = [26, 42, 58];
+  const lerpRGB = (c, s, p) => `rgb(${Math.round(lerp(c[0],s[0],p))},${Math.round(lerp(c[1],s[1],p))},${Math.round(lerp(c[2],s[2],p))})`;
+
+  const grad = ctx.createLinearGradient(0,0,0,H);
+  grad.addColorStop(0, lerpRGB(skyTopCalm, skyTopStorm, progress));
+  grad.addColorStop(1, lerpRGB(skyBotCalm, skyBotStorm, progress));
+  ctx.fillStyle = grad; ctx.fillRect(0,0,W,H);
+
+  // Sickly green horizon tint at high progress
+  if(progress > 0.5){
+    const gp = (progress-0.5)/0.5;
+    ctx.save(); ctx.globalAlpha = gp*0.18;
+    const hg = ctx.createLinearGradient(0,H*0.6,0,H);
+    hg.addColorStop(0,'rgba(50,120,30,0)'); hg.addColorStop(1,'rgba(20,80,10,0.6)');
+    ctx.fillStyle=hg; ctx.fillRect(0,H*0.6,W,H*0.4); ctx.restore();
+  }
+
+  // Sun (calm only)
+  if(progress < 0.4){
+    const sa = (1-progress/0.4)*0.85;
+    ctx.save(); ctx.globalAlpha=sa;
+    const sg = ctx.createRadialGradient(W*0.75,H*0.12,5,W*0.75,H*0.12,50);
+    sg.addColorStop(0,'rgba(255,230,100,0.6)'); sg.addColorStop(1,'rgba(255,200,50,0)');
+    ctx.fillStyle=sg; ctx.fillRect(0,0,W,H);
+    ctx.beginPath(); ctx.arc(W*0.75,H*0.12,12,0,Math.PI*2); ctx.fillStyle='rgba(255,230,70,0.9)'; ctx.fill();
+    ctx.restore();
+  }
+
+  // Clouds — get darker and faster
+  const cloudCount = Math.floor(lerp(2, 5, progress));
+  ctx.save();
+  ctx.fillStyle = `rgba(${Math.round(lerp(200,30,progress))},${Math.round(lerp(210,25,progress))},${Math.round(lerp(240,50,progress))},${lerp(0.25,0.8,progress)})`;
+  for(let i=0;i<cloudCount;i++){
+    const cx = ((t*lerp(0.1,0.5,progress)*((i%2===0)?1:-1) + W*(i/cloudCount)*1.4)) % (W*1.4) - W*0.2;
+    const cy = H*(0.08 + (i/cloudCount)*0.25);
+    ctx.beginPath(); ctx.ellipse(cx, cy, lerp(60,100,progress), lerp(15,28,progress), 0,0,Math.PI*2); ctx.fill();
+  }
+  ctx.restore();
+
+  // Rain — scales with progress
+  if(progress > 0.3){
+    const rainAlpha = (progress-0.3)/0.7;
+    const rainCount = Math.floor(lerp(0, 90, (progress-0.3)/0.7));
+    const angle = lerp(0.05, 0.28, progress);
+    ctx.save(); ctx.strokeStyle='rgba(160,210,240,0.65)'; ctx.lineWidth=0.9;
+    for(let i=0;i<rainCount;i++){
+      const d = _frenzyRain[i];
+      d.y += d.speed * lerp(0.5, 1.5, progress);
+      d.x += d.speed * angle * lerp(0.5, 1.5, progress);
+      if(d.y>H){d.y=rand(-30,0); d.x=rand(0,W);}
+      ctx.globalAlpha=rainAlpha*d.alpha;
+      ctx.beginPath(); ctx.moveTo(d.x,d.y); ctx.lineTo(d.x-d.len*angle,d.y-d.len); ctx.stroke();
+    }
+    ctx.restore();
+  }
+
+  // Wind streaks
+  if(progress > 0.2){
+    const wa = (progress-0.2)/0.8;
+    ctx.save(); ctx.strokeStyle=`rgba(255,255,255,${wa*0.25})`; ctx.lineWidth=1;
+    for(const w of _frenzyWindStreaks){
+      w.life++;
+      if(w.life>w.maxLife){w.x=0;w.y=rand(0,H);w.len=rand(20,70);w.life=0;w.maxLife=rand(15,45);w.speed=rand(5,12)*lerp(0.5,2,progress);}
+      w.x+=w.speed;
+      ctx.globalAlpha=wa*w.alpha*(1-w.life/w.maxLife);
+      ctx.beginPath(); ctx.moveTo(w.x,w.y); ctx.lineTo(w.x+w.len,w.y); ctx.stroke();
+    }
+    ctx.restore();
+  }
+
+  // Lightning — only at high progress
+  if(progress > 0.55){
+    _frenzyLightningTimer--;
+    const freq = Math.floor(lerp(200, 60, (progress-0.55)/0.45));
+    if(_frenzyLightningTimer <= 0){
+      _frenzyLightningTimer = freq + Math.floor(rand(0,freq));
+      // Flash
+      _frenzyLightning = { life: 8 };
+    }
+    if(_frenzyLightning && _frenzyLightning.life > 0){
+      ctx.save(); ctx.globalAlpha = (_frenzyLightning.life/8)*0.18;
+      ctx.fillStyle='rgba(255,255,255,1)'; ctx.fillRect(0,0,W,H); ctx.restore();
+      _frenzyLightning.life--;
+    }
+  }
+
+  // Tornado (progress > 0.8)
+  if(progress > 0.8){
+    const tp = (progress-0.8)/0.2;
+    const tx=W*0.6, ty=0, bw=W*0.18*tp, bh=H*0.5*tp;
+    ctx.save(); ctx.globalAlpha=tp*0.7;
+    const tg = ctx.createLinearGradient(tx,ty,tx,ty+bh);
+    tg.addColorStop(0,'rgba(30,25,40,0.9)'); tg.addColorStop(1,'rgba(20,15,30,0.1)');
+    ctx.fillStyle=tg;
+    ctx.beginPath(); ctx.moveTo(tx-bw,ty); ctx.lineTo(tx+bw,ty); ctx.lineTo(tx+bw*0.15,ty+bh); ctx.lineTo(tx-bw*0.15,ty+bh); ctx.closePath(); ctx.fill();
+    // Swirl rings
+    for(let i=0;i<5;i++){
+      const ry = ty + (i+1)*(bh/6);
+      const rw = lerp(bw, bw*0.1, i/5);
+      const rot = t*0.05 + i*0.8;
+      ctx.save(); ctx.globalAlpha=tp*0.4;
+      ctx.strokeStyle='rgba(80,60,100,0.8)'; ctx.lineWidth=1.5;
+      ctx.beginPath(); ctx.ellipse(tx+Math.cos(rot)*rw*0.3, ry, rw, rw*0.18, rot, 0, Math.PI*2); ctx.stroke();
+      ctx.restore();
+    }
+    ctx.restore();
+  }
+
+  // Ground silhouette — dark hills at bottom
+  ctx.save();
+  ctx.fillStyle = `rgba(${Math.round(lerp(20,8,progress))},${Math.round(lerp(35,12,progress))},${Math.round(lerp(15,8,progress))},1)`;
+  ctx.beginPath(); ctx.moveTo(0,H);
+  ctx.quadraticCurveTo(W*0.2,H*0.88,W*0.35,H*0.9);
+  ctx.quadraticCurveTo(W*0.5,H*0.86,W*0.65,H*0.9);
+  ctx.quadraticCurveTo(W*0.8,H*0.88,W,H*0.9);
+  ctx.lineTo(W,H); ctx.closePath(); ctx.fill(); ctx.restore();
+}
+
+function _drawGoldenAmbient(ctx, W, H, rand, lerp) {
+  const t = _ambientT;
+
+  // Dubai sunset sky
+  const grad = ctx.createLinearGradient(0,0,0,H);
+  grad.addColorStop(0, '#05020a');
+  grad.addColorStop(0.3, '#1a0a00');
+  grad.addColorStop(0.6, '#8b3a00');
+  const sunsetPulse = 0.9 + 0.1*Math.sin(t*0.005);
+  grad.addColorStop(0.85, `rgba(${Math.round(200*sunsetPulse)},${Math.round(80*sunsetPulse)},0,1)`);
+  grad.addColorStop(1, '#f5a623');
+  ctx.fillStyle=grad; ctx.fillRect(0,0,W,H);
+
+  // Sun low on horizon
+  const sunX=W*0.72, sunY=H*0.68;
+  const sg = ctx.createRadialGradient(sunX,sunY,5,sunX,sunY,80);
+  sg.addColorStop(0,'rgba(255,200,60,0.5)'); sg.addColorStop(0.4,'rgba(255,140,20,0.2)'); sg.addColorStop(1,'rgba(255,100,0,0)');
+  ctx.fillStyle=sg; ctx.fillRect(0,0,W,H);
+  ctx.beginPath(); ctx.arc(sunX,sunY,18,0,Math.PI*2);
+  ctx.fillStyle='rgba(255,210,80,0.95)'; ctx.fill();
+
+  // Heat shimmer on horizon
+  for(let i=0;i<6;i++){
+    const hy = H*0.6 + i*4;
+    const shimX = Math.sin(t*0.02+i*1.3)*12;
+    ctx.save(); ctx.globalAlpha=0.06+0.03*Math.sin(t*0.015+i);
+    ctx.strokeStyle='rgba(255,180,50,0.8)'; ctx.lineWidth=1.5;
+    ctx.beginPath(); ctx.moveTo(shimX,hy); ctx.lineTo(W+shimX,hy); ctx.stroke(); ctx.restore();
+  }
+
+  // Stars (top portion, visible in dark sky)
+  for(const s of _goldenStars){
+    const a = (0.3+(Math.sin(s.phase+t*s.speed)*0.5+0.5)*0.55)*Math.min(1,(s.y/(H*0.35)));
+    ctx.beginPath(); ctx.arc(s.x,s.y,s.r,0,Math.PI*2);
+    ctx.fillStyle=`rgba(255,240,200,${a.toFixed(3)})`; ctx.fill();
+  }
+
+  // Burj Khalifa silhouette — centre-right, tall and thin
+  const bx = W*0.65, bBase = H*0.9;
+  ctx.save(); ctx.fillStyle='rgba(8,4,2,0.95)';
+  // Main spire
+  ctx.beginPath(); ctx.moveTo(bx-2,bBase); ctx.lineTo(bx+2,bBase); ctx.lineTo(bx+1,bBase-H*0.62); ctx.lineTo(bx,bBase-H*0.67); ctx.lineTo(bx-1,bBase-H*0.62); ctx.closePath(); ctx.fill();
+  // Setbacks
+  for(let i=0;i<4;i++){
+    const sw=6+i*5, sh=H*(0.12-i*0.015);
+    ctx.beginPath(); ctx.rect(bx-sw, bBase-sh*(i+1)*0.7, sw*2, sh*0.3); ctx.fill();
+  }
+  // Lit windows on tower
+  ctx.fillStyle='rgba(255,200,80,0.6)';
+  for(let i=0;i<12;i++){
+    if(Math.sin(i*7.3+t*0.008)>0.3){
+      const wy=bBase-H*(0.08+i*0.04);
+      ctx.beginPath(); ctx.rect(bx-1.5,wy,3,1.5); ctx.fill();
+    }
+  }
+  ctx.restore();
+
+  // Dune silhouettes at bottom
+  ctx.save(); ctx.fillStyle='rgba(12,6,0,1)';
+  ctx.beginPath(); ctx.moveTo(0,H);
+  ctx.quadraticCurveTo(W*0.15,H*0.85,W*0.3,H*0.88);
+  ctx.quadraticCurveTo(W*0.45,H*0.82,W*0.55,H*0.87);
+  ctx.quadraticCurveTo(W*0.7,H*0.84,W*0.85,H*0.87);
+  ctx.quadraticCurveTo(W*0.92,H*0.86,W,H*0.88);
+  ctx.lineTo(W,H); ctx.closePath(); ctx.fill(); ctx.restore();
+
+  // Sand particles drifting
+  ctx.save();
+  for(const p of _goldenSandParticles){
+    p.x+=p.vx; p.y+=p.vy*0.3+Math.sin(t*0.02+p.x)*0.1;
+    if(p.x>W){p.x=0;p.y=rand(H*0.7,H);}
+    ctx.globalAlpha=p.alpha*0.5;
+    ctx.fillStyle='rgba(210,150,50,1)';
+    ctx.beginPath(); ctx.arc(p.x,p.y,p.r,0,Math.PI*2); ctx.fill();
+  }
+  ctx.restore();
+
+  // Golden shimmer lines on ground
+  for(const sl of _goldenShimmer){
+    sl.phase+=sl.speed;
+    const a=sl.alpha*(0.5+0.5*Math.sin(sl.phase));
+    const xo=Math.sin(sl.phase*0.6)*18;
+    ctx.save(); ctx.globalAlpha=a; ctx.strokeStyle='rgba(255,180,50,1)'; ctx.lineWidth=1;
+    ctx.beginPath(); ctx.moveTo(xo+5,sl.y); ctx.lineTo(xo+rand(25,55),sl.y); ctx.stroke(); ctx.restore();
+  }
+}
+
 function buildCityMask(colHeights) {
   const mask = Array.from({length:ROWS}, () => new Array(COLS).fill(false));
   for (let c = 0; c < COLS; c++) {
@@ -5273,6 +5743,12 @@ function drawGrid(){
   ctx.beginPath();ctx.moveTo(W-bLen,bW/2);ctx.lineTo(W-bW/2,bW/2);ctx.lineTo(W-bW/2,bLen);ctx.stroke();
   ctx.beginPath();ctx.moveTo(bW/2,H-bLen);ctx.lineTo(bW/2,H-bW/2);ctx.lineTo(bLen,H-bW/2);ctx.stroke();
   ctx.beginPath();ctx.moveTo(W-bLen,H-bW/2);ctx.lineTo(W-bW/2,H-bW/2);ctx.lineTo(W-bW/2,H-bLen);ctx.stroke();
+
+  // Ambient FX: composite behind grid for standard/frenzy/colourrun
+  if (!cityPackActive && _ambientInitialized && _ambientCanvas &&
+      (activeChallengeMode === 'standard' || activeChallengeMode === 'frenzy' || activeChallengeMode === 'colourrun')) {
+    ctx.drawImage(_ambientCanvas, 0, 0);
+  }
 
   if(gridMask){
     // City Pack: composite animated sky layer
@@ -5616,6 +6092,11 @@ function animateParticles(ts){
     _skyDraw(ts);
     drawGrid();
   }
+  // Ambient FX: Tadpole pond, Frenzy weather, Golden Frog location
+  if (!cityPackActive && _ambientInitialized && (activeChallengeMode === 'standard' || activeChallengeMode === 'frenzy' || activeChallengeMode === 'colourrun')) {
+    _ambientDraw(ts);
+    drawGrid();
+  }
   requestAnimationFrame(animateParticles);
 }
 
@@ -5657,7 +6138,7 @@ function showScreen(id){
 
 function startGame(){
   // Reset city pack mask for normal (non-city-pack) games
-  if (!cityPackActive) { gridMask = null; _skyReset(); }
+  if (!cityPackActive) { gridMask = null; _skyReset(); _ambientReset(); }
   const _cpHud = document.getElementById('city-pack-hud');
   if (_cpHud && !cityPackActive) _cpHud.style.display = 'none';
   ensureAudio(); // guarantee audio context is running before any game sounds fire
@@ -5676,7 +6157,13 @@ function startGame(){
   document.getElementById('bonus-popup').classList.remove('show');
   showScreen('screen-game');
   // Recalc AFTER screen is visible so tray-section has real offsetHeight + TRAY_CELL is correct
-  requestAnimationFrame(() => { calcLayout(); renderTray(); drawGrid(); });
+  requestAnimationFrame(() => {
+    calcLayout(); renderTray(); drawGrid();
+    // Init ambient after canvas is sized
+    if (!cityPackActive && (activeChallengeMode === 'standard' || activeChallengeMode === 'frenzy' || activeChallengeMode === 'colourrun')) {
+      _ambientInit(gridCanvas.width, gridCanvas.height);
+    }
+  });
   // Welcome banner based on tier challenge
   const msgs = {
     standard: '🥚 TADPOLE · EASY — CLEAR ROWS!',
@@ -8205,6 +8692,7 @@ function checkColourRunRow(rowIdx) {
 }
 
 function stopChallengeMode() {
+  _ambientReset();
   if (cm_timer) { clearInterval(cm_timer); cm_timer = null; }
   if (cm_survivalTimer) { clearInterval(cm_survivalTimer); cm_survivalTimer = null; }
   if (cm_colourPenaltyTimer) { clearInterval(cm_colourPenaltyTimer); cm_colourPenaltyTimer = null; }
