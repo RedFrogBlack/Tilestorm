@@ -7822,6 +7822,27 @@ function checkGameOver(){
 // ── Tray ──────────────────────────────────────────────────────────
 function randomPiece(){return PIECES[Math.floor(Math.random()*PIECES.length)];}
 function randomColor(){return Math.floor(Math.random()*7)+1;}
+// Split-aware colour picker for hazard / penalty / adder grid-writes.
+// During Dubai (split) and Amalfi (gauntlet) GF levels, any tile that lands
+// on the grid must use the active split colours — and must respect the
+// half it lands on (col<5 = LEFT colour, col>=5 = RIGHT colour). Otherwise
+// fall back to randomColor() so other modes/games are untouched.
+function _pickAddTileColor(c){
+  try {
+    if (typeof activeChallengeMode !== 'undefined' && activeChallengeMode === 'goldenfrog'
+        && typeof cm_gfSplitLeftColor !== 'undefined' && typeof cm_gfSplitRightColor !== 'undefined'
+        && cm_gfSplitLeftColor && cm_gfSplitRightColor) {
+      const _cfg = (typeof GF_LOCATIONS_CFG !== 'undefined' && typeof cm_gfLevel !== 'undefined')
+        ? GF_LOCATIONS_CFG[Math.min((cm_gfLevel|0)-1, 9)] : null;
+      if (_cfg && (_cfg.mechanic === 'split' || _cfg.mechanic === 'gauntlet')) {
+        if (typeof c === 'number') return (c < 5) ? cm_gfSplitLeftColor : cm_gfSplitRightColor;
+        // No column known — pick one of the two split colours at random
+        return (Math.random() < 0.5) ? cm_gfSplitLeftColor : cm_gfSplitRightColor;
+      }
+    }
+  } catch(_e) {}
+  return randomColor();
+}
 function generateTray(){
   // Golden Frog Dubai (split): constrain tray to ONLY the two split colours so
   // every piece in the tray is placeable on at least one half. Without this,
@@ -10335,7 +10356,7 @@ function maybeHazard(){
   const empty = [];
   for(let r=0;r<ROWS;r++) for(let c=0;c<COLS;c++) if(grid[r][c]===0) empty.push([r,c]);
   shuffle(empty);
-  empty.slice(0, numAdd).forEach(([r,c]) => grid[r][c] = Math.floor(Math.random()*6)+1);
+  empty.slice(0, numAdd).forEach(([r,c]) => grid[r][c] = _pickAddTileColor(c));
   flashHazard();
   showEventBanner('🌫️  FOG STRIKES — EXTRA TILES INCOMING!');
   drawGrid();
@@ -13886,7 +13907,7 @@ function closePause() {
 // ── Penalty / Glitch functions ────────────────────────────────────
 function addPenaltyRow() {
   grid.shift();
-  const penaltyRow = Array(COLS).fill(0).map(() => Math.floor(Math.random()*6)+1);
+  const penaltyRow = Array(COLS).fill(0).map((_,c) => _pickAddTileColor(c));
   grid.push(penaltyRow);
   drawGrid();
   if(checkGameOver()) setTimeout(triggerGameOver, 400);
@@ -13906,7 +13927,7 @@ function glitchFrogAttack() {
   shuffle(empty);
   // Drop 4-6 random tiles into empty spaces
   const toFill = empty.slice(0, 4 + Math.floor(Math.random() * 3));
-  toFill.forEach(([r,c]) => grid[r][c] = Math.floor(Math.random() * 6) + 1);
+  toFill.forEach(([r,c]) => grid[r][c] = _pickAddTileColor(c));
 
   drawGrid();
   flashHazard();
@@ -13928,7 +13949,7 @@ function addObstacleTiles(n) {
   const empty = [];
   for(let r=0;r<ROWS;r++) for(let c=0;c<COLS;c++) if(grid[r][c]===0) empty.push([r,c]);
   shuffle(empty);
-  empty.slice(0,n).forEach(([r,c]) => grid[r][c] = Math.floor(Math.random()*6)+1);
+  empty.slice(0,n).forEach(([r,c]) => grid[r][c] = _pickAddTileColor(c));
   drawGrid();
 }
 
@@ -14280,7 +14301,7 @@ function spawnJumpingFrog(type, targetR, targetC) {
         setTimeout(() => {
           if (!gameActive) return;
           if (grid[hr] && grid[hr][hc] === 0) {
-            grid[hr][hc] = Math.floor(Math.random() * 6) + 1;
+            grid[hr][hc] = _pickAddTileColor(hc);
             drawGrid();
           }
           hop.style.animation = 'adderHopOut 0.28s ease-in forwards';
