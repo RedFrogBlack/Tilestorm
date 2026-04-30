@@ -6540,7 +6540,23 @@ const tierOwned = id => {
     return ownedIdx >= myIdx;
   });
 };
-const getTileColors = () => [null, ...(TILE_PALETTES[equippedTier().tileStyle] || TILE_PALETTES.classic)];
+const getTileColors = () => {
+  // Golden Frog split levels (Dubai, Amalfi) require the player to visually
+  // distinguish two specific colours. The gold tier palette is all yellow shades,
+  // which makes the split mechanic impossible to read. Override to classic palette
+  // when a split mechanic is active so the half labels (e.g. "PURPLE", "BLUE")
+  // match the actual tile colours.
+  try {
+    if (typeof activeChallengeMode !== 'undefined' && activeChallengeMode === 'goldenfrog'
+        && typeof cm_gfLevel !== 'undefined' && typeof GF_LOCATIONS_CFG !== 'undefined') {
+      const _cfg = GF_LOCATIONS_CFG[Math.min((cm_gfLevel|0)-1, 9)];
+      if (_cfg && (_cfg.mechanic === 'split' || _cfg.mechanic === 'gauntlet')) {
+        return [null, ...TILE_PALETTES.classic];
+      }
+    }
+  } catch(_e) {}
+  return [null, ...(TILE_PALETTES[equippedTier().tileStyle] || TILE_PALETTES.classic)];
+};
 
 // ── Game vars ─────────────────────────────────────────────────────
 const COLS = 10, ROWS = 10;
@@ -7779,10 +7795,27 @@ function checkGameOver(){
 function randomPiece(){return PIECES[Math.floor(Math.random()*PIECES.length)];}
 function randomColor(){return Math.floor(Math.random()*7)+1;}
 function generateTray(){
+  // Golden Frog Dubai (split): constrain tray to ONLY the two split colours so
+  // every piece in the tray is placeable on at least one half. Without this,
+  // most spawned pieces are the wrong colour for both halves and the game
+  // becomes unplayable. Applies to 'split' and 'gauntlet' (which includes split).
+  let _gfPickColor = randomColor;
+  try {
+    if (typeof activeChallengeMode !== 'undefined' && activeChallengeMode === 'goldenfrog'
+        && typeof cm_gfSplitLeftColor !== 'undefined' && typeof cm_gfSplitRightColor !== 'undefined'
+        && cm_gfSplitLeftColor && cm_gfSplitRightColor) {
+      const _gfCfg = (typeof GF_LOCATIONS_CFG !== 'undefined' && typeof cm_gfLevel !== 'undefined')
+        ? GF_LOCATIONS_CFG[Math.min((cm_gfLevel|0)-1, 9)] : null;
+      if (_gfCfg && (_gfCfg.mechanic === 'split' || _gfCfg.mechanic === 'gauntlet')) {
+        const _L = cm_gfSplitLeftColor, _R = cm_gfSplitRightColor;
+        _gfPickColor = () => (Math.random() < 0.5 ? _L : _R);
+      }
+    }
+  } catch(_e) {}
   trayPieces=[
-    {shape:randomPieceDiff(),color:randomColor()},
-    {shape:randomPieceDiff(),color:randomColor()},
-    {shape:randomPieceDiff(),color:randomColor()}
+    {shape:randomPieceDiff(),color:_gfPickColor()},
+    {shape:randomPieceDiff(),color:_gfPickColor()},
+    {shape:randomPieceDiff(),color:_gfPickColor()}
   ];
   trayUsed=[false,false,false];
   // Inject any queued bonus bricks into random slot
@@ -13019,7 +13052,12 @@ function updateColourRunHUD() {
 }
 
 // Colour name lookup for HUD display
-const COLOR_NAMES = { 1:'Red', 2:'Blue', 3:'Green', 4:'Yellow', 5:'Purple', 6:'Orange' };
+// Index -> name mapping must match TILE_PALETTES.classic[i-1] exactly:
+//   1='#CC1212' Red, 2='#F5A623' Orange, 3='#F5E000' Yellow,
+//   4='#7ED321' Green, 5='#1B5FDB' Blue, 6='#7B3FBE' Purple, 7='#E62298' Pink
+// (Previous mapping had Blue/Green/Yellow/Purple/Orange in the wrong slots,
+// causing the Dubai split label to disagree with the actual rendered colour.)
+const COLOR_NAMES = { 1:'Red', 2:'Orange', 3:'Yellow', 4:'Green', 5:'Blue', 6:'Purple', 7:'Pink' };
 
 function toggleColourRunSplit() {
   if (activeChallengeMode !== 'colourrun') return;
@@ -13246,6 +13284,10 @@ function _gfActivateMechanic(lvl) {
     const lName = (typeof COLOR_NAMES !== 'undefined' && COLOR_NAMES[left])  ? COLOR_NAMES[left]  : ('Colour ' + left);
     const rName = (typeof COLOR_NAMES !== 'undefined' && COLOR_NAMES[right]) ? COLOR_NAMES[right] : ('Colour ' + right);
     showEventBanner('✨ DUBAI — ' + lName.toUpperCase() + ' ◀ | ▶ ' + rName.toUpperCase());
+    // Regenerate the tray so opening pieces respect the just-assigned split colours.
+    // Without this, the first tray was generated before the split was set and contained
+    // wrong-coloured pieces that could never be placed on either half.
+    try { if (typeof generateTray === 'function') generateTray(); } catch(_e) {}
   }
   else if (mech === 'mirror') {
     cm_gfMechActive = true;
