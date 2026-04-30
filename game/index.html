@@ -8208,7 +8208,7 @@ function endDrag(cx,cy){
         const pts=Math.round(calcScore(cleared.size,total,1+(combo-1)*0.5)*getDiff().scoreMultiplier);
         score+=pts;linesCleared+=total;const prevLevel=level;level=calcLevel(linesCleared);
         if(score>bestScore)bestScore=score;
-        playClear(total);if(combo>1)playCombo(combo);if(level>prevLevel){playLevelUp();flashLevel();showLevelUp(level);hapticLevelUp();}
+        playClear(total);if(combo>1)playCombo(combo);if(level>prevLevel){playLevelUp();flashLevel();showLevelUp(level);hapticLevelUp();_syncChallengeLevelToGameLevel();}
         showCombo(combo);spawnClearParticles(lines.completedRows,lines.completedCols);
         if(combo>1)onComboAchieved(combo); // behaviour commentary
         showFloatText('+'+pts.toLocaleString(),lines.completedRows,lines.completedCols);
@@ -9912,15 +9912,31 @@ function linesForNextLevel(lines) {
 // ── DEV-mode level setter (in-scope so it can mutate `let` vars) ────
 window.__devSoloSetLevel = function(targetLv){
   try {
-    const lv = Math.max(1, Math.min(targetLv|0, LEVEL_THRESHOLDS.length));
-    linesCleared = LEVEL_THRESHOLDS[lv - 1];
+    // For Fog/Golden Frog modes the level cap is 10 (10 locations). For solo it's LEVEL_THRESHOLDS.length.
+    const isFogMode = (typeof activeChallengeMode !== 'undefined' && activeChallengeMode === 'fog');
+    const isGfMode  = (typeof activeChallengeMode !== 'undefined' && activeChallengeMode === 'goldenfrog');
+    const cap = (isFogMode || isGfMode) ? 10 : LEVEL_THRESHOLDS.length;
+    const lv = Math.max(1, Math.min(targetLv|0, cap));
+    // Map the requested level onto LEVEL_THRESHOLDS for the lines value (clamp to array length)
+    const thrIdx = Math.min(lv - 1, LEVEL_THRESHOLDS.length - 1);
+    linesCleared = LEVEL_THRESHOLDS[thrIdx];
     level = lv;
     score = (score|0) + 100 * (lv - 1);
+    // Sync challenge-mode level trackers so HUD + scene + mechanic update with the dev skip
+    try {
+      if (isFogMode && typeof cm_fogLevel !== 'undefined') cm_fogLevel = lv;
+      if (isGfMode  && typeof cm_gfLevel  !== 'undefined') cm_gfLevel  = lv;
+      // Force scene re-init for goldenfrog so the new location backdrop loads immediately
+      if (isGfMode && typeof _gfSceneCfgIdx !== 'undefined') _gfSceneCfgIdx = -1;
+      if (isGfMode && typeof _gfStopAllMechanics === 'function') { try { _gfStopAllMechanics(); } catch(e){} }
+    } catch(_e){}
     // Reset any in-flight challenge round so HUD/timer reflect the new level
     try {
       if (typeof cm_timer !== 'undefined' && cm_timer) { clearInterval(cm_timer); cm_timer = null; }
       if (typeof cm_survivalTimer !== 'undefined' && cm_survivalTimer) { clearInterval(cm_survivalTimer); cm_survivalTimer = null; }
       if (typeof cm_colourPenaltyTimer !== 'undefined' && cm_colourPenaltyTimer) { clearInterval(cm_colourPenaltyTimer); cm_colourPenaltyTimer = null; }
+      if (typeof cm_gfTimer !== 'undefined' && cm_gfTimer) { clearInterval(cm_gfTimer); cm_gfTimer = null; }
+      if (typeof cm_fogTimer !== 'undefined' && cm_fogTimer) { clearInterval(cm_fogTimer); cm_fogTimer = null; }
       if (typeof cm_linesAtStart !== 'undefined') cm_linesAtStart = linesCleared;
       if (typeof initChallengeMode === 'function') initChallengeMode();
     } catch(_e){}
@@ -9929,7 +9945,36 @@ window.__devSoloSetLevel = function(targetLv){
     return lv;
   } catch(e){ console.warn('__devSoloSetLevel failed', e); return null; }
 };
-window.__devGetSoloLevel = function(){ try { return level; } catch(e){ return 1; } };
+window.__devGetSoloLevel = function(){
+  try {
+    // Fog and Golden Frog cap at 10 — return the mode-specific tracker so dev skip can stop at 10
+    if (typeof activeChallengeMode !== 'undefined') {
+      if (activeChallengeMode === 'fog' && typeof cm_fogLevel !== 'undefined' && cm_fogLevel) return cm_fogLevel;
+      if (activeChallengeMode === 'goldenfrog' && typeof cm_gfLevel !== 'undefined' && cm_gfLevel) return cm_gfLevel;
+    }
+    return level;
+  } catch(e){ return 1; }
+};
+
+// Keep Fog/Golden Frog level trackers in sync when the player levels up naturally via line clears.
+// Without this the scene stays on level 1 (Dubai/Enchanted Woods) forever even as `level` climbs.
+function _syncChallengeLevelToGameLevel(){
+  try {
+    if (typeof activeChallengeMode === 'undefined') return;
+    const target = Math.max(1, Math.min(level|0, 10));
+    if (activeChallengeMode === 'goldenfrog' && typeof cm_gfLevel !== 'undefined' && cm_gfLevel !== target) {
+      cm_gfLevel = target;
+      if (typeof _gfSceneCfgIdx !== 'undefined') _gfSceneCfgIdx = -1;
+      if (typeof _gfStopAllMechanics === 'function') { try { _gfStopAllMechanics(); } catch(e){} }
+      if (typeof cm_gfTimer !== 'undefined' && cm_gfTimer) { clearInterval(cm_gfTimer); cm_gfTimer = null; }
+      if (typeof initChallengeMode === 'function') initChallengeMode();
+    } else if (activeChallengeMode === 'fog' && typeof cm_fogLevel !== 'undefined' && cm_fogLevel !== target) {
+      cm_fogLevel = target;
+      if (typeof cm_fogTimer !== 'undefined' && cm_fogTimer) { clearInterval(cm_fogTimer); cm_fogTimer = null; }
+      if (typeof initChallengeMode === 'function') initChallengeMode();
+    }
+  } catch(e){ console.warn('_syncChallengeLevelToGameLevel failed', e); }
+}
 
 function setDifficulty(d){
   currentDiff = d;
