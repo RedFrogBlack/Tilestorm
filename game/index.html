@@ -13992,6 +13992,7 @@ function addObstacleTiles(n) {
   shuffle(empty);
   empty.slice(0,n).forEach(([r,c]) => grid[r][c] = _pickAddTileColor(c));
   drawGrid();
+  if(gameActive && checkGameOver()) setTimeout(triggerGameOver, 400);
 }
 
 function frogStamp() {
@@ -14344,6 +14345,7 @@ function spawnJumpingFrog(type, targetR, targetC) {
           if (grid[hr] && grid[hr][hc] === 0) {
             grid[hr][hc] = _pickAddTileColor(hc);
             drawGrid();
+            if(gameActive && checkGameOver()) setTimeout(triggerGameOver, 400);
           }
           hop.style.animation = 'adderHopOut 0.28s ease-in forwards';
           setTimeout(() => hop.remove(), 300);
