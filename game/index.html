@@ -1525,17 +1525,13 @@
       .game-topbar { max-width: 480px; width: 100%; }
       #grid-canvas { max-width: 480px; }
       .tray-area { max-width: 480px; width: 100%; }
-      /* Cap remaining game elements so they don't bleed across desktop */
-      #tray-wrap { max-width: 480px; }
-      .mid-art-strip { max-width: 432px; }
-      #challenge-hud { max-width: 480px; width: 100%; }
-      .level-progress, #level-progress, .level-progress-bar { max-width: 480px; }
-      .tray-section { max-width: 480px; width: 100%; }
-      #event-banner { max-width: 480px; }
-      /* Some legacy decorations are positioned relative to body — anchor to centre */
-      #screen-game > .mid-art-strip,
-      #screen-game > #tray-wrap,
-      #screen-game > #challenge-hud { margin-left: auto; margin-right: auto; }
+      /* Cap remaining game elements so they don't bleed across desktop —
+         these target flex items, hence !important to win over inline width:100% */
+      #tray-wrap { max-width: 480px !important; width: 100% !important; margin-left: auto !important; margin-right: auto !important; }
+      .mid-art-strip { max-width: 432px !important; width: 90% !important; margin-left: auto !important; margin-right: auto !important; }
+      #challenge-hud { max-width: 480px !important; width: 100% !important; margin-left: auto !important; margin-right: auto !important; }
+      .tray-section { max-width: 480px !important; width: 100% !important; margin-left: auto !important; margin-right: auto !important; }
+      #event-banner { max-width: 480px !important; }
     }
 
     /* Subtle zebra texture on game background — RFBA brand nod */
