@@ -10683,6 +10683,10 @@ let speedCountdownInterval = null;
 let speedPieceSlot = -1;
 
 function maybeSpeedPiece() {
+  // Suppress speed-piece (and therefore frog-stamp penalty) entirely during
+  // Golden Frog runs. The mode has its own per-location mechanics and the
+  // mid-board frog stamp is not intended there. Daily / City Pack unchanged.
+  if (typeof activeChallengeMode !== 'undefined' && activeChallengeMode === 'goldenfrog') return;
   if (currentDiff !== 'medium' && currentDiff !== 'hard' && currentDiff !== 'expert') return;
   const interval = SPEED_INTERVAL[currentDiff];
   if (piecesPlaced % interval !== 0 || piecesPlaced === 0) return;
