@@ -7979,6 +7979,13 @@ function drawGrid(){
       }
     }
   }
+  // Golden Frog: composite location scene as full-board background
+  if (!cityPackActive && activeChallengeMode === 'goldenfrog' && _gfSceneInitialized && _gfSceneCanvas) {
+    ctx.save();
+    ctx.globalAlpha = 0.92;
+    ctx.drawImage(_gfSceneCanvas, 0, 0, gridCanvas.width, gridCanvas.height);
+    ctx.restore();
+  }
   for(let r=0;r<ROWS;r++)for(let c=0;c<COLS;c++)if(grid[r][c])drawTile(r,c,getTileColor(grid[r][c]),1,false,isGold);
 
   // ─ FOG THE FROG: overlay green-purple fog mist on tiles ────────────────────────────────────────
@@ -8458,6 +8465,11 @@ function animateParticles(ts){
   // City Pack: drive sky animation and redraw grid every frame
   if (cityPackActive && _skyInitialized) {
     _skyDraw(ts);
+    drawGrid();
+  }
+  // Golden Frog: drive scene (day/night, skyline, particles) and redraw
+  if (!cityPackActive && activeChallengeMode === 'goldenfrog' && _gfSceneInitialized) {
+    _gfSceneTick(ts);
     drawGrid();
   }
   // Ambient FX: Tadpole pond, Frenzy weather, Golden Frog location
@@ -9852,6 +9864,13 @@ function _updateMidZone(tier) {
     } else if (cityPackActive) {
       const city = CITY_PACK_CITIES[cityPackCityIdx];
       badge.textContent = city ? (city.emoji + ' ' + city.name) : 'CITY PACK';
+    } else if (activeChallengeMode === 'goldenfrog' && typeof GF_LOCATIONS_CFG !== 'undefined') {
+      // Show the actual location instead of duplicate "GOLDEN FROG · GOLDEN FROG"
+      const gfCfg = GF_LOCATIONS_CFG[Math.min((cm_gfLevel||1)-1, 9)];
+      badge.textContent = (gfCfg && gfCfg.emoji ? gfCfg.emoji + ' ' : '✨ ') + (gfCfg ? gfCfg.name.toUpperCase() : 'GOLDEN FROG');
+    } else if (activeChallengeMode === 'fog' && typeof FOG_LOCATION_NAMES !== 'undefined') {
+      const fName = FOG_LOCATION_NAMES[Math.min((cm_fogLevel||1)-1, 9)] || 'FOG';
+      badge.textContent = '🌫️ ' + fName.toUpperCase();
     } else {
       const modeLabel = {standard:'CLASSIC', frenzy:'FRENZY', survival:'SURVIVAL', colourrun:'COLOUR RUN', fog:'FOG', goldenfrog:'GOLDEN FROG'}[activeChallengeMode] || '';
       badge.textContent = tier.emoji + ' ' + tier.name + (modeLabel ? ' · ' + modeLabel : '');
@@ -12488,17 +12507,61 @@ let cm_gfQuakeOffset = {x:0, y:0};
 let cm_gfGravityFlip = false;
 let cm_gfRotateAngle = 0;
 let cm_gfGauntletTimers = [];
+// Quick lookup of the Fog the Frog location names (for HUD labels)
+const FOG_LOCATION_NAMES = ['Enchanted Woods','Scottish Moors','Scottish Highlands','Mediterranean Sea','Coral Reef','Amazon','Sahara Night','Arctic','Deep Ocean','Above the Clouds'];
+// Each Golden Frog location has its own day/night sky, silhouette skyline (column heights 0-10),
+// accent + edge colours, and atmospheric particle type (sand/blossoms/neon/rain/fireflies/etc.)
 const GF_LOCATIONS_CFG = [
-  { name:'Dubai',     mechanic:'split',    emoji:'🏄', bg:'#001833', accent:'#FFD700' },
-  { name:'Ibiza',     mechanic:'mirror',   emoji:'🌴', bg:'#0a0820', accent:'#ff6eb0' },
-  { name:'Monaco',    mechanic:'quake',    emoji:'🏎️', bg:'#0d0d20', accent:'#e8c850' },
-  { name:'Tokyo',     mechanic:'shrink',   emoji:'🏯', bg:'#080820', accent:'#ff3366' },
-  { name:'Paris',     mechanic:'blackout', emoji:'🗼', bg:'#0a0815', accent:'#a06fdc' },
-  { name:'Maldives',  mechanic:'conveyor', emoji:'🌊', bg:'#001a30', accent:'#00cfff' },
-  { name:'Venice',    mechanic:'gravity',  emoji:'🚤', bg:'#040c20', accent:'#66aaff' },
-  { name:'New York',  mechanic:'ghost',    emoji:'🌃', bg:'#080808', accent:'#ff9900' },
-  { name:'Bali',      mechanic:'rotation', emoji:'🌺', bg:'#0a1208', accent:'#88dd44' },
-  { name:'Amalfi',    mechanic:'gauntlet', emoji:'🌋', bg:'#100808', accent:'#FF4400' },
+  { name:'Dubai',     mechanic:'split',    emoji:'🏙️',
+    colHeights:[3,4,6,8,10,7,5,4,3,2],
+    sky:{ nightTop:[15,8,5],   nightHoriz:[40,25,10],  dayTop:[120,140,180], dayHoriz:[235,200,140],
+          weather:'sand',      accentColor:[255,200,80],  edgeColor:[255,210,100],
+          cloudAlpha:0.15, sunColor:[255,160,40] } },
+  { name:'Ibiza',     mechanic:'mirror',   emoji:'🌴',
+    colHeights:[2,4,3,5,2,3,5,3,4,2],
+    sky:{ nightTop:[20,8,40],  nightHoriz:[80,30,60],  dayTop:[255,140,80],  dayHoriz:[255,100,150],
+          weather:'palms',     accentColor:[255,110,180], edgeColor:[255,140,200],
+          cloudAlpha:0.3,  sunColor:[255,120,180] } },
+  { name:'Monaco',    mechanic:'quake',    emoji:'🏎️',
+    colHeights:[5,4,7,6,5,8,4,3,5,4],
+    sky:{ nightTop:[8,8,28],   nightHoriz:[18,30,70],  dayTop:[40,90,170],   dayHoriz:[200,180,140],
+          weather:'yachts',    accentColor:[232,200,80],  edgeColor:[255,220,120],
+          cloudAlpha:0.4,  sunColor:[255,225,140] } },
+  { name:'Tokyo',     mechanic:'shrink',   emoji:'🏯',
+    colHeights:[6,8,5,9,7,10,5,8,6,4],
+    sky:{ nightTop:[10,4,25],  nightHoriz:[60,15,80],  dayTop:[40,80,170],   dayHoriz:[120,180,240],
+          weather:'blossoms',  accentColor:[255,80,140],  edgeColor:[255,120,180],
+          cloudAlpha:0.3,  sunColor:[255,160,200] } },
+  { name:'Paris',     mechanic:'blackout', emoji:'🗼',
+    colHeights:[3,4,5,6,10,8,5,4,3,3],
+    sky:{ nightTop:[8,5,20],   nightHoriz:[20,15,55],  dayTop:[60,80,160],   dayHoriz:[140,180,240],
+          weather:'rain',      accentColor:[180,160,255], edgeColor:[200,180,255],
+          cloudAlpha:0.7,  sunColor:[255,220,160] } },
+  { name:'Maldives',  mechanic:'conveyor', emoji:'🌊',
+    colHeights:[1,2,1,2,1,2,1,2,1,2],
+    sky:{ nightTop:[2,12,30],  nightHoriz:[10,40,80],  dayTop:[100,200,255], dayHoriz:[180,240,255],
+          weather:'waves',     accentColor:[0,210,255],   edgeColor:[80,230,255],
+          cloudAlpha:0.25, sunColor:[255,235,140] } },
+  { name:'Venice',    mechanic:'gravity',  emoji:'🚤',
+    colHeights:[3,5,4,4,3,3,4,4,3,4],
+    sky:{ nightTop:[10,8,18],  nightHoriz:[30,25,55],  dayTop:[200,170,90],  dayHoriz:[255,180,100],
+          weather:'gondolas',  accentColor:[255,180,80],  edgeColor:[255,200,120],
+          cloudAlpha:0.5,  sunColor:[255,170,60] } },
+  { name:'New York',  mechanic:'ghost',    emoji:'🌃',
+    colHeights:[5,7,9,7,10,8,10,7,8,6],
+    sky:{ nightTop:[5,5,18],   nightHoriz:[15,15,50],  dayTop:[20,60,140],   dayHoriz:[80,150,230],
+          weather:'neon',      accentColor:[255,150,40],  edgeColor:[255,170,80],
+          cloudAlpha:0.45, sunColor:[255,200,100] } },
+  { name:'Bali',      mechanic:'rotation', emoji:'🌺',
+    colHeights:[2,3,5,4,7,5,4,3,2,2],
+    sky:{ nightTop:[6,12,8],   nightHoriz:[20,40,30],  dayTop:[80,140,100],  dayHoriz:[200,180,120],
+          weather:'fireflies', accentColor:[136,221,68],  edgeColor:[180,240,100],
+          cloudAlpha:0.35, sunColor:[255,200,120] } },
+  { name:'Amalfi',    mechanic:'gauntlet', emoji:'🌋',
+    colHeights:[2,4,3,5,4,6,4,5,3,4],
+    sky:{ nightTop:[15,5,5],   nightHoriz:[60,20,15],  dayTop:[255,160,80],  dayHoriz:[255,200,100],
+          weather:'embers',    accentColor:[255,80,30],   edgeColor:[255,120,60],
+          cloudAlpha:0.3,  sunColor:[255,80,20] } },
 ];
 
 function initChallengeMode() {
@@ -12611,7 +12674,8 @@ function initChallengeMode() {
   // ────────────────────────────────────────────────────────────────
   if (activeChallengeMode === 'fog') {
     cm_fogSurvivedSecs = 0;
-    cm_fogLevel = level || 1;
+    // Preserve cm_fogLevel if already set (dev skip bumps it). Only init from game level on first start.
+    if (!cm_fogLevel || cm_fogLevel < 1) cm_fogLevel = level || 1;
     const FOG_LEVELS = [
       { name:'Enchanted Woods',    coverage:0.20, speed:0.4,  patches:1, behaviour:'drift_lr' },
       { name:'Scottish Moors',     coverage:0.30, speed:0.5,  patches:1, behaviour:'swirl' },
@@ -12658,7 +12722,8 @@ function initChallengeMode() {
   //  GOLDEN FROG MODE
   // ────────────────────────────────────────────────────────────────
   if (activeChallengeMode === 'goldenfrog') {
-    cm_gfLevel = level || 1;
+    // Preserve cm_gfLevel if already set (dev skip bumps it). Only init from game level on first start.
+    if (!cm_gfLevel || cm_gfLevel < 1) cm_gfLevel = level || 1;
     cm_gfBlackoutActive = false;
     cm_gfGravityFlip = false;
     cm_gfRotateAngle = 0;
@@ -12669,8 +12734,15 @@ function initChallengeMode() {
     document.getElementById('challenge-hud-icon').textContent = '✨';
     const cfg = GF_LOCATIONS_CFG[Math.min(cm_gfLevel-1, 9)];
     updateGoldenFrogHUD(cfg ? cfg.name : '', cfg ? cfg.mechanic : '');
-    if (cfg) showEventBanner('✨ ' + cfg.name.toUpperCase() + ' — ' + cfg.mechanic.toUpperCase() + '!');
+    if (cfg) showEventBanner('✨ ' + (cfg.emoji||'') + ' ' + cfg.name.toUpperCase() + ' — ' + cfg.mechanic.toUpperCase() + '!');
+    // Initialize per-location day/night scene background
+    if (typeof gridCanvas !== 'undefined' && gridCanvas && gridCanvas.width && cfg) {
+      _gfSceneReset();
+      _gfSceneInit(gridCanvas.width, gridCanvas.height, cfg);
+    }
     _gfActivateMechanic(cm_gfLevel);
+    // Immediate demo pulse so dev-skipping shows each level's mechanic right away
+    _gfDemoPulse(cm_gfLevel);
   }
 
   // Show dev skip button if in dev mode
@@ -12826,8 +12898,11 @@ function stopChallengeMode() {
   // Fog the Frog cleanup
   if (cm_fogTimer) { clearInterval(cm_fogTimer); cm_fogTimer = null; }
   cm_fogPatches = []; cm_fogTileAlpha = []; cm_fogSurvivedSecs = 0;
+  cm_fogLevel = 0; // 0 means "reset; init from game level on next start"
   // Golden Frog cleanup
   _gfStopAllMechanics();
+  if (typeof _gfSceneReset === 'function') _gfSceneReset();
+  cm_gfLevel = 0; // 0 means "reset; init from game level on next start"
   document.getElementById('challenge-hud').classList.remove('active');
   document.getElementById('survival-bar-wrap').classList.remove('active');
   const flipBtn = document.getElementById('cr-flip-btn');
@@ -13055,6 +13130,54 @@ function _gfActivateMechanic(lvl) {
   }
 }
 
+// One-shot demonstration of the level's mechanic so dev-skipping shows each level's distinction immediately.
+// Most timer-based effects don't fire until 8-30s in, so we trigger a single visible pulse on level start.
+function _gfDemoPulse(lv) {
+  if (activeChallengeMode !== 'goldenfrog') return;
+  const cfg = GF_LOCATIONS_CFG[Math.min(lv-1, 9)];
+  if (!cfg) return;
+  const mech = cfg.mechanic;
+  setTimeout(() => {
+    if (activeChallengeMode !== 'goldenfrog') return;
+    if (mech === 'quake' || mech === 'gauntlet') {
+      let shakes = 0;
+      const qa = setInterval(() => {
+        shakes++;
+        cm_gfQuakeOffset = {x:(Math.random()-0.5)*10, y:(Math.random()-0.5)*7};
+        if (gridCanvas) gridCanvas.style.transform = 'translate(' + cm_gfQuakeOffset.x + 'px,' + cm_gfQuakeOffset.y + 'px)';
+        if (shakes > 12) { clearInterval(qa); cm_gfQuakeOffset={x:0,y:0}; if (gridCanvas) gridCanvas.style.transform=''; }
+      }, 60);
+    }
+    if (mech === 'blackout') {
+      cm_gfBlackoutActive = true; drawGrid();
+      setTimeout(() => { cm_gfBlackoutActive = false; drawGrid(); }, 1800);
+    }
+    if (mech === 'conveyor') {
+      for (let r = 0; r < ROWS; r++) { const row = grid[r]; row.push(row.shift()); }
+      drawGrid();
+    }
+    if (mech === 'shrink') {
+      // Visual hint only — don't actually contract on level start (would unbalance)
+      showEventBanner('✨ TOKYO — BOARD WILL CONTRACT EVERY 30s');
+    }
+    if (mech === 'split') {
+      showEventBanner('✨ DUBAI — BOARD IS SPLIT IN HALF');
+    }
+    if (mech === 'mirror') {
+      showEventBanner('✨ IBIZA — EVERY PLACEMENT IS MIRRORED');
+    }
+    if (mech === 'gravity') {
+      showEventBanner('✨ VENICE — GRAVITY FLIPS EACH LINE CLEAR');
+    }
+    if (mech === 'ghost') {
+      showEventBanner('✨ NEW YORK — PLACED TILES VANISH IN 5s');
+    }
+    if (mech === 'rotation') {
+      showEventBanner('✨ BALI — BOARD ROTATES EACH LINE CLEAR');
+    }
+  }, 800);
+}
+
 function _gfStopAllMechanics() {
   if (cm_gfMechTimer) { clearInterval(cm_gfMechTimer); cm_gfMechTimer = null; }
   if (cm_gfShrinkInterval) { clearInterval(cm_gfShrinkInterval); cm_gfShrinkInterval = null; }
@@ -13069,6 +13192,263 @@ function _gfStopAllMechanics() {
   cm_gfGhostCells = [];
   cm_gfQuakeOffset = {x:0, y:0};
   if (typeof gridCanvas !== 'undefined' && gridCanvas) gridCanvas.style.transform = '';
+}
+
+// ══════════════════════════════════════════════════════════════
+//  GOLDEN FROG SCENE ENGINE — day/night cycle + per-location skyline + atmospheric particles
+// ══════════════════════════════════════════════════════════════
+let _gfSceneCanvas = null, _gfSceneCtx = null, _gfSceneInitialized = false;
+let _gfSceneT = 0.62; // start at golden hour for that signature look
+let _gfSceneLastTS = 0;
+let _gfSceneStars = [], _gfSceneParticles = [], _gfSceneLightTrails = [];
+let _gfSceneCfgIdx = -1;
+const GF_SCENE_CYCLE_MS = 90000; // full day→night
+function _gfSceneIsNight(t){return t<0.22||t>0.78;}
+function _gfSceneInit(W, H, cfg) {
+  _gfSceneCanvas = document.createElement('canvas');
+  _gfSceneCanvas.width = W; _gfSceneCanvas.height = H;
+  _gfSceneCtx = _gfSceneCanvas.getContext('2d');
+  _gfSceneStars = [];
+  for (let i = 0; i < 50; i++) {
+    _gfSceneStars.push({
+      fx: Math.random(), fy: Math.random() * 0.55,
+      r: Math.random()*0.9+0.3, base: Math.random()*0.5+0.3,
+      spd: Math.random()*2+0.6, off: Math.random()*Math.PI*2,
+      warm: Math.random()>0.78,
+    });
+  }
+  _gfSceneParticles = [];
+  const w = cfg.sky.weather;
+  const count = (w==='neon'?30 : w==='blossoms'?28 : w==='rain'?80 : w==='sand'?60 : w==='waves'?14 : w==='fireflies'?22 : w==='embers'?40 : w==='palms'?6 : w==='gondolas'?5 : w==='yachts'?4 : 18);
+  for (let i = 0; i < count; i++) {
+    _gfSceneParticles.push({
+      fx: Math.random(), fy: Math.random(),
+      vx: (Math.random()-0.5)*0.002,
+      vy: (Math.random()*0.001 + 0.0006),
+      sz: Math.random()*2+0.6,
+      ph: Math.random()*Math.PI*2,
+      life: Math.random(),
+    });
+  }
+  _gfSceneInitialized = true;
+  _gfSceneCfgIdx = cm_gfLevel - 1;
+}
+function _gfSceneReset(){ _gfSceneCanvas=null; _gfSceneCtx=null; _gfSceneInitialized=false; _gfSceneCfgIdx=-1; _gfSceneT=0.62; _gfSceneStars=[]; _gfSceneParticles=[]; }
+
+function _gfSceneDrawSkyline(ctx, W, H, cfg, dayMix) {
+  // dayMix 1=day, 0=night. Silhouette is dark; in day it's slightly lighter.
+  const heights = cfg.colHeights || [3,5,4,6,4,5,4,3,4,3];
+  const baseY = H * 0.62;
+  const cellW = W / heights.length;
+  // Two-tone silhouette: back layer
+  ctx.save();
+  ctx.globalAlpha = 0.55;
+  ctx.fillStyle = `rgb(${Math.round(8+dayMix*10)},${Math.round(8+dayMix*8)},${Math.round(15+dayMix*15)})`;
+  ctx.beginPath();
+  ctx.moveTo(0, H);
+  for (let i = 0; i < heights.length; i++) {
+    const h = (heights[(i+1)%heights.length] || 3) / 10;
+    const top = baseY - h * H * 0.45;
+    ctx.lineTo(i*cellW, top);
+    ctx.lineTo((i+1)*cellW, top);
+  }
+  ctx.lineTo(W, H); ctx.closePath(); ctx.fill();
+  ctx.restore();
+  // Front layer with edge glow
+  ctx.save();
+  ctx.globalAlpha = 0.85;
+  ctx.fillStyle = `rgb(${Math.round(2+dayMix*5)},${Math.round(2+dayMix*3)},${Math.round(8+dayMix*8)})`;
+  ctx.beginPath();
+  ctx.moveTo(0, H);
+  for (let i = 0; i < heights.length; i++) {
+    const h = (heights[i] || 3) / 10;
+    const top = baseY - h * H * 0.42;
+    ctx.lineTo(i*cellW, top);
+    ctx.lineTo((i+1)*cellW, top);
+  }
+  ctx.lineTo(W, H); ctx.closePath(); ctx.fill();
+  ctx.restore();
+  // Edge glow (golden top edge of skyline) — strongest at sunset/sunrise
+  const edge = cfg.sky.edgeColor || [255,210,100];
+  ctx.save();
+  ctx.globalAlpha = 0.55;
+  ctx.strokeStyle = `rgba(${edge[0]},${edge[1]},${edge[2]},0.9)`;
+  ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  for (let i = 0; i < heights.length; i++) {
+    const h = (heights[i] || 3) / 10;
+    const top = baseY - h * H * 0.42;
+    if (i===0) ctx.moveTo(i*cellW, top); else ctx.lineTo(i*cellW, top);
+    ctx.lineTo((i+1)*cellW, top);
+  }
+  ctx.stroke();
+  ctx.restore();
+  // Window lights at night
+  if (dayMix < 0.4) {
+    const acc = cfg.sky.accentColor || [255,200,80];
+    ctx.save();
+    ctx.fillStyle = `rgba(${acc[0]},${acc[1]},${acc[2]},${0.7 - dayMix*0.5})`;
+    for (let i = 0; i < heights.length; i++) {
+      const h = (heights[i] || 3) / 10;
+      const top = baseY - h * H * 0.42;
+      const lights = Math.max(1, Math.floor(h*4));
+      for (let k = 0; k < lights; k++) {
+        if ((i*7 + k*3 + Math.floor(_gfSceneT*100)) % 11 < 7) {
+          const lx = i*cellW + cellW*(0.2 + (k%3)*0.3);
+          const ly = top + (H - top) * (0.15 + (k*0.18));
+          if (ly < H - 4) ctx.fillRect(lx, ly, 1.6, 1.6);
+        }
+      }
+    }
+    ctx.restore();
+  }
+}
+
+function _gfSceneDrawParticles(ctx, W, H, cfg, t, dayMix) {
+  const w = cfg.sky.weather;
+  const acc = cfg.sky.accentColor || [255,200,80];
+  for (const p of _gfSceneParticles) {
+    p.fx += p.vx; p.fy += p.vy; p.ph += 0.05;
+    if (p.fy > 1) p.fy = 0;
+    if (p.fx > 1) p.fx = 0; if (p.fx < 0) p.fx = 1;
+    const x = p.fx * W, y = p.fy * H;
+    ctx.save();
+    if (w === 'sand') {
+      ctx.globalAlpha = 0.18 + 0.15*Math.sin(p.ph);
+      ctx.fillStyle = `rgba(255,200,120,1)`;
+      ctx.fillRect(x, y, p.sz, p.sz*0.5);
+      p.fx += 0.005; if (p.fx > 1) p.fx = -0.05;
+    } else if (w === 'rain') {
+      ctx.globalAlpha = 0.55;
+      ctx.strokeStyle = 'rgba(180,200,255,0.7)';
+      ctx.lineWidth = 0.9;
+      ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x-2, y+8); ctx.stroke();
+      p.fy += 0.012; if (p.fy > 1) p.fy = 0;
+    } else if (w === 'blossoms') {
+      ctx.globalAlpha = 0.7;
+      ctx.fillStyle = `rgba(${acc[0]},${acc[1]},${acc[2]},0.85)`;
+      ctx.beginPath(); ctx.arc(x + Math.sin(p.ph)*8, y, p.sz*1.2, 0, Math.PI*2); ctx.fill();
+      p.fx += Math.sin(p.ph)*0.001;
+    } else if (w === 'waves') {
+      // horizontal shimmer lines on lower half
+      if (p.fy < 0.6) p.fy = 0.6 + Math.random()*0.35;
+      ctx.globalAlpha = 0.35 + 0.3*Math.sin(p.ph);
+      ctx.strokeStyle = `rgba(${acc[0]},${acc[1]},${acc[2]},0.9)`;
+      ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.moveTo(x-12, y); ctx.lineTo(x+12, y); ctx.stroke();
+      p.fx += 0.003; if (p.fx > 1.1) p.fx = -0.05;
+    } else if (w === 'fireflies') {
+      ctx.globalAlpha = 0.55 + 0.4*Math.sin(p.ph + p.life*10);
+      ctx.fillStyle = `rgba(${acc[0]},${acc[1]},${acc[2]},1)`;
+      ctx.beginPath(); ctx.arc(x, y, p.sz*0.9, 0, Math.PI*2); ctx.fill();
+      ctx.globalAlpha *= 0.3;
+      ctx.beginPath(); ctx.arc(x, y, p.sz*2.5, 0, Math.PI*2); ctx.fill();
+      p.fx += Math.sin(p.ph)*0.002; p.fy += Math.cos(p.ph*0.7)*0.001;
+    } else if (w === 'embers') {
+      ctx.globalAlpha = 0.7 - p.fy*0.5;
+      ctx.fillStyle = `rgba(${acc[0]},${acc[1]},${acc[2]},1)`;
+      ctx.beginPath(); ctx.arc(x, y, p.sz*0.8, 0, Math.PI*2); ctx.fill();
+      p.fy -= 0.006; if (p.fy < 0) { p.fy = 1; p.fx = Math.random(); }
+    } else if (w === 'neon') {
+      // pulsing neon dots in upper portion + occasional flicker
+      ctx.globalAlpha = 0.5 + 0.5*Math.sin(p.ph + p.life*5);
+      const hue = (p.life*360)|0;
+      ctx.fillStyle = `hsla(${hue},100%,60%,1)`;
+      ctx.fillRect(x, y, 2, 2);
+    } else if (w === 'palms' || w === 'gondolas' || w === 'yachts') {
+      // slow drifting silhouettes — just dim accent dots
+      ctx.globalAlpha = 0.35;
+      ctx.fillStyle = `rgba(${acc[0]},${acc[1]},${acc[2]},0.7)`;
+      ctx.fillRect(x, H*0.66 + p.life*4, p.sz*3, 1.5);
+      p.fx += 0.0015; if (p.fx > 1.1) p.fx = -0.1;
+    }
+    ctx.restore();
+  }
+}
+
+function _gfSceneDraw(timestamp) {
+  if (!_gfSceneCanvas || !_gfSceneCtx) return;
+  if (_gfSceneLastTS === 0) _gfSceneLastTS = timestamp;
+  const dt = timestamp - _gfSceneLastTS;
+  _gfSceneLastTS = timestamp;
+  _gfSceneT = (_gfSceneT + dt / GF_SCENE_CYCLE_MS) % 1;
+  const cfg = GF_LOCATIONS_CFG[Math.min(cm_gfLevel-1, 9)];
+  if (!cfg) return;
+  const W = _gfSceneCanvas.width, H = _gfSceneCanvas.height;
+  const ctx = _gfSceneCtx;
+  ctx.clearRect(0,0,W,H);
+  // Sky gradient (use existing _skyGetColors helper if available, else simple lerp)
+  const t = _gfSceneT;
+  const night = (typeof _skyNight === 'function') ? _skyNight(t) : ((Math.cos(t*Math.PI*2)+1)/2);
+  const dayMix = 1 - night;
+  const top = cfg.sky.dayTop.map((d,i)=> Math.round(d*dayMix + cfg.sky.nightTop[i]*night));
+  const horiz = cfg.sky.dayHoriz.map((d,i)=> Math.round(d*dayMix + cfg.sky.nightHoriz[i]*night));
+  const grad = ctx.createLinearGradient(0,0,0,H);
+  grad.addColorStop(0, `rgb(${top[0]},${top[1]},${top[2]})`);
+  grad.addColorStop(1, `rgb(${horiz[0]},${horiz[1]},${horiz[2]})`);
+  ctx.fillStyle = grad;
+  ctx.fillRect(0, 0, W, H);
+  // Sun/moon
+  const sunY = H * (0.18 + 0.55 * Math.sin(t*Math.PI));
+  const sunX = W * (0.15 + 0.7 * t);
+  if (sunY > 0 && sunY < H*0.85) {
+    ctx.save();
+    if (_gfSceneIsNight(t)) {
+      // Moon
+      ctx.globalAlpha = 0.85;
+      ctx.fillStyle = 'rgba(240,240,220,1)';
+      ctx.beginPath(); ctx.arc(sunX, sunY, 14, 0, Math.PI*2); ctx.fill();
+      ctx.globalAlpha = 0.25;
+      ctx.beginPath(); ctx.arc(sunX, sunY, 22, 0, Math.PI*2); ctx.fill();
+    } else {
+      const sc = cfg.sky.sunColor || [255,200,80];
+      const r = ctx.createRadialGradient(sunX, sunY, 4, sunX, sunY, 50);
+      r.addColorStop(0, `rgba(${sc[0]},${sc[1]},${sc[2]},0.95)`);
+      r.addColorStop(0.4, `rgba(${sc[0]},${sc[1]},${sc[2]},0.5)`);
+      r.addColorStop(1, `rgba(${sc[0]},${sc[1]},${sc[2]},0)`);
+      ctx.fillStyle = r;
+      ctx.beginPath(); ctx.arc(sunX, sunY, 50, 0, Math.PI*2); ctx.fill();
+      ctx.fillStyle = `rgb(${sc[0]},${sc[1]},${sc[2]})`;
+      ctx.beginPath(); ctx.arc(sunX, sunY, 11, 0, Math.PI*2); ctx.fill();
+    }
+    ctx.restore();
+  }
+  // Stars at night
+  if (night > 0.4) {
+    ctx.save();
+    for (const s of _gfSceneStars) {
+      const tw = 0.4 + 0.6 * Math.abs(Math.sin(timestamp*0.001*s.spd + s.off));
+      ctx.globalAlpha = (s.base + tw*0.4) * Math.min(1,(night-0.3)*1.6);
+      ctx.fillStyle = s.warm ? 'rgba(255,220,160,1)' : 'rgba(220,235,255,1)';
+      ctx.beginPath(); ctx.arc(s.fx*W, s.fy*H, s.r, 0, Math.PI*2); ctx.fill();
+    }
+    ctx.restore();
+  }
+  // Skyline silhouette
+  _gfSceneDrawSkyline(ctx, W, H, cfg, dayMix);
+  // Particles (rain, sand, embers, fireflies, etc.)
+  _gfSceneDrawParticles(ctx, W, H, cfg, t, dayMix);
+  // Ground/water reflection in lower 18%
+  ctx.save();
+  ctx.globalAlpha = 0.3;
+  const reflect = ctx.createLinearGradient(0, H*0.82, 0, H);
+  reflect.addColorStop(0, `rgba(${horiz[0]},${horiz[1]},${horiz[2]},0.4)`);
+  reflect.addColorStop(1, `rgba(0,0,0,0.6)`);
+  ctx.fillStyle = reflect;
+  ctx.fillRect(0, H*0.82, W, H*0.18);
+  ctx.restore();
+}
+
+function _gfSceneTick(ts) {
+  if (activeChallengeMode !== 'goldenfrog') return;
+  if (!_gfSceneInitialized) return;
+  // If level changed, re-init for new location
+  if (_gfSceneCfgIdx !== cm_gfLevel - 1) {
+    if (typeof gridCanvas !== 'undefined' && gridCanvas) {
+      _gfSceneInit(gridCanvas.width, gridCanvas.height, GF_LOCATIONS_CFG[Math.min(cm_gfLevel-1,9)]);
+    }
+  }
+  _gfSceneDraw(ts);
 }
 
 function _gfRegisterGhostCell(r, c) {
