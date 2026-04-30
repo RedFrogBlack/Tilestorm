@@ -8038,14 +8038,50 @@ function drawGrid(){
     const pulse = (Date.now() % 1600) / 1600;
     const pulseSin = Math.sin(pulse * Math.PI * 2) * 0.5 + 0.5;
 
-    // SPLIT (Dubai) - dashed gold divider down the middle
+    // SPLIT (Dubai) — two distinct colour halves with a glowing dashed divider down the middle.
+    // Dubai assigns one colour per half: only that colour can be placed there.
     if (mech === 'split' || mech === 'gauntlet') {
+      const splitX = GF_SPLIT_COL * CELL;
       ctx.save();
-      ctx.strokeStyle = 'rgba(255,215,0,' + (0.35 + 0.25*pulseSin) + ')';
-      ctx.lineWidth = 2;
+      // Left half tint
+      if (cm_gfSplitLeftColor) {
+        const lc = getTileColor(cm_gfSplitLeftColor);
+        const lcRgb = (lc && lc.replace('#','').match(/../g) || []).map(x=>parseInt(x,16));
+        if (lcRgb.length === 3) {
+          ctx.fillStyle = `rgba(${lcRgb[0]},${lcRgb[1]},${lcRgb[2]},${0.07 + 0.04*pulseSin})`;
+          ctx.fillRect(0, 0, splitX, H);
+          ctx.font = `bold ${CELL * 0.36}px var(--font-display, sans-serif)`;
+          ctx.fillStyle = lc;
+          ctx.globalAlpha = 0.55;
+          ctx.textAlign = 'center';
+          const lLabel = (typeof COLOR_NAMES !== 'undefined' && COLOR_NAMES[cm_gfSplitLeftColor]) ? COLOR_NAMES[cm_gfSplitLeftColor].toUpperCase() : '';
+          ctx.fillText(lLabel, splitX / 2, H - CELL * 0.35);
+          ctx.globalAlpha = 1;
+        }
+      }
+      // Right half tint
+      if (cm_gfSplitRightColor) {
+        const rc = getTileColor(cm_gfSplitRightColor);
+        const rcRgb = (rc && rc.replace('#','').match(/../g) || []).map(x=>parseInt(x,16));
+        if (rcRgb.length === 3) {
+          ctx.fillStyle = `rgba(${rcRgb[0]},${rcRgb[1]},${rcRgb[2]},${0.07 + 0.04*pulseSin})`;
+          ctx.fillRect(splitX, 0, W - splitX, H);
+          ctx.font = `bold ${CELL * 0.36}px var(--font-display, sans-serif)`;
+          ctx.fillStyle = rc;
+          ctx.globalAlpha = 0.55;
+          ctx.textAlign = 'center';
+          const rLabel = (typeof COLOR_NAMES !== 'undefined' && COLOR_NAMES[cm_gfSplitRightColor]) ? COLOR_NAMES[cm_gfSplitRightColor].toUpperCase() : '';
+          ctx.fillText(rLabel, splitX + (W - splitX) / 2, H - CELL * 0.35);
+          ctx.globalAlpha = 1;
+        }
+      }
+      // Glowing dashed divider
+      ctx.strokeStyle = 'rgba(255,215,0,' + (0.55 + 0.3*pulseSin) + ')';
+      ctx.lineWidth = 2.5;
       ctx.setLineDash([6, 4]);
-      const splitX = Math.floor(COLS/2) * CELL;
       ctx.beginPath(); ctx.moveTo(splitX, 0); ctx.lineTo(splitX, H); ctx.stroke();
+      ctx.setLineDash([]);
+      ctx.textAlign = 'left';
       ctx.restore();
     }
     // MIRROR (Ibiza) - vertical pink mirror line + arrows
@@ -8160,6 +8196,17 @@ function drawGrid(){
         if (pc >= CR_SPLIT_COL && cm_splitRightColor && dragColor !== cm_splitRightColor) { crWrongHalf = true; break; }
       }
     }
+    // Golden Frog Dubai (split): block colour from being placed in the wrong half
+    if (ok && activeChallengeMode === 'goldenfrog' && (cm_gfSplitLeftColor || cm_gfSplitRightColor)) {
+      const _gfCfg = GF_LOCATIONS_CFG[Math.min(cm_gfLevel-1, 9)];
+      if (_gfCfg && (_gfCfg.mechanic === 'split' || _gfCfg.mechanic === 'gauntlet')) {
+        for (const [dr, dc] of dragShape) {
+          const pc = c + dc;
+          if (pc < GF_SPLIT_COL && cm_gfSplitLeftColor  && dragColor !== cm_gfSplitLeftColor)  { crWrongHalf = true; break; }
+          if (pc >= GF_SPLIT_COL && cm_gfSplitRightColor && dragColor !== cm_gfSplitRightColor) { crWrongHalf = true; break; }
+        }
+      }
+    }
     dragShape.forEach(([dr,dc])=>{const pr=r+dr,pc=c+dc;if(pr>=0&&pr<ROWS&&pc>=0&&pc<COLS)drawTile(pr,pc,(ok&&!crWrongHalf)?getTileColor(dragColor):'#CC1212',(ok&&!crWrongHalf)?0.42:0.18,(ok&&!crWrongHalf),isGold);});
   }
 
@@ -8271,6 +8318,27 @@ function endDrag(cx,cy){
   document.removeEventListener('mousemove',onDragMove);document.removeEventListener('mouseup',onDragEnd);
   document.removeEventListener('touchmove',onDragMoveTouch);document.removeEventListener('touchend',onDragEndTouch);
   document.querySelector(`.tray-piece[data-idx="${dragPieceIdx}"]`)?.classList.remove('dragging');
+
+  // Golden Frog Dubai (split) hard block: refuse the drop if colour belongs to the wrong half.
+  if (hoverCell && dragShape && activeChallengeMode === 'goldenfrog' && (cm_gfSplitLeftColor || cm_gfSplitRightColor)) {
+    const _gfDropCfg = GF_LOCATIONS_CFG[Math.min(cm_gfLevel-1, 9)];
+    if (_gfDropCfg && (_gfDropCfg.mechanic === 'split' || _gfDropCfg.mechanic === 'gauntlet')) {
+      let _gfDropWrong = false;
+      for (const [dr, dc] of dragShape) {
+        const pc = hoverCell.c + dc;
+        if (pc < GF_SPLIT_COL && cm_gfSplitLeftColor  && dragColor !== cm_gfSplitLeftColor)  { _gfDropWrong = true; break; }
+        if (pc >= GF_SPLIT_COL && cm_gfSplitRightColor && dragColor !== cm_gfSplitRightColor) { _gfDropWrong = true; break; }
+      }
+      if (_gfDropWrong) {
+        // Refuse placement, snap piece back to tray, give a small nudge banner.
+        if (typeof showEventBanner === 'function') showEventBanner('✨ DUBAI — WRONG COLOUR FOR THIS HALF!');
+        if (typeof playInvalid === 'function') { try { playInvalid(); } catch(e){} }
+        dragging=false; dragShape=null; hoverCell=null; dragPieceIdx=-1;
+        if (typeof drawGrid === 'function') drawGrid();
+        return;
+      }
+    }
+  }
 
   if(hoverCell&&dragShape&&canPlace(dragShape,hoverCell.r,hoverCell.c)){
     const specialType = trayPieces[dragPieceIdx]?.special || null;
@@ -12656,6 +12724,10 @@ let cm_gfQuakeOffset = {x:0, y:0};
 let cm_gfGravityFlip = false;
 let cm_gfRotateAngle = 0;
 let cm_gfGauntletTimers = [];
+// Dubai-split: two distinct colours assigned to left/right halves
+let cm_gfSplitLeftColor  = null;
+let cm_gfSplitRightColor = null;
+const GF_SPLIT_COL = 5; // columns 0-4 = left, 5-9 = right
 // Quick lookup of the Fog the Frog location names (for HUD labels)
 const FOG_LOCATION_NAMES = ['Enchanted Woods','Scottish Moors','Scottish Highlands','Mediterranean Sea','Coral Reef','Amazon','Sahara Night','Arctic','Deep Ocean','Above the Clouds'];
 // Each Golden Frog location has its own day/night sky, silhouette skyline (column heights 0-10),
@@ -13163,7 +13235,17 @@ function _gfActivateMechanic(lvl) {
 
   if (mech === 'split') {
     cm_gfMechActive = true;
-    showEventBanner('✨ DUBAI — THE BOARD SPLITS!');
+    // Pick two distinct colours from the active palette (1..6) for left/right halves.
+    // We pick at random each level entry so two consecutive runs of Dubai feel different.
+    const palette = [1,2,3,4,5,6];
+    const left  = palette[Math.floor(Math.random() * palette.length)];
+    let right;
+    do { right = palette[Math.floor(Math.random() * palette.length)]; } while (right === left);
+    cm_gfSplitLeftColor  = left;
+    cm_gfSplitRightColor = right;
+    const lName = (typeof COLOR_NAMES !== 'undefined' && COLOR_NAMES[left])  ? COLOR_NAMES[left]  : ('Colour ' + left);
+    const rName = (typeof COLOR_NAMES !== 'undefined' && COLOR_NAMES[right]) ? COLOR_NAMES[right] : ('Colour ' + right);
+    showEventBanner('✨ DUBAI — ' + lName.toUpperCase() + ' ◀ | ▶ ' + rName.toUpperCase());
   }
   else if (mech === 'mirror') {
     cm_gfMechActive = true;
@@ -13172,6 +13254,29 @@ function _gfActivateMechanic(lvl) {
   else if (mech === 'quake') {
     cm_gfMechTimer = setInterval(() => {
       if (!gameActive) return;
+      // ① Physically shuffle: pick up to 4 occupied tiles and move each to a random empty cell.
+      try {
+        const occupied = [];
+        const empty = [];
+        for (let r = 0; r < ROWS; r++) {
+          for (let c = 0; c < COLS; c++) {
+            if (typeof isMasked === 'function' && isMasked(r, c)) continue;
+            if (grid[r][c] !== 0) occupied.push([r, c]);
+            else empty.push([r, c]);
+          }
+        }
+        // Shuffle helper
+        const shuf = (arr) => { for (let i = arr.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [arr[i], arr[j]] = [arr[j], arr[i]]; } return arr; };
+        shuf(occupied); shuf(empty);
+        const moveCount = Math.min(4, occupied.length, empty.length);
+        for (let i = 0; i < moveCount; i++) {
+          const [or, oc] = occupied[i];
+          const [er, ec] = empty[i];
+          grid[er][ec] = grid[or][oc];
+          grid[or][oc] = 0;
+        }
+      } catch (e) { /* defensive */ }
+      // ② Visual canvas shake on top of the actual move
       let shakes = 0;
       const quakeAnim = setInterval(() => {
         shakes++;
@@ -13185,7 +13290,8 @@ function _gfActivateMechanic(lvl) {
           if (typeof gridCanvas !== 'undefined' && gridCanvas) gridCanvas.style.transform = '';
         }
       }, 60);
-      showEventBanner('✨ MONACO QUAKE!');
+      drawGrid();
+      showEventBanner('✨ MONACO QUAKE — TILES MOVED!');
     }, 8000);
     cm_gfGauntletTimers.push(cm_gfMechTimer);
   }
@@ -13340,6 +13446,9 @@ function _gfStopAllMechanics() {
   cm_gfRotateAngle = 0;
   cm_gfGhostCells = [];
   cm_gfQuakeOffset = {x:0, y:0};
+  cm_gfSplitLeftColor = null;
+  cm_gfSplitRightColor = null;
+  cm_gfMechActive = false;
   if (typeof gridCanvas !== 'undefined' && gridCanvas) gridCanvas.style.transform = '';
 }
 
@@ -13613,11 +13722,21 @@ function _gfApplyMirror(placedCells) {
   if (activeChallengeMode !== 'goldenfrog') return;
   const cfg = GF_LOCATIONS_CFG[Math.min(cm_gfLevel-1, 9)];
   if (!cfg || (cfg.mechanic !== 'mirror' && cfg.mechanic !== 'gauntlet')) return;
+  if (!placedCells || !placedCells.length) return;
+  let didMirror = false;
   for (const [r, c] of placedCells) {
     const mirrorC = COLS - 1 - c;
-    if (mirrorC !== c && r >= 0 && r < ROWS && mirrorC >= 0 && mirrorC < COLS) {
-      if (grid[r][mirrorC] === 0) grid[r][mirrorC] = grid[r][c];
-    }
+    if (mirrorC === c) continue;
+    if (r < 0 || r >= ROWS || mirrorC < 0 || mirrorC >= COLS) continue;
+    if (typeof isMasked === 'function' && isMasked(r, mirrorC)) continue;
+    // Always overwrite — Klara: “if I place on the left it should automatically appear on the right”.
+    // Previously we skipped if the mirror cell was non-empty, which made the mirror feel non-existent.
+    grid[r][mirrorC] = grid[r][c];
+    didMirror = true;
+  }
+  if (didMirror) {
+    if (typeof drawGrid === 'function') drawGrid();
+    if (typeof updateUI === 'function') updateUI();
   }
 }
 
