@@ -5602,6 +5602,13 @@
     <div class="topbar-right">
       <!-- Powers inline in topbar -->
       <div id="topbar-power-bar"></div>
+      <!-- Pause button — visible, dedicated, all games -->
+      <button class="icon-btn topbar-menu-btn" id="btn-pause" title="Pause" aria-label="Pause game" style="margin-right:6px;">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round">
+          <line x1="9"  y1="5" x2="9"  y2="19"/>
+          <line x1="15" y1="5" x2="15" y2="19"/>
+        </svg>
+      </button>
       <!-- Sound button moved to pause menu — saves topbar space -->
       <button class="icon-btn topbar-menu-btn" id="btn-menu" title="Menu" aria-label="Open pause menu">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
@@ -10713,6 +10720,7 @@ function maybeSpeedPiece() {
   scNum.textContent = speedCountdownVal;
   showEventBanner('⚡ SPEED PIECE! Place it NOW!');
   speedCountdownInterval = setInterval(() => {
+    if (!gameActive) return; // freeze countdown while paused
     speedCountdownVal--;
     scNum.textContent = speedCountdownVal;
     if (speedCountdownVal <= 2) scEl.classList.add('urgent');
@@ -10781,6 +10789,7 @@ function startChallenge() {
   banner.classList.add('show');
   showEventBanner(def.label + ' in ' + def.timeLimit + 's!');
   challengeInterval = setInterval(() => {
+    if (!gameActive) return; // freeze challenge timer while paused
     challengeSecsLeft--;
     timerEl.textContent = challengeSecsLeft + 's';
     // Check success
@@ -12976,7 +12985,7 @@ function initChallengeMode() {
     document.getElementById('challenge-hud-icon').textContent = '🛡️';
     updateSurvivalHUD();
     cm_survivalTimer = setInterval(() => {
-      if (!gameActive) { clearInterval(cm_survivalTimer); return; }
+      if (!gameActive) return; // pause-aware: just skip tick, don't kill timer
       const filled = grid.flat().filter(v => v !== 0).length;
       const pct = filled / (ROWS * COLS);
       const bar = document.getElementById('survival-bar');
@@ -13053,7 +13062,7 @@ function initChallengeMode() {
     updateFogHUD(fogCfg);
     showEventBanner('🌫️ ' + fogCfg.name + ' — FOG INCOMING!');
     cm_fogTimer = setInterval(() => {
-      if (!gameActive) { clearInterval(cm_fogTimer); return; }
+      if (!gameActive) return; // pause-aware: just skip tick, don't kill timer
       cm_fogSurvivedSecs++;
       _fogAdvancePatches(fogCfg);
       _fogUpdateTileAlpha(fogCfg.coverage);
@@ -14031,6 +14040,17 @@ function frogStamp() {
 document.getElementById('btn-restart').addEventListener('click',()=>{ensureAudio();activeChallengeMode='standard';selectedChallenge='standard';startGame();});
 document.getElementById('btn-go-menu').addEventListener('click',()=>{stopChallengeMode();showScreen('screen-title');});
 document.getElementById('btn-menu').addEventListener('click',()=>{ openPause(); });
+// Dedicated pause button — visible at top of HUD on every game (solo + duo).
+// Reuses the existing pause overlay so user gets the same Resume / Shop / Quit UI.
+(function(){
+  const _btnPause = document.getElementById('btn-pause');
+  if (_btnPause) _btnPause.addEventListener('click', () => {
+    // If already paused, resume; otherwise pause.
+    const overlay = document.getElementById('pause-overlay');
+    if (overlay && !overlay.classList.contains('hidden')) closePause();
+    else openPause();
+  });
+})();
 
 // Logo tap — quit confirmation
 document.getElementById('topbar-brand-logo').addEventListener('click', () => {
