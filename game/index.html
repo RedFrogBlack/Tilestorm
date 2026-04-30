@@ -13755,7 +13755,7 @@ function updateHomeSubtitles() {
     if (!t) {
       t = document.createElement('div');
       t.id = 'dev-toast';
-      t.style.cssText = 'position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:#7c3aed;color:#fff;font-family:Oswald,system-ui,sans-serif;font-weight:800;font-size:14px;letter-spacing:0.18em;text-transform:uppercase;padding:14px 22px;border-radius:12px;z-index:99999;box-shadow:0 8px 24px rgba(124,58,237,0.5);transition:opacity 0.3s;pointer-events:none;';
+      t.style.cssText = 'position:fixed;top:14%;left:50%;transform:translateX(-50%);background:#7c3aed;color:#fff;font-family:Oswald,system-ui,sans-serif;font-weight:800;font-size:13px;letter-spacing:0.18em;text-transform:uppercase;padding:10px 18px;border-radius:10px;z-index:99999;box-shadow:0 8px 24px rgba(124,58,237,0.5);transition:opacity 0.25s;pointer-events:none;white-space:nowrap;max-width:90vw;';
       document.body.appendChild(t);
     }
     t.textContent = msg;
@@ -13837,6 +13837,17 @@ function updateHomeSubtitles() {
 
   // ── Skip implementations ─────────────────────────────────────
 
+  // Build a context-aware label like "TREE FROG · FRENZY · LVL 3" instead of generic "SOLO LVL 3"
+  function _devSoloLabel(lv) {
+    try {
+      const tier = (typeof equippedTier === 'function') ? equippedTier() : null;
+      const tierName = tier && tier.name ? tier.name.toUpperCase() : 'SOLO';
+      const modeLabel = {standard:'CLASSIC', frenzy:'FRENZY', survival:'SURVIVAL', colourrun:'COLOUR RUN'}[(typeof activeChallengeMode!=='undefined' && activeChallengeMode) || 'standard'] || '';
+      const tail = (lv != null) ? (' · LVL ' + lv) : '';
+      return tierName + (modeLabel ? (' · ' + modeLabel) : '') + tail;
+    } catch(e){ return 'LVL ' + (lv != null ? lv : '?'); }
+  }
+
   function devNextLevel() {
     try {
       // Duo flow
@@ -13862,7 +13873,7 @@ function updateHomeSubtitles() {
       if (typeof window.__devSoloSetLevel === 'function') {
         const cur = window.__devGetSoloLevel ? window.__devGetSoloLevel() : 1;
         const newLv = window.__devSoloSetLevel(cur + 1);
-        if (newLv != null) showDevToast('SOLO LVL ' + newLv);
+        if (newLv != null) showDevToast(_devSoloLabel(newLv));
       }
     } catch(e){ console.warn('devNext failed', e); }
   }
@@ -13885,7 +13896,7 @@ function updateHomeSubtitles() {
       if (typeof window.__devSoloSetLevel === 'function') {
         const cur = window.__devGetSoloLevel ? window.__devGetSoloLevel() : 1;
         const newLv = window.__devSoloSetLevel(Math.max(cur - 1, 1));
-        if (newLv != null) showDevToast('SOLO LVL ' + newLv);
+        if (newLv != null) showDevToast(_devSoloLabel(newLv));
       }
     } catch(e){ console.warn('devPrev failed', e); }
   }
