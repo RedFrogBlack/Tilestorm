@@ -7794,22 +7794,59 @@ function advanceCityPackLevel() {
 function initGrid(){grid=Array.from({length:ROWS},()=>new Array(COLS).fill(0));}
 function canPlace(shape,r,c){return shape.every(([dr,dc])=>{const nr=r+dr,nc=c+dc;return nr>=0&&nr<ROWS&&nc>=0&&nc<COLS&&!isMasked(nr,nc)&&grid[nr][nc]===0;});}
 function placeShape(shape,r,c,color){shape.forEach(([dr,dc])=>{grid[r+dr][c+dc]=color;});}
-function findCompletedLines(){
-  const rows=[],cols=[];
-  for(let r=0;r<ROWS;r++){const mc=[];for(let c=0;c<COLS;c++)if(!isMasked(r,c))mc.push(c);if(mc.length>0&&mc.every(c=>grid[r][c]!==0))rows.push(r);}
-  for(let c=0;c<COLS;c++){const mr=[];for(let r=0;r<ROWS;r++)if(!isMasked(r,c))mr.push(r);if(mr.length>0&&mr.every(r=>grid[r][c]!==0))cols.push(c);}
-  return{completedRows:rows,completedCols:cols};
+// Returns true when the active mode is a half-board mode (Dubai split or
+// Amalfi gauntlet). In half-board modes, a row counts as complete when
+// EITHER cols 0–4 are full OR cols 5–9 are full — not just full all 10.
+function _isHalfBoardMode(){
+  try {
+    if (typeof activeChallengeMode !== 'undefined' && activeChallengeMode === 'goldenfrog'
+        && typeof GF_LOCATIONS_CFG !== 'undefined' && typeof cm_gfLevel !== 'undefined') {
+      const _cfg = GF_LOCATIONS_CFG[Math.min((cm_gfLevel|0)-1, 9)];
+      return !!(_cfg && (_cfg.mechanic === 'split' || _cfg.mechanic === 'gauntlet'));
+    }
+  } catch(_e) {}
+  return false;
 }
-function clearLines({completedRows,completedCols}){
+function findCompletedLines(){
+  const rows=[],cols=[],halfRows=[];
+  const halfMode = _isHalfBoardMode();
+  for(let r=0;r<ROWS;r++){
+    const mc=[];for(let c=0;c<COLS;c++)if(!isMasked(r,c))mc.push(c);
+    if(mc.length>0 && mc.every(c=>grid[r][c]!==0)) {
+      rows.push(r);
+      continue;
+    }
+    if (halfMode) {
+      // Left half cols 0–4 (skip masked cells)
+      const lc = mc.filter(c => c < 5);
+      if (lc.length > 0 && lc.every(c => grid[r][c] !== 0)) halfRows.push({r, side:'L'});
+      // Right half cols 5–9
+      const rc = mc.filter(c => c >= 5);
+      if (rc.length > 0 && rc.every(c => grid[r][c] !== 0)) halfRows.push({r, side:'R'});
+    }
+  }
+  for(let c=0;c<COLS;c++){const mr=[];for(let r=0;r<ROWS;r++)if(!isMasked(r,c))mr.push(r);if(mr.length>0&&mr.every(r=>grid[r][c]!==0))cols.push(c);}
+  return{completedRows:rows,completedCols:cols,completedHalfRows:halfRows};
+}
+function clearLines({completedRows,completedCols,completedHalfRows}){
   const s=new Set();
   completedRows.forEach(r=>{for(let c=0;c<COLS;c++){s.add(`${r},${c}`);grid[r][c]=0;}});
   completedCols.forEach(c=>{for(let r=0;r<ROWS;r++){s.add(`${r},${c}`);grid[r][c]=0;}});
+  if (Array.isArray(completedHalfRows)) {
+    completedHalfRows.forEach(({r, side}) => {
+      const c0 = (side === 'L') ? 0 : 5;
+      const c1 = (side === 'L') ? 5 : 10;
+      for (let c = c0; c < c1; c++) { s.add(`${r},${c}`); grid[r][c] = 0; }
+    });
+  }
+  // For scoring/HUD, count half-rows as half a line each (rounded up: 1 half-row = 1 line credit)
+  const halfCount = Array.isArray(completedHalfRows) ? completedHalfRows.length : 0;
   if(cityPackActive){
-    cityPackLinesCleared+=completedRows.length+completedCols.length;
+    cityPackLinesCleared+=completedRows.length+completedCols.length+halfCount;
     updateCityPackHUD();
     if(cityPackLinesCleared>=cityPackLinesTarget)setTimeout(advanceCityPackLevel,700);
   }
-  if(duoGameActive&&duoMode==='hazard'){const _t=completedRows.length+completedCols.length;if(_t>0)sendHazardAttack(_t);}
+  if(duoGameActive&&duoMode==='hazard'){const _t=completedRows.length+completedCols.length+halfCount;if(_t>0)sendHazardAttack(_t);}
   return s;
 }
 function calcScore(cells,lines,comboMult){const bonus=equippedTier().bonusMultiplier||1;return Math.round((cells*10+lines*lines*50)*comboMult*bonus);}
@@ -8454,7 +8491,7 @@ function endDrag(cx,cy){
       // Special brick: apply effect, skip normal scoring for now
       applySpecialBrick(specialType, hoverCell.r, hoverCell.c);
     } else {
-      const lines=findCompletedLines();const total=lines.completedRows.length+lines.completedCols.length;
+      const lines=findCompletedLines();const total=lines.completedRows.length+lines.completedCols.length+(lines.completedHalfRows?lines.completedHalfRows.length:0);
       if(total>0){
         // Colour Run row check BEFORE clearing (grid still has tile values)
         lines.completedRows.forEach(rowIdx => checkColourRunRow(rowIdx));
@@ -8530,7 +8567,7 @@ function activatePowerup(){
     const emptyRows=[];for(let r=0;r<ROWS;r++)if(grid[r].some(v=>v===0))emptyRows.push(r);
     const targets=emptyRows.sort(()=>Math.random()-0.5).slice(0,2);
     targets.forEach(r=>{for(let c=0;c<COLS;c++)if(grid[r][c]===0)grid[r][c]=randomColor();});
-    const lines=findCompletedLines();const total=lines.completedRows.length+lines.completedCols.length;
+    const lines=findCompletedLines();const total=lines.completedRows.length+lines.completedCols.length+(lines.completedHalfRows?lines.completedHalfRows.length:0);
     if(total>0){const cleared=clearLines(lines);const pts=calcScore(cleared.size,total,1);
     score+=pts;linesCleared+=total;level=calcLevel(linesCleared);if(score>bestScore)bestScore=score;
     spawnClearParticles(lines.completedRows,lines.completedCols);showFloatText('⚡+'+pts,lines.completedRows,[]);}
@@ -9606,10 +9643,12 @@ function _executePower(id) {
 // Check-and-clear after power use
 function checkAndClearLines() {
   const lines = findCompletedLines();
-  if (lines.completedRows.length + lines.completedCols.length > 0) {
+  const _h = lines.completedHalfRows ? lines.completedHalfRows.length : 0;
+  const _t = lines.completedRows.length + lines.completedCols.length + _h;
+  if (_t > 0) {
     const cleared = clearLines(lines);
-    const pts = calcScore(cleared.size, lines.completedRows.length + lines.completedCols.length, combo);
-    score += pts; linesCleared += lines.completedRows.length + lines.completedCols.length;
+    const pts = calcScore(cleared.size, _t, combo);
+    score += pts; linesCleared += _t;
     level = calcLevel(linesCleared); if (score > bestScore) bestScore = score;
     spawnClearParticles(lines.completedRows, lines.completedCols);
     updateUI(); drawGrid();
@@ -10324,7 +10363,7 @@ function applySpecialBrick(type, r, c){
   }
   setTimeout(()=>{
     const lines=findCompletedLines();
-    const total=lines.completedRows.length+lines.completedCols.length;
+    const total=lines.completedRows.length+lines.completedCols.length+(lines.completedHalfRows?lines.completedHalfRows.length:0);
     if(total>0){
       const cleared=clearLines(lines); const pts=calcScore(cleared.size,total,1+(combo-1)*0.5)*getDiff().scoreMultiplier;
       score+=pts; linesCleared+=total;
@@ -12585,10 +12624,12 @@ function handleWSMessage(data) {
         const {shape, color, row, col} = data;
         if (canPlace(shape, row, col)) placeShape(shape, row, col, color);
         const lines = findCompletedLines();
-        if (lines.completedRows.length + lines.completedCols.length > 0) {
+        const _hr = lines.completedHalfRows ? lines.completedHalfRows.length : 0;
+        const _tt = lines.completedRows.length + lines.completedCols.length + _hr;
+        if (_tt > 0) {
           const cleared = clearLines(lines);
-          const pts = calcScore(cleared.size, lines.completedRows.length + lines.completedCols.length, 1);
-          score += pts; linesCleared += lines.completedRows.length + lines.completedCols.length;
+          const pts = calcScore(cleared.size, _tt, 1);
+          score += pts; linesCleared += _tt;
           if (score > bestScore) bestScore = score;
           updateUI();
         }
