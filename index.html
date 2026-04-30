@@ -6584,6 +6584,7 @@ let particles=[];
 
 // ── Audio ─────────────────────────────────────────────────────────
 let audioCtx=null;
+let _audioPrimed=false;
 // Returns a Promise that resolves once the AudioContext is running.
 // If it's already running the promise resolves synchronously (microtask).
 function ensureAudio(){
@@ -6591,6 +6592,33 @@ function ensureAudio(){
   if(audioCtx.state==='running')return Promise.resolve();
   return audioCtx.resume().catch(()=>{});
 }
+// MAC AUDIO FIX: Mac Chrome/Safari requires AudioContext.resume() to be called
+// SYNCHRONOUSLY inside a real user-gesture handler (click/keydown/touchstart).
+// Calling it via .then() after a microtask boundary is rejected on Mac. Without
+// this primer, audioCtx.state stays 'suspended' forever and all SFX silently no-op.
+// We attach a one-shot priming handler to the document so the very first user
+// interaction anywhere on the page resumes the context. After that, subsequent
+// ensureAudio() calls succeed instantly because the context is already running.
+function _primeAudioOnce(){
+  if (_audioPrimed) return;
+  _audioPrimed = true;
+  try {
+    if(!audioCtx) audioCtx = new (window.AudioContext||window.webkitAudioContext)();
+    // Synchronous resume() inside the gesture handler — this is what Mac requires.
+    if (audioCtx.state !== 'running') audioCtx.resume();
+    // Also play a 1-sample silent buffer to fully unlock on stricter Safari builds.
+    const buf = audioCtx.createBuffer(1, 1, 22050);
+    const src = audioCtx.createBufferSource();
+    src.buffer = buf;
+    src.connect(audioCtx.destination);
+    src.start(0);
+  } catch(_e) { _audioPrimed = false; /* allow retry */ }
+}
+// Listen for the first interaction. capture:true ensures we run before app handlers
+// might preventDefault. {once:true} would auto-remove but we keep manual control via _audioPrimed.
+['pointerdown','touchstart','mousedown','keydown','click'].forEach(ev => {
+  document.addEventListener(ev, _primeAudioOnce, { capture: true, passive: true });
+});
 function playSFX(freq,dur,type='sine',vol=0.14,delay=0){
   if(!soundOn)return;
   ensureAudio().then(()=>{
