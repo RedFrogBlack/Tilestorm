@@ -12338,6 +12338,14 @@ function openSoloSetup() {
     }
     // Equip tier and set difficulty+challenge then start
     equipTier(tid);
+    // Make sure we're not still inside a city-pack session (stale flag from a previous run)
+    if (typeof cityPackActive !== 'undefined' && cityPackActive) {
+      cityPackActive = false;
+      gridMask = null;
+      if (typeof _skyReset === 'function') _skyReset();
+      const _cpHud = document.getElementById('city-pack-hud');
+      if (_cpHud) _cpHud.style.display = 'none';
+    }
     const map = TIER_GAME_MAP[tid];
     setDifficulty(map.diff);
     selectedChallenge = map.challenge;
