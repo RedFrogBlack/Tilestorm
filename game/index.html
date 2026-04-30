@@ -8033,13 +8033,117 @@ function drawGrid(){
   // ─ GOLDEN FROG SPLIT: vertical divider line ──────────────────────────────────────────────────
   if (activeChallengeMode === 'goldenfrog') {
     const gfCfg = GF_LOCATIONS_CFG[Math.min(cm_gfLevel-1, 9)];
-    if (gfCfg && (gfCfg.mechanic === 'split' || gfCfg.mechanic === 'gauntlet')) {
+    const mech = gfCfg ? gfCfg.mechanic : null;
+    const W = gridCanvas.width, H = gridCanvas.height;
+    const pulse = (Date.now() % 1600) / 1600;
+    const pulseSin = Math.sin(pulse * Math.PI * 2) * 0.5 + 0.5;
+
+    // SPLIT (Dubai) - dashed gold divider down the middle
+    if (mech === 'split' || mech === 'gauntlet') {
       ctx.save();
-      ctx.strokeStyle = 'rgba(255,215,0,0.45)';
+      ctx.strokeStyle = 'rgba(255,215,0,' + (0.35 + 0.25*pulseSin) + ')';
       ctx.lineWidth = 2;
       ctx.setLineDash([6, 4]);
       const splitX = Math.floor(COLS/2) * CELL;
-      ctx.beginPath(); ctx.moveTo(splitX, 0); ctx.lineTo(splitX, gridCanvas.height); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(splitX, 0); ctx.lineTo(splitX, H); ctx.stroke();
+      ctx.restore();
+    }
+    // MIRROR (Ibiza) - vertical pink mirror line + arrows
+    if (mech === 'mirror') {
+      ctx.save();
+      const midX = Math.floor(COLS/2) * CELL;
+      ctx.strokeStyle = 'rgba(255,110,180,' + (0.4 + 0.3*pulseSin) + ')';
+      ctx.lineWidth = 2;
+      ctx.setLineDash([8, 6]);
+      ctx.beginPath(); ctx.moveTo(midX, 0); ctx.lineTo(midX, H); ctx.stroke();
+      ctx.setLineDash([]);
+      ctx.fillStyle = 'rgba(255,140,200,' + (0.5 + 0.3*pulseSin) + ')';
+      ctx.font = 'bold 22px monospace'; ctx.textAlign = 'center';
+      ctx.fillText('\u2194', midX, H/2);
+      ctx.restore();
+    }
+    // QUAKE (Monaco) - corner warning glyphs
+    if (mech === 'quake') {
+      ctx.save();
+      ctx.fillStyle = 'rgba(255,200,80,' + (0.35 + 0.25*pulseSin) + ')';
+      ctx.font = 'bold 14px monospace'; ctx.textAlign = 'left';
+      ctx.fillText('\u26a1', 6, 18);
+      ctx.fillText('\u26a1', W-22, 18);
+      ctx.fillText('\u26a1', 6, H-8);
+      ctx.fillText('\u26a1', W-22, H-8);
+      ctx.restore();
+    }
+    // SHRINK (Tokyo) - inward chevrons on top + bottom edges
+    if (mech === 'shrink') {
+      ctx.save();
+      ctx.strokeStyle = 'rgba(255,120,180,' + (0.5 + 0.3*pulseSin) + ')';
+      ctx.lineWidth = 2.5;
+      ctx.beginPath();
+      ctx.moveTo(W/2-12, 4); ctx.lineTo(W/2, 16); ctx.lineTo(W/2+12, 4);
+      ctx.moveTo(W/2-12, H-4); ctx.lineTo(W/2, H-16); ctx.lineTo(W/2+12, H-4);
+      ctx.stroke();
+      ctx.restore();
+    }
+    // BLACKOUT (Paris) - subtle vignette around edges
+    if (mech === 'blackout' && !cm_gfBlackoutActive) {
+      ctx.save();
+      const grad = ctx.createRadialGradient(W/2, H/2, Math.min(W,H)*0.3, W/2, H/2, Math.max(W,H)*0.7);
+      grad.addColorStop(0, 'rgba(0,0,0,0)');
+      grad.addColorStop(1, 'rgba(0,0,0,' + (0.3 + 0.15*pulseSin) + ')');
+      ctx.fillStyle = grad;
+      ctx.fillRect(0, 0, W, H);
+      ctx.restore();
+    }
+    // CONVEYOR (Maldives) - flowing arrows along the bottom
+    if (mech === 'conveyor') {
+      ctx.save();
+      ctx.fillStyle = 'rgba(0,210,255,' + (0.4 + 0.25*pulseSin) + ')';
+      ctx.font = 'bold 14px monospace'; ctx.textAlign = 'left';
+      const off = (Date.now() / 80) % 30;
+      for (let x = -30 + off; x < W; x += 30) {
+        ctx.fillText('\u00bb\u00bb', x, H - 6);
+      }
+      ctx.restore();
+    }
+    // GRAVITY (Venice) - large gravity arrow on side
+    if (mech === 'gravity') {
+      ctx.save();
+      ctx.fillStyle = 'rgba(255,180,80,' + (0.5 + 0.25*pulseSin) + ')';
+      ctx.font = 'bold 30px monospace'; ctx.textAlign = 'center';
+      ctx.fillText(cm_gfGravityFlip ? '\u2b06' : '\u2b07', W - 22, H/2);
+      ctx.restore();
+    }
+    // GHOST (New York) - dashed outline around placed tiles to show they'll vanish
+    if (mech === 'ghost') {
+      ctx.save();
+      ctx.strokeStyle = 'rgba(255,150,40,' + (0.4 + 0.3*pulseSin) + ')';
+      ctx.lineWidth = 1.5; ctx.setLineDash([3, 3]);
+      for (let r = 0; r < ROWS; r++) {
+        for (let c = 0; c < COLS; c++) {
+          if (grid[r][c] !== 0) {
+            ctx.strokeRect(c*CELL+2, r*CELL+2, CELL-4, CELL-4);
+          }
+        }
+      }
+      ctx.restore();
+    }
+    // ROTATION (Bali) - rotating arrow in top-right corner
+    if (mech === 'rotation') {
+      ctx.save();
+      const cx = W - 22, cy = 22;
+      ctx.translate(cx, cy);
+      ctx.rotate((Date.now() / 1500) % (Math.PI * 2));
+      ctx.fillStyle = 'rgba(136,221,68,' + (0.6 + 0.25*pulseSin) + ')';
+      ctx.font = 'bold 24px monospace'; ctx.textAlign = 'center';
+      ctx.fillText('\u21bb', 0, 8);
+      ctx.restore();
+    }
+    // GAUNTLET (Amalfi) - pulsing ember border
+    if (mech === 'gauntlet') {
+      ctx.save();
+      ctx.strokeStyle = 'rgba(255,80,30,' + (0.5 + 0.3*pulseSin) + ')';
+      ctx.lineWidth = 3;
+      ctx.strokeRect(2, 2, W-4, H-4);
       ctx.restore();
     }
   }
