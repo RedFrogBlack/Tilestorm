@@ -8461,18 +8461,69 @@ function drawGrid(){
     }
   }
 
-  // ─ GOLDEN FROG BLACKOUT: full board darkness ───────────────────────────────────────────────────
-  if (activeChallengeMode === 'goldenfrog' && cm_gfBlackoutActive) {
-    ctx.save();
-    ctx.globalAlpha = 0.92;
-    ctx.fillStyle = '#000';
-    ctx.fillRect(0, 0, gridCanvas.width, gridCanvas.height);
-    ctx.globalAlpha = 0.8;
-    ctx.fillStyle = '#FFD700';
-    ctx.font = 'bold 18px monospace';
-    ctx.textAlign = 'center';
-    ctx.fillText('✨ BLACKOUT ✨', gridCanvas.width/2, gridCanvas.height/2);
-    ctx.restore();
+  // ─ GOLDEN FROG BLACKOUT: animated curtain falls top→bot, recedes bot→top, with vertical opacity gradient + flickering window lights ──────
+  if (activeChallengeMode === 'goldenfrog' && (cm_gfBlackoutActive || (typeof _gfParisPhase !== 'undefined' && _gfParisPhase !== 'off'))) {
+    const _W = gridCanvas.width, _H = gridCanvas.height;
+    // Determine the visible darkness band [topPx, botPx]:
+    //   falling : top=0           , bot=curtainBot*H   (curtain descending)
+    //   hold    : top=0           , bot=H              (full coverage)
+    //   rising  : top=curtainTop*H, bot=H              (curtain receding upward)
+    let _topPx = 0, _botPx = _H, _phase = (typeof _gfParisPhase !== 'undefined') ? _gfParisPhase : 'hold';
+    if (_phase === 'falling') {
+      _topPx = 0;
+      _botPx = (typeof _gfParisCurtainBot === 'number' ? _gfParisCurtainBot : 1) * _H;
+    } else if (_phase === 'rising') {
+      _topPx = (typeof _gfParisCurtainTop === 'number' ? _gfParisCurtainTop : 0) * _H;
+      _botPx = _H;
+    } else {
+      // 'hold' or legacy cm_gfBlackoutActive fallback → full board
+      _topPx = 0;
+      _botPx = _H;
+    }
+    if (_botPx > _topPx + 0.5) {
+      ctx.save();
+      // Vertical gradient: pitch-black at top of band, fading to translucent near bottom.
+      const _grad = ctx.createLinearGradient(0, _topPx, 0, _botPx);
+      _grad.addColorStop(0.00, 'rgba(0,0,0,1.00)');
+      _grad.addColorStop(0.45, 'rgba(0,0,0,0.92)');
+      _grad.addColorStop(0.80, 'rgba(0,0,0,0.70)');
+      _grad.addColorStop(1.00, 'rgba(0,0,0,0.55)');
+      ctx.fillStyle = _grad;
+      ctx.fillRect(0, _topPx, _W, _botPx - _topPx);
+
+      // Flickering window lights — only render lights whose y falls inside the dark band
+      // and whose flicker timer says they're currently "on".
+      if (typeof _gfParisLights !== 'undefined' && _gfParisLights && _gfParisLights.length) {
+        for (const L of _gfParisLights) {
+          if (!L || L.on !== true) continue;
+          if (L.y < _topPx || L.y > _botPx) continue;
+          // Soft warm halo
+          const _halo = ctx.createRadialGradient(L.x, L.y, 0, L.x, L.y, L.size * 4.5);
+          _halo.addColorStop(0.0, `hsla(${L.hue}, 95%, 70%, 0.85)`);
+          _halo.addColorStop(0.4, `hsla(${L.hue}, 90%, 60%, 0.45)`);
+          _halo.addColorStop(1.0, `hsla(${L.hue}, 90%, 55%, 0.00)`);
+          ctx.fillStyle = _halo;
+          ctx.beginPath();
+          ctx.arc(L.x, L.y, L.size * 4.5, 0, Math.PI * 2);
+          ctx.fill();
+          // Bright pip in centre
+          ctx.fillStyle = `hsla(${L.hue}, 100%, 88%, 0.95)`;
+          ctx.beginPath();
+          ctx.arc(L.x, L.y, Math.max(1.2, L.size * 0.55), 0, Math.PI * 2);
+          ctx.fill();
+        }
+      }
+
+      // Show the gold "✨ BLACKOUT ✨" label only at peak (hold phase, or legacy active flag)
+      if (_phase === 'hold' || (typeof cm_gfBlackoutActive !== 'undefined' && cm_gfBlackoutActive && _phase === 'off')) {
+        ctx.globalAlpha = 0.85;
+        ctx.fillStyle = '#FFD700';
+        ctx.font = 'bold 18px monospace';
+        ctx.textAlign = 'center';
+        ctx.fillText('✨ BLACKOUT ✨', _W / 2, _H / 2);
+      }
+      ctx.restore();
+    }
   }
 
   // ─ GOLDEN FROG SPLIT: vertical divider line ──────────────────────────────────────────────────
@@ -8721,7 +8772,11 @@ function renderTray(){
 // player can't accidentally drop a piece blind. Tray remains visible —
 // only the act of picking up a piece is paused for the 2-second blackout.
 function _gfDragLockedByBlackout(){
-  return activeChallengeMode === 'goldenfrog' && typeof cm_gfBlackoutActive !== 'undefined' && cm_gfBlackoutActive;
+  if (activeChallengeMode !== 'goldenfrog') return false;
+  if (typeof cm_gfBlackoutActive !== 'undefined' && cm_gfBlackoutActive) return true;
+  // Lock during the entire animated Paris cycle (falling + hold + rising)
+  if (typeof _gfParisPhase !== 'undefined' && _gfParisPhase !== 'off') return true;
+  return false;
 }
 function startDrag(e,idx){if(duoGameActive&&duoMode==='coop'&&!coopMyTurn){showToast('⏳ Wait for your partner\'s turn!');return;}if(_gfDragLockedByBlackout()){showToast('🌃 PARIS BLACKOUT — wait for the lights');return;}if(trayUsed[idx])return;e.preventDefault();ensureAudio();beginDrag(e.clientX,e.clientY,idx);}
 function startDragTouch(e,idx){if(duoGameActive&&duoMode==='coop'&&!coopMyTurn){showToast('⏳ Wait for your partner\'s turn!');return;}if(_gfDragLockedByBlackout()){showToast('🌃 PARIS BLACKOUT — wait for the lights');return;}if(trayUsed[idx])return;e.preventDefault();ensureAudio();const t=e.touches[0];beginDrag(t.clientX,t.clientY,idx);}
@@ -13553,6 +13608,23 @@ let cm_gfMechActive = false;
 let cm_gfShrinkInterval = null;
 let cm_gfBlackoutTimer = null;
 let cm_gfBlackoutActive = false;
+// Paris blackout — animated curtain state.
+// phase: 'off' | 'falling' (curtain dropping from top)
+//      | 'hold'   (full coverage)
+//      | 'rising' (top of curtain receding upward, bottom still at floor)
+// curtainBot: 0..1 — bottom edge of darkness as fraction of canvas height (during falling)
+// curtainTop: 0..1 — top edge of darkness as fraction of canvas height (during rising)
+// lights[]   : [{ x, y, phase, on, lastFlip }] — flickering window lights drawn during darkness
+let _gfParisPhase = 'off';
+let _gfParisCurtainBot = 0;
+let _gfParisCurtainTop = 0;
+let _gfParisPhaseStart = 0;
+let _gfParisLights = [];
+let _gfParisRafId = null;
+const PARIS_FALL_MS  = 1200;
+const PARIS_HOLD_MS  = 1500;
+const PARIS_RISE_MS  = 1000;
+const PARIS_CYCLE_MS = 10000;
 let cm_gfConveyorTimer = null;
 let cm_gfGhostTimer = null;
 let cm_gfGhostCells = [];          // {r,c,placedAt} ghost cells
@@ -14161,15 +14233,13 @@ function _gfActivateMechanic(lvl) {
     _tokyoStartTide();
   }
   else if (mech === 'blackout') {
-    // PARIS FIX: dropped from 3s/8s (37.5% blind) to 2s/10s (20% blind).
-    // Drag-locking happens in beginDrag()/endDrag() guards.
+    // PARIS BLACKOUT — animated curtain (top→bot in, bot→top out) with vertical
+    // opacity gradient and flickering window lights. _parisStartBlackoutCycle()
+    // drives a rAF loop so a single timer kicks off each cycle.
     cm_gfBlackoutTimer = setInterval(() => {
       if (!gameActive) return;
-      cm_gfBlackoutActive = true;
-      drawGrid();
-      showEventBanner('✨ PARIS BLACKOUT!');
-      setTimeout(() => { cm_gfBlackoutActive = false; drawGrid(); }, 2000);
-    }, 10000);
+      _parisStartBlackoutCycle();
+    }, PARIS_CYCLE_MS);
     cm_gfGauntletTimers.push(cm_gfBlackoutTimer);
   }
   else if (mech === 'conveyor') {
@@ -14220,8 +14290,7 @@ function _gfActivateMechanic(lvl) {
     cm_gfGauntletTimers.push(qt);
     const bt = setInterval(() => {
       if (!gameActive) return;
-      cm_gfBlackoutActive = true; drawGrid();
-      setTimeout(() => { cm_gfBlackoutActive = false; drawGrid(); }, 2000);
+      _parisStartBlackoutCycle();
     }, 12000);
     cm_gfGauntletTimers.push(bt);
     const ct = setInterval(() => {
@@ -14264,8 +14333,9 @@ function _gfDemoPulse(lv) {
       }, 60);
     }
     if (mech === 'blackout') {
-      cm_gfBlackoutActive = true; drawGrid();
-      setTimeout(() => { cm_gfBlackoutActive = false; drawGrid(); }, 1800);
+      // Demo pulse: trigger one full animated curtain on level entry so the
+      // player immediately sees what blackout looks like.
+      _parisStartBlackoutCycle();
     }
     if (mech === 'conveyor') {
       for (let r = 0; r < ROWS; r++) { const row = grid[r]; row.push(row.shift()); }
@@ -14666,6 +14736,100 @@ function _tokyoStopTide() {
   _tokyoTidePhase = 'off';
 }
 
+// ════════════════════════════════════════════════════════════════
+//  PARIS BLACKOUT ENGINE — animated curtain (top→bot in, bot→top out)
+//  with vertical opacity gradient (pitch-black at top, slightly translucent at
+//  bottom) and 5–8 randomly flickering window lights to evoke power glitches.
+// ════════════════════════════════════════════════════════════════
+function _parisBlackoutDarknessOnscreen() {
+  return _gfParisPhase === 'falling' || _gfParisPhase === 'hold' || _gfParisPhase === 'rising';
+}
+
+function _parisSeedLights() {
+  _gfParisLights = [];
+  if (typeof gridCanvas === 'undefined' || !gridCanvas || !gridCanvas.width) return;
+  const W = gridCanvas.width, H = gridCanvas.height;
+  const n = 5 + Math.floor(Math.random() * 4); // 5–8 lights
+  for (let i = 0; i < n; i++) {
+    _gfParisLights.push({
+      x: 0.08*W + Math.random() * 0.84*W,
+      y: 0.06*H + Math.random() * 0.85*H,
+      // Each light has its own "on" period and "off" period sampled from a range,
+      // so the flicker doesn't look synchronised.
+      onMs:  220 + Math.random() * 320,
+      offMs: 350 + Math.random() * 700,
+      on:    Math.random() < 0.55,
+      lastFlip: (typeof performance !== 'undefined' ? performance.now() : Date.now()),
+      hue:   38 + Math.random() * 12, // warm yellow
+      size:  3 + Math.random() * 3
+    });
+  }
+}
+
+function _parisStartBlackoutCycle() {
+  if (_gfParisPhase !== 'off') return; // already running
+  _gfParisPhase = 'falling';
+  _gfParisCurtainBot = 0;
+  _gfParisCurtainTop = 0;
+  _gfParisPhaseStart = (typeof performance !== 'undefined' ? performance.now() : Date.now());
+  _parisSeedLights();
+  showEventBanner('✨ PARIS BLACKOUT!');
+  if (!_gfParisRafId) _gfParisRafId = requestAnimationFrame(_parisRafTick);
+}
+
+function _parisRafTick() {
+  if (cm_gfLevel !== 5 && activeChallengeMode !== 'goldenfrog') {
+    _parisStopBlackout();
+    return;
+  }
+  const now = (typeof performance !== 'undefined' ? performance.now() : Date.now());
+  const dt = now - _gfParisPhaseStart;
+  if (_gfParisPhase === 'falling') {
+    _gfParisCurtainBot = Math.min(1, dt / PARIS_FALL_MS);
+    if (dt >= PARIS_FALL_MS) {
+      _gfParisPhase = 'hold';
+      _gfParisCurtainBot = 1;
+      _gfParisPhaseStart = now;
+    }
+  } else if (_gfParisPhase === 'hold') {
+    _gfParisCurtainBot = 1;
+    if (dt >= PARIS_HOLD_MS) {
+      _gfParisPhase = 'rising';
+      _gfParisCurtainTop = 0;
+      _gfParisPhaseStart = now;
+    }
+  } else if (_gfParisPhase === 'rising') {
+    _gfParisCurtainTop = Math.min(1, dt / PARIS_RISE_MS);
+    if (dt >= PARIS_RISE_MS) {
+      _gfParisPhase = 'off';
+      _gfParisCurtainTop = 0;
+      _gfParisCurtainBot = 0;
+      _gfParisLights = [];
+    }
+  }
+  // Tick light flicker timers regardless of phase (only render when darkness onscreen)
+  for (const L of _gfParisLights) {
+    const elapsed = now - L.lastFlip;
+    const lifetime = L.on ? L.onMs : L.offMs;
+    if (elapsed > lifetime) { L.on = !L.on; L.lastFlip = now; }
+  }
+  if (typeof drawGrid === 'function') drawGrid();
+  if (_gfParisPhase !== 'off') {
+    _gfParisRafId = requestAnimationFrame(_parisRafTick);
+  } else {
+    _gfParisRafId = null;
+    if (typeof drawGrid === 'function') drawGrid();
+  }
+}
+
+function _parisStopBlackout() {
+  if (_gfParisRafId) { cancelAnimationFrame(_gfParisRafId); _gfParisRafId = null; }
+  _gfParisPhase = 'off';
+  _gfParisCurtainBot = 0;
+  _gfParisCurtainTop = 0;
+  _gfParisLights = [];
+}
+
 // Drives the tide cycle: calm → rising (1 row / 10s, up to MAX) → peak (5s) → falling (1 row / 8s) → calm (8s) → repeat.
 function _tokyoTideAdvance() {
   if (!gameActive || cm_gfLevel !== 4 || cm_gfLevelGateActive) {
@@ -14788,6 +14952,7 @@ function _gfStopAllMechanics() {
   _gfQuakeSlides = [];
   _gfQuakeHiddenSet = new Set();
   if (typeof _tokyoStopTide === 'function') _tokyoStopTide();
+  if (typeof _parisStopBlackout === 'function') _parisStopBlackout();
   cm_gfSplitLeftColor = null;
   cm_gfSplitRightColor = null;
   cm_gfMechActive = false;
