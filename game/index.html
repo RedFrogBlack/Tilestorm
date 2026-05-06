@@ -4635,6 +4635,200 @@
     margin-top: 2px;
   }
 
+  /* Progress chip stack on owned cards */
+  .gtc-progress-stack {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 4px;
+    min-width: 0;
+  }
+  .gtc-resume-btn {
+    font-family: var(--font-display);
+    font-size: 12px;
+    font-weight: 800;
+    letter-spacing: 0.10em;
+    text-transform: uppercase;
+    color: #fff;
+    background: linear-gradient(180deg, color-mix(in srgb, var(--tc) 80%, #000 0%), color-mix(in srgb, var(--tc) 60%, #000 0%));
+    border: 1px solid color-mix(in srgb, var(--tc) 80%, transparent);
+    border-radius: 999px;
+    padding: 6px 12px;
+    white-space: nowrap;
+    cursor: pointer;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.35), 0 0 0 1px rgba(255,255,255,0.06) inset;
+    transition: transform 0.12s ease, box-shadow 0.12s ease;
+  }
+  .gtc-resume-btn:hover { transform: translateY(-1px); }
+  .gtc-resume-btn:active { transform: scale(0.96); }
+  .gtc-streak-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-family: var(--font-display);
+    font-size: 11px;
+    font-weight: 800;
+    letter-spacing: 0.06em;
+    color: var(--streak-clr, #CC1212);
+    background: rgba(255,255,255,0.04);
+    border: 1px solid color-mix(in srgb, var(--streak-clr, #CC1212) 50%, rgba(255,255,255,0.06));
+    border-radius: 999px;
+    padding: 3px 8px;
+    white-space: nowrap;
+  }
+  .gtc-lines-meta {
+    font-family: Arial, sans-serif;
+    font-size: 10px;
+    color: rgba(255,255,255,0.55);
+    letter-spacing: 0.04em;
+    white-space: nowrap;
+  }
+  .gtc-all-levels-link {
+    font-family: Arial, sans-serif;
+    font-size: 10px;
+    color: color-mix(in srgb, var(--tc) 80%, #fff);
+    text-decoration: underline;
+    text-decoration-color: rgba(255,255,255,0.25);
+    cursor: pointer;
+    background: transparent;
+    border: none;
+    padding: 0;
+    margin: 0;
+    letter-spacing: 0.04em;
+  }
+  .gtc-all-levels-link:hover { color: var(--tc); text-decoration-color: var(--tc); }
+
+  /* Home screen flame chip (top-right) */
+  #home-streak-chip {
+    position: absolute;
+    top: 14px;
+    right: 14px;
+    z-index: 50;
+    display: none;
+    align-items: center;
+    gap: 6px;
+    font-family: var(--font-display);
+    font-size: 13px;
+    font-weight: 800;
+    letter-spacing: 0.06em;
+    color: var(--streak-clr, #CC1212);
+    background: rgba(0,0,0,0.55);
+    border: 1px solid color-mix(in srgb, var(--streak-clr, #CC1212) 60%, rgba(255,255,255,0.10));
+    border-radius: 999px;
+    padding: 6px 11px;
+    box-shadow: 0 4px 14px rgba(0,0,0,0.5);
+    pointer-events: none;
+  }
+  #home-streak-chip.is-visible { display: inline-flex; }
+
+  /* Level picker modal */
+  #cd-level-picker {
+    position: fixed;
+    inset: 0;
+    z-index: 9999;
+    background: rgba(0,0,0,0.85);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    padding: 16px;
+    backdrop-filter: blur(8px);
+  }
+  #cd-level-picker.is-visible { display: flex; }
+  .cd-lp-card {
+    width: 100%;
+    max-width: 420px;
+    background: linear-gradient(180deg, #15151c 0%, #08080d 100%);
+    border: 1px solid rgba(255,255,255,0.10);
+    border-radius: 18px;
+    padding: 20px 18px 22px;
+    box-shadow: 0 18px 60px rgba(0,0,0,0.7);
+  }
+  .cd-lp-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 14px;
+  }
+  .cd-lp-title {
+    font-family: var(--font-display);
+    font-size: 18px;
+    font-weight: 800;
+    letter-spacing: 0.14em;
+    color: #fff;
+  }
+  .cd-lp-close {
+    background: transparent;
+    border: 1px solid rgba(255,255,255,0.18);
+    color: rgba(255,255,255,0.7);
+    width: 30px; height: 30px;
+    border-radius: 999px;
+    font-size: 16px;
+    cursor: pointer;
+    line-height: 1;
+  }
+  .cd-lp-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 10px;
+  }
+  .cd-lp-tile {
+    position: relative;
+    background: rgba(255,255,255,0.04);
+    border: 1px solid rgba(255,255,255,0.10);
+    border-radius: 12px;
+    padding: 12px 14px;
+    cursor: pointer;
+    text-align: left;
+    color: #fff;
+    transition: transform 0.12s ease, border-color 0.12s ease;
+  }
+  .cd-lp-tile:hover { transform: translateY(-2px); border-color: rgba(255,255,255,0.25); }
+  .cd-lp-tile.locked {
+    opacity: 0.55;
+    cursor: not-allowed;
+  }
+  .cd-lp-tile.locked:hover { transform: none; }
+  .cd-lp-tile.current {
+    border-color: var(--tc, #F7C948);
+    box-shadow: 0 0 0 1px var(--tc, #F7C948), 0 6px 18px color-mix(in srgb, var(--tc, #F7C948) 30%, transparent);
+  }
+  .cd-lp-tile-num {
+    font-family: var(--font-display);
+    font-size: 11px;
+    font-weight: 800;
+    letter-spacing: 0.10em;
+    color: rgba(255,255,255,0.5);
+  }
+  .cd-lp-tile-name {
+    font-family: var(--font-display);
+    font-size: 14px;
+    font-weight: 800;
+    letter-spacing: 0.04em;
+    color: #fff;
+    margin-top: 4px;
+  }
+  .cd-lp-tile-meta {
+    font-family: Arial, sans-serif;
+    font-size: 10px;
+    color: rgba(255,255,255,0.55);
+    margin-top: 4px;
+    letter-spacing: 0.02em;
+  }
+  .cd-lp-tile-lock {
+    position: absolute;
+    top: 8px;
+    right: 10px;
+    font-size: 12px;
+    opacity: 0.7;
+  }
+  .cd-lp-footer {
+    margin-top: 14px;
+    text-align: center;
+    font-family: Arial, sans-serif;
+    font-size: 11px;
+    color: rgba(255,255,255,0.5);
+  }
+
   /* State-specific accents */
   .game-tier-card.owned-v2 {
     border-color: color-mix(in srgb, var(--tc) 38%, rgba(255,255,255,0.10)) !important;
@@ -5061,6 +5255,8 @@
 <div id="screen-title" class="screen">
   <!-- Animated background canvas — sits behind all content -->
   <canvas id="home-bg-canvas"></canvas>
+  <!-- Global streak chip (🔥 N) — only shown if any active streak -->
+  <div id="home-streak-chip" aria-label="Daily streak"></div>
 
   <!-- Hidden JS hooks (kept so existing flows continue to function) -->
   <span id="streak-val" style="display:none;">0</span>
@@ -7793,6 +7989,8 @@ function advanceCityPackLevel() {
     setTimeout(() => { cityPackActive=false; gridMask=null; _skyReset(); triggerGameOver(); }, 1400);
     return;
   }
+  // Persist resume point + grid wipes naturally inside startCityPackGame()
+  if (typeof _cdProgress !== 'undefined') _cdProgress.setLastLevel('citypack', nextIdx + 1);
   showEventBanner('✅ '+CITY_PACK_CITIES[cityPackCityIdx].name+' COMPLETE!');
   setTimeout(() => startCityPackGame(nextIdx), 1600);
 }
@@ -7849,14 +8047,25 @@ function clearLines({completedRows,completedCols,completedHalfRows}){
   // For scoring/HUD, count half-rows as half a line each (rounded up: 1 half-row = 1 line credit)
   const halfCount = Array.isArray(completedHalfRows) ? completedHalfRows.length : 0;
   if(cityPackActive){
-    cityPackLinesCleared+=completedRows.length+completedCols.length+halfCount;
+    const _cpLineCount = completedRows.length+completedCols.length+halfCount;
+    cityPackLinesCleared += _cpLineCount;
+    if (_cpLineCount > 0 && typeof _cdProgress !== 'undefined') {
+      _cdProgress.addLines('citypack', _cpLineCount);
+      _cdProgress.noteActivity('citypack');
+    }
     updateCityPackHUD();
     if(cityPackLinesCleared>=cityPackLinesTarget)setTimeout(advanceCityPackLevel,700);
   }
   // Golden Frog: count cleared lines toward the 50-line per-location gate.
   if (activeChallengeMode === 'goldenfrog' && !cm_gfLevelGateActive) {
     try {
-      cm_gfLinesCleared += completedRows.length + completedCols.length + halfCount;
+      const _gfLineCount = completedRows.length + completedCols.length + halfCount;
+      cm_gfLinesCleared += _gfLineCount;
+      // Lifetime progression
+      if (_gfLineCount > 0 && typeof _cdProgress !== 'undefined') {
+        _cdProgress.addLines('goldenfrog', _gfLineCount);
+        _cdProgress.noteActivity('goldenfrog');
+      }
       if (typeof updateGfGateHUD === 'function') updateGfGateHUD();
       if (cm_gfLinesCleared >= GF_LINES_PER_LEVEL && cm_gfLevel < 10) {
         setTimeout(_gfTriggerLevelComplete, 500);
@@ -8837,7 +9046,7 @@ function showScreen(id){
     setTimeout(() => incoming.classList.remove('is-entering'), 400);
   }
 
-  if (id === 'screen-title')  { updateTrialBanner(); checkResumeOnHome(); updateHomeSubtitles(); }
+  if (id === 'screen-title')  { updateTrialBanner(); checkResumeOnHome(); updateHomeSubtitles(); if (typeof updateHomeStreakChip === 'function') updateHomeStreakChip(); }
   if (id === 'screen-profile'){ updateProfileScreen(); }
 }
 
@@ -10256,6 +10465,16 @@ window.__devSoloSetLevel = function(targetLv){
       // Force scene re-init for goldenfrog so the new location backdrop loads immediately
       if (isGfMode && typeof _gfSceneCfgIdx !== 'undefined') _gfSceneCfgIdx = -1;
       if (isGfMode && typeof _gfStopAllMechanics === 'function') { try { _gfStopAllMechanics(); } catch(e){} }
+      // Wipe grid + reset GF lines counter on level change (clean board feel)
+      if (isGfMode && typeof cm_gfLinesCleared !== 'undefined') cm_gfLinesCleared = 0;
+      if (isGfMode || isFogMode) {
+        try {
+          if (typeof grid !== 'undefined' && grid && grid.length) {
+            for (let r=0;r<grid.length;r++) for (let c=0;c<grid[r].length;c++) grid[r][c] = 0;
+          }
+        } catch(_e2) {}
+      }
+      if (isGfMode && typeof _cdProgress !== 'undefined') _cdProgress.setLastLevel('goldenfrog', lv);
     } catch(_e){}
     // Reset any in-flight challenge round so HUD/timer reflect the new level
     try {
@@ -12796,7 +13015,30 @@ function buildSoloSetupCards() {
       right.innerHTML = '<div class="gtc-free-stack"><span class="gtc-free-pill">Free 7 Days</span><span class="gtc-free-after">then £0.99/yr</span></div>';
     } else if (owned) {
       card.classList.add('owned-v2');
-      right.innerHTML = '<span class="gtc-owned-badge">Owned ✓</span>';
+      // Packs with a 10-level structure get the full progress display
+      if (typeof _cdProgress !== 'undefined' && CD_LEVEL_PACKS.indexOf(tid) >= 0) {
+        const resumeLv = _cdProgress.getResumeLevel(tid);
+        const unlocked = _cdProgress.getUnlocked(tid);
+        const lifetime = _cdProgress.getLifetime(tid);
+        const streak = _cdProgress.getStreak();
+        const streakClr = _cdProgress.getStreakColour();
+        const streakHtml = streak > 0
+          ? '<span class="gtc-streak-pill" style="--streak-clr:' + streakClr + ';">🔥 ' + streak + '</span>'
+          : '';
+        const progress = _cdProgress.getLevelProgress(tid);
+        const linesText = progress.atMax
+          ? lifetime + ' lines · MAX'
+          : lifetime + ' / ' + progress.next + ' lines';
+        right.innerHTML =
+          '<div class="gtc-progress-stack">' +
+            '<button class="gtc-resume-btn" data-resume="' + tid + '">▶ RESUME LV ' + resumeLv + '</button>' +
+            streakHtml +
+            '<span class="gtc-lines-meta">' + linesText + '</span>' +
+            '<button class="gtc-all-levels-link" data-allvls="' + tid + '">all ' + unlocked + '/10 levels →</button>' +
+          '</div>';
+      } else {
+        right.innerHTML = '<span class="gtc-owned-badge">Owned ✓</span>';
+      }
     } else {
       card.classList.add('locked-v2');
       const price = PACK_PRICE[tid] || '£1.99';
@@ -12850,7 +13092,8 @@ function openSoloSetup() {
       equipTier(tid);
       ensureAudio();
       if (!checkAccessBeforeStart()) return;
-      startCityPackGame(0);
+      const _cpResume = (typeof _cdProgress !== 'undefined') ? _cdProgress.getResumeLevel('citypack') : 1;
+      startCityPackGame(Math.max(0, _cpResume - 1));
       return;
     }
     // Equip tier and set difficulty+challenge then start
@@ -12872,12 +13115,140 @@ function openSoloSetup() {
     if (!checkAccessBeforeStart()) return;
     startGame(); // note: stopChallengeMode() inside startGame resets activeChallengeMode to 'standard'
     activeChallengeMode = map.challenge; // set AFTER startGame so it isn't wiped
+    // Resume Golden Frog at last unlocked level (or saved 'lastlv')
+    if (tid === 'goldenfrog' && typeof _cdProgress !== 'undefined' && typeof cm_gfLevel !== 'undefined') {
+      const _gfResume = _cdProgress.getResumeLevel('goldenfrog');
+      cm_gfLevel = _gfResume;
+      if (typeof cm_gfLinesCleared !== 'undefined') cm_gfLinesCleared = 0;
+      if (typeof _gfSceneCfgIdx !== 'undefined') _gfSceneCfgIdx = -1;
+    }
     initChallengeMode();
   });
   // Also make full card tappable
   const card = document.getElementById('gtc-' + tid);
-  if (card) card.addEventListener('click', () => playBtn.click());
+  if (card) card.addEventListener('click', (ev) => {
+    // If user clicked the 'all levels' link inside this card, open picker instead
+    const allLink = ev.target && (ev.target.closest ? ev.target.closest('[data-allvls]') : null);
+    if (allLink) {
+      ev.stopPropagation();
+      const pack = allLink.getAttribute('data-allvls');
+      if (typeof openLevelPicker === 'function') openLevelPicker(pack);
+      return;
+    }
+    playBtn.click();
+  });
 });
+
+// ──────────────────────────────────────────────────────────────────
+//  HOME STREAK CHIP
+// ──────────────────────────────────────────────────────────────────
+function updateHomeStreakChip() {
+  const chip = document.getElementById('home-streak-chip');
+  if (!chip || typeof _cdProgress === 'undefined') return;
+  const streak = _cdProgress.getStreak();
+  if (streak <= 0) { chip.classList.remove('is-visible'); return; }
+  chip.style.setProperty('--streak-clr', _cdProgress.getStreakColour());
+  chip.textContent = '🔥 ' + streak;
+  chip.classList.add('is-visible');
+}
+
+// ──────────────────────────────────────────────────────────────────
+//  LEVEL PICKER MODAL (Golden Frog + City Pack)
+// ──────────────────────────────────────────────────────────────────
+function openLevelPicker(pack) {
+  if (CD_LEVEL_PACKS.indexOf(pack) < 0) return;
+  let picker = document.getElementById('cd-level-picker');
+  if (!picker) {
+    picker = document.createElement('div');
+    picker.id = 'cd-level-picker';
+    document.body.appendChild(picker);
+  }
+  const PACK_LABEL = { goldenfrog: 'GOLDEN FROG', citypack: 'CITY PACK' };
+  const PACK_TC = { goldenfrog: '#F7C948', citypack: '#4A9EFF' };
+  // Source level data
+  let levels = [];
+  if (pack === 'goldenfrog' && typeof GF_LOCATIONS_CFG !== 'undefined') {
+    levels = GF_LOCATIONS_CFG.map((c, i) => ({ idx: i, name: c.name, sub: (c.mechanic||'').toUpperCase(), emoji: c.emoji||'' }));
+  } else if (pack === 'citypack' && typeof CITY_PACK_CITIES !== 'undefined') {
+    levels = CITY_PACK_CITIES.map((c, i) => ({ idx: i, name: c.name, sub: 'SKYLINE', emoji: c.emoji||'' }));
+  }
+  const unlocked = _cdProgress.getUnlocked(pack);
+  const isDev = _cdProgress.isDevUnlocked();
+  const tilesHtml = levels.map(lv => {
+    const lvNum = lv.idx + 1;
+    const isUnlocked = isDev || lvNum <= unlocked;
+    const isCurrent = lvNum === _cdProgress.getResumeLevel(pack);
+    const need = _cdProgress.linesNeededFor(pack, lvNum);
+    const meta = isUnlocked
+      ? (isCurrent ? '→ Resume here' : 'Tap to play')
+      : ('Need ' + need + ' more lines');
+    const cls = ['cd-lp-tile'];
+    if (!isUnlocked) cls.push('locked');
+    if (isCurrent) cls.push('current');
+    return '<button class="' + cls.join(' ') + '" ' +
+      'data-lvpick-pack="' + pack + '" data-lvpick-lv="' + lvNum + '" ' +
+      'style="--tc:' + PACK_TC[pack] + ';" ' +
+      (isUnlocked ? '' : 'disabled aria-disabled="true" ') + '>' +
+      (isUnlocked ? '' : '<span class="cd-lp-tile-lock">🔒</span>') +
+      '<div class="cd-lp-tile-num">LV ' + lvNum + '</div>' +
+      '<div class="cd-lp-tile-name">' + (lv.emoji ? lv.emoji + ' ' : '') + lv.name + '</div>' +
+      '<div class="cd-lp-tile-meta">' + meta + '</div>' +
+    '</button>';
+  }).join('');
+  const lifetime = _cdProgress.getLifetime(pack);
+  const streak = _cdProgress.getStreak();
+  const footerBits = [lifetime + ' lifetime lines'];
+  if (streak > 0) footerBits.push('🔥 ' + streak + '-day streak');
+  if (isDev) footerBits.push('DEV: all unlocked');
+  picker.innerHTML =
+    '<div class="cd-lp-card" style="--tc:' + PACK_TC[pack] + ';">' +
+      '<div class="cd-lp-header">' +
+        '<div class="cd-lp-title">' + PACK_LABEL[pack] + ' · LEVELS</div>' +
+        '<button class="cd-lp-close" id="cd-lp-close-btn" aria-label="Close">✕</button>' +
+      '</div>' +
+      '<div class="cd-lp-grid">' + tilesHtml + '</div>' +
+      '<div class="cd-lp-footer">' + footerBits.join(' · ') + '</div>' +
+    '</div>';
+  picker.classList.add('is-visible');
+  // Click handlers
+  picker.querySelector('#cd-lp-close-btn').onclick = () => { picker.classList.remove('is-visible'); };
+  picker.onclick = (ev) => {
+    if (ev.target === picker) { picker.classList.remove('is-visible'); return; }
+    const tile = ev.target.closest && ev.target.closest('[data-lvpick-pack]');
+    if (!tile || tile.disabled) return;
+    const p = tile.getAttribute('data-lvpick-pack');
+    const lv = parseInt(tile.getAttribute('data-lvpick-lv'), 10);
+    if (!_cdProgress.isLevelUnlocked(p, lv)) return;
+    picker.classList.remove('is-visible');
+    _cdProgress.setLastLevel(p, lv);
+    // Launch the pack at the chosen level
+    if (p === 'citypack') {
+      ensureAudio();
+      if (typeof checkAccessBeforeStart === 'function' && !checkAccessBeforeStart()) return;
+      if (typeof equipTier === 'function') equipTier('citypack');
+      startCityPackGame(lv - 1);
+    } else if (p === 'goldenfrog') {
+      ensureAudio();
+      if (typeof checkAccessBeforeStart === 'function' && !checkAccessBeforeStart()) return;
+      if (typeof equipTier === 'function') equipTier('goldenfrog');
+      // Same flow as the play button but force level
+      if (typeof cityPackActive !== 'undefined' && cityPackActive) {
+        cityPackActive = false; gridMask = null;
+        if (typeof _skyReset === 'function') _skyReset();
+      }
+      const map = TIER_GAME_MAP['goldenfrog'];
+      setDifficulty(map.diff);
+      selectedChallenge = map.challenge;
+      startGame();
+      activeChallengeMode = map.challenge;
+      cm_gfLevel = lv;
+      if (typeof cm_gfLinesCleared !== 'undefined') cm_gfLinesCleared = 0;
+      if (typeof _gfSceneCfgIdx !== 'undefined') _gfSceneCfgIdx = -1;
+      initChallengeMode();
+    }
+  };
+}
+
 
 // Back button
 document.getElementById('solo-back').addEventListener('click', () => showScreen('screen-title'));
@@ -12912,6 +13283,140 @@ let lastPlacedRow = null, lastPlacedCol = null;  // for chase fog behaviour
 // Golden Frog state
 let cm_gfTimer = null;
 let cm_gfMechTimer = null;
+// ──────────────────────────────────────────────────────────────────
+//  CD PROGRESS — lifetime lines, level unlocks, streaks (per pack)
+// ──────────────────────────────────────────────────────────────────
+// Packs that have a 10-level structure use this system. Endless packs
+// (Tadpole/Tree Frog/Fog) only track lifetime + streak (no unlocks).
+const CD_LEVEL_PACKS = ['goldenfrog', 'citypack'];
+const CD_UNLOCK_CURVE = [0, 50, 150, 300, 500, 750, 1050, 1400, 1800, 2300]; // cumulative lifetime lines required for level idx (0-based)
+const CD_STREAK_BONUS_PER_DAY = 5;   // lines added on play, scaled by streak day
+const CD_STREAK_BONUS_CAP = 50;       // never reward more than +50 per session
+
+const _cdProgress = {
+  _key(pack, suffix) { return 'cd_' + suffix + '_' + pack; },
+  _todayStr() { const d = new Date(); return d.getFullYear()+'-'+(d.getMonth()+1)+'-'+d.getDate(); },
+  _daysBetween(aIso, bIso) {
+    if (!aIso || !bIso) return 999;
+    const a = new Date(aIso); a.setHours(0,0,0,0);
+    const b = new Date(bIso); b.setHours(0,0,0,0);
+    return Math.round((b - a) / 86400000);
+  },
+  // Lifetime lines
+  getLifetime(pack) {
+    return parseInt(localStorage.getItem(this._key(pack,'lifetime')) || '0', 10) || 0;
+  },
+  addLines(pack, n) {
+    if (!n || n <= 0) return;
+    const cur = this.getLifetime(pack);
+    const next = cur + n;
+    localStorage.setItem(this._key(pack,'lifetime'), String(next));
+    // Recompute unlocked level
+    if (CD_LEVEL_PACKS.indexOf(pack) >= 0) {
+      let unlocked = 1;
+      for (let i = 0; i < CD_UNLOCK_CURVE.length; i++) {
+        if (next >= CD_UNLOCK_CURVE[i]) unlocked = i + 1;
+      }
+      const prev = this.getUnlocked(pack);
+      if (unlocked > prev) {
+        localStorage.setItem(this._key(pack,'unlocked'), String(unlocked));
+        try { if (typeof showToast === 'function') showToast('🔓 LV ' + unlocked + ' UNLOCKED'); } catch(_e){}
+      }
+    }
+  },
+  getUnlocked(pack) {
+    const v = parseInt(localStorage.getItem(this._key(pack,'unlocked')) || '1', 10);
+    return Math.max(1, Math.min(10, v));
+  },
+  // Resume level: highest unlocked, or saved current if explicitly set
+  getResumeLevel(pack) {
+    const saved = parseInt(localStorage.getItem(this._key(pack,'lastlv')) || '0', 10);
+    if (saved >= 1 && saved <= this.getUnlocked(pack)) return saved;
+    return this.getUnlocked(pack);
+  },
+  setLastLevel(pack, lv) {
+    localStorage.setItem(this._key(pack,'lastlv'), String(Math.max(1, Math.min(10, lv|0))));
+  },
+  // Linear unlock progress (lines toward next level)
+  getLevelProgress(pack) {
+    const lifetime = this.getLifetime(pack);
+    const unlocked = this.getUnlocked(pack);
+    if (unlocked >= 10) return { current: lifetime, next: lifetime, ratio: 1, atMax: true };
+    const nextThreshold = CD_UNLOCK_CURVE[unlocked]; // index unlocked = next level idx
+    const prevThreshold = CD_UNLOCK_CURVE[unlocked - 1] || 0;
+    const ratio = Math.max(0, Math.min(1, (lifetime - prevThreshold) / Math.max(1, nextThreshold - prevThreshold)));
+    return { current: lifetime, next: nextThreshold, ratio: ratio, atMax: false };
+  },
+  // Streak — global across owned packs but recorded per-pack-played
+  getStreak() {
+    return parseInt(localStorage.getItem('cd_streak_global') || '0', 10) || 0;
+  },
+  getStreakMax() {
+    return parseInt(localStorage.getItem('cd_streak_max_global') || '0', 10) || 0;
+  },
+  getLastPlayDate() {
+    return localStorage.getItem('cd_lastplay_global') || '';
+  },
+  // Called when player clears a line (or completes a session) — keeps streak alive
+  noteActivity(pack) {
+    const today = this._todayStr();
+    const last = this.getLastPlayDate();
+    let streak = this.getStreak();
+    if (last === today) {
+      // Already counted today — no change
+      return { streak: streak, bonusGained: 0 };
+    }
+    const gap = this._daysBetween(last, today);
+    let bonusGained = 0;
+    if (!last) {
+      streak = 1;
+    } else if (gap === 1) {
+      streak = streak + 1;
+    } else if (gap === 2) {
+      // Grace day: streak frozen — keep current streak, no increment
+      // (effectively last 'play day' + 1 day off + today — we lenient-keep)
+      streak = streak + 1;
+    } else if (gap >= 3) {
+      streak = 1;
+    }
+    // Streak bonus: +5 lines/day capped at +50
+    bonusGained = Math.min(CD_STREAK_BONUS_CAP, streak * CD_STREAK_BONUS_PER_DAY);
+    if (bonusGained > 0 && CD_LEVEL_PACKS.indexOf(pack) >= 0) {
+      this.addLines(pack, bonusGained);
+    }
+    localStorage.setItem('cd_lastplay_global', today);
+    localStorage.setItem('cd_streak_global', String(streak));
+    if (streak > this.getStreakMax()) {
+      localStorage.setItem('cd_streak_max_global', String(streak));
+    }
+    // Per-pack last-played for display
+    localStorage.setItem(this._key(pack,'lastplay'), today);
+    return { streak: streak, bonusGained: bonusGained };
+  },
+  // Streak flame colour by milestone
+  getStreakColour() {
+    const s = this.getStreak();
+    if (s >= 100) return '#F7C948'; // gold
+    if (s >= 30) return '#4A9EFF';  // blue
+    if (s >= 7) return '#F97316';   // orange
+    return '#CC1212';                // red (default)
+  },
+  // Dev mode bypass
+  isDevUnlocked() {
+    try { return localStorage.getItem('cd_dev_unlock') === '1'; } catch(_) { return false; }
+  },
+  isLevelUnlocked(pack, lv) {
+    if (this.isDevUnlocked()) return true;
+    if (CD_LEVEL_PACKS.indexOf(pack) < 0) return true;
+    return (lv|0) <= this.getUnlocked(pack);
+  },
+  linesNeededFor(pack, lv) {
+    if (lv <= 1) return 0;
+    const need = CD_UNLOCK_CURVE[lv - 1] || 0;
+    return Math.max(0, need - this.getLifetime(pack));
+  }
+};
+
 let cm_gfLevel = 1;                // 1-10 controls location + mechanic
 let cm_gfMechActive = false;
 let cm_gfShrinkInterval = null;
@@ -13954,6 +14459,13 @@ function _gfDismissCelebration() {
   try {
     if (typeof _gfStopAllMechanics === 'function') _gfStopAllMechanics();
     cm_gfLevel = Math.min((cm_gfLevel||1) + 1, 10);
+    // Persist resume point + wipe grid so each new location starts clean
+    if (typeof _cdProgress !== 'undefined') _cdProgress.setLastLevel('goldenfrog', cm_gfLevel);
+    try {
+      if (typeof grid !== 'undefined' && grid && grid.length) {
+        for (let r=0;r<grid.length;r++) for (let c=0;c<grid[r].length;c++) grid[r][c] = 0;
+      }
+    } catch(_e2) {}
     if (typeof cm_gfTimer !== 'undefined' && cm_gfTimer) { clearInterval(cm_gfTimer); cm_gfTimer = null; }
     if (typeof initChallengeMode === 'function') initChallengeMode();
     if (typeof updateUI === 'function') updateUI();
@@ -15339,6 +15851,12 @@ function _devSkipLevel() {
   if (activeChallengeMode === 'goldenfrog') {
     if (typeof _gfStopAllMechanics === 'function') { try { _gfStopAllMechanics(); } catch(e){} }
     cm_gfLevel = Math.min((cm_gfLevel||1) + 1, 10);
+    if (typeof _cdProgress !== 'undefined') _cdProgress.setLastLevel('goldenfrog', cm_gfLevel);
+    try {
+      if (typeof grid !== 'undefined' && grid && grid.length) {
+        for (let r=0;r<grid.length;r++) for (let c=0;c<grid[r].length;c++) grid[r][c] = 0;
+      }
+    } catch(_e2) {}
     if (cm_gfTimer) { clearInterval(cm_gfTimer); cm_gfTimer = null; }
     initChallengeMode();
   }
