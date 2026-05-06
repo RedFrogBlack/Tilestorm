@@ -13192,8 +13192,9 @@ function openSoloSetup() {
       equipTier(tid);
       ensureAudio();
       if (!checkAccessBeforeStart()) return;
-      const _cpResume = (typeof _cdProgress !== 'undefined') ? _cdProgress.getResumeLevel('citypack') : 1;
-      startCityPackGame(Math.max(0, _cpResume - 1));
+      // PLAY button always starts City Pack fresh at city 1; RESUME button jumps to last city.
+      if (typeof _cdProgress !== 'undefined') _cdProgress.setLastLevel('citypack', 1);
+      startCityPackGame(0);
       return;
     }
     // Equip tier and set difficulty+challenge then start
@@ -13215,12 +13216,13 @@ function openSoloSetup() {
     if (!checkAccessBeforeStart()) return;
     startGame(); // note: stopChallengeMode() inside startGame resets activeChallengeMode to 'standard'
     activeChallengeMode = map.challenge; // set AFTER startGame so it isn't wiped
-    // Resume Golden Frog at last unlocked level (or saved 'lastlv')
-    if (tid === 'goldenfrog' && typeof _cdProgress !== 'undefined' && typeof cm_gfLevel !== 'undefined') {
-      const _gfResume = _cdProgress.getResumeLevel('goldenfrog');
-      cm_gfLevel = _gfResume;
+    // PLAY button always starts Golden Frog fresh at Level 1.
+    // (Use the dedicated RESUME button or the all-levels picker to jump to a specific level.)
+    if (tid === 'goldenfrog' && typeof cm_gfLevel !== 'undefined') {
+      cm_gfLevel = 1;
       if (typeof cm_gfLinesCleared !== 'undefined') cm_gfLinesCleared = 0;
       if (typeof _gfSceneCfgIdx !== 'undefined') _gfSceneCfgIdx = -1;
+      if (typeof _cdProgress !== 'undefined') _cdProgress.setLastLevel('goldenfrog', 1);
     }
     initChallengeMode();
   });
@@ -13233,6 +13235,39 @@ function openSoloSetup() {
       ev.stopPropagation();
       const pack = allLink.getAttribute('data-allvls');
       if (typeof openLevelPicker === 'function') openLevelPicker(pack);
+      return;
+    }
+    // Resume button: jump straight to saved level instead of starting at lv 1
+    const resumeBtn = ev.target && (ev.target.closest ? ev.target.closest('[data-resume]') : null);
+    if (resumeBtn) {
+      ev.stopPropagation();
+      const pack = resumeBtn.getAttribute('data-resume');
+      const isOwned = tierOwned(pack) || (pack === 'tadpole' && trialActive());
+      if (!isOwned) { playBtn.click(); return; }
+      const resumeLv = (typeof _cdProgress !== 'undefined') ? _cdProgress.getResumeLevel(pack) : 1;
+      // City Pack: start its dedicated loop directly at the resume city
+      if (pack === 'citypack') {
+        equipTier(pack);
+        ensureAudio();
+        if (!checkAccessBeforeStart()) return;
+        startCityPackGame(Math.max(0, resumeLv - 1));
+        return;
+      }
+      // Golden Frog: reuse the play flow then override cm_gfLevel to the resume target.
+      // Note: playBtn.click() resets lastlv to 1, so we re-save it AFTER to the resume target.
+      playBtn.click();
+      try {
+        if (pack === 'goldenfrog' && typeof cm_gfLevel !== 'undefined') {
+          cm_gfLevel = resumeLv;
+          if (typeof cm_gfLinesCleared !== 'undefined') cm_gfLinesCleared = 0;
+          if (typeof _gfSceneCfgIdx !== 'undefined') _gfSceneCfgIdx = -1;
+          if (typeof _gfStopAllMechanics === 'function') { try { _gfStopAllMechanics(); } catch(_e){} }
+          if (typeof initChallengeMode === 'function') initChallengeMode();
+          if (typeof updateUI === 'function') updateUI();
+          if (typeof drawGrid === 'function') drawGrid();
+          if (typeof _cdProgress !== 'undefined') _cdProgress.setLastLevel('goldenfrog', resumeLv);
+        }
+      } catch(_e){}
       return;
     }
     playBtn.click();
@@ -13428,11 +13463,13 @@ const _cdProgress = {
     const v = parseInt(localStorage.getItem(this._key(pack,'unlocked')) || '1', 10);
     return Math.max(1, Math.min(10, v));
   },
-  // Resume level: highest unlocked, or saved current if explicitly set
+  // Resume level: saved 'lastlv' if explicitly set by completing a level or dev-skip;
+  // otherwise always start at Level 1 so a fresh tap on Golden Frog never skips past lv 1.
+  // (Highest unlocked is exposed separately via getUnlocked / level picker.)
   getResumeLevel(pack) {
     const saved = parseInt(localStorage.getItem(this._key(pack,'lastlv')) || '0', 10);
     if (saved >= 1 && saved <= this.getUnlocked(pack)) return saved;
-    return this.getUnlocked(pack);
+    return 1;
   },
   setLastLevel(pack, lv) {
     localStorage.setItem(this._key(pack,'lastlv'), String(Math.max(1, Math.min(10, lv|0))));
