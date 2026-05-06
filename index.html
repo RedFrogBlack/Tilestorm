@@ -8416,8 +8416,14 @@ function renderTray(){
 }
 
 // ── Drag & Drop ───────────────────────────────────────────────────
-function startDrag(e,idx){if(duoGameActive&&duoMode==='coop'&&!coopMyTurn){showToast('⏳ Wait for your partner\'s turn!');return;}if(trayUsed[idx])return;e.preventDefault();ensureAudio();beginDrag(e.clientX,e.clientY,idx);}
-function startDragTouch(e,idx){if(duoGameActive&&duoMode==='coop'&&!coopMyTurn){showToast('⏳ Wait for your partner\'s turn!');return;}if(trayUsed[idx])return;e.preventDefault();ensureAudio();const t=e.touches[0];beginDrag(t.clientX,t.clientY,idx);}
+// PARIS BLACKOUT FIX: refuse drags while the board is blacked out so the
+// player can't accidentally drop a piece blind. Tray remains visible —
+// only the act of picking up a piece is paused for the 2-second blackout.
+function _gfDragLockedByBlackout(){
+  return activeChallengeMode === 'goldenfrog' && typeof cm_gfBlackoutActive !== 'undefined' && cm_gfBlackoutActive;
+}
+function startDrag(e,idx){if(duoGameActive&&duoMode==='coop'&&!coopMyTurn){showToast('⏳ Wait for your partner\'s turn!');return;}if(_gfDragLockedByBlackout()){showToast('🌃 PARIS BLACKOUT — wait for the lights');return;}if(trayUsed[idx])return;e.preventDefault();ensureAudio();beginDrag(e.clientX,e.clientY,idx);}
+function startDragTouch(e,idx){if(duoGameActive&&duoMode==='coop'&&!coopMyTurn){showToast('⏳ Wait for your partner\'s turn!');return;}if(_gfDragLockedByBlackout()){showToast('🌃 PARIS BLACKOUT — wait for the lights');return;}if(trayUsed[idx])return;e.preventDefault();ensureAudio();const t=e.touches[0];beginDrag(t.clientX,t.clientY,idx);}
 function beginDrag(cx,cy,idx){
   if(powerupActive)return;
   dragging=true;dragPieceIdx=idx;dragShape=trayPieces[idx].shape;dragColor=trayPieces[idx].color;
@@ -8505,7 +8511,10 @@ function endDrag(cx,cy){
       lastPlacedRow = _placedAbsolute[0][0]; lastPlacedCol = _placedAbsolute[0][1];
     }
     // Golden Frog: apply mirror + register ghost cells on placement
-    if (activeChallengeMode === 'goldenfrog') {
+    // GENERALISED SPECIALS BYPASS (lesson from Dubai): special bricks
+    // (meteor/angel) should not be subject to mechanic side-effects —
+    // skip mirror copy and ghost-vanish registration for them.
+    if (activeChallengeMode === 'goldenfrog' && !specialType) {
       _gfApplyMirror(_placedAbsolute);
       for (const [r, c] of _placedAbsolute) _gfRegisterGhostCell(r, c);
     }
@@ -8542,6 +8551,8 @@ function endDrag(cx,cy){
             cm_gfGravityFlip = !cm_gfGravityFlip;
             if (cm_gfGravityFlip) {
               grid.reverse();
+              // LESSON FROM DUBAI: reversed grid can complete a line
+              setTimeout(_gfRecheckLinesAfterMutation, 100);
               showEventBanner('✨ VENICE — GRAVITY FLIPS!');
             }
           }
@@ -13430,6 +13441,29 @@ function _fogGetTileOpacity(row, col) {
 // ═════════════════════════════════════════════════════════════════
 //  GOLDEN FROG MECHANICS ENGINE
 // ═════════════════════════════════════════════════════════════════
+// ════════════════════════════════════════════════════════════════════════════════
+// LESSON LEARNED FROM DUBAI: Any GF mechanic that mutates grid cells must
+// recheck for completed lines. Otherwise: tiles can be pushed into a
+// completed row by quake/shrink/conveyor/gravity/rotation but never clear.
+// This helper runs findCompletedLines() and routes the result through the
+// normal clearLines() pipeline so all scoring/HUD/animation hooks fire.
+// ════════════════════════════════════════════════════════════════════════════════
+function _gfRecheckLinesAfterMutation() {
+  if (activeChallengeMode !== 'goldenfrog') return;
+  try {
+    if (typeof findCompletedLines !== 'function' || typeof clearLines !== 'function') return;
+    const completed = findCompletedLines();
+    const total = (completed.completedRows||[]).length
+                + (completed.completedCols||[]).length
+                + (completed.completedHalfRows||[]).length;
+    if (total > 0) {
+      clearLines(completed);
+      if (typeof drawGrid === 'function') drawGrid();
+      if (typeof updateUI === 'function') updateUI();
+    }
+  } catch(_e) { /* defensive — never break a mechanic on recheck failure */ }
+}
+
 function _gfActivateMechanic(lvl) {
   const cfg = GF_LOCATIONS_CFG[Math.min(lvl - 1, 9)];
   if (!cfg) return;
@@ -13497,6 +13531,8 @@ function _gfActivateMechanic(lvl) {
         }
       }, 60);
       drawGrid();
+      // LESSON FROM DUBAI: tiles moved by the quake may have completed a line
+      _gfRecheckLinesAfterMutation();
       showEventBanner('✨ MONACO QUAKE — TILES MOVED!');
     }, 8000);
     cm_gfGauntletTimers.push(cm_gfMechTimer);
@@ -13504,21 +13540,41 @@ function _gfActivateMechanic(lvl) {
   else if (mech === 'shrink') {
     cm_gfShrinkInterval = setInterval(() => {
       if (!gameActive) return;
+      // TOKYO SHRINK FIX: push the bottom row's tiles UP into the row above
+      // (if there's space) instead of silently deleting them. Tiles that
+      // can't be saved are still lost, but at least the player isn't
+      // punished out of nowhere for using the bottom row.
+      try {
+        const bottomRow = grid[ROWS - 1];
+        for (let c = 0; c < COLS; c++) {
+          if (bottomRow[c] !== 0) {
+            // walk up looking for the first empty (non-masked) cell
+            for (let r = ROWS - 2; r >= 0; r--) {
+              if (typeof isMasked === 'function' && isMasked(r, c)) continue;
+              if (grid[r][c] === 0) { grid[r][c] = bottomRow[c]; break; }
+            }
+          }
+        }
+      } catch(_e) {}
       grid.unshift(new Array(COLS).fill(0));
       grid.pop();
       drawGrid(); updateUI();
-      showEventBanner('✨ TOKYO SHRINK — BOARD CONTRACTS!');
+      // After the push-up + shift the surviving tiles may complete a line
+      _gfRecheckLinesAfterMutation();
+      showEventBanner('✨ TOKYO SHRINK — TILES PUSHED UP!');
     }, 30000);
     cm_gfGauntletTimers.push(cm_gfShrinkInterval);
   }
   else if (mech === 'blackout') {
+    // PARIS FIX: dropped from 3s/8s (37.5% blind) to 2s/10s (20% blind).
+    // Drag-locking happens in beginDrag()/endDrag() guards.
     cm_gfBlackoutTimer = setInterval(() => {
       if (!gameActive) return;
       cm_gfBlackoutActive = true;
       drawGrid();
       showEventBanner('✨ PARIS BLACKOUT!');
-      setTimeout(() => { cm_gfBlackoutActive = false; drawGrid(); }, 3000);
-    }, 8000);
+      setTimeout(() => { cm_gfBlackoutActive = false; drawGrid(); }, 2000);
+    }, 10000);
     cm_gfGauntletTimers.push(cm_gfBlackoutTimer);
   }
   else if (mech === 'conveyor') {
@@ -13526,6 +13582,8 @@ function _gfActivateMechanic(lvl) {
       if (!gameActive) return;
       for (let r = 0; r < ROWS; r++) { const row = grid[r]; row.push(row.shift()); }
       drawGrid();
+      // LESSON FROM DUBAI: shifted rows may now form a complete line
+      _gfRecheckLinesAfterMutation();
       showEventBanner('✨ MALDIVES — CONVEYOR SHIFTS!');
     }, 10000);
     cm_gfGauntletTimers.push(cm_gfConveyorTimer);
@@ -13575,6 +13633,7 @@ function _gfActivateMechanic(lvl) {
       if (!gameActive) return;
       for (let r = 0; r < ROWS; r++) { const row = grid[r]; row.push(row.shift()); }
       drawGrid();
+      _gfRecheckLinesAfterMutation();
     }, 15000);
     cm_gfGauntletTimers.push(ct);
     cm_gfGhostTimer = setInterval(() => {
@@ -14196,12 +14255,793 @@ function _gfSceneDrawDubaiSkyline(ctx, W, H, cfg, dayMix) {
   }
 }
 
+// ════════════════════════════════════════════════════════════════════════════════
+//  GOLDEN FROG — CUSTOM SKYLINES (one per location)
+//  Each location has a recognizable silhouette so the dev / player can tell
+//  which level they're in at a glance, day or night. Pure 2D canvas — no images.
+//  Style is consistent: back layer (faded), front layer (dark), edge glow,
+//  optional night-time window/accent lights using cfg.sky.accentColor.
+// ════════════════════════════════════════════════════════════════════════════════
+function _gfSkyColours(cfg, dayMix) {
+  const back  = `rgb(${Math.round(8+dayMix*10)},${Math.round(8+dayMix*8)},${Math.round(15+dayMix*15)})`;
+  const front = `rgb(${Math.round(2+dayMix*5)},${Math.round(2+dayMix*3)},${Math.round(8+dayMix*8)})`;
+  const edge  = cfg.sky.edgeColor   || [255,210,100];
+  const acc   = cfg.sky.accentColor || [255,200,80];
+  return { back, front, edge, acc };
+}
+
+// IBIZA — Es Vedrà rock silhouette + palm-fringed coastline + chillout terrace
+function _gfSceneDrawIbizaSkyline(ctx, W, H, cfg, dayMix) {
+  const { back, front, edge, acc } = _gfSkyColours(cfg, dayMix);
+  const baseY = H * 0.66;
+  // Back: sea horizon line + distant headland
+  ctx.save(); ctx.globalAlpha = 0.55; ctx.fillStyle = back;
+  ctx.beginPath(); ctx.moveTo(0, H); ctx.lineTo(0, baseY+10);
+  for (let x=0;x<=W;x+=W/30) {
+    const y = baseY + 8 - Math.sin(x*0.018)*5 - Math.sin(x*0.006+1.2)*4;
+    ctx.lineTo(x,y);
+  }
+  ctx.lineTo(W, baseY+10); ctx.lineTo(W,H); ctx.closePath(); ctx.fill();
+  ctx.restore();
+  // Front: Es Vedrà rock (right side, iconic conical island)
+  ctx.save(); ctx.globalAlpha = 0.92; ctx.fillStyle = front;
+  const evX = W*0.78, evBase = baseY+4, evH = H*0.32;
+  ctx.beginPath();
+  ctx.moveTo(evX - W*0.10, evBase);
+  ctx.bezierCurveTo(evX - W*0.06, evBase - evH*0.2, evX - W*0.04, evBase - evH*0.6, evX - W*0.005, evBase - evH);
+  ctx.bezierCurveTo(evX + W*0.03, evBase - evH*0.7, evX + W*0.07, evBase - evH*0.3, evX + W*0.10, evBase);
+  ctx.closePath(); ctx.fill();
+  // Coastal terraces (left): low whitewashed buildings
+  const terraces = [
+    {x:0.03,w:0.06,h:0.07},{x:0.10,w:0.05,h:0.05},{x:0.16,w:0.07,h:0.08},
+    {x:0.24,w:0.05,h:0.06},{x:0.31,w:0.06,h:0.07},{x:0.39,w:0.04,h:0.05},
+    {x:0.46,w:0.05,h:0.06},{x:0.55,w:0.06,h:0.07}
+  ];
+  for (const t of terraces) ctx.fillRect(t.x*W, baseY - t.h*H, t.w*W, t.h*H + 4);
+  // Palm trees scattered
+  const palms = [0.08, 0.20, 0.35, 0.50, 0.62, 0.66];
+  for (const px of palms) {
+    const x = px*W, y = baseY;
+    ctx.fillRect(x-0.8, y - H*0.06, 1.6, H*0.06);
+    // fronds
+    for (let k=-3;k<=3;k++) {
+      const ang = k*0.3;
+      const fx = x + Math.cos(ang-Math.PI/2)*8;
+      const fy = y - H*0.06 + Math.sin(ang-Math.PI/2)*8;
+      ctx.beginPath(); ctx.moveTo(x, y - H*0.06);
+      ctx.lineTo(fx, fy); ctx.lineTo(fx+1, fy+1); ctx.closePath(); ctx.fill();
+    }
+  }
+  ctx.restore();
+  // Edge glow on rock
+  ctx.save(); ctx.globalAlpha = 0.6; ctx.strokeStyle = `rgba(${edge[0]},${edge[1]},${edge[2]},0.9)`; ctx.lineWidth = 1.2;
+  ctx.beginPath();
+  ctx.moveTo(evX - W*0.10, evBase);
+  ctx.bezierCurveTo(evX - W*0.06, evBase - evH*0.2, evX - W*0.04, evBase - evH*0.6, evX - W*0.005, evBase - evH);
+  ctx.bezierCurveTo(evX + W*0.03, evBase - evH*0.7, evX + W*0.07, evBase - evH*0.3, evX + W*0.10, evBase);
+  ctx.stroke();
+  ctx.restore();
+  // Night: warm party lights along coast
+  if (dayMix < 0.55) {
+    ctx.save(); ctx.fillStyle = `rgba(${acc[0]},${acc[1]},${acc[2]},${0.85 - dayMix*0.5})`;
+    for (let i=0;i<26;i++) {
+      const x = (0.04 + i*0.025)*W;
+      const y = baseY - 2 + Math.sin(i*1.7)*3;
+      if ((i*7 + Math.floor(_gfSceneT*100)) % 9 < 6) ctx.fillRect(x, y, 1.4, 1.4);
+    }
+    ctx.restore();
+  }
+}
+
+// MONACO — Casino + harbour yachts + Rocher de Monaco + cliffside palace
+function _gfSceneDrawMonacoSkyline(ctx, W, H, cfg, dayMix) {
+  const { back, front, edge, acc } = _gfSkyColours(cfg, dayMix);
+  const baseY = H * 0.64;
+  // Back: cliffside layer
+  ctx.save(); ctx.globalAlpha = 0.55; ctx.fillStyle = back;
+  ctx.beginPath(); ctx.moveTo(0, H); ctx.lineTo(0, baseY+10);
+  for (let x=0;x<=W;x+=W/24) {
+    const y = baseY + 6 - Math.sin(x*0.01)*10 - (x<W*0.3 ? 18 : 0);
+    ctx.lineTo(x,y);
+  }
+  ctx.lineTo(W, H); ctx.closePath(); ctx.fill();
+  ctx.restore();
+  // Front: cliff/Rocher (left), casino (center), apartments (right), yachts (bottom)
+  ctx.save(); ctx.globalAlpha = 0.92; ctx.fillStyle = front;
+  // Le Rocher de Monaco (palace cliff, left)
+  ctx.beginPath();
+  ctx.moveTo(0, baseY+4);
+  ctx.lineTo(0, baseY - H*0.20);
+  ctx.lineTo(W*0.08, baseY - H*0.28);
+  ctx.lineTo(W*0.18, baseY - H*0.22);
+  ctx.lineTo(W*0.22, baseY+4);
+  ctx.closePath(); ctx.fill();
+  // Palace turrets on top of cliff
+  ctx.fillRect(W*0.06, baseY - H*0.32, W*0.012, H*0.05);
+  ctx.fillRect(W*0.14, baseY - H*0.30, W*0.012, H*0.04);
+  // Casino de Monte-Carlo (center) — wide ornate building with twin towers
+  const csX = W*0.42;
+  ctx.fillRect(csX, baseY - H*0.16, W*0.18, H*0.16+4);
+  ctx.fillRect(csX + W*0.005, baseY - H*0.22, W*0.025, H*0.06);  // left tower
+  ctx.fillRect(csX + W*0.15, baseY - H*0.22, W*0.025, H*0.06);   // right tower
+  // little dome on left tower
+  ctx.beginPath(); ctx.arc(csX + W*0.0175, baseY - H*0.22, W*0.012, Math.PI, 0); ctx.fill();
+  ctx.beginPath(); ctx.arc(csX + W*0.1625, baseY - H*0.22, W*0.012, Math.PI, 0); ctx.fill();
+  // High-rise apartments (right) — Monaco's famous dense towers
+  const apts = [
+    {x:0.66,w:0.04,h:0.30},{x:0.71,w:0.035,h:0.36},{x:0.75,w:0.045,h:0.42},
+    {x:0.81,w:0.03,h:0.28},{x:0.85,w:0.04,h:0.34},{x:0.91,w:0.035,h:0.30}
+  ];
+  for (const a of apts) ctx.fillRect(a.x*W, baseY - a.h*H, a.w*W, a.h*H+1);
+  // Harbour yachts (bottom strip)
+  for (let k=0;k<5;k++) {
+    const yx = W*(0.26 + k*0.07), yy = baseY + 8;
+    ctx.fillRect(yx, yy, W*0.04, 3);
+    ctx.beginPath(); ctx.moveTo(yx + W*0.02, yy); ctx.lineTo(yx + W*0.02, yy - H*0.04); ctx.lineTo(yx + W*0.022, yy - H*0.04); ctx.lineTo(yx + W*0.022, yy); ctx.closePath(); ctx.fill();
+  }
+  ctx.restore();
+  // Edge glow casino
+  ctx.save(); ctx.globalAlpha = 0.6; ctx.strokeStyle = `rgba(${edge[0]},${edge[1]},${edge[2]},0.9)`; ctx.lineWidth = 1.2;
+  ctx.strokeRect(csX, baseY - H*0.16, W*0.18, H*0.16);
+  ctx.restore();
+  // Night windows + yacht lights
+  if (dayMix < 0.55) {
+    ctx.save(); ctx.fillStyle = `rgba(${acc[0]},${acc[1]},${acc[2]},${0.85 - dayMix*0.5})`;
+    for (const a of apts) {
+      const cols = Math.max(2, Math.floor(a.w*W/4));
+      const rows = Math.max(3, Math.floor(a.h*H/6));
+      for (let rr=0;rr<rows;rr++) for (let cc=0;cc<cols;cc++) {
+        if ((rr*5+cc*3+Math.floor(_gfSceneT*100))%11<5) {
+          ctx.fillRect(a.x*W + 1 + cc*((a.w*W-2)/Math.max(1,cols-1)), baseY - a.h*H + 2 + rr*((a.h*H-3)/Math.max(1,rows-1)), 1.2, 1.2);
+        }
+      }
+    }
+    // yacht running-lights
+    for (let k=0;k<5;k++) {
+      const yx = W*(0.26 + k*0.07);
+      ctx.fillRect(yx + W*0.02, baseY+5, 1.4, 1.4);
+    }
+    ctx.restore();
+  }
+}
+
+// TOKYO — Tokyo Tower + Skytree + neon high-rises + pagoda silhouette
+function _gfSceneDrawTokyoSkyline(ctx, W, H, cfg, dayMix) {
+  const { back, front, edge, acc } = _gfSkyColours(cfg, dayMix);
+  const baseY = H * 0.64;
+  // Back: distant sprawl
+  ctx.save(); ctx.globalAlpha = 0.55; ctx.fillStyle = back;
+  ctx.fillRect(0, baseY, W, H-baseY);
+  const backBlocks = [{x:0.04,w:0.06,h:0.08},{x:0.12,w:0.05,h:0.06},{x:0.20,w:0.07,h:0.10},{x:0.30,w:0.06,h:0.08},{x:0.60,w:0.05,h:0.07},{x:0.70,w:0.06,h:0.09},{x:0.80,w:0.05,h:0.06},{x:0.88,w:0.07,h:0.10}];
+  for (const b of backBlocks) ctx.fillRect(b.x*W, baseY - b.h*H, b.w*W, b.h*H+4);
+  ctx.restore();
+  // Front
+  ctx.save(); ctx.globalAlpha = 0.92; ctx.fillStyle = front;
+  // Tokyo Tower (left of center) — red iron lattice silhouette
+  const ttX = W*0.30, ttBase = baseY+2, ttH = H*0.46;
+  ctx.beginPath();
+  ctx.moveTo(ttX - W*0.05, ttBase);
+  ctx.lineTo(ttX - W*0.025, ttBase - ttH*0.45);
+  ctx.lineTo(ttX - W*0.018, ttBase - ttH*0.55);
+  ctx.lineTo(ttX - W*0.012, ttBase - ttH*0.85);
+  ctx.lineTo(ttX,            ttBase - ttH);
+  ctx.lineTo(ttX + W*0.012, ttBase - ttH*0.85);
+  ctx.lineTo(ttX + W*0.018, ttBase - ttH*0.55);
+  ctx.lineTo(ttX + W*0.025, ttBase - ttH*0.45);
+  ctx.lineTo(ttX + W*0.05, ttBase);
+  ctx.closePath(); ctx.fill();
+  // Tokyo Tower observation deck
+  ctx.fillRect(ttX - W*0.02, ttBase - ttH*0.55, W*0.04, H*0.025);
+  // Skytree (right side) — supremely tall, pencil-thin
+  const skX = W*0.72, skBase = baseY+2, skH = H*0.78;
+  ctx.fillRect(skX - W*0.012, skBase - skH*0.5, W*0.024, skH*0.5);
+  ctx.beginPath();
+  ctx.moveTo(skX - W*0.012, skBase - skH*0.5);
+  ctx.lineTo(skX - 0.6, skBase - skH);
+  ctx.lineTo(skX + 0.6, skBase - skH);
+  ctx.lineTo(skX + W*0.012, skBase - skH*0.5);
+  ctx.closePath(); ctx.fill();
+  // observation pod
+  ctx.beginPath(); ctx.arc(skX, skBase - skH*0.62, W*0.012, 0, Math.PI*2); ctx.fill();
+  // Pagoda (left) — five-tier silhouette
+  const pgX = W*0.10, pgBase = baseY+2;
+  for (let i=0;i<5;i++) {
+    const w = W*(0.05 - i*0.005), h = H*0.025;
+    const y = pgBase - i*H*0.04 - h;
+    ctx.fillRect(pgX - w/2, y, w, h);
+    // roof tier
+    ctx.beginPath();
+    ctx.moveTo(pgX - w/2 - 3, y);
+    ctx.lineTo(pgX + w/2 + 3, y);
+    ctx.lineTo(pgX + w/2 - 1, y - 3);
+    ctx.lineTo(pgX - w/2 + 1, y - 3);
+    ctx.closePath(); ctx.fill();
+  }
+  // top spire on pagoda
+  ctx.fillRect(pgX - 0.6, pgBase - 5*H*0.04 - 2, 1.2, 6);
+  // High-rise district between
+  const hr = [{x:0.42,w:0.03,h:0.36},{x:0.46,w:0.024,h:0.30},{x:0.50,w:0.028,h:0.40},{x:0.55,w:0.022,h:0.28},{x:0.60,w:0.026,h:0.34},{x:0.85,w:0.03,h:0.38},{x:0.90,w:0.024,h:0.30}];
+  for (const t of hr) ctx.fillRect(t.x*W, baseY - t.h*H, t.w*W, t.h*H+1);
+  ctx.restore();
+  // Edge glow Tokyo Tower
+  ctx.save(); ctx.globalAlpha = 0.6; ctx.strokeStyle = `rgba(${edge[0]},${edge[1]},${edge[2]},0.9)`; ctx.lineWidth = 1.2;
+  ctx.beginPath();
+  ctx.moveTo(ttX - W*0.05, ttBase);
+  ctx.lineTo(ttX, ttBase - ttH);
+  ctx.lineTo(ttX + W*0.05, ttBase);
+  ctx.stroke();
+  ctx.restore();
+  // Night neon
+  if (dayMix < 0.55) {
+    ctx.save(); ctx.fillStyle = `rgba(${acc[0]},${acc[1]},${acc[2]},${0.85 - dayMix*0.5})`;
+    // tokyo tower beacon
+    ctx.beginPath(); ctx.arc(ttX, ttBase - ttH, 1.8, 0, Math.PI*2); ctx.fill();
+    // skytree beacon
+    ctx.beginPath(); ctx.arc(skX, skBase - skH, 1.8, 0, Math.PI*2); ctx.fill();
+    // high-rise twinkle
+    for (const t of hr) {
+      const cols = Math.max(2, Math.floor(t.w*W/3.5));
+      const rows = Math.max(3, Math.floor(t.h*H/6));
+      for (let rr=0;rr<rows;rr++) for (let cc=0;cc<cols;cc++) {
+        if ((rr*7+cc*3+Math.floor(_gfSceneT*120))%13<5) ctx.fillRect(t.x*W+1+cc*((t.w*W-2)/Math.max(1,cols-1)), baseY-t.h*H+2+rr*((t.h*H-3)/Math.max(1,rows-1)), 1.1, 1.1);
+      }
+    }
+    ctx.restore();
+  }
+}
+
+// PARIS — Eiffel Tower + Sacré-Cœur + Haussmann roofline
+function _gfSceneDrawParisSkyline(ctx, W, H, cfg, dayMix) {
+  const { back, front, edge, acc } = _gfSkyColours(cfg, dayMix);
+  const baseY = H * 0.66;
+  // Back: gentle rooftops + Sacré-Cœur dome (left)
+  ctx.save(); ctx.globalAlpha = 0.55; ctx.fillStyle = back;
+  ctx.fillRect(0, baseY, W, H-baseY);
+  // Sacré-Cœur on Montmartre hill (left)
+  const scX = W*0.18, scBase = baseY - H*0.06;
+  ctx.beginPath();
+  ctx.moveTo(scX - W*0.10, scBase + H*0.06);
+  ctx.lineTo(scX - W*0.06, scBase);
+  ctx.lineTo(scX + W*0.06, scBase);
+  ctx.lineTo(scX + W*0.10, scBase + H*0.06);
+  ctx.closePath(); ctx.fill();
+  // central dome
+  ctx.beginPath(); ctx.arc(scX, scBase, W*0.025, Math.PI, 0); ctx.fill();
+  ctx.fillRect(scX - W*0.005, scBase - W*0.04, W*0.01, W*0.025);
+  // side domes
+  ctx.beginPath(); ctx.arc(scX - W*0.045, scBase, W*0.012, Math.PI, 0); ctx.fill();
+  ctx.beginPath(); ctx.arc(scX + W*0.045, scBase, W*0.012, Math.PI, 0); ctx.fill();
+  ctx.restore();
+  // Front: Eiffel Tower + Haussmann
+  ctx.save(); ctx.globalAlpha = 0.92; ctx.fillStyle = front;
+  // Haussmann uniform 6-storey roofline (left + right of tower)
+  const haussLeft  = [{x:0.00,w:0.08,h:0.13},{x:0.085,w:0.07,h:0.13},{x:0.16,w:0.08,h:0.13},{x:0.245,w:0.06,h:0.13},{x:0.31,w:0.07,h:0.13}];
+  const haussRight = [{x:0.62,w:0.08,h:0.13},{x:0.71,w:0.07,h:0.13},{x:0.79,w:0.08,h:0.13},{x:0.88,w:0.06,h:0.13},{x:0.95,w:0.05,h:0.13}];
+  for (const a of haussLeft.concat(haussRight)) {
+    ctx.fillRect(a.x*W, baseY - a.h*H, a.w*W, a.h*H+2);
+    // mansard roof
+    ctx.beginPath();
+    ctx.moveTo(a.x*W, baseY - a.h*H);
+    ctx.lineTo((a.x+a.w*0.15)*W, baseY - (a.h+0.025)*H);
+    ctx.lineTo((a.x+a.w*0.85)*W, baseY - (a.h+0.025)*H);
+    ctx.lineTo((a.x+a.w)*W, baseY - a.h*H);
+    ctx.closePath(); ctx.fill();
+  }
+  // EIFFEL TOWER (center) — iconic 4-leg arch + tapered shaft + spire
+  const efX = W*0.50, efBase = baseY+2, efH = H*0.62;
+  ctx.beginPath();
+  // outer left leg (curved)
+  ctx.moveTo(efX - W*0.07, efBase);
+  ctx.bezierCurveTo(efX - W*0.04, efBase - efH*0.18, efX - W*0.025, efBase - efH*0.30, efX - W*0.022, efBase - efH*0.32);
+  // first platform
+  ctx.lineTo(efX + W*0.022, efBase - efH*0.32);
+  // outer right leg (curved)
+  ctx.bezierCurveTo(efX + W*0.025, efBase - efH*0.30, efX + W*0.04, efBase - efH*0.18, efX + W*0.07, efBase);
+  ctx.lineTo(efX + W*0.07, efBase + 1);
+  ctx.lineTo(efX - W*0.07, efBase + 1);
+  ctx.closePath(); ctx.fill();
+  // shaft from first platform up
+  ctx.beginPath();
+  ctx.moveTo(efX - W*0.022, efBase - efH*0.32);
+  ctx.lineTo(efX - W*0.012, efBase - efH*0.62);
+  ctx.lineTo(efX + W*0.012, efBase - efH*0.62);
+  ctx.lineTo(efX + W*0.022, efBase - efH*0.32);
+  ctx.closePath(); ctx.fill();
+  // second platform
+  ctx.fillRect(efX - W*0.018, efBase - efH*0.62, W*0.036, H*0.012);
+  // upper shaft + spire
+  ctx.beginPath();
+  ctx.moveTo(efX - W*0.008, efBase - efH*0.62 - H*0.012);
+  ctx.lineTo(efX - 0.6,      efBase - efH);
+  ctx.lineTo(efX + 0.6,      efBase - efH);
+  ctx.lineTo(efX + W*0.008, efBase - efH*0.62 - H*0.012);
+  ctx.closePath(); ctx.fill();
+  // central arch cutout (gives the lattice-leg feel)
+  ctx.save();
+  ctx.globalCompositeOperation = 'destination-out';
+  ctx.beginPath();
+  ctx.moveTo(efX - W*0.05, efBase + 1);
+  ctx.bezierCurveTo(efX - W*0.04, efBase - efH*0.12, efX - W*0.018, efBase - efH*0.20, efX, efBase - efH*0.21);
+  ctx.bezierCurveTo(efX + W*0.018, efBase - efH*0.20, efX + W*0.04, efBase - efH*0.12, efX + W*0.05, efBase + 1);
+  ctx.closePath(); ctx.fill();
+  ctx.restore();
+  ctx.restore();
+  // Edge glow Eiffel
+  ctx.save(); ctx.globalAlpha = 0.7; ctx.strokeStyle = `rgba(${edge[0]},${edge[1]},${edge[2]},0.95)`; ctx.lineWidth = 1.2;
+  ctx.beginPath();
+  ctx.moveTo(efX - W*0.07, baseY+1);
+  ctx.bezierCurveTo(efX - W*0.04, baseY - efH*0.18, efX - W*0.025, baseY - efH*0.30, efX - W*0.022, baseY - efH*0.32);
+  ctx.lineTo(efX - W*0.012, baseY - efH*0.62);
+  ctx.lineTo(efX, baseY - efH);
+  ctx.lineTo(efX + W*0.012, baseY - efH*0.62);
+  ctx.lineTo(efX + W*0.022, baseY - efH*0.32);
+  ctx.bezierCurveTo(efX + W*0.025, baseY - efH*0.30, efX + W*0.04, baseY - efH*0.18, efX + W*0.07, baseY+1);
+  ctx.stroke();
+  ctx.restore();
+  // Night sparkle (Eiffel does its famous sparkle every hour)
+  if (dayMix < 0.55) {
+    ctx.save();
+    const sparkle = (Math.floor(_gfSceneT*200)%7) < 3;
+    ctx.fillStyle = `rgba(255,240,180,${sparkle ? 0.95 : 0.55})`;
+    // beacon at the top
+    ctx.beginPath(); ctx.arc(efX, baseY - efH, 2, 0, Math.PI*2); ctx.fill();
+    // tower lights
+    ctx.fillStyle = `rgba(${acc[0]},${acc[1]},${acc[2]},${0.85 - dayMix*0.5})`;
+    for (let k=0;k<14;k++) {
+      const fy = baseY - 6 - k*(efH/16);
+      if ((k*3 + Math.floor(_gfSceneT*200))%5 < 3) {
+        ctx.fillRect(efX - 0.6 + (Math.random()-0.5)*W*0.025, fy, 1.2, 1.2);
+      }
+    }
+    // Haussmann window glow rows
+    for (const a of haussLeft.concat(haussRight)) {
+      for (let r=0;r<3;r++) for (let c=0;c<6;c++) {
+        if ((r*5+c*3+Math.floor(_gfSceneT*80))%11<5) {
+          ctx.fillRect(a.x*W + 1 + c*((a.w*W-2)/5), baseY - a.h*H + 3 + r*((a.h*H-5)/2), 1, 1);
+        }
+      }
+    }
+    ctx.restore();
+  }
+}
+
+// MALDIVES — Overwater bungalows + palm islets + lapping waves
+function _gfSceneDrawMaldivesSkyline(ctx, W, H, cfg, dayMix) {
+  const { back, front, edge, acc } = _gfSkyColours(cfg, dayMix);
+  const baseY = H * 0.72;  // lower silhouette — it's flat ocean
+  ctx.save(); ctx.globalAlpha = 0.55; ctx.fillStyle = back;
+  // distant atoll bumps
+  ctx.beginPath(); ctx.moveTo(0, H); ctx.lineTo(0, baseY+2);
+  for (let x=0;x<=W;x+=W/40) {
+    const y = baseY + Math.sin(x*0.04)*2 - Math.max(0, Math.sin(x*0.012-1.0))*6;
+    ctx.lineTo(x,y);
+  }
+  ctx.lineTo(W,H); ctx.closePath(); ctx.fill();
+  ctx.restore();
+  // Front: a few palm islets
+  ctx.save(); ctx.globalAlpha = 0.92; ctx.fillStyle = front;
+  const islets = [{cx:0.16, w:0.08},{cx:0.62, w:0.10},{cx:0.86, w:0.06}];
+  for (const isl of islets) {
+    const x = isl.cx*W, w = isl.w*W;
+    // sand lump
+    ctx.beginPath();
+    ctx.moveTo(x - w/2, baseY+1);
+    ctx.bezierCurveTo(x - w/4, baseY - H*0.025, x + w/4, baseY - H*0.025, x + w/2, baseY+1);
+    ctx.closePath(); ctx.fill();
+    // 2-3 palms per islet
+    for (let k=-1;k<=1;k++) {
+      const px = x + k*w*0.2;
+      ctx.fillRect(px - 0.6, baseY - H*0.10, 1.2, H*0.075);
+      // fronds
+      for (let f=-3;f<=3;f++) {
+        const ang = f*0.35;
+        const fx = px + Math.cos(ang-Math.PI/2)*9;
+        const fy = baseY - H*0.10 + Math.sin(ang-Math.PI/2)*9;
+        ctx.beginPath(); ctx.moveTo(px, baseY - H*0.10); ctx.lineTo(fx, fy); ctx.lineTo(fx+1.2, fy+1.2); ctx.closePath(); ctx.fill();
+      }
+    }
+  }
+  // Overwater bungalows — row of small huts on stilts
+  for (let k=0;k<7;k++) {
+    const bx = W*(0.30 + k*0.045), by = baseY - H*0.04;
+    // stilts
+    ctx.fillRect(bx,            by + H*0.025, 1, H*0.025);
+    ctx.fillRect(bx + W*0.022, by + H*0.025, 1, H*0.025);
+    // hut body
+    ctx.fillRect(bx, by, W*0.025, H*0.025);
+    // pitched thatched roof
+    ctx.beginPath();
+    ctx.moveTo(bx - 1, by);
+    ctx.lineTo(bx + W*0.0125, by - H*0.02);
+    ctx.lineTo(bx + W*0.026, by);
+    ctx.closePath(); ctx.fill();
+  }
+  ctx.restore();
+  // Edge glow on bungalows
+  ctx.save(); ctx.globalAlpha = 0.5; ctx.strokeStyle = `rgba(${edge[0]},${edge[1]},${edge[2]},0.85)`; ctx.lineWidth = 1.0;
+  for (let k=0;k<7;k++) {
+    const bx = W*(0.30 + k*0.045), by = baseY - H*0.04;
+    ctx.strokeRect(bx, by, W*0.025, H*0.025);
+  }
+  ctx.restore();
+  // Night: bungalow lanterns
+  if (dayMix < 0.55) {
+    ctx.save(); ctx.fillStyle = `rgba(${acc[0]},${acc[1]},${acc[2]},${0.9 - dayMix*0.5})`;
+    for (let k=0;k<7;k++) {
+      const bx = W*(0.30 + k*0.045), by = baseY - H*0.04;
+      if ((k*3 + Math.floor(_gfSceneT*120))%7 < 5) ctx.fillRect(bx + W*0.011, by + H*0.008, 1.4, 1.4);
+    }
+    ctx.restore();
+  }
+}
+
+// VENICE — Campanile di San Marco + Doge's Palace + Rialto Bridge + gondolas
+function _gfSceneDrawVeniceSkyline(ctx, W, H, cfg, dayMix) {
+  const { back, front, edge, acc } = _gfSkyColours(cfg, dayMix);
+  const baseY = H * 0.66;
+  ctx.save(); ctx.globalAlpha = 0.55; ctx.fillStyle = back;
+  ctx.fillRect(0, baseY, W, H-baseY);
+  // distant church domes
+  for (const dx of [0.06, 0.86]) {
+    const x = dx*W, y = baseY - H*0.08;
+    ctx.beginPath(); ctx.arc(x, y, W*0.022, Math.PI, 0); ctx.fill();
+    ctx.fillRect(x - W*0.022, y, W*0.044, H*0.08);
+  }
+  ctx.restore();
+  ctx.save(); ctx.globalAlpha = 0.92; ctx.fillStyle = front;
+  // CAMPANILE DI SAN MARCO (center-left) — tall brick tower with pyramidal cap
+  const cmX = W*0.32, cmBase = baseY+2, cmH = H*0.50;
+  ctx.fillRect(cmX - W*0.025, cmBase - cmH*0.85, W*0.05, cmH*0.85);
+  // belfry (open arched section near top)
+  ctx.fillRect(cmX - W*0.03, cmBase - cmH*0.85 - H*0.04, W*0.06, H*0.04);
+  // pyramidal cap
+  ctx.beginPath();
+  ctx.moveTo(cmX - W*0.03, cmBase - cmH*0.85 - H*0.04);
+  ctx.lineTo(cmX,           cmBase - cmH);
+  ctx.lineTo(cmX + W*0.03, cmBase - cmH*0.85 - H*0.04);
+  ctx.closePath(); ctx.fill();
+  // BASILICA di San Marco — multi-domed silhouette beside the campanile
+  const bsX = W*0.45;
+  ctx.fillRect(bsX, baseY - H*0.14, W*0.16, H*0.14+2);
+  for (let k=0;k<5;k++) {
+    const dx = bsX + W*0.016 + k*W*0.032;
+    ctx.beginPath(); ctx.arc(dx, baseY - H*0.14, W*0.014, Math.PI, 0); ctx.fill();
+    // little cross on top
+    ctx.fillRect(dx - 0.4, baseY - H*0.14 - W*0.014 - 3, 0.8, 4);
+  }
+  // RIALTO BRIDGE (right) — arched bridge silhouette
+  const rbX = W*0.74, rbBase = baseY+2;
+  ctx.beginPath();
+  ctx.moveTo(rbX - W*0.10, rbBase);
+  ctx.bezierCurveTo(rbX - W*0.06, rbBase - H*0.10, rbX + W*0.06, rbBase - H*0.10, rbX + W*0.10, rbBase);
+  ctx.lineTo(rbX + W*0.10, rbBase + 4);
+  ctx.lineTo(rbX - W*0.10, rbBase + 4);
+  ctx.closePath(); ctx.fill();
+  // bridge buildings on top
+  ctx.fillRect(rbX - W*0.06, rbBase - H*0.10 - H*0.04, W*0.12, H*0.04);
+  // doge's palace style (left of campanile)
+  const dpX = W*0.18;
+  ctx.fillRect(dpX, baseY - H*0.10, W*0.12, H*0.10+1);
+  // gondolas in canal
+  for (let k=0;k<4;k++) {
+    const gx = W*(0.42 + k*0.06);
+    ctx.beginPath();
+    ctx.moveTo(gx, baseY+8);
+    ctx.lineTo(gx + W*0.04, baseY+8);
+    ctx.lineTo(gx + W*0.035, baseY+12);
+    ctx.lineTo(gx + W*0.005, baseY+12);
+    ctx.closePath(); ctx.fill();
+    // ferro (curved bow)
+    ctx.fillRect(gx + W*0.038, baseY+4, 0.8, 4);
+  }
+  ctx.restore();
+  // Edge glow campanile
+  ctx.save(); ctx.globalAlpha = 0.6; ctx.strokeStyle = `rgba(${edge[0]},${edge[1]},${edge[2]},0.9)`; ctx.lineWidth = 1.2;
+  ctx.beginPath();
+  ctx.moveTo(cmX - W*0.025, baseY+2);
+  ctx.lineTo(cmX - W*0.025, baseY - cmH*0.85);
+  ctx.lineTo(cmX - W*0.03, baseY - cmH*0.85 - H*0.04);
+  ctx.lineTo(cmX, baseY - cmH);
+  ctx.lineTo(cmX + W*0.03, baseY - cmH*0.85 - H*0.04);
+  ctx.lineTo(cmX + W*0.025, baseY - cmH*0.85);
+  ctx.lineTo(cmX + W*0.025, baseY+2);
+  ctx.stroke();
+  ctx.restore();
+  if (dayMix < 0.55) {
+    ctx.save(); ctx.fillStyle = `rgba(${acc[0]},${acc[1]},${acc[2]},${0.88 - dayMix*0.5})`;
+    // belfry warm glow
+    ctx.fillRect(cmX - W*0.025, baseY - cmH*0.85 + 4, W*0.05, 2);
+    // basilica dome accents
+    for (let k=0;k<5;k++) {
+      const dx = bsX + W*0.016 + k*W*0.032;
+      ctx.beginPath(); ctx.arc(dx, baseY - H*0.14 - 1, 1.2, 0, Math.PI*2); ctx.fill();
+    }
+    // bridge lanterns
+    for (let k=0;k<5;k++) ctx.fillRect(rbX - W*0.08 + k*W*0.04, baseY - H*0.10 - 2, 1.2, 1.2);
+    ctx.restore();
+  }
+}
+
+// NEW YORK — Empire State + Chrysler + One WTC + dense Midtown blocks
+function _gfSceneDrawNewYorkSkyline(ctx, W, H, cfg, dayMix) {
+  const { back, front, edge, acc } = _gfSkyColours(cfg, dayMix);
+  const baseY = H * 0.62;
+  // Back layer: dense midtown
+  ctx.save(); ctx.globalAlpha = 0.55; ctx.fillStyle = back;
+  ctx.fillRect(0, baseY, W, H-baseY);
+  const back2 = [{x:0.02,w:0.05,h:0.18},{x:0.08,w:0.04,h:0.22},{x:0.13,w:0.05,h:0.20},{x:0.20,w:0.04,h:0.26},{x:0.26,w:0.05,h:0.24},{x:0.65,w:0.04,h:0.20},{x:0.71,w:0.05,h:0.24},{x:0.78,w:0.04,h:0.18},{x:0.85,w:0.05,h:0.22},{x:0.92,w:0.04,h:0.18}];
+  for (const b of back2) ctx.fillRect(b.x*W, baseY - b.h*H, b.w*W, b.h*H+4);
+  ctx.restore();
+  // Front
+  ctx.save(); ctx.globalAlpha = 0.92; ctx.fillStyle = front;
+  // EMPIRE STATE BUILDING (center) — stepped Art Deco silhouette
+  const esX = W*0.42;
+  const esTiers = [
+    {wFrac: 0.08, hFrac: 0.20},
+    {wFrac: 0.06, hFrac: 0.18},
+    {wFrac: 0.045, hFrac: 0.16},
+    {wFrac: 0.030, hFrac: 0.10},
+    {wFrac: 0.020, hFrac: 0.06}
+  ];
+  let esCursor = baseY+2;
+  for (const t of esTiers) {
+    ctx.fillRect(esX - (t.wFrac*W)/2, esCursor - t.hFrac*H, t.wFrac*W, t.hFrac*H+1);
+    esCursor -= t.hFrac*H;
+  }
+  // antenna
+  ctx.fillRect(esX - 0.6, esCursor - H*0.06, 1.2, H*0.06);
+  // CHRYSLER BUILDING (right of ES) — stepped scalloped crown
+  const chX = W*0.58, chBase = baseY+2;
+  ctx.fillRect(chX - W*0.03, chBase - H*0.45, W*0.06, H*0.45);
+  // scalloped crown — series of arches
+  for (let k=0;k<4;k++) {
+    const ar = W*0.025 - k*W*0.005;
+    ctx.beginPath();
+    ctx.arc(chX, chBase - H*0.45 - k*H*0.025, ar, Math.PI, 0);
+    ctx.fill();
+  }
+  // chrysler spire
+  ctx.fillRect(chX - 0.6, chBase - H*0.45 - H*0.10 - H*0.04, 1.2, H*0.04);
+  // ONE WTC (left, taller) — narrow tapered glass tower with antenna
+  const wtX = W*0.18, wtBase = baseY+2, wtH = H*0.78;
+  ctx.beginPath();
+  ctx.moveTo(wtX - W*0.04, wtBase);
+  ctx.lineTo(wtX - W*0.025, wtBase - wtH);
+  ctx.lineTo(wtX + W*0.025, wtBase - wtH);
+  ctx.lineTo(wtX + W*0.04, wtBase);
+  ctx.closePath(); ctx.fill();
+  ctx.fillRect(wtX - 0.6, wtBase - wtH - H*0.10, 1.2, H*0.10);
+  // generic right-side towers
+  const r2 = [{x:0.70,w:0.04,h:0.50},{x:0.75,w:0.03,h:0.42},{x:0.79,w:0.05,h:0.55},{x:0.85,w:0.04,h:0.46},{x:0.91,w:0.03,h:0.40},{x:0.95,w:0.04,h:0.50}];
+  for (const t of r2) ctx.fillRect(t.x*W, baseY - t.h*H, t.w*W, t.h*H+1);
+  ctx.restore();
+  // Edge glow on landmarks
+  ctx.save(); ctx.globalAlpha = 0.6; ctx.strokeStyle = `rgba(${edge[0]},${edge[1]},${edge[2]},0.9)`; ctx.lineWidth = 1.2;
+  // ES outline
+  let yc = baseY+2;
+  ctx.beginPath();
+  for (const t of esTiers) {
+    ctx.moveTo(esX - (t.wFrac*W)/2, yc);
+    ctx.lineTo(esX - (t.wFrac*W)/2, yc - t.hFrac*H);
+    ctx.moveTo(esX + (t.wFrac*W)/2, yc);
+    ctx.lineTo(esX + (t.wFrac*W)/2, yc - t.hFrac*H);
+    yc -= t.hFrac*H;
+  }
+  ctx.stroke();
+  // WTC outline
+  ctx.beginPath();
+  ctx.moveTo(wtX - W*0.04, baseY+2);
+  ctx.lineTo(wtX - W*0.025, baseY - wtH);
+  ctx.lineTo(wtX + W*0.025, baseY - wtH);
+  ctx.lineTo(wtX + W*0.04, baseY+2);
+  ctx.stroke();
+  ctx.restore();
+  // Night neon
+  if (dayMix < 0.55) {
+    ctx.save(); ctx.fillStyle = `rgba(${acc[0]},${acc[1]},${acc[2]},${0.85 - dayMix*0.5})`;
+    // antenna beacons
+    ctx.fillStyle = `rgba(255,80,40,${0.95 - dayMix*0.3})`;
+    ctx.beginPath(); ctx.arc(esX, esCursor - H*0.06, 1.6, 0, Math.PI*2); ctx.fill();
+    ctx.beginPath(); ctx.arc(wtX, wtBase - wtH - H*0.10, 1.8, 0, Math.PI*2); ctx.fill();
+    // chrysler crown sparkle
+    ctx.fillStyle = `rgba(${acc[0]},${acc[1]},${acc[2]},${0.95 - dayMix*0.4})`;
+    for (let k=0;k<4;k++) {
+      ctx.fillRect(chX - 1, chBase - H*0.45 - k*H*0.025, 2, 1.4);
+    }
+    // window twinkle
+    for (const t of r2.concat(back2)) {
+      const cols = Math.max(2, Math.floor(t.w*W/3));
+      const rows = Math.max(3, Math.floor(t.h*H/5));
+      for (let rr=0;rr<rows;rr++) for (let cc=0;cc<cols;cc++) {
+        if ((rr*5+cc*7+Math.floor(_gfSceneT*100))%9<4) ctx.fillRect(t.x*W+1+cc*((t.w*W-2)/Math.max(1,cols-1)), baseY-t.h*H+2+rr*((t.h*H-3)/Math.max(1,rows-1)), 1.1, 1.1);
+      }
+    }
+    ctx.restore();
+  }
+}
+
+// BALI — Pura Tanah Lot temple + rice terraces + jungle silhouettes
+function _gfSceneDrawBaliSkyline(ctx, W, H, cfg, dayMix) {
+  const { back, front, edge, acc } = _gfSkyColours(cfg, dayMix);
+  const baseY = H * 0.66;
+  ctx.save(); ctx.globalAlpha = 0.55; ctx.fillStyle = back;
+  // back: distant volcano (Mt Agung, right)
+  ctx.beginPath();
+  ctx.moveTo(W, H);
+  ctx.lineTo(W, baseY+5);
+  ctx.lineTo(W*0.78, baseY+5);
+  ctx.lineTo(W*0.88, baseY - H*0.30);
+  ctx.lineTo(W*0.92, baseY - H*0.34);
+  ctx.lineTo(W*0.98, baseY - H*0.18);
+  ctx.lineTo(W, baseY+5);
+  ctx.closePath(); ctx.fill();
+  // jungle wave on rest of horizon
+  ctx.beginPath(); ctx.moveTo(0, H); ctx.lineTo(0, baseY+5);
+  for (let x=0;x<=W*0.78;x+=W/30) {
+    const y = baseY + 4 - Math.abs(Math.sin(x*0.025))*H*0.04 - Math.sin(x*0.008)*6;
+    ctx.lineTo(x,y);
+  }
+  ctx.lineTo(W*0.78, H); ctx.closePath(); ctx.fill();
+  ctx.restore();
+  // Front: TANAH LOT temple on rocky islet (center-left) + pagoda (right of center)
+  ctx.save(); ctx.globalAlpha = 0.92; ctx.fillStyle = front;
+  // Tanah Lot rock
+  const tlX = W*0.30, tlBase = baseY+2;
+  ctx.beginPath();
+  ctx.moveTo(tlX - W*0.10, tlBase);
+  ctx.lineTo(tlX - W*0.07, tlBase - H*0.08);
+  ctx.lineTo(tlX - W*0.02, tlBase - H*0.10);
+  ctx.lineTo(tlX + W*0.04, tlBase - H*0.08);
+  ctx.lineTo(tlX + W*0.08, tlBase);
+  ctx.closePath(); ctx.fill();
+  // multi-tier meru (tiered pagoda) on top
+  for (let i=0;i<6;i++) {
+    const w = W*(0.04 - i*0.005), h = H*0.025;
+    const y = tlBase - H*0.10 - i*H*0.03 - h;
+    ctx.beginPath();
+    ctx.moveTo(tlX - w/2 - 4, y + h);
+    ctx.lineTo(tlX + w/2 + 4, y + h);
+    ctx.lineTo(tlX + w/2,     y);
+    ctx.lineTo(tlX - w/2,     y);
+    ctx.closePath(); ctx.fill();
+  }
+  // top spire
+  ctx.fillRect(tlX - 0.6, tlBase - H*0.10 - 6*H*0.03 - 4, 1.2, 6);
+  // RICE TERRACES (left) — stepped horizontal lines
+  ctx.fillStyle = front;
+  for (let i=0;i<5;i++) {
+    const ty = baseY - i*H*0.018 - 2;
+    ctx.fillRect(0, ty, W*0.20 - i*W*0.02, H*0.014);
+  }
+  // second pagoda right side
+  const pgX = W*0.55, pgBase = baseY+2;
+  for (let i=0;i<4;i++) {
+    const w = W*(0.045 - i*0.006), h = H*0.022;
+    const y = pgBase - i*H*0.025 - h;
+    ctx.fillRect(pgX - w/2, y, w, h);
+    ctx.beginPath();
+    ctx.moveTo(pgX - w/2 - 3, y);
+    ctx.lineTo(pgX + w/2 + 3, y);
+    ctx.lineTo(pgX + w/2 - 1, y - 3);
+    ctx.lineTo(pgX - w/2 + 1, y - 3);
+    ctx.closePath(); ctx.fill();
+  }
+  ctx.restore();
+  ctx.save(); ctx.globalAlpha = 0.6; ctx.strokeStyle = `rgba(${edge[0]},${edge[1]},${edge[2]},0.9)`; ctx.lineWidth = 1.2;
+  ctx.beginPath();
+  ctx.moveTo(tlX - W*0.10, baseY+2);
+  ctx.lineTo(tlX - W*0.02, baseY - H*0.10);
+  ctx.lineTo(tlX + W*0.08, baseY+2);
+  ctx.stroke();
+  ctx.restore();
+  // Night: temple lights + firefly accents
+  if (dayMix < 0.55) {
+    ctx.save(); ctx.fillStyle = `rgba(${acc[0]},${acc[1]},${acc[2]},${0.9 - dayMix*0.5})`;
+    for (let i=0;i<6;i++) ctx.fillRect(tlX - 1, tlBase - H*0.10 - i*H*0.03 - 4, 2, 1.2);
+    ctx.restore();
+  }
+}
+
+// AMALFI — Cliffside coastal villages + lemon-yellow facades + Mt Vesuvius distant
+function _gfSceneDrawAmalfiSkyline(ctx, W, H, cfg, dayMix) {
+  const { back, front, edge, acc } = _gfSkyColours(cfg, dayMix);
+  const baseY = H * 0.66;
+  // Back: Vesuvius volcano (far right) + sea horizon
+  ctx.save(); ctx.globalAlpha = 0.55; ctx.fillStyle = back;
+  ctx.fillRect(0, baseY, W, H-baseY);
+  ctx.beginPath();
+  ctx.moveTo(W*0.72, baseY);
+  ctx.lineTo(W*0.84, baseY - H*0.22);
+  ctx.lineTo(W*0.88, baseY - H*0.20);
+  ctx.lineTo(W*0.92, baseY - H*0.24);
+  ctx.lineTo(W, baseY - H*0.10);
+  ctx.lineTo(W, baseY);
+  ctx.closePath(); ctx.fill();
+  // wisp of smoke from Vesuvius
+  ctx.globalAlpha = 0.25;
+  ctx.fillStyle = back;
+  for (let k=0;k<5;k++) {
+    ctx.beginPath();
+    ctx.arc(W*0.88 + Math.sin(_gfSceneT*4 + k)*4, baseY - H*0.24 - k*8, 6 + k*1.2, 0, Math.PI*2);
+    ctx.fill();
+  }
+  ctx.restore();
+  // Front: cliffside village layered
+  ctx.save(); ctx.globalAlpha = 0.92; ctx.fillStyle = front;
+  // cliff base
+  ctx.beginPath();
+  ctx.moveTo(0, H); ctx.lineTo(0, baseY - H*0.06);
+  ctx.lineTo(W*0.22, baseY - H*0.10);
+  ctx.lineTo(W*0.32, baseY - H*0.04);
+  ctx.lineTo(W*0.42, baseY - H*0.08);
+  ctx.lineTo(W*0.55, baseY - H*0.05);
+  ctx.lineTo(W*0.65, baseY - H*0.10);
+  ctx.lineTo(W*0.72, baseY);
+  ctx.lineTo(0, baseY);
+  ctx.lineTo(0, H);
+  ctx.closePath(); ctx.fill();
+  // stacked village houses tucked into cliff
+  const houses = [
+    {x:0.02,y:0.12,w:0.04,h:0.04},{x:0.05,y:0.16,w:0.035,h:0.04},{x:0.09,y:0.13,w:0.04,h:0.04},
+    {x:0.13,y:0.18,w:0.045,h:0.04},{x:0.17,y:0.14,w:0.04,h:0.04},{x:0.22,y:0.18,w:0.04,h:0.04},
+    {x:0.28,y:0.10,w:0.05,h:0.05},{x:0.32,y:0.13,w:0.04,h:0.04},{x:0.36,y:0.10,w:0.045,h:0.04},
+    {x:0.42,y:0.16,w:0.04,h:0.04},{x:0.47,y:0.12,w:0.045,h:0.05},{x:0.52,y:0.16,w:0.04,h:0.04},
+    {x:0.57,y:0.14,w:0.045,h:0.04},{x:0.62,y:0.18,w:0.04,h:0.04}
+  ];
+  for (const h2 of houses) {
+    const x = h2.x*W, y = baseY - h2.y*H, w = h2.w*W, ht = h2.h*H;
+    ctx.fillRect(x, y, w, ht+2);
+    // pitched roof
+    ctx.beginPath();
+    ctx.moveTo(x - 1, y);
+    ctx.lineTo(x + w/2, y - ht*0.4);
+    ctx.lineTo(x + w + 1, y);
+    ctx.closePath(); ctx.fill();
+  }
+  // small church with bell tower (center)
+  const chX = W*0.36, chBase = baseY - H*0.10;
+  ctx.fillRect(chX, chBase, W*0.06, H*0.07);
+  ctx.fillRect(chX + W*0.02, chBase - H*0.06, W*0.02, H*0.06);
+  // dome
+  ctx.beginPath(); ctx.arc(chX + W*0.03, chBase - H*0.06, W*0.012, Math.PI, 0); ctx.fill();
+  ctx.fillRect(chX + W*0.029, chBase - H*0.085, 1.5, 6);  // cross
+  ctx.restore();
+  ctx.save(); ctx.globalAlpha = 0.55; ctx.strokeStyle = `rgba(${edge[0]},${edge[1]},${edge[2]},0.9)`; ctx.lineWidth = 1;
+  // glow on church dome
+  ctx.beginPath(); ctx.arc(chX + W*0.03, chBase - H*0.06, W*0.012, Math.PI, 0); ctx.stroke();
+  ctx.restore();
+  // Night: warm lemon-yellow village windows
+  if (dayMix < 0.55) {
+    ctx.save(); ctx.fillStyle = `rgba(${acc[0]},${acc[1]},${acc[2]},${0.9 - dayMix*0.5})`;
+    for (const h2 of houses) {
+      const x = h2.x*W, y = baseY - h2.y*H, w = h2.w*W, ht = h2.h*H;
+      if ((Math.floor(h2.x*100 + h2.y*100) + Math.floor(_gfSceneT*100))%5 < 3) {
+        ctx.fillRect(x + w*0.3, y + ht*0.3, 1.4, 1.4);
+      }
+    }
+    // volcano glow
+    ctx.fillStyle = `rgba(255,80,30,${0.7 - dayMix*0.4})`;
+    ctx.beginPath(); ctx.arc(W*0.88, baseY - H*0.22, 3, 0, Math.PI*2); ctx.fill();
+    ctx.restore();
+  }
+}
+
 function _gfSceneDrawSkyline(ctx, W, H, cfg, dayMix) {
-  // Dubai gets a real landmark silhouette instead of the histogram fallback.
+  // Each location gets a real landmark silhouette instead of the histogram fallback.
   try {
-    if (cfg && cfg.name === 'Dubai') {
-      _gfSceneDrawDubaiSkyline(ctx, W, H, cfg, dayMix);
-      return;
+    if (cfg) {
+      switch (cfg.name) {
+        case 'Dubai':    _gfSceneDrawDubaiSkyline(ctx, W, H, cfg, dayMix);    return;
+        case 'Ibiza':    _gfSceneDrawIbizaSkyline(ctx, W, H, cfg, dayMix);    return;
+        case 'Monaco':   _gfSceneDrawMonacoSkyline(ctx, W, H, cfg, dayMix);   return;
+        case 'Tokyo':    _gfSceneDrawTokyoSkyline(ctx, W, H, cfg, dayMix);    return;
+        case 'Paris':    _gfSceneDrawParisSkyline(ctx, W, H, cfg, dayMix);    return;
+        case 'Maldives': _gfSceneDrawMaldivesSkyline(ctx, W, H, cfg, dayMix); return;
+        case 'Venice':   _gfSceneDrawVeniceSkyline(ctx, W, H, cfg, dayMix);   return;
+        case 'New York': _gfSceneDrawNewYorkSkyline(ctx, W, H, cfg, dayMix);  return;
+        case 'Bali':     _gfSceneDrawBaliSkyline(ctx, W, H, cfg, dayMix);     return;
+        case 'Amalfi':   _gfSceneDrawAmalfiSkyline(ctx, W, H, cfg, dayMix);   return;
+      }
     }
   } catch(_e) { /* fall through to default histogram */ }
   // dayMix 1=day, 0=night. Silhouette is dark; in day it's slightly lighter.
@@ -14439,14 +15279,18 @@ function _gfApplyMirror(placedCells) {
     if (mirrorC === c) continue;
     if (r < 0 || r >= ROWS || mirrorC < 0 || mirrorC >= COLS) continue;
     if (typeof isMasked === 'function' && isMasked(r, mirrorC)) continue;
-    // Always overwrite — Klara: “if I place on the left it should automatically appear on the right”.
-    // Previously we skipped if the mirror cell was non-empty, which made the mirror feel non-existent.
+    // IBIZA FIX: don't overwrite an existing tile on the mirror side — the
+    // player worked to place it. Skip silently. (The mirror still copies
+    // onto empty cells, preserving the “every placement is doubled” feel.)
+    if (grid[r][mirrorC] !== 0) continue;
     grid[r][mirrorC] = grid[r][c];
     didMirror = true;
   }
   if (didMirror) {
     if (typeof drawGrid === 'function') drawGrid();
     if (typeof updateUI === 'function') updateUI();
+    // The mirror copy may have completed a line on the other half
+    _gfRecheckLinesAfterMutation();
   }
 }
 
@@ -14464,6 +15308,8 @@ function _gfRotateBoard() {
   for (let r = 0; r < ROWS; r++) for (let c = 0; c < COLS; c++) grid[r][c] = newGrid[r][c];
   cm_gfRotateAngle = (cm_gfRotateAngle + 90) % 360;
   drawGrid();
+  // LESSON FROM DUBAI: rotated tiles may now sit on a completed line
+  _gfRecheckLinesAfterMutation();
   showEventBanner('✨ BALI — BOARD ROTATES!');
 }
 
