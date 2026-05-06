@@ -14054,6 +14054,7 @@ function _gfActivateMechanic(lvl) {
   else if (mech === 'shrink') {
     cm_gfShrinkInterval = setInterval(() => {
       if (!gameActive) return;
+      try { console.log('[TOKYO SHRINK] firing at', new Date().toISOString()); } catch(_e){}
       // TOKYO SHRINK FIX: push the bottom row's tiles UP into the row above
       // (if there's space) instead of silently deleting them. Tiles that
       // can't be saved are still lost, but at least the player isn't
@@ -14076,7 +14077,7 @@ function _gfActivateMechanic(lvl) {
       // After the push-up + shift the surviving tiles may complete a line
       _gfRecheckLinesAfterMutation();
       showEventBanner('✨ TOKYO SHRINK — TILES PUSHED UP!');
-    }, 30000);
+    }, 10000);
     cm_gfGauntletTimers.push(cm_gfShrinkInterval);
   }
   else if (mech === 'blackout') {
