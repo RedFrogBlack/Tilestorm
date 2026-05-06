@@ -8554,17 +8554,9 @@ function drawGrid(){
       ctx.fillText('\u26a1', W-22, H-8);
       ctx.restore();
     }
-    // SHRINK (Tokyo) - inward chevrons on top + bottom edges
-    if (mech === 'shrink') {
-      ctx.save();
-      ctx.strokeStyle = 'rgba(255,120,180,' + (0.5 + 0.3*pulseSin) + ')';
-      ctx.lineWidth = 2.5;
-      ctx.beginPath();
-      ctx.moveTo(W/2-12, 4); ctx.lineTo(W/2, 16); ctx.lineTo(W/2+12, 4);
-      ctx.moveTo(W/2-12, H-4); ctx.lineTo(W/2, H-16); ctx.lineTo(W/2+12, H-4);
-      ctx.stroke();
-      ctx.restore();
-    }
+    // TOKYO TIDE (formerly 'shrink') - the rising water layer drawn elsewhere is the
+    // visual cue. The old pulsing pink chevrons on top + bottom are removed because they
+    // looked like a board shake/throb on level entry.
     // BLACKOUT (Paris) - subtle vignette around edges
     if (mech === 'blackout' && !cm_gfBlackoutActive) {
       ctx.save();
@@ -13225,13 +13217,16 @@ function openSoloSetup() {
     if (!checkAccessBeforeStart()) return;
     startGame(); // note: stopChallengeMode() inside startGame resets activeChallengeMode to 'standard'
     activeChallengeMode = map.challenge; // set AFTER startGame so it isn't wiped
-    // PLAY button always starts Golden Frog fresh at Level 1.
-    // (Use the dedicated RESUME button or the all-levels picker to jump to a specific level.)
+    // PLAY button always starts Golden Frog fresh at Level 1, UNLESS a resume override
+    // has been set by the RESUME button handler (window._gfPendingResumeLv).
     if (tid === 'goldenfrog' && typeof cm_gfLevel !== 'undefined') {
-      cm_gfLevel = 1;
+      const pending = (typeof window !== 'undefined' && window._gfPendingResumeLv) ? (window._gfPendingResumeLv|0) : 0;
+      const targetLv = (pending >= 1 && pending <= 10) ? pending : 1;
+      cm_gfLevel = targetLv;
       if (typeof cm_gfLinesCleared !== 'undefined') cm_gfLinesCleared = 0;
       if (typeof _gfSceneCfgIdx !== 'undefined') _gfSceneCfgIdx = -1;
-      if (typeof _cdProgress !== 'undefined') _cdProgress.setLastLevel('goldenfrog', 1);
+      if (typeof _cdProgress !== 'undefined') _cdProgress.setLastLevel('goldenfrog', targetLv);
+      try { window._gfPendingResumeLv = 0; } catch(_e){}
     }
     initChallengeMode();
   });
@@ -13262,21 +13257,11 @@ function openSoloSetup() {
         startCityPackGame(Math.max(0, resumeLv - 1));
         return;
       }
-      // Golden Frog: reuse the play flow then override cm_gfLevel to the resume target.
-      // Note: playBtn.click() resets lastlv to 1, so we re-save it AFTER to the resume target.
+      // Golden Frog: pre-set a resume-override hint that the play handler reads
+      // BEFORE initChallengeMode() runs. This avoids flashing the Dubai (Lv1) banner
+      // and the wrong mechanic init before the resume target.
+      try { window._gfPendingResumeLv = resumeLv; } catch(_e){}
       playBtn.click();
-      try {
-        if (pack === 'goldenfrog' && typeof cm_gfLevel !== 'undefined') {
-          cm_gfLevel = resumeLv;
-          if (typeof cm_gfLinesCleared !== 'undefined') cm_gfLinesCleared = 0;
-          if (typeof _gfSceneCfgIdx !== 'undefined') _gfSceneCfgIdx = -1;
-          if (typeof _gfStopAllMechanics === 'function') { try { _gfStopAllMechanics(); } catch(_e){} }
-          if (typeof initChallengeMode === 'function') initChallengeMode();
-          if (typeof updateUI === 'function') updateUI();
-          if (typeof drawGrid === 'function') drawGrid();
-          if (typeof _cdProgress !== 'undefined') _cdProgress.setLastLevel('goldenfrog', resumeLv);
-        }
-      } catch(_e){}
       return;
     }
     playBtn.click();
@@ -14287,8 +14272,8 @@ function _gfDemoPulse(lv) {
       drawGrid();
     }
     if (mech === 'shrink') {
-      // Visual hint only — don't actually contract on level start (would unbalance)
-      showEventBanner('✨ TOKYO — BOARD WILL CONTRACT EVERY 30s');
+      // Tokyo TIDE: the rising-water mechanic shows its own banner from _tokyoStartTide
+      // ('CALM BEFORE THE TIDE'). Don't show the stale 'BOARD WILL CONTRACT' message.
     }
     if (mech === 'split') {
       showEventBanner('✨ DUBAI — BOARD IS SPLIT IN HALF');
