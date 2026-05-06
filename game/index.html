@@ -13531,16 +13531,21 @@ let _gfQuakeSlides = [];           // [{ fromR, fromC, toR, toC, color, start, d
 let _gfQuakeHiddenSet = new Set(); // 'r*100+c' keys to suppress in normal grid render during slide
 let _gfQuakeRafId = null;          // rAF handle for the slide loop
 // Tokyo TIDE state — water rises from the bottom up to TOKYO_FLOOD_MAX rows,
-// holds at peak, then recedes to 0 and cycles. Line clears push the tide down.
-// _tokyoFloodLevel: visual rows currently flooded (animates toward _tokyoFloodTarget).
-// _tokyoTidePhase: 'rising' | 'peak' | 'falling' | 'calm' | 'off'.
+// holds at peak, then recedes to 0 and cycles. Line clears push the tide down
+// AND the rise interval adapts to the player's lines-per-minute (struggling
+// players get a slower tide, expert players get a faster one).
 const TOKYO_FLOOD_MAX = 4;
+const TOKYO_INITIAL_GRACE_MS = 20000;  // 20s breathing room before first rise
+const TOKYO_EARLY_RISE_MS   = 15000;  // first 2 rises are 15s for ramp-up
 let _tokyoFloodLevel = 0;
 let _tokyoFloodTarget = 0;
 let _tokyoFloodWavePhase = 0;
 let _tokyoFloodRafId = null;
 let _tokyoTidePhase = 'off';
 let _tokyoTideStepTimer = null;
+let _tokyoRiseCount = 0;            // total rises this run, used for early-ramp
+// Sliding-window tracker of line-clear timestamps for adaptive pacing.
+let _tokyoClearTimes = [];           // ms timestamps of recent line clears
 let cm_gfGravityFlip = false;
 let cm_gfRotateAngle = 0;
 let cm_gfGauntletTimers = [];
@@ -14577,6 +14582,8 @@ function _tokyoStartTide() {
   _tokyoFloodTarget = 0;
   _tokyoTidePhase = 'calm';
   _tokyoFloodWavePhase = 0;
+  _tokyoRiseCount = 0;
+  _tokyoClearTimes = [];
   // start animation rAF (drives the wave shimmer + smooths target -> level)
   if (!_tokyoFloodRafId) {
     const animTick = () => {
@@ -14593,8 +14600,31 @@ function _tokyoStartTide() {
     };
     _tokyoFloodRafId = requestAnimationFrame(animTick);
   }
-  // schedule first rise after a short calm so the player isn't ambushed instantly
-  _tokyoTideStepTimer = setTimeout(_tokyoTideAdvance, 4000);
+  // 20s grace period before the first rise so the player can settle in
+  showEventBanner('🌟 TOKYO — CALM BEFORE THE TIDE');
+  _tokyoTideStepTimer = setTimeout(_tokyoTideAdvance, TOKYO_INITIAL_GRACE_MS);
+}
+
+// Compute the next rise interval based on player performance.
+// Lines/min in last 60s drives a 7s–18s curve. First 2 rises ignore performance
+// and use the 15s early-ramp value so the player has consistent ramp-up.
+function _tokyoComputeRiseDelay() {
+  if (_tokyoRiseCount < 2) return TOKYO_EARLY_RISE_MS;
+  const now = (typeof performance!=='undefined'?performance.now():Date.now());
+  // Drop timestamps older than 60s
+  _tokyoClearTimes = _tokyoClearTimes.filter(t => now - t < 60000);
+  const lpm = _tokyoClearTimes.length; // exactly lines cleared in last 60s
+  // Map lines/min to rise interval (clamped 7–18s)
+  //  lpm <= 1  -> 18s (very forgiving)
+  //  lpm 2-3  -> 12s (default)
+  //  lpm 4-5  -> 9s  (brisk)
+  //  lpm >= 6 -> 7s  (expert)
+  let ms;
+  if (lpm <= 1) ms = 18000;
+  else if (lpm <= 3) ms = 12000;
+  else if (lpm <= 5) ms = 9000;
+  else ms = 7000;
+  return ms;
 }
 
 function _tokyoStopTide() {
@@ -14616,13 +14646,15 @@ function _tokyoTideAdvance() {
   if (_tokyoTidePhase === 'calm' || _tokyoTidePhase === 'off') {
     _tokyoTidePhase = 'rising';
     _tokyoFloodTarget = Math.min(TOKYO_FLOOD_MAX, _tokyoFloodTarget + 1);
+    _tokyoRiseCount++;
     showEventBanner('🌊 TOKYO TIDE — RISING!');
-    nextDelay = 10000;
+    nextDelay = _tokyoComputeRiseDelay();
   } else if (_tokyoTidePhase === 'rising') {
     if (_tokyoFloodTarget < TOKYO_FLOOD_MAX) {
       _tokyoFloodTarget = Math.min(TOKYO_FLOOD_MAX, _tokyoFloodTarget + 1);
+      _tokyoRiseCount++;
       showEventBanner('🌊 TOKYO TIDE — RISING! (' + _tokyoFloodTarget + '/' + TOKYO_FLOOD_MAX + ')');
-      nextDelay = 10000;
+      nextDelay = _tokyoComputeRiseDelay();
     } else {
       _tokyoTidePhase = 'peak';
       showEventBanner('⚠️ TIDE PEAK — HOLD!');
@@ -14646,11 +14678,18 @@ function _tokyoTideAdvance() {
   _tokyoTideStepTimer = setTimeout(_tokyoTideAdvance, nextDelay);
 }
 
-// Called when a line is cleared while Tokyo is active — tide pushes down by 1 row.
+// Called when a line is cleared while Tokyo is active — tide pushes down by 1 row
+// AND records the timestamp so the rise speed adapts to player performance.
 function _tokyoOnLineClear() {
   if (cm_gfLevel !== 4) return;
   if (_tokyoFloodTarget > 0) {
     _tokyoFloodTarget = Math.max(0, _tokyoFloodTarget - 1);
+  }
+  const now = (typeof performance!=='undefined'?performance.now():Date.now());
+  _tokyoClearTimes.push(now);
+  // Cap stored history at last 60s so the array doesn't grow unbounded.
+  if (_tokyoClearTimes.length > 30) {
+    _tokyoClearTimes = _tokyoClearTimes.filter(t => now - t < 60000);
   }
 }
 
