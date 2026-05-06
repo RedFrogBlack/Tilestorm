@@ -7853,6 +7853,16 @@ function clearLines({completedRows,completedCols,completedHalfRows}){
     updateCityPackHUD();
     if(cityPackLinesCleared>=cityPackLinesTarget)setTimeout(advanceCityPackLevel,700);
   }
+  // Golden Frog: count cleared lines toward the 50-line per-location gate.
+  if (activeChallengeMode === 'goldenfrog' && !cm_gfLevelGateActive) {
+    try {
+      cm_gfLinesCleared += completedRows.length + completedCols.length + halfCount;
+      if (typeof updateGfGateHUD === 'function') updateGfGateHUD();
+      if (cm_gfLinesCleared >= GF_LINES_PER_LEVEL && cm_gfLevel < 10) {
+        setTimeout(_gfTriggerLevelComplete, 500);
+      }
+    } catch(_e) {}
+  }
   if(duoGameActive&&duoMode==='hazard'){const _t=completedRows.length+completedCols.length+halfCount;if(_t>0)sendHazardAttack(_t);}
   return s;
 }
@@ -8322,10 +8332,13 @@ function drawGrid(){
         if (pc >= CR_SPLIT_COL && cm_splitRightColor && dragColor !== cm_splitRightColor) { crWrongHalf = true; break; }
       }
     }
-    // Golden Frog Dubai (split): block colour from being placed in the wrong half
+    // Golden Frog Dubai (split): block colour from being placed in the wrong half.
+    // EXCEPTION: special bricks (meteor / angel / morph) bypass colour rules entirely —
+    // they're colour-8 utility tiles, not gameplay colour tiles, so they always place.
     if (ok && activeChallengeMode === 'goldenfrog' && (cm_gfSplitLeftColor || cm_gfSplitRightColor)) {
       const _gfCfg = GF_LOCATIONS_CFG[Math.min(cm_gfLevel-1, 9)];
-      if (_gfCfg && (_gfCfg.mechanic === 'split' || _gfCfg.mechanic === 'gauntlet')) {
+      const _isSpecialDrag = !!(trayPieces[dragPieceIdx] && trayPieces[dragPieceIdx].special);
+      if (_gfCfg && (_gfCfg.mechanic === 'split' || _gfCfg.mechanic === 'gauntlet') && !_isSpecialDrag) {
         for (const [dr, dc] of dragShape) {
           const pc = c + dc;
           if (pc < GF_SPLIT_COL && cm_gfSplitLeftColor  && dragColor !== cm_gfSplitLeftColor)  { crWrongHalf = true; break; }
@@ -8446,7 +8459,10 @@ function endDrag(cx,cy){
   document.querySelector(`.tray-piece[data-idx="${dragPieceIdx}"]`)?.classList.remove('dragging');
 
   // Golden Frog Dubai (split) hard block: refuse the drop if colour belongs to the wrong half.
-  if (hoverCell && dragShape && activeChallengeMode === 'goldenfrog' && (cm_gfSplitLeftColor || cm_gfSplitRightColor)) {
+  // EXCEPTION: special bricks (meteor / angel / morph) bypass the split colour gate —
+  // their job is to clear / fill rows regardless of the half-board colour assignment.
+  const _gfDropIsSpecial = !!(trayPieces[dragPieceIdx] && trayPieces[dragPieceIdx].special);
+  if (hoverCell && dragShape && !_gfDropIsSpecial && activeChallengeMode === 'goldenfrog' && (cm_gfSplitLeftColor || cm_gfSplitRightColor)) {
     const _gfDropCfg = GF_LOCATIONS_CFG[Math.min(cm_gfLevel-1, 9)];
     if (_gfDropCfg && (_gfDropCfg.mechanic === 'split' || _gfDropCfg.mechanic === 'gauntlet')) {
       let _gfDropWrong = false;
@@ -12864,6 +12880,11 @@ let cm_gfGauntletTimers = [];
 let cm_gfSplitLeftColor  = null;
 let cm_gfSplitRightColor = null;
 const GF_SPLIT_COL = 5; // columns 0-4 = left, 5-9 = right
+// Per-location line clearing target — each Golden Frog location is gated until
+// the player clears this many lines, then the celebration overlay fires.
+const GF_LINES_PER_LEVEL = 50;
+let cm_gfLinesCleared = 0;     // lines cleared at the current location
+let cm_gfLevelGateActive = false; // true while the COMPLETE overlay is showing
 // Quick lookup of the Fog the Frog location names (for HUD labels)
 const FOG_LOCATION_NAMES = ['Enchanted Woods','Scottish Moors','Scottish Highlands','Mediterranean Sea','Coral Reef','Amazon','Sahara Night','Arctic','Deep Ocean','Above the Clouds'];
 // Each Golden Frog location has its own day/night sky, silhouette skyline (column heights 0-10),
@@ -13080,7 +13101,7 @@ function initChallengeMode() {
   // ────────────────────────────────────────────────────────────────
   if (activeChallengeMode === 'goldenfrog') {
     // Preserve cm_gfLevel if already set (dev skip bumps it). Only init from game level on first start.
-    if (!cm_gfLevel || cm_gfLevel < 1) cm_gfLevel = level || 1;
+    if (!cm_gfLevel || cm_gfLevel < 1) { cm_gfLevel = level || 1; cm_gfLinesCleared = 0; }
     cm_gfBlackoutActive = false;
     cm_gfGravityFlip = false;
     cm_gfRotateAngle = 0;
@@ -13265,6 +13286,9 @@ function stopChallengeMode() {
   _gfStopAllMechanics();
   if (typeof _gfSceneReset === 'function') _gfSceneReset();
   cm_gfLevel = 0; // 0 means "reset; init from game level on next start"
+  cm_gfLinesCleared = 0;
+  cm_gfLevelGateActive = false;
+  try { _gfStopFireworks(); _gfHideCelebrationOverlay(); } catch(_e) {}
   document.getElementById('challenge-hud').classList.remove('active');
   document.getElementById('survival-bar-wrap').classList.remove('active');
   const flipBtn = document.getElementById('cr-flip-btn');
@@ -13578,6 +13602,272 @@ function _gfDemoPulse(lv) {
   }, 800);
 }
 
+// ════════════════════════════════════════════════════════════════
+//  GOLDEN FROG — LEVEL COMPLETE GATE (50 lines per location)
+//  Shows a celebratory overlay with fireworks + frog "singing" before
+//  advancing to the next location. User must tap CONTINUE to proceed.
+// ════════════════════════════════════════════════════════════════
+let _gfFireworksTimer = null;
+let _gfCelebrationTimers = [];
+
+function updateGfGateHUD() {
+  // Lightweight HUD-side counter — surfaces "X / 50" so the player sees progress.
+  // The level pill exists today; we tag the line count onto the existing GF level pill if present.
+  try {
+    const el = document.getElementById('gf-gate-progress');
+    if (el) {
+      el.textContent = Math.min(cm_gfLinesCleared, GF_LINES_PER_LEVEL) + ' / ' + GF_LINES_PER_LEVEL;
+    }
+  } catch(_e) {}
+}
+
+// Fireworks: spawn rocket bursts using the existing particles[] system.
+function _gfSpawnFireworkBurst(cx, cy, hueBase) {
+  if (typeof particles === 'undefined' || !Array.isArray(particles)) return;
+  const n = 28 + Math.floor(Math.random()*16);
+  const palette = [
+    '#FFD700','#FF6B6B','#4ECDC4','#FFE066','#A8E6CF',
+    '#FF8FAB','#B8B5FF','#7AC74C','#FFA94D','#74C0FC'
+  ];
+  for (let i = 0; i < n; i++) {
+    const a = (Math.PI*2 * i)/n + Math.random()*0.2;
+    const sp = 140 + Math.random()*180;
+    const col = palette[(hueBase + i) % palette.length];
+    particles.push({
+      x: cx, y: cy,
+      vx: Math.cos(a)*sp,
+      vy: Math.sin(a)*sp - 60,   // bias upward for nicer arc before gravity pulls
+      life: 1.1 + Math.random()*0.6,
+      maxLife: 1.6,
+      color: col,
+      size: 4 + Math.random()*4
+    });
+  }
+  // bright central flash
+  for (let i = 0; i < 8; i++) {
+    particles.push({
+      x: cx, y: cy,
+      vx: (Math.random()-0.5)*40,
+      vy: (Math.random()-0.5)*40,
+      life: 0.35, maxLife: 0.4,
+      color: '#FFFFFF', size: 8 + Math.random()*4
+    });
+  }
+}
+
+function _gfStartFireworks() {
+  if (_gfFireworksTimer) return;
+  let elapsed = 0;
+  _gfFireworksTimer = setInterval(() => {
+    try {
+      const rect = (typeof gridCanvas !== 'undefined' && gridCanvas && gridCanvas.getBoundingClientRect)
+        ? gridCanvas.getBoundingClientRect()
+        : { left: window.innerWidth*0.1, top: 80, width: window.innerWidth*0.8, height: window.innerHeight*0.5 };
+      const burstCount = 1 + Math.floor(Math.random()*2);
+      for (let b = 0; b < burstCount; b++) {
+        const cx = rect.left + rect.width * (0.15 + Math.random()*0.7);
+        const cy = rect.top  + rect.height * (0.15 + Math.random()*0.55);
+        _gfSpawnFireworkBurst(cx, cy, Math.floor(Math.random()*10));
+      }
+    } catch(_e) {}
+    elapsed += 280;
+    // self-stops after a long while just to be safe — normal flow stops it on tap.
+    if (elapsed > 60000) _gfStopFireworks();
+  }, 280);
+}
+
+function _gfStopFireworks() {
+  if (_gfFireworksTimer) { clearInterval(_gfFireworksTimer); _gfFireworksTimer = null; }
+}
+
+// Frog "singing" — chained ribbits with varied patterns for ~3-4 seconds.
+function _gfFrogSing() {
+  const song = [
+    {pat:'hype',  delay:0},
+    {pat:'fast',  delay:600},
+    {pat:'warm',  delay:1200},
+    {pat:'hype',  delay:1800},
+    {pat:'fast',  delay:2300},
+    {pat:'warm',  delay:2900},
+    {pat:'hype',  delay:3500},
+  ];
+  for (const note of song) {
+    const t = setTimeout(() => {
+      try { if (typeof playRibbit === 'function') playRibbit(note.pat); } catch(_e) {}
+    }, note.delay);
+    _gfCelebrationTimers.push(t);
+  }
+}
+
+// Build / show the celebration overlay. Uses dynamic DOM so we don't depend on extra HTML.
+function _gfShowCelebrationOverlay() {
+  let ov = document.getElementById('gf-complete-overlay');
+  if (!ov) {
+    ov = document.createElement('div');
+    ov.id = 'gf-complete-overlay';
+    ov.style.cssText = [
+      'position:fixed','inset:0','z-index:9999',
+      'display:flex','flex-direction:column','align-items:center','justify-content:center',
+      'background:radial-gradient(circle at 50% 40%, rgba(20,10,40,0.78) 0%, rgba(8,4,18,0.92) 70%)',
+      'backdrop-filter:blur(4px)','-webkit-backdrop-filter:blur(4px)',
+      'animation:gfFadeIn 380ms ease-out',
+      'cursor:pointer','user-select:none','touch-action:manipulation'
+    ].join(';');
+
+    // Trophy emoji + Title
+    const trophy = document.createElement('div');
+    trophy.textContent = '🏆';
+    trophy.style.cssText = 'font-size:84px;line-height:1;animation:gfPop 700ms cubic-bezier(.2,1.4,.4,1) both;filter:drop-shadow(0 6px 18px rgba(255,200,80,0.6));';
+    ov.appendChild(trophy);
+
+    const title = document.createElement('div');
+    title.id = 'gf-complete-title';
+    title.textContent = 'DUBAI COMPLETE';
+    title.style.cssText = [
+      'margin-top:18px','font-family:"Bungee","Arial Black",sans-serif',
+      'font-size:clamp(32px,6vw,56px)','letter-spacing:2px',
+      'background:linear-gradient(180deg,#FFE17A 0%,#FFB347 60%,#FF7E45 100%)',
+      '-webkit-background-clip:text','background-clip:text',
+      '-webkit-text-fill-color:transparent','color:#FFE17A',
+      'text-shadow:0 4px 18px rgba(255,180,80,0.45)',
+      'animation:gfTitleIn 500ms 200ms cubic-bezier(.2,1.4,.4,1) both'
+    ].join(';');
+    ov.appendChild(title);
+
+    const sub = document.createElement('div');
+    sub.id = 'gf-complete-sub';
+    sub.textContent = '50 LINES CLEARED — NEXT LOCATION UNLOCKED';
+    sub.style.cssText = [
+      'margin-top:14px','font-family:Arial,sans-serif','font-size:clamp(13px,2.4vw,16px)',
+      'letter-spacing:1.5px','color:#FFE9C2','opacity:0.9',
+      'animation:gfFadeIn 700ms 400ms both'
+    ].join(';');
+    ov.appendChild(sub);
+
+    // Stats row
+    const stats = document.createElement('div');
+    stats.id = 'gf-complete-stats';
+    stats.style.cssText = [
+      'margin-top:26px','display:flex','gap:22px','flex-wrap:wrap','justify-content:center',
+      'animation:gfFadeIn 700ms 600ms both'
+    ].join(';');
+    stats.innerHTML = '<div style="text-align:center">' +
+      '<div style="font-size:11px;letter-spacing:1.4px;color:#FFC56B;opacity:0.85">SCORE</div>' +
+      '<div id="gf-complete-score" style="font-size:26px;font-weight:900;color:#fff;font-family:Arial,sans-serif">0</div>' +
+    '</div>' +
+    '<div style="text-align:center">' +
+      '<div style="font-size:11px;letter-spacing:1.4px;color:#FFC56B;opacity:0.85">LINES</div>' +
+      '<div id="gf-complete-lines" style="font-size:26px;font-weight:900;color:#fff;font-family:Arial,sans-serif">0</div>' +
+    '</div>' +
+    '<div style="text-align:center">' +
+      '<div style="font-size:11px;letter-spacing:1.4px;color:#FFC56B;opacity:0.85">NEXT</div>' +
+      '<div id="gf-complete-next" style="font-size:26px;font-weight:900;color:#FFD700;font-family:Arial,sans-serif">—</div>' +
+    '</div>';
+    ov.appendChild(stats);
+
+    // Tap hint
+    const tap = document.createElement('div');
+    tap.id = 'gf-complete-tap';
+    tap.textContent = 'TAP TO CONTINUE';
+    tap.style.cssText = [
+      'margin-top:38px','padding:14px 28px','border:2px solid rgba(255,210,120,0.7)',
+      'border-radius:48px','color:#FFE9C2','font-family:Arial,sans-serif',
+      'font-size:14px','letter-spacing:2px','font-weight:800',
+      'background:rgba(255,180,60,0.10)','animation:gfPulseTap 1.4s ease-in-out infinite'
+    ].join(';');
+    ov.appendChild(tap);
+
+    // Inline keyframes (idempotent — only injected once)
+    if (!document.getElementById('gf-complete-keyframes')) {
+      const st = document.createElement('style');
+      st.id = 'gf-complete-keyframes';
+      st.textContent = [
+        '@keyframes gfFadeIn{from{opacity:0}to{opacity:1}}',
+        '@keyframes gfPop{0%{transform:scale(0.2);opacity:0}60%{transform:scale(1.18);opacity:1}100%{transform:scale(1);opacity:1}}',
+        '@keyframes gfTitleIn{0%{transform:translateY(20px) scale(0.9);opacity:0}100%{transform:translateY(0) scale(1);opacity:1}}',
+        '@keyframes gfPulseTap{0%,100%{transform:scale(1);opacity:0.85}50%{transform:scale(1.06);opacity:1}}'
+      ].join('\n');
+      document.head.appendChild(st);
+    }
+
+    // Tap-to-continue — hooked once.
+    const onTap = (e) => {
+      // Only respond if gate is active — ignore stray clicks.
+      if (!cm_gfLevelGateActive) return;
+      e.preventDefault(); e.stopPropagation();
+      _gfDismissCelebration();
+    };
+    ov.addEventListener('click', onTap);
+    ov.addEventListener('touchend', onTap, {passive:false});
+    document.body.appendChild(ov);
+  }
+
+  // Update stats from the live game state
+  try {
+    const sEl = document.getElementById('gf-complete-score');
+    const lEl = document.getElementById('gf-complete-lines');
+    const nEl = document.getElementById('gf-complete-next');
+    const tEl = document.getElementById('gf-complete-title');
+    if (sEl) sEl.textContent = (typeof score==='number'?score:0).toLocaleString();
+    if (lEl) lEl.textContent = String(cm_gfLinesCleared);
+    if (nEl) {
+      const nextCfg = (typeof GF_LOCATIONS_CFG !== 'undefined') ? GF_LOCATIONS_CFG[Math.min(cm_gfLevel, 9)] : null;
+      nEl.textContent = nextCfg ? (nextCfg.emoji + ' ' + nextCfg.name.toUpperCase()) : '—';
+    }
+    if (tEl) {
+      const cur = (typeof GF_LOCATIONS_CFG !== 'undefined') ? GF_LOCATIONS_CFG[Math.min(cm_gfLevel-1,9)] : null;
+      tEl.textContent = cur ? (cur.name.toUpperCase() + ' COMPLETE') : 'LOCATION COMPLETE';
+    }
+  } catch(_e) {}
+
+  ov.style.display = 'flex';
+}
+
+function _gfHideCelebrationOverlay() {
+  const ov = document.getElementById('gf-complete-overlay');
+  if (ov) ov.style.display = 'none';
+}
+
+// Trigger: pause gameplay, show overlay, fireworks, frog song.
+function _gfTriggerLevelComplete() {
+  if (cm_gfLevelGateActive) return;
+  if (cm_gfLevel >= 10) return;       // final location — endgame logic handles it
+  cm_gfLevelGateActive = true;
+  // Pause active gameplay (no piece dragging while celebrating)
+  try { gameActive = false; } catch(_e) {}
+  // Stop ongoing per-location mechanics so the player isn't punished mid-celebration
+  try { if (typeof _gfStopAllMechanics === 'function') _gfStopAllMechanics(); } catch(_e) {}
+  // Banner pop
+  try { if (typeof showEventBanner === 'function') showEventBanner('🏆 LOCATION COMPLETE!'); } catch(_e) {}
+  // Show overlay + start FX
+  _gfShowCelebrationOverlay();
+  _gfStartFireworks();
+  _gfFrogSing();
+}
+
+// Dismiss on tap: stop FX, advance to next location, reset counter, resume.
+function _gfDismissCelebration() {
+  if (!cm_gfLevelGateActive) return;
+  _gfStopFireworks();
+  for (const t of _gfCelebrationTimers) { try { clearTimeout(t); } catch(_e) {} }
+  _gfCelebrationTimers = [];
+  _gfHideCelebrationOverlay();
+  cm_gfLevelGateActive = false;
+  cm_gfLinesCleared = 0;
+  // Advance to next GF location and re-init the mode (mirrors dev-skip path)
+  try {
+    if (typeof _gfStopAllMechanics === 'function') _gfStopAllMechanics();
+    cm_gfLevel = Math.min((cm_gfLevel||1) + 1, 10);
+    if (typeof cm_gfTimer !== 'undefined' && cm_gfTimer) { clearInterval(cm_gfTimer); cm_gfTimer = null; }
+    if (typeof initChallengeMode === 'function') initChallengeMode();
+    if (typeof updateUI === 'function') updateUI();
+    if (typeof drawGrid === 'function') drawGrid();
+  } catch(_e) {}
+  // Resume gameplay
+  try { gameActive = true; } catch(_e) {}
+  if (typeof updateGfGateHUD === 'function') updateGfGateHUD();
+}
+
 function _gfStopAllMechanics() {
   if (cm_gfMechTimer) { clearInterval(cm_gfMechTimer); cm_gfMechTimer = null; }
   if (cm_gfShrinkInterval) { clearInterval(cm_gfShrinkInterval); cm_gfShrinkInterval = null; }
@@ -13638,7 +13928,245 @@ function _gfSceneInit(W, H, cfg) {
 }
 function _gfSceneReset(){ _gfSceneCanvas=null; _gfSceneCtx=null; _gfSceneInitialized=false; _gfSceneCfgIdx=-1; _gfSceneT=0.62; _gfSceneStars=[]; _gfSceneParticles=[]; }
 
+// Dubai-specific landmark skyline: real Burj Khalifa spire + Burj Al Arab sail silhouettes.
+function _gfSceneDrawDubaiSkyline(ctx, W, H, cfg, dayMix) {
+  const baseY = H * 0.62;
+  const backFill  = `rgb(${Math.round(8+dayMix*10)},${Math.round(8+dayMix*8)},${Math.round(15+dayMix*15)})`;
+  const frontFill = `rgb(${Math.round(2+dayMix*5)},${Math.round(2+dayMix*3)},${Math.round(8+dayMix*8)})`;
+  const edge = cfg.sky.edgeColor || [255,210,100];
+  const acc  = cfg.sky.accentColor || [255,200,80];
+
+  // ── Back layer: rolling soft dunes + distant mid-rise hum ─────────
+  ctx.save();
+  ctx.globalAlpha = 0.55;
+  ctx.fillStyle = backFill;
+  ctx.beginPath();
+  ctx.moveTo(0, H);
+  ctx.lineTo(0, baseY + 6);
+  // gentle dune curve across the back
+  for (let x = 0; x <= W; x += W/24) {
+    const y = baseY + 4 - Math.sin(x*0.012 + 0.4)*8 - Math.sin(x*0.006)*4;
+    ctx.lineTo(x, y);
+  }
+  ctx.lineTo(W, baseY + 6);
+  ctx.lineTo(W, H);
+  ctx.closePath();
+  ctx.fill();
+  // a few low blocky mid-rises in the back
+  const midBlocks = [
+    {x:0.06, w:0.06, h:0.10},
+    {x:0.14, w:0.05, h:0.13},
+    {x:0.21, w:0.07, h:0.09},
+    {x:0.34, w:0.05, h:0.11},
+    {x:0.62, w:0.06, h:0.10},
+    {x:0.74, w:0.05, h:0.14},
+    {x:0.83, w:0.06, h:0.09},
+    {x:0.91, w:0.05, h:0.11},
+  ];
+  for (const b of midBlocks) {
+    const bx = b.x*W, bw = b.w*W, bh = b.h*H;
+    ctx.fillRect(bx, baseY - bh, bw, bh + 4);
+  }
+  ctx.restore();
+
+  // ── Front layer (main silhouettes) ────────────────────────────────
+  ctx.save();
+  ctx.globalAlpha = 0.92;
+  ctx.fillStyle = frontFill;
+
+  // ===== BURJ AL ARAB (sail-shaped) — left side, ~30% width pos =====
+  // Anchored on a small "island" platform.
+  const baX = W * 0.30;          // base x (right edge of the sail anchor)
+  const baBase = baseY + 2;      // base y
+  const baH = H * 0.34;          // total tower height
+  const baTopY = baBase - baH;
+  // little platform / island
+  ctx.beginPath();
+  ctx.moveTo(baX - W*0.07, baBase + 4);
+  ctx.lineTo(baX + W*0.05, baBase + 4);
+  ctx.lineTo(baX + W*0.04, baBase - 2);
+  ctx.lineTo(baX - W*0.06, baBase - 2);
+  ctx.closePath();
+  ctx.fill();
+  // sail body — convex front edge, vertical back mast
+  ctx.beginPath();
+  ctx.moveTo(baX - W*0.055, baBase - 2);              // bottom-left of sail
+  // back/mast: nearly vertical from base up to apex, with a tiny lean
+  ctx.lineTo(baX - W*0.012, baTopY + 4);              // rising back edge
+  ctx.lineTo(baX,           baTopY);                  // apex (mast tip)
+  // front sail curve — concave/convex bow from apex back down to base
+  ctx.bezierCurveTo(
+    baX + W*0.02, baTopY + baH*0.18,                  // upper bow control
+    baX + W*0.045, baTopY + baH*0.55,                 // mid bow control
+    baX + W*0.018, baBase - 2                         // bottom-right of sail
+  );
+  ctx.closePath();
+  ctx.fill();
+
+  // ===== BURJ KHALIFA — central, towering spire ====================
+  const bkX = W * 0.52;              // center x
+  const bkBase = baseY + 2;
+  const bkTotalH = H * 0.78;         // tallest element on screen
+  const bkTopY = bkBase - bkTotalH;
+  // tiered footprint: wide trefoil-style base, stepping inward
+  const tiers = [
+    {wFrac: 0.085, hFrac: 0.18},   // widest base
+    {wFrac: 0.062, hFrac: 0.16},
+    {wFrac: 0.048, hFrac: 0.14},
+    {wFrac: 0.036, hFrac: 0.12},
+    {wFrac: 0.026, hFrac: 0.10},
+    {wFrac: 0.018, hFrac: 0.09},
+    {wFrac: 0.012, hFrac: 0.07},
+  ];
+  let cursorY = bkBase;
+  for (const t of tiers) {
+    const tw = t.wFrac * W;
+    const th = t.hFrac * H;
+    ctx.fillRect(bkX - tw/2, cursorY - th, tw, th + 1);
+    cursorY -= th;
+  }
+  // tapered tip — a long thin spire rising to bkTopY
+  const spireBaseY = cursorY;
+  const spireBaseW = (tiers[tiers.length-1].wFrac * W) * 0.7;
+  ctx.beginPath();
+  ctx.moveTo(bkX - spireBaseW/2, spireBaseY);
+  ctx.lineTo(bkX + spireBaseW/2, spireBaseY);
+  ctx.lineTo(bkX + 0.6,            bkTopY);          // razor-thin tip
+  ctx.lineTo(bkX - 0.6,            bkTopY);
+  ctx.closePath();
+  ctx.fill();
+
+  // ===== Other downtown towers around Burj Khalifa =================
+  const downtown = [
+    {x:0.40, w:0.030, h:0.30, slant:0},
+    {x:0.44, w:0.024, h:0.24, slant:0},
+    {x:0.47, w:0.020, h:0.20, slant:0},
+    {x:0.58, w:0.022, h:0.26, slant:0},
+    {x:0.62, w:0.028, h:0.22, slant:0},
+    {x:0.66, w:0.020, h:0.18, slant:0},
+    {x:0.71, w:0.034, h:0.30, slant:1},  // slight twist tower
+    {x:0.78, w:0.024, h:0.22, slant:0},
+    {x:0.84, w:0.030, h:0.26, slant:0},
+    {x:0.90, w:0.022, h:0.20, slant:0},
+  ];
+  for (const t of downtown) {
+    const tx = t.x*W, tw = t.w*W, th = t.h*H;
+    if (t.slant) {
+      // simple lean for visual variety
+      ctx.beginPath();
+      ctx.moveTo(tx,           bkBase);
+      ctx.lineTo(tx + tw,      bkBase);
+      ctx.lineTo(tx + tw - 2,  bkBase - th);
+      ctx.lineTo(tx + 2,       bkBase - th);
+      ctx.closePath();
+      ctx.fill();
+    } else {
+      ctx.fillRect(tx, bkBase - th, tw, th + 1);
+    }
+  }
+  ctx.restore();
+
+  // ── Edge glow on the iconic landmark outlines ────────────────────
+  ctx.save();
+  ctx.globalAlpha = 0.65;
+  ctx.strokeStyle = `rgba(${edge[0]},${edge[1]},${edge[2]},0.95)`;
+  ctx.lineWidth = 1.2;
+  // Burj Khalifa spire glow
+  ctx.beginPath();
+  let gy = bkBase;
+  const gx = bkX;
+  for (const t of tiers) {
+    const tw = t.wFrac * W;
+    const th = t.hFrac * H;
+    ctx.moveTo(gx - tw/2, gy);
+    ctx.lineTo(gx - tw/2, gy - th);
+    ctx.moveTo(gx + tw/2, gy);
+    ctx.lineTo(gx + tw/2, gy - th);
+    gy -= th;
+  }
+  ctx.moveTo(gx - spireBaseW/2, spireBaseY);
+  ctx.lineTo(gx, bkTopY);
+  ctx.lineTo(gx + spireBaseW/2, spireBaseY);
+  ctx.stroke();
+  // Burj Al Arab sail glow
+  ctx.beginPath();
+  ctx.moveTo(baX - W*0.012, baTopY + 4);
+  ctx.lineTo(baX,           baTopY);
+  ctx.bezierCurveTo(
+    baX + W*0.02, baTopY + baH*0.18,
+    baX + W*0.045, baTopY + baH*0.55,
+    baX + W*0.018, baBase - 2
+  );
+  ctx.stroke();
+  ctx.restore();
+
+  // ── Window lights at night on landmarks + downtown ───────────────
+  if (dayMix < 0.55) {
+    const litAlpha = 0.85 - dayMix*0.6;
+    ctx.save();
+    ctx.fillStyle = `rgba(${acc[0]},${acc[1]},${acc[2]},${litAlpha})`;
+    // Burj Khalifa: stack of small window dots up the tiers (sparkle pattern)
+    let lyCursor = bkBase;
+    let tierIdx = 0;
+    for (const t of tiers) {
+      const tw = t.wFrac * W;
+      const th = t.hFrac * H;
+      const cols = Math.max(2, Math.floor(tw / 4));
+      const rows = Math.max(2, Math.floor(th / 6));
+      for (let rr = 0; rr < rows; rr++) {
+        for (let cc = 0; cc < cols; cc++) {
+          if (((rr*7 + cc*3 + tierIdx*5 + Math.floor(_gfSceneT*120)) % 13) < 6) {
+            const wx = bkX - tw/2 + 1.5 + cc*((tw-3)/Math.max(1,cols-1||1));
+            const wy = lyCursor - th + 2 + rr*((th-4)/Math.max(1,rows-1||1));
+            ctx.fillRect(wx, wy, 1.3, 1.3);
+          }
+        }
+      }
+      lyCursor -= th;
+      tierIdx++;
+    }
+    // top of spire — a bright pinpoint that always shines (the famous tip light)
+    ctx.fillStyle = `rgba(255,240,180,${0.9 - dayMix*0.4})`;
+    ctx.beginPath(); ctx.arc(bkX, bkTopY+1, 1.6, 0, Math.PI*2); ctx.fill();
+
+    // Burj Al Arab: glowing accent lights tracing the sail
+    ctx.fillStyle = `rgba(${acc[0]},${acc[1]},${acc[2]},${litAlpha})`;
+    for (let k = 0; k < 8; k++) {
+      const ty = baBase - 4 - k*(baH/9);
+      ctx.fillRect(baX - W*0.01, ty, 1.4, 1.4);
+    }
+    // signature crown light on the apex
+    ctx.fillStyle = `rgba(255,230,160,${0.9 - dayMix*0.4})`;
+    ctx.beginPath(); ctx.arc(baX, baTopY+1, 1.5, 0, Math.PI*2); ctx.fill();
+
+    // downtown twinkle
+    ctx.fillStyle = `rgba(${acc[0]},${acc[1]},${acc[2]},${litAlpha*0.85})`;
+    for (const t of downtown) {
+      const tx = t.x*W, tw = t.w*W, th = t.h*H;
+      const cols = Math.max(1, Math.floor(tw/3));
+      const rows = Math.max(2, Math.floor(th/8));
+      for (let rr = 0; rr < rows; rr++) {
+        for (let cc = 0; cc < cols; cc++) {
+          if (((rr*5 + cc*7 + Math.floor(_gfSceneT*90)) % 11) < 4) {
+            const wx = tx + 0.8 + cc*((tw-1.6)/Math.max(1,cols-1||1));
+            const wy = bkBase - th + 2 + rr*((th-4)/Math.max(1,rows-1||1));
+            ctx.fillRect(wx, wy, 1.1, 1.1);
+          }
+        }
+      }
+    }
+    ctx.restore();
+  }
+}
+
 function _gfSceneDrawSkyline(ctx, W, H, cfg, dayMix) {
+  // Dubai gets a real landmark silhouette instead of the histogram fallback.
+  try {
+    if (cfg && cfg.name === 'Dubai') {
+      _gfSceneDrawDubaiSkyline(ctx, W, H, cfg, dayMix);
+      return;
+    }
+  } catch(_e) { /* fall through to default histogram */ }
   // dayMix 1=day, 0=night. Silhouette is dark; in day it's slightly lighter.
   const heights = cfg.colHeights || [3,5,4,6,4,5,4,3,4,3];
   const baseY = H * 0.62;
