@@ -9157,6 +9157,15 @@ function startGame(){
   if (_cpHud && !cityPackActive) _cpHud.style.display = 'none';
   ensureAudio(); // guarantee audio context is running before any game sounds fire
   clearVanishTimers();clearAdderFrogTimer();clearSpeedCountdown();stopChallenges();stopChallengeMode();
+  // BUGFIX: clear any stale Duo "Shake the Frog" / swap classes left over from a previous
+  // Duo session that exited via menu rather than game-over. Without this the entire game
+  // screen visibly shakes when entering a non-Duo game (e.g. Golden Frog Lv4 Tokyo tide).
+  try {
+    if (typeof _stopDuoShake === 'function') _stopDuoShake();
+    if (typeof _stopDuoSwap === 'function') _stopDuoSwap();
+    const _gs = document.getElementById('screen-game');
+    if (_gs) _gs.classList.remove('duo-board-shake-slight','duo-board-shake-medium','duo-board-shake-heavy');
+  } catch(_e) {}
   initGrid();score=0;linesCleared=0;level=1;combo=0;particles=[];gameActive=true;powerupActive=false;
   _prevScore = 0; _prevLevel = 1; // suppress ribbon on initial UI paint
   piecesPlaced=0;bonusEarnedThisGame=0;bonusQueue=[];hazardTimer=0;
