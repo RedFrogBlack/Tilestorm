@@ -8331,7 +8331,51 @@ function drawGrid(){
     ctx.drawImage(_gfSceneCanvas, 0, 0, gridCanvas.width, gridCanvas.height);
     ctx.restore();
   }
-  for(let r=0;r<ROWS;r++)for(let c=0;c<COLS;c++)if(grid[r][c])drawTile(r,c,getTileColor(grid[r][c]),1,false,isGold);
+  for(let r=0;r<ROWS;r++)for(let c=0;c<COLS;c++){
+    if(!grid[r][c]) continue;
+    // Skip cells that are mid-slide (Monaco quake) — the slide overlay draws them
+    if (typeof _gfQuakeHiddenSet !== 'undefined' && _gfQuakeHiddenSet && _gfQuakeHiddenSet.has(r*100+c)) continue;
+    drawTile(r,c,getTileColor(grid[r][c]),1,false,isGold);
+  }
+  // Monaco quake: draw the in-flight sliding tiles on top
+  if (typeof _gfQuakeSlides !== 'undefined' && _gfQuakeSlides && _gfQuakeSlides.length) {
+    const _now = (typeof performance!=='undefined'?performance.now():Date.now());
+    for (const s of _gfQuakeSlides) {
+      const t = Math.max(0, Math.min(1, (_now - s.start) / s.dur));
+      // ease-in-out cubic
+      const k = t < 0.5 ? 4*t*t*t : 1 - Math.pow(-2*t+2, 3)/2;
+      const fx = s.fromC*CELL + PAD + (s.toC - s.fromC)*CELL*k;
+      const fy = s.fromR*CELL + PAD + (s.toR - s.fromR)*CELL*k;
+      const w = CELL - PAD*2, h = CELL - PAD*2;
+      const rad = Math.max(4, CELL*0.13);
+      ctx.save();
+      // Trail line so the path is visible even at speed
+      ctx.globalAlpha = 0.18;
+      ctx.strokeStyle = s.color;
+      ctx.lineWidth = Math.max(2, CELL*0.10);
+      ctx.lineCap = 'round';
+      ctx.beginPath();
+      ctx.moveTo(s.fromC*CELL + CELL/2, s.fromR*CELL + CELL/2);
+      ctx.lineTo(fx + w/2, fy + h/2);
+      ctx.stroke();
+      // Glowing tile body
+      ctx.globalAlpha = 1;
+      ctx.shadowColor = s.color;
+      ctx.shadowBlur = isGold ? 28 : 18;
+      ctx.fillStyle = s.color;
+      ctx.beginPath(); ctx.roundRect(fx, fy, w, h, rad); ctx.fill();
+      ctx.shadowBlur = 0;
+      // Top highlight
+      const gr = ctx.createLinearGradient(fx, fy, fx, fy + h*0.5);
+      gr.addColorStop(0,'rgba(255,255,255,0.40)'); gr.addColorStop(1,'rgba(255,255,255,0)');
+      ctx.fillStyle = gr;
+      ctx.beginPath(); ctx.roundRect(fx+2, fy+2, w-4, h*0.44, rad-1); ctx.fill();
+      // Bright edge
+      ctx.strokeStyle = 'rgba(255,255,255,0.30)'; ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.roundRect(fx+0.5, fy+0.5, w-1, h-1, rad); ctx.stroke();
+      ctx.restore();
+    }
+  }
 
   // ─ FOG THE FROG: overlay green-purple fog mist on tiles ────────────────────────────────────────
   if (activeChallengeMode === 'fog' && cm_fogTileAlpha.length) {
@@ -13426,6 +13470,10 @@ let cm_gfConveyorTimer = null;
 let cm_gfGhostTimer = null;
 let cm_gfGhostCells = [];          // {r,c,placedAt} ghost cells
 let cm_gfQuakeOffset = {x:0, y:0};
+// Monaco quake slide animation state
+let _gfQuakeSlides = [];           // [{ fromR, fromC, toR, toC, color, start, dur }]
+let _gfQuakeHiddenSet = new Set(); // 'r*100+c' keys to suppress in normal grid render during slide
+let _gfQuakeRafId = null;          // rAF handle for the slide loop
 let cm_gfGravityFlip = false;
 let cm_gfRotateAngle = 0;
 let cm_gfGauntletTimers = [];
@@ -13999,46 +14047,7 @@ function _gfActivateMechanic(lvl) {
   else if (mech === 'quake') {
     cm_gfMechTimer = setInterval(() => {
       if (!gameActive) return;
-      // ① Physically shuffle: pick up to 4 occupied tiles and move each to a random empty cell.
-      try {
-        const occupied = [];
-        const empty = [];
-        for (let r = 0; r < ROWS; r++) {
-          for (let c = 0; c < COLS; c++) {
-            if (typeof isMasked === 'function' && isMasked(r, c)) continue;
-            if (grid[r][c] !== 0) occupied.push([r, c]);
-            else empty.push([r, c]);
-          }
-        }
-        // Shuffle helper
-        const shuf = (arr) => { for (let i = arr.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [arr[i], arr[j]] = [arr[j], arr[i]]; } return arr; };
-        shuf(occupied); shuf(empty);
-        const moveCount = Math.min(4, occupied.length, empty.length);
-        for (let i = 0; i < moveCount; i++) {
-          const [or, oc] = occupied[i];
-          const [er, ec] = empty[i];
-          grid[er][ec] = grid[or][oc];
-          grid[or][oc] = 0;
-        }
-      } catch (e) { /* defensive */ }
-      // ② Visual canvas shake on top of the actual move
-      let shakes = 0;
-      const quakeAnim = setInterval(() => {
-        shakes++;
-        cm_gfQuakeOffset = {x:(Math.random()-0.5)*12, y:(Math.random()-0.5)*8};
-        if (typeof gridCanvas !== 'undefined' && gridCanvas) {
-          gridCanvas.style.transform = 'translate(' + cm_gfQuakeOffset.x + 'px,' + cm_gfQuakeOffset.y + 'px)';
-        }
-        if (shakes > 14) {
-          clearInterval(quakeAnim);
-          cm_gfQuakeOffset = {x:0, y:0};
-          if (typeof gridCanvas !== 'undefined' && gridCanvas) gridCanvas.style.transform = '';
-        }
-      }, 60);
-      drawGrid();
-      // LESSON FROM DUBAI: tiles moved by the quake may have completed a line
-      _gfRecheckLinesAfterMutation();
-      showEventBanner('✨ MONACO QUAKE — TILES MOVED!');
+      _gfTriggerMonacoQuake();
     }, 8000);
     cm_gfGauntletTimers.push(cm_gfMechTimer);
   }
@@ -14429,6 +14438,93 @@ function _gfHideCelebrationOverlay() {
   if (ov) ov.style.display = 'none';
 }
 
+// Monaco quake — captures moves, slides tiles from old to new positions, then commits.
+function _gfTriggerMonacoQuake() {
+  // Bail if a previous quake animation is still running — don't stack.
+  if (_gfQuakeRafId) return;
+  // ① Pick up to 4 occupied tiles + matching empty destinations
+  let moves = [];
+  try {
+    const occupied = [];
+    const empty = [];
+    for (let r = 0; r < ROWS; r++) {
+      for (let c = 0; c < COLS; c++) {
+        if (typeof isMasked === 'function' && isMasked(r, c)) continue;
+        if (grid[r][c] !== 0) occupied.push([r, c]);
+        else empty.push([r, c]);
+      }
+    }
+    const shuf = (arr) => { for (let i = arr.length - 1; i > 0; i--) { const j = Math.floor(Math.random()*(i+1)); [arr[i],arr[j]]=[arr[j],arr[i]]; } return arr; };
+    shuf(occupied); shuf(empty);
+    const moveCount = Math.min(4, occupied.length, empty.length);
+    for (let i = 0; i < moveCount; i++) {
+      const [or, oc] = occupied[i];
+      const [er, ec] = empty[i];
+      const val = grid[or][oc];
+      moves.push({ fromR: or, fromC: oc, toR: er, toC: ec, val: val, color: getTileColor(val) });
+    }
+  } catch (_e) {}
+
+  if (!moves.length) {
+    showEventBanner('✨ MONACO QUAKE — NOTHING TO SHIFT');
+    return;
+  }
+
+  // ③ Commit grid mutation BEFORE the slide — so destination cells render as occupied
+  // once animation ends, source cells are already empty. Hide both ends from the
+  // normal renderer while the slide is in flight.
+  try {
+    for (const m of moves) {
+      grid[m.fromR][m.fromC] = 0;
+      grid[m.toR][m.toC] = m.val;
+    }
+  } catch (_e) {}
+
+  // ④ Build slide records + suppress destinations from the normal grid pass during animation
+  const SLIDE_DUR = 650; // ms — long enough to clearly see the path
+  const startTs = (typeof performance!=='undefined'?performance.now():Date.now());
+  _gfQuakeSlides = moves.map(m => ({
+    fromR: m.fromR, fromC: m.fromC, toR: m.toR, toC: m.toC,
+    color: m.color, start: startTs, dur: SLIDE_DUR
+  }));
+  _gfQuakeHiddenSet = new Set(moves.map(m => m.toR*100 + m.toC));
+
+  // ⑤ Visual canvas shake (reduced amplitude so the slide remains readable)
+  let shakes = 0;
+  const quakeAnim = setInterval(() => {
+    shakes++;
+    cm_gfQuakeOffset = {x:(Math.random()-0.5)*8, y:(Math.random()-0.5)*5};
+    if (typeof gridCanvas !== 'undefined' && gridCanvas) {
+      gridCanvas.style.transform = 'translate(' + cm_gfQuakeOffset.x + 'px,' + cm_gfQuakeOffset.y + 'px)';
+    }
+    if (shakes > 11) {
+      clearInterval(quakeAnim);
+      cm_gfQuakeOffset = {x:0, y:0};
+      if (typeof gridCanvas !== 'undefined' && gridCanvas) gridCanvas.style.transform = '';
+    }
+  }, 55);
+
+  // ⑥ rAF loop drives drawGrid until the slide finishes
+  const tick = () => {
+    const now = (typeof performance!=='undefined'?performance.now():Date.now());
+    const elapsed = now - startTs;
+    drawGrid();
+    if (elapsed < SLIDE_DUR + 30) {
+      _gfQuakeRafId = requestAnimationFrame(tick);
+    } else {
+      // End: clear the overlay state and run final pass + line recheck
+      _gfQuakeSlides = [];
+      _gfQuakeHiddenSet = new Set();
+      _gfQuakeRafId = null;
+      drawGrid();
+      // LESSON FROM DUBAI: tiles moved by the quake may have completed a line
+      _gfRecheckLinesAfterMutation();
+    }
+  };
+  _gfQuakeRafId = requestAnimationFrame(tick);
+  showEventBanner('✨ MONACO QUAKE — TILES SHIFTING!');
+}
+
 // Trigger: pause gameplay, show overlay, fireworks, frog song.
 function _gfTriggerLevelComplete() {
   if (cm_gfLevelGateActive) return;
@@ -14489,6 +14585,9 @@ function _gfStopAllMechanics() {
   cm_gfRotateAngle = 0;
   cm_gfGhostCells = [];
   cm_gfQuakeOffset = {x:0, y:0};
+  if (_gfQuakeRafId) { cancelAnimationFrame(_gfQuakeRafId); _gfQuakeRafId = null; }
+  _gfQuakeSlides = [];
+  _gfQuakeHiddenSet = new Set();
   cm_gfSplitLeftColor = null;
   cm_gfSplitRightColor = null;
   cm_gfMechActive = false;
