@@ -14704,21 +14704,21 @@ function _tokyoTideAdvance() {
     } else {
       _tokyoTidePhase = 'peak';
       showEventBanner('⚠️ TIDE PEAK — HOLD!');
-      nextDelay = 5000;
+      nextDelay = 3000; // was 5000 — peak feels too long at 4 rows
     }
   } else if (_tokyoTidePhase === 'peak') {
     _tokyoTidePhase = 'falling';
     _tokyoFloodTarget = Math.max(0, _tokyoFloodTarget - 1);
     showEventBanner('🌊 TIDE — RECEDING');
-    nextDelay = 8000;
+    nextDelay = 4000; // was 8000 — recede faster so player gets relief
   } else if (_tokyoTidePhase === 'falling') {
     if (_tokyoFloodTarget > 0) {
       _tokyoFloodTarget = Math.max(0, _tokyoFloodTarget - 1);
-      nextDelay = 8000;
+      nextDelay = 4000; // was 8000 — recede faster
     } else {
       _tokyoTidePhase = 'calm';
       showEventBanner('🌟 CALM — BREATHE');
-      nextDelay = 8000;
+      nextDelay = 5000; // was 8000 — shorter calm before next cycle
     }
   }
   _tokyoTideStepTimer = setTimeout(_tokyoTideAdvance, nextDelay);
