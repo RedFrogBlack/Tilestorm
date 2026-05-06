@@ -8529,6 +8529,37 @@ function drawGrid(){
         ctx.textAlign = 'center';
         ctx.fillText('✨ BLACKOUT ✨', _W / 2, _H / 2);
       }
+
+      // DROP-TARGET PREVIEW (paints over the curtain so the player can see
+      // exactly which cells their piece will land in even though the rest of
+      // the board is pitch-black). Without this, drag-to-place feels broken
+      // because the dragged ghost piece floats above the player's finger but
+      // the actual landing cells are hidden by the blackout.
+      if (typeof dragging !== 'undefined' && dragging && dragShape && hoverCell) {
+        ctx.globalAlpha = 1;
+        const _previewColor = (typeof getTileColor === 'function' && typeof dragColor !== 'undefined') ? getTileColor(dragColor) : '#FFD700';
+        const _previewValid = (typeof canPlace === 'function') ? canPlace(dragShape, hoverCell.r, hoverCell.c) : true;
+        ctx.lineWidth = 2.5;
+        for (const [_dr, _dc] of dragShape) {
+          const _pr = hoverCell.r + _dr, _pc = hoverCell.c + _dc;
+          if (_pr < 0 || _pr >= ROWS || _pc < 0 || _pc >= COLS) continue;
+          const _cx = _pc * CELL, _cy = _pr * CELL;
+          // Soft glowing fill so it pierces the curtain without revealing the rest of the board
+          ctx.fillStyle = _previewValid ? _previewColor : '#FF4D4D';
+          ctx.globalAlpha = 0.55;
+          ctx.beginPath();
+          if (typeof ctx.roundRect === 'function') ctx.roundRect(_cx + 2, _cy + 2, CELL - 4, CELL - 4, 6);
+          else ctx.rect(_cx + 2, _cy + 2, CELL - 4, CELL - 4);
+          ctx.fill();
+          ctx.globalAlpha = 0.95;
+          ctx.strokeStyle = _previewValid ? '#FFFFFF' : '#FF7070';
+          ctx.beginPath();
+          if (typeof ctx.roundRect === 'function') ctx.roundRect(_cx + 2, _cy + 2, CELL - 4, CELL - 4, 6);
+          else ctx.rect(_cx + 2, _cy + 2, CELL - 4, CELL - 4);
+          ctx.stroke();
+        }
+        ctx.globalAlpha = 1;
+      }
       ctx.restore();
     }
   }
