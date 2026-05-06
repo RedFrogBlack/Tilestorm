@@ -8391,8 +8391,65 @@ function drawGrid(){
     if(!grid[r][c]) continue;
     // Skip cells that are mid-slide (Monaco quake) — the slide overlay draws them
     if (typeof _gfQuakeHiddenSet !== 'undefined' && _gfQuakeHiddenSet && _gfQuakeHiddenSet.has(r*100+c)) continue;
+    // Skip cells that are mid-flight (Maldives conveyor) — the flight overlay draws them
+    if (typeof _gfMaldivesHiddenSet !== 'undefined' && _gfMaldivesHiddenSet && _gfMaldivesHiddenSet.has(r*100+c)) continue;
     drawTile(r,c,getTileColor(grid[r][c]),1,false,isGold);
   }
+  // Maldives conveyor flight: draw L→R wind-blown tiles with optional zig-zag wobble.
+  // Wrap tiles (right edge → left edge) fly across the full board so the player can
+  // visibly see the long path; non-wrap tiles drift exactly one cell right.
+  if (typeof _gfMaldivesSlides !== 'undefined' && _gfMaldivesSlides && _gfMaldivesSlides.length) {
+    const _mNow = (typeof performance!=='undefined'?performance.now():Date.now());
+    for (const s of _gfMaldivesSlides) {
+      const t = Math.max(0, Math.min(1, (_mNow - s.start) / s.dur));
+      // Ease-out cubic so tiles slow at the end like wind dying down
+      const k = 1 - Math.pow(1 - t, 3);
+      let dxCells;
+      if (s.wrap) {
+        // Wrap tiles cross the entire board: fromC (rightmost) → toC=0 means delta = -(N-1)
+        // Fly that long path L→R style: visually move from fromC backwards across to 0
+        dxCells = (s.toC - s.fromC) * k; // negative delta, k from 0..1
+      } else {
+        dxCells = (s.toC - s.fromC) * k; // +1 cell over duration
+      }
+      const baseX = s.fromC * CELL + PAD + dxCells * CELL;
+      const baseY = s.fromR * CELL + PAD;
+      // Wobble: vertical sine offset that fades in at the start and out at the end
+      const envelope = Math.sin(t * Math.PI); // 0 at endpoints, 1 in middle
+      const wob = (s.wobbleAmp || 0) * Math.sin(s.wobblePhase + t * Math.PI * 2 * (s.wobbleFreq || 1.5)) * envelope;
+      const fx = baseX;
+      const fy = baseY + wob;
+      const w = CELL - PAD*2, h = CELL - PAD*2;
+      const rad = Math.max(4, CELL*0.13);
+      ctx.save();
+      // Subtle motion trail — a faint streak from the source so the eye reads direction
+      ctx.globalAlpha = 0.14;
+      ctx.strokeStyle = s.color;
+      ctx.lineWidth = Math.max(2, CELL*0.08);
+      ctx.lineCap = 'round';
+      ctx.beginPath();
+      ctx.moveTo(s.fromC*CELL + CELL/2, s.fromR*CELL + CELL/2);
+      ctx.lineTo(fx + w/2, fy + h/2);
+      ctx.stroke();
+      // Glowing tile body — tropical wind glow
+      ctx.globalAlpha = 1;
+      ctx.shadowColor = s.color;
+      ctx.shadowBlur = isGold ? 24 : 14;
+      ctx.fillStyle = s.color;
+      ctx.beginPath(); ctx.roundRect(fx, fy, w, h, rad); ctx.fill();
+      ctx.shadowBlur = 0;
+      // Top highlight
+      const gr2 = ctx.createLinearGradient(fx, fy, fx, fy + h*0.5);
+      gr2.addColorStop(0,'rgba(255,255,255,0.40)'); gr2.addColorStop(1,'rgba(255,255,255,0)');
+      ctx.fillStyle = gr2;
+      ctx.beginPath(); ctx.roundRect(fx+2, fy+2, w-4, h*0.44, rad-1); ctx.fill();
+      // Bright edge
+      ctx.strokeStyle = 'rgba(255,255,255,0.30)'; ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.roundRect(fx+0.5, fy+0.5, w-1, h-1, rad); ctx.stroke();
+      ctx.restore();
+    }
+  }
+
   // Monaco quake: draw the in-flight sliding tiles on top
   if (typeof _gfQuakeSlides !== 'undefined' && _gfQuakeSlides && _gfQuakeSlides.length) {
     const _now = (typeof performance!=='undefined'?performance.now():Date.now());
@@ -13671,6 +13728,14 @@ let cm_gfQuakeOffset = {x:0, y:0};
 let _gfQuakeSlides = [];           // [{ fromR, fromC, toR, toC, color, start, dur }]
 let _gfQuakeHiddenSet = new Set(); // 'r*100+c' keys to suppress in normal grid render during slide
 let _gfQuakeRafId = null;          // rAF handle for the slide loop
+// Maldives conveyor flight animation state — tiles glide L→R like wind-blown
+// leaves with optional zig-zag wobble. The leftmost tile wraps around to the
+// right edge each cycle. Source cells are committed BEFORE the slide starts;
+// destination cells are suppressed in the normal grid pass during the flight
+// (mirrors how Monaco's slide overlay works at L8397).
+let _gfMaldivesSlides = [];        // [{ fromR, fromC, toR, toC, color, start, dur, wobbleAmp, wobblePhase, wobbleFreq, wrap }]
+let _gfMaldivesHiddenSet = new Set();
+let _gfMaldivesRafId = null;
 // Tokyo TIDE state — water rises from the bottom up to TOKYO_FLOOD_MAX rows,
 // holds at peak, then recedes to 0 and cycles. Line clears push the tide down
 // AND the rise interval adapts to the player's lines-per-minute (struggling
@@ -13916,6 +13981,19 @@ function initChallengeMode() {
   if (activeChallengeMode === 'goldenfrog') {
     // Preserve cm_gfLevel if already set (dev skip bumps it). Only init from game level on first start.
     if (!cm_gfLevel || cm_gfLevel < 1) { cm_gfLevel = level || 1; cm_gfLinesCleared = 0; }
+    // Defensive cleanup of any leftover mechanic state from a prior level.
+    // _gfStopAllMechanics may have already been called by the dev-skip path,
+    // but we belt-and-brace here so re-entry from any path (resume button,
+    // celebration tap, page reload mid-level) starts visually clean.
+    try {
+      if (_gfParisRafId) { cancelAnimationFrame(_gfParisRafId); _gfParisRafId = null; }
+      _gfParisPhase = 'off'; _gfParisCurtainBot = 0; _gfParisCurtainTop = 0; _gfParisLights = [];
+      if (_gfQuakeRafId) { cancelAnimationFrame(_gfQuakeRafId); _gfQuakeRafId = null; }
+      _gfQuakeSlides = []; _gfQuakeHiddenSet = new Set();
+      if (_gfMaldivesRafId) { cancelAnimationFrame(_gfMaldivesRafId); _gfMaldivesRafId = null; }
+      _gfMaldivesSlides = []; _gfMaldivesHiddenSet = new Set();
+      if (typeof gridCanvas !== 'undefined' && gridCanvas) gridCanvas.style.transform = '';
+    } catch(_e){}
     cm_gfBlackoutActive = false;
     cm_gfGravityFlip = false;
     cm_gfRotateAngle = 0;
@@ -14283,11 +14361,12 @@ function _gfActivateMechanic(lvl) {
   else if (mech === 'conveyor') {
     cm_gfConveyorTimer = setInterval(() => {
       if (!gameActive) return;
-      for (let r = 0; r < ROWS; r++) { const row = grid[r]; row.push(row.shift()); }
-      drawGrid();
-      // LESSON FROM DUBAI: shifted rows may now form a complete line
-      _gfRecheckLinesAfterMutation();
-      showEventBanner('✨ MALDIVES — CONVEYOR SHIFTS!');
+      // Wind blows LEFT→RIGHT: every tile flies one cell to the right; the
+      // tile at the right edge wraps back around to the left edge. Visually
+      // the player sees a steady L→R drift with one stray tile crossing the
+      // whole board the other way.
+      _gfMaldivesStartFlight();
+      // Banner is shown by _gfMaldivesStartFlight after grid commit so banner + animation start together
     }, 10000);
     cm_gfGauntletTimers.push(cm_gfConveyorTimer);
   }
@@ -14333,9 +14412,9 @@ function _gfActivateMechanic(lvl) {
     cm_gfGauntletTimers.push(bt);
     const ct = setInterval(() => {
       if (!gameActive) return;
-      for (let r = 0; r < ROWS; r++) { const row = grid[r]; row.push(row.shift()); }
-      drawGrid();
-      _gfRecheckLinesAfterMutation();
+      // Use the animated L→R flight (mirrors Lv6 Maldives) so the gauntlet
+      // doesn't tele-port tiles. Recheck happens inside the flight on completion.
+      _gfMaldivesStartFlight();
     }, 15000);
     cm_gfGauntletTimers.push(ct);
     cm_gfGhostTimer = setInterval(() => {
@@ -14359,8 +14438,13 @@ function _gfDemoPulse(lv) {
   const cfg = GF_LOCATIONS_CFG[Math.min(lv-1, 9)];
   if (!cfg) return;
   const mech = cfg.mechanic;
+  // Capture the level the demo was scheduled for so a fast dev-skip can't
+  // pulse the wrong level's mechanic if the deferred timeout fires after
+  // the player has already advanced.
+  const scheduledLv = lv;
   setTimeout(() => {
     if (activeChallengeMode !== 'goldenfrog') return;
+    if (cm_gfLevel !== scheduledLv) return; // user already advanced
     if (mech === 'quake' || mech === 'gauntlet') {
       let shakes = 0;
       const qa = setInterval(() => {
@@ -14369,6 +14453,10 @@ function _gfDemoPulse(lv) {
         if (gridCanvas) gridCanvas.style.transform = 'translate(' + cm_gfQuakeOffset.x + 'px,' + cm_gfQuakeOffset.y + 'px)';
         if (shakes > 12) { clearInterval(qa); cm_gfQuakeOffset={x:0,y:0}; if (gridCanvas) gridCanvas.style.transform=''; }
       }, 60);
+      // Track this interval so _gfStopAllMechanics can clear it if the user
+      // dev-skips while the demo pulse is still mid-flight (otherwise the
+      // shake leaks into Lv5 and the board jitters on first entry).
+      cm_gfGauntletTimers.push(qa);
     }
     if (mech === 'blackout') {
       // Demo pulse: trigger one full animated curtain on level entry so the
@@ -14376,8 +14464,9 @@ function _gfDemoPulse(lv) {
       _parisStartBlackoutCycle();
     }
     if (mech === 'conveyor') {
-      for (let r = 0; r < ROWS; r++) { const row = grid[r]; row.push(row.shift()); }
-      drawGrid();
+      // Animated demo: fire one full L→R flight so the player sees what the
+      // conveyor looks like the moment they land on Maldives.
+      if (typeof _gfMaldivesStartFlight === 'function') _gfMaldivesStartFlight();
     }
     if (mech === 'shrink') {
       // Tokyo TIDE: the rising-water mechanic shows its own banner from _tokyoStartTide
@@ -14816,7 +14905,11 @@ function _parisStartBlackoutCycle() {
 }
 
 function _parisRafTick() {
-  if (cm_gfLevel !== 5 && activeChallengeMode !== 'goldenfrog') {
+  // Bail (and stop) if EITHER we've left goldenfrog mode OR we've left Lv5.
+  // Previously this used && which meant a leftover Paris cycle continued
+  // animating after the player advanced to Lv6 (Maldives), causing the
+  // blackout curtain to flash on first Lv6 entry.
+  if (activeChallengeMode !== 'goldenfrog' || cm_gfLevel !== 5) {
     _parisStopBlackout();
     return;
   }
@@ -14992,12 +15085,96 @@ function _gfStopAllMechanics() {
   if (_gfQuakeRafId) { cancelAnimationFrame(_gfQuakeRafId); _gfQuakeRafId = null; }
   _gfQuakeSlides = [];
   _gfQuakeHiddenSet = new Set();
+  // Maldives conveyor flight cleanup
+  if (_gfMaldivesRafId) { cancelAnimationFrame(_gfMaldivesRafId); _gfMaldivesRafId = null; }
+  _gfMaldivesSlides = [];
+  _gfMaldivesHiddenSet = new Set();
   if (typeof _tokyoStopTide === 'function') _tokyoStopTide();
   if (typeof _parisStopBlackout === 'function') _parisStopBlackout();
   cm_gfSplitLeftColor = null;
   cm_gfSplitRightColor = null;
   cm_gfMechActive = false;
   if (typeof gridCanvas !== 'undefined' && gridCanvas) gridCanvas.style.transform = '';
+}
+
+// ════════════════════════════════════════════════════════════════
+//  MALDIVES CONVEYOR FLIGHT — animated L→R wind drift with optional
+//  zig-zag wobble. One tile per row wraps from the right edge back to
+//  the left edge (the long traveller). All other occupied tiles drift
+//  one cell to the right. Mirrors Monaco's slide overlay pattern:
+//  commit grid mutation BEFORE the slide, then suppress destinations
+//  from the normal grid pass while drawing tween overlays on top.
+// ════════════════════════════════════════════════════════════════
+function _gfMaldivesStartFlight() {
+  if (typeof grid === 'undefined' || !grid || !grid.length) return;
+  if (_gfMaldivesRafId) return; // already animating — skip stack
+  // Build slide records BEFORE mutating the grid so we capture each tile's
+  // original position. row.unshift(row.pop()) shifts every tile RIGHT by 1
+  // and wraps the rightmost tile back to col 0. We only animate occupied
+  // cells (zeros don't render anyway).
+  const slides = [];
+  const SLIDE_DUR = 620; // ms — long enough for the eye to catch the path
+  const startTs = (typeof performance!=='undefined'?performance.now():Date.now());
+  for (let r = 0; r < ROWS; r++) {
+    const row = grid[r];
+    if (!row || !row.length) continue;
+    const N = row.length;
+    // Snapshot tile values at every position before mutating.
+    const before = row.slice();
+    // Compute the L→R rotation: new[c] = old[(c-1+N)%N]
+    const after = new Array(N);
+    for (let c = 0; c < N; c++) after[c] = before[(c - 1 + N) % N];
+    // Build slide records for occupied source tiles.
+    for (let c = 0; c < N; c++) {
+      const v = before[c];
+      if (!v) continue;
+      const fromR = r, fromC = c;
+      const toR = r;
+      // Target column: if c is the rightmost (N-1), it wraps to 0;
+      // otherwise it moves one cell right.
+      const isWrap = (c === N - 1);
+      const toC = isWrap ? 0 : (c + 1);
+      // Wobble: ~60% of tiles get a small zig-zag, others fly straight.
+      const wobbleAmp = (Math.random() < 0.6) ? (3 + Math.random() * 6) : 0;
+      const wobblePhase = Math.random() * Math.PI * 2;
+      const wobbleFreq = 1.5 + Math.random() * 1.5; // sine cycles per slide
+      slides.push({
+        fromR, fromC, toR, toC,
+        color: (typeof getTileColor === 'function') ? getTileColor(v) : '#FFD700',
+        start: startTs, dur: SLIDE_DUR,
+        wobbleAmp, wobblePhase, wobbleFreq,
+        wrap: isWrap
+      });
+    }
+    // Commit the rotated row in-place.
+    for (let c = 0; c < N; c++) row[c] = after[c];
+  }
+  if (!slides.length) {
+    // No occupied tiles — still show the banner so the player knows the cycle fired.
+    if (typeof showEventBanner === 'function') showEventBanner('✨ MALDIVES — CONVEYOR SHIFTS!');
+    return;
+  }
+  _gfMaldivesSlides = slides;
+  // Suppress destination cells from the normal grid pass during the slide so
+  // the static (committed) tile and the in-flight tween don't double up.
+  _gfMaldivesHiddenSet = new Set(slides.map(s => s.toR * 100 + s.toC));
+  if (typeof showEventBanner === 'function') showEventBanner('✨ MALDIVES — CONVEYOR SHIFTS!');
+  const tick = () => {
+    const now = (typeof performance!=='undefined'?performance.now():Date.now());
+    const elapsed = now - startTs;
+    if (typeof drawGrid === 'function') drawGrid();
+    if (elapsed < SLIDE_DUR + 30) {
+      _gfMaldivesRafId = requestAnimationFrame(tick);
+    } else {
+      _gfMaldivesSlides = [];
+      _gfMaldivesHiddenSet = new Set();
+      _gfMaldivesRafId = null;
+      if (typeof drawGrid === 'function') drawGrid();
+      // LESSON FROM DUBAI: shifted rows may now form a complete line
+      if (typeof _gfRecheckLinesAfterMutation === 'function') _gfRecheckLinesAfterMutation();
+    }
+  };
+  _gfMaldivesRafId = requestAnimationFrame(tick);
 }
 
 // ══════════════════════════════════════════════════════════════
