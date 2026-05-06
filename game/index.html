@@ -8484,10 +8484,14 @@ function drawGrid(){
       ctx.save();
       // Vertical gradient: pitch-black at top of band, fading to translucent near bottom.
       const _grad = ctx.createLinearGradient(0, _topPx, 0, _botPx);
+      // Top ~70% of the dark band: completely opaque (no see-through).
+      // Last ~30% (roughly the bottom 3 rows of the board): fades from solid
+      // black down to 0.70 at the very bottom, so only the lowest rows hint
+      // at the skyline behind the curtain.
       _grad.addColorStop(0.00, 'rgba(0,0,0,1.00)');
-      _grad.addColorStop(0.45, 'rgba(0,0,0,0.97)');
-      _grad.addColorStop(0.80, 'rgba(0,0,0,0.92)');
-      _grad.addColorStop(1.00, 'rgba(0,0,0,0.85)');
+      _grad.addColorStop(0.70, 'rgba(0,0,0,1.00)');
+      _grad.addColorStop(0.85, 'rgba(0,0,0,0.90)');
+      _grad.addColorStop(1.00, 'rgba(0,0,0,0.70)');
       ctx.fillStyle = _grad;
       ctx.fillRect(0, _topPx, _W, _botPx - _topPx);
 
@@ -13621,10 +13625,10 @@ let _gfParisCurtainTop = 0;
 let _gfParisPhaseStart = 0;
 let _gfParisLights = [];
 let _gfParisRafId = null;
-const PARIS_FALL_MS  = 2000;
-const PARIS_HOLD_MS  = 3500;
-const PARIS_RISE_MS  = 1800;
-const PARIS_CYCLE_MS = 12000;
+const PARIS_FALL_MS  = 4000;
+const PARIS_HOLD_MS  = 3000;
+const PARIS_RISE_MS  = 4000;
+const PARIS_CYCLE_MS = 21000;
 let cm_gfConveyorTimer = null;
 let cm_gfGhostTimer = null;
 let cm_gfGhostCells = [];          // {r,c,placedAt} ghost cells
