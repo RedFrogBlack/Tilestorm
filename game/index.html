@@ -7922,6 +7922,10 @@ function buildCityMask(colHeights) {
 }
 
 function isMasked(r, c) {
+  // Tokyo flood: rows from the bottom up to _tokyoFloodLevel are submerged.
+  if (typeof _tokyoFloodLevel === 'number' && _tokyoFloodLevel > 0) {
+    if (r >= ROWS - _tokyoFloodLevel) return true;
+  }
   if (!gridMask) return false;
   return !gridMask[r][c];
 }
@@ -8065,6 +8069,10 @@ function clearLines({completedRows,completedCols,completedHalfRows}){
       if (_gfLineCount > 0 && typeof _cdProgress !== 'undefined') {
         _cdProgress.addLines('goldenfrog', _gfLineCount);
         _cdProgress.noteActivity('goldenfrog');
+      }
+      // Tokyo tide: each line cleared pushes the tide down by 1 row
+      if (_gfLineCount > 0 && typeof _tokyoOnLineClear === 'function') {
+        for (let _i = 0; _i < _gfLineCount; _i++) _tokyoOnLineClear();
       }
       if (typeof updateGfGateHUD === 'function') updateGfGateHUD();
       if (cm_gfLinesCleared >= GF_LINES_PER_LEVEL && cm_gfLevel < 10) {
@@ -8329,6 +8337,54 @@ function drawGrid(){
     ctx.save();
     ctx.globalAlpha = 0.92;
     ctx.drawImage(_gfSceneCanvas, 0, 0, gridCanvas.width, gridCanvas.height);
+    ctx.restore();
+  }
+  // Tokyo TIDE: draw water layer covering flooded rows. Drawn BEFORE tiles so
+  // any tiles caught by the rising water render on top — they look submerged
+  // because of the translucent blue overlay drawn later.
+  if (typeof _tokyoFloodLevel === 'number' && _tokyoFloodLevel > 0.01 && cm_gfLevel === 4) {
+    const floodTopY = (ROWS - _tokyoFloodLevel) * CELL;
+    const W = gridCanvas.width;
+    const H = gridCanvas.height;
+    ctx.save();
+    // Body of water — deep blue gradient
+    const grad = ctx.createLinearGradient(0, floodTopY, 0, H);
+    grad.addColorStop(0, 'rgba(60, 150, 220, 0.55)');
+    grad.addColorStop(0.5, 'rgba(30, 90, 180, 0.65)');
+    grad.addColorStop(1, 'rgba(10, 40, 120, 0.75)');
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, floodTopY, W, H - floodTopY);
+    // Animated wave on the surface
+    ctx.beginPath();
+    ctx.moveTo(0, floodTopY);
+    for (let x = 0; x <= W; x += 4) {
+      const wave = Math.sin(x * 0.04 + _tokyoFloodWavePhase) * 3 + Math.sin(x * 0.09 - _tokyoFloodWavePhase * 1.7) * 1.5;
+      ctx.lineTo(x, floodTopY + wave);
+    }
+    ctx.lineTo(W, floodTopY); ctx.closePath();
+    ctx.fillStyle = 'rgba(120, 200, 255, 0.35)';
+    ctx.fill();
+    // Surface foam line
+    ctx.beginPath();
+    for (let x = 0; x <= W; x += 4) {
+      const wave = Math.sin(x * 0.04 + _tokyoFloodWavePhase) * 3 + Math.sin(x * 0.09 - _tokyoFloodWavePhase * 1.7) * 1.5;
+      if (x === 0) ctx.moveTo(x, floodTopY + wave - 1);
+      else ctx.lineTo(x, floodTopY + wave - 1);
+    }
+    ctx.strokeStyle = 'rgba(220, 240, 255, 0.7)';
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+    // Small bubbles rising in the water body
+    ctx.fillStyle = 'rgba(200, 230, 255, 0.5)';
+    for (let i = 0; i < 8; i++) {
+      const bx = (i * 73 + Math.sin(_tokyoFloodWavePhase + i) * 20) % W;
+      const by = H - ((_tokyoFloodWavePhase * 12 + i * 30) % (H - floodTopY));
+      if (by > floodTopY + 4) {
+        ctx.beginPath();
+        ctx.arc(bx, by, 1.5 + Math.sin(_tokyoFloodWavePhase * 2 + i) * 0.5, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
     ctx.restore();
   }
   for(let r=0;r<ROWS;r++)for(let c=0;c<COLS;c++){
@@ -13474,6 +13530,17 @@ let cm_gfQuakeOffset = {x:0, y:0};
 let _gfQuakeSlides = [];           // [{ fromR, fromC, toR, toC, color, start, dur }]
 let _gfQuakeHiddenSet = new Set(); // 'r*100+c' keys to suppress in normal grid render during slide
 let _gfQuakeRafId = null;          // rAF handle for the slide loop
+// Tokyo TIDE state — water rises from the bottom up to TOKYO_FLOOD_MAX rows,
+// holds at peak, then recedes to 0 and cycles. Line clears push the tide down.
+// _tokyoFloodLevel: visual rows currently flooded (animates toward _tokyoFloodTarget).
+// _tokyoTidePhase: 'rising' | 'peak' | 'falling' | 'calm' | 'off'.
+const TOKYO_FLOOD_MAX = 4;
+let _tokyoFloodLevel = 0;
+let _tokyoFloodTarget = 0;
+let _tokyoFloodWavePhase = 0;
+let _tokyoFloodRafId = null;
+let _tokyoTidePhase = 'off';
+let _tokyoTideStepTimer = null;
 let cm_gfGravityFlip = false;
 let cm_gfRotateAngle = 0;
 let cm_gfGauntletTimers = [];
@@ -14052,33 +14119,10 @@ function _gfActivateMechanic(lvl) {
     cm_gfGauntletTimers.push(cm_gfMechTimer);
   }
   else if (mech === 'shrink') {
-    cm_gfShrinkInterval = setInterval(() => {
-      if (!gameActive) return;
-      try { console.log('[TOKYO SHRINK] firing at', new Date().toISOString()); } catch(_e){}
-      // TOKYO SHRINK FIX: push the bottom row's tiles UP into the row above
-      // (if there's space) instead of silently deleting them. Tiles that
-      // can't be saved are still lost, but at least the player isn't
-      // punished out of nowhere for using the bottom row.
-      try {
-        const bottomRow = grid[ROWS - 1];
-        for (let c = 0; c < COLS; c++) {
-          if (bottomRow[c] !== 0) {
-            // walk up looking for the first empty (non-masked) cell
-            for (let r = ROWS - 2; r >= 0; r--) {
-              if (typeof isMasked === 'function' && isMasked(r, c)) continue;
-              if (grid[r][c] === 0) { grid[r][c] = bottomRow[c]; break; }
-            }
-          }
-        }
-      } catch(_e) {}
-      grid.unshift(new Array(COLS).fill(0));
-      grid.pop();
-      drawGrid(); updateUI();
-      // After the push-up + shift the surviving tiles may complete a line
-      _gfRecheckLinesAfterMutation();
-      showEventBanner('✨ TOKYO SHRINK — TILES PUSHED UP!');
-    }, 10000);
-    cm_gfGauntletTimers.push(cm_gfShrinkInterval);
+    // TOKYO TIDE — water rises from the bottom up to TOKYO_FLOOD_MAX rows, holds,
+    // then recedes to zero and cycles. The visual is a blue water overlay with an
+    // animated wave on the surface so the player can clearly see the threat.
+    _tokyoStartTide();
   }
   else if (mech === 'blackout') {
     // PARIS FIX: dropped from 3s/8s (37.5% blind) to 2s/10s (20% blind).
@@ -14526,6 +14570,90 @@ function _gfTriggerMonacoQuake() {
   showEventBanner('✨ MONACO QUAKE — TILES SHIFTING!');
 }
 
+// ═══════════════════════════════════════════════════════════════════════════
+function _tokyoStartTide() {
+  _tokyoStopTide();
+  _tokyoFloodLevel = 0;
+  _tokyoFloodTarget = 0;
+  _tokyoTidePhase = 'calm';
+  _tokyoFloodWavePhase = 0;
+  // start animation rAF (drives the wave shimmer + smooths target -> level)
+  if (!_tokyoFloodRafId) {
+    const animTick = () => {
+      _tokyoFloodWavePhase += 0.06;
+      // animate _tokyoFloodLevel toward _tokyoFloodTarget for smooth rise/fall
+      const diff = _tokyoFloodTarget - _tokyoFloodLevel;
+      if (Math.abs(diff) > 0.01) {
+        _tokyoFloodLevel += diff * 0.12; // easing
+      } else {
+        _tokyoFloodLevel = _tokyoFloodTarget;
+      }
+      drawGrid();
+      _tokyoFloodRafId = requestAnimationFrame(animTick);
+    };
+    _tokyoFloodRafId = requestAnimationFrame(animTick);
+  }
+  // schedule first rise after a short calm so the player isn't ambushed instantly
+  _tokyoTideStepTimer = setTimeout(_tokyoTideAdvance, 4000);
+}
+
+function _tokyoStopTide() {
+  if (_tokyoTideStepTimer) { clearTimeout(_tokyoTideStepTimer); _tokyoTideStepTimer = null; }
+  if (_tokyoFloodRafId) { cancelAnimationFrame(_tokyoFloodRafId); _tokyoFloodRafId = null; }
+  _tokyoFloodLevel = 0;
+  _tokyoFloodTarget = 0;
+  _tokyoTidePhase = 'off';
+}
+
+// Drives the tide cycle: calm → rising (1 row / 10s, up to MAX) → peak (5s) → falling (1 row / 8s) → calm (8s) → repeat.
+function _tokyoTideAdvance() {
+  if (!gameActive || cm_gfLevel !== 4 || cm_gfLevelGateActive) {
+    // Pause but keep rAF so visuals stay accurate, retry shortly.
+    _tokyoTideStepTimer = setTimeout(_tokyoTideAdvance, 1000);
+    return;
+  }
+  let nextDelay = 10000;
+  if (_tokyoTidePhase === 'calm' || _tokyoTidePhase === 'off') {
+    _tokyoTidePhase = 'rising';
+    _tokyoFloodTarget = Math.min(TOKYO_FLOOD_MAX, _tokyoFloodTarget + 1);
+    showEventBanner('🌊 TOKYO TIDE — RISING!');
+    nextDelay = 10000;
+  } else if (_tokyoTidePhase === 'rising') {
+    if (_tokyoFloodTarget < TOKYO_FLOOD_MAX) {
+      _tokyoFloodTarget = Math.min(TOKYO_FLOOD_MAX, _tokyoFloodTarget + 1);
+      showEventBanner('🌊 TOKYO TIDE — RISING! (' + _tokyoFloodTarget + '/' + TOKYO_FLOOD_MAX + ')');
+      nextDelay = 10000;
+    } else {
+      _tokyoTidePhase = 'peak';
+      showEventBanner('⚠️ TIDE PEAK — HOLD!');
+      nextDelay = 5000;
+    }
+  } else if (_tokyoTidePhase === 'peak') {
+    _tokyoTidePhase = 'falling';
+    _tokyoFloodTarget = Math.max(0, _tokyoFloodTarget - 1);
+    showEventBanner('🌊 TIDE — RECEDING');
+    nextDelay = 8000;
+  } else if (_tokyoTidePhase === 'falling') {
+    if (_tokyoFloodTarget > 0) {
+      _tokyoFloodTarget = Math.max(0, _tokyoFloodTarget - 1);
+      nextDelay = 8000;
+    } else {
+      _tokyoTidePhase = 'calm';
+      showEventBanner('🌟 CALM — BREATHE');
+      nextDelay = 8000;
+    }
+  }
+  _tokyoTideStepTimer = setTimeout(_tokyoTideAdvance, nextDelay);
+}
+
+// Called when a line is cleared while Tokyo is active — tide pushes down by 1 row.
+function _tokyoOnLineClear() {
+  if (cm_gfLevel !== 4) return;
+  if (_tokyoFloodTarget > 0) {
+    _tokyoFloodTarget = Math.max(0, _tokyoFloodTarget - 1);
+  }
+}
+
 // Trigger: pause gameplay, show overlay, fireworks, frog song.
 function _gfTriggerLevelComplete() {
   if (cm_gfLevelGateActive) return;
@@ -14589,6 +14717,7 @@ function _gfStopAllMechanics() {
   if (_gfQuakeRafId) { cancelAnimationFrame(_gfQuakeRafId); _gfQuakeRafId = null; }
   _gfQuakeSlides = [];
   _gfQuakeHiddenSet = new Set();
+  if (typeof _tokyoStopTide === 'function') _tokyoStopTide();
   cm_gfSplitLeftColor = null;
   cm_gfSplitRightColor = null;
   cm_gfMechActive = false;
