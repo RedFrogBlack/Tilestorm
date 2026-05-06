@@ -14991,22 +14991,20 @@ function _gfSceneDrawMonacoSkyline(ctx, W, H, cfg, dayMix) {
     ctx.beginPath(); ctx.moveTo(yx + W*0.02, yy); ctx.lineTo(yx + W*0.02, yy - H*0.04); ctx.lineTo(yx + W*0.022, yy - H*0.04); ctx.lineTo(yx + W*0.022, yy); ctx.closePath(); ctx.fill();
   }
   ctx.restore();
-  // Subtle warm rim along casino roofline only (no full box outline — looked like a UI element)
+  // Lit casino windows at night — dense grid like the apartments so the casino reads as a building.
+  // No outline / rim — the windows themselves provide the shape.
   if (dayMix < 0.55) {
-    ctx.save(); ctx.globalAlpha = 0.35; ctx.strokeStyle = `rgba(${edge[0]},${edge[1]},${edge[2]},0.7)`; ctx.lineWidth = 1;
-    ctx.beginPath();
-    ctx.moveTo(csX, baseY - H*0.16);
-    ctx.lineTo(csX + W*0.18, baseY - H*0.16);
-    ctx.stroke();
-    ctx.restore();
-    // Lit casino windows so the building reads as a building, not a black square
-    ctx.save(); ctx.fillStyle = `rgba(${acc[0]},${acc[1]},${acc[2]},${0.95 - dayMix*0.4})`;
-    const cwCols = 5, cwRows = 3;
-    const cwBoxW = W*0.16, cwBoxH = H*0.12;
-    const cwGapX = cwBoxW / cwCols, cwGapY = cwBoxH / cwRows;
+    ctx.save(); ctx.fillStyle = `rgba(${acc[0]},${acc[1]},${acc[2]},${0.85 - dayMix*0.5})`;
+    const csW = W*0.18, csH = H*0.16;
+    const cwCols = Math.max(4, Math.floor(csW/4));
+    const cwRows = Math.max(4, Math.floor(csH/6));
     for (let rr=0; rr<cwRows; rr++) for (let cc=0; cc<cwCols; cc++) {
-      if ((rr*3+cc*2+Math.floor(_gfSceneT*60))%7 < 5) {
-        ctx.fillRect(csX + W*0.012 + cc*cwGapX, baseY - H*0.13 + rr*cwGapY, 2.5, 2.5);
+      if ((rr*5+cc*3+Math.floor(_gfSceneT*100))%11 < 5) {
+        ctx.fillRect(
+          csX + 1 + cc*((csW-2)/Math.max(1,cwCols-1)),
+          baseY - csH + 2 + rr*((csH-3)/Math.max(1,cwRows-1)),
+          1.2, 1.2
+        );
       }
     }
     ctx.restore();
