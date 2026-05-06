@@ -10322,11 +10322,11 @@ let bonusEarnedThisGame = 0;
 let bonusQueue = []; // queued special bricks to inject into tray
 
 function randomSpecialType(){
-  // weights: meteor common, angel rare, morph very rare
+  // weights: meteor more common, angel rarer.
+  // (morph removed — it had no special placement logic, just placed as a normal 2×2
+  //  with a banner, which made it confusing rather than useful.)
   const r = Math.random();
-  if(r < 0.55) return 'meteor';
-  if(r < 0.85) return 'angel';
-  return 'morph';
+  return (r < 0.6) ? 'meteor' : 'angel';
 }
 
 function maybeGrantBonus(){
@@ -10345,10 +10345,46 @@ function maybeGrantBonus(){
   }
 }
 
+// Compute the longest contiguous empty horizontal run on the board (across any row,
+// respecting masked cells). Used to size the ANGEL brick so it can actually fit
+// somewhere meaningful instead of being stuck at a fixed 1×3.
+function _longestEmptyHorizontalRun(){
+  let best = 0;
+  try {
+    for (let r = 0; r < ROWS; r++) {
+      let run = 0;
+      for (let c = 0; c < COLS; c++) {
+        const masked = (typeof isMasked === 'function') ? isMasked(r, c) : false;
+        if (!masked && grid[r][c] === 0) {
+          run++;
+          if (run > best) best = run;
+        } else {
+          run = 0;
+        }
+      }
+    }
+  } catch(_e) {}
+  return best;
+}
+
+// Build an angel shape sized to the board: 1×3 / 1×4 / 1×5 depending on the
+// longest empty run. Clamps to [3,5]. If no run ≥ 3 exists, falls back to 1×3
+// (the player can still place it in a column; if not, the snap-back kicks in).
+function _buildAdaptiveAngelShape(){
+  const longest = _longestEmptyHorizontalRun();
+  const len = Math.max(3, Math.min(5, longest));
+  const shape = [];
+  for (let i = 0; i < len; i++) shape.push([0, i]);
+  return shape;
+}
+
 function injectBonusToPiece(pieceIdx){
   if(bonusQueue.length === 0) return;
   const type = bonusQueue.shift();
-  trayPieces[pieceIdx] = { shape: SPECIAL_SHAPES[type], color: 8, special: type };
+  // Angel resizes to match the largest empty horizontal gap on the board (3 → 5 wide),
+  // so it always feels like a meaningful "bonus" rather than just another 1×3 stick.
+  const shape = (type === 'angel') ? _buildAdaptiveAngelShape() : SPECIAL_SHAPES[type];
+  trayPieces[pieceIdx] = { shape, color: 8, special: type };
   renderTray();
 }
 
@@ -10537,7 +10573,8 @@ function promptUpgrade(feature){
 const _origRandomSpecialType = randomSpecialType;
 function randomSpecialTypeSafe(){
   const type = _origRandomSpecialType();
-  if(type === 'morph' && !isPremiumUnlocked('morphBrick')) return 'meteor';
+  // morph is fully retired — if anything still requests it, hand out an angel instead.
+  if(type === 'morph') return 'angel';
   if(type === 'angel' && !isPremiumUnlocked('angelBrick')) return 'meteor';
   return type;
 }
@@ -10771,8 +10808,8 @@ function clearSpeedCountdown() {
 // ════════════════════════════════════════════════════════════════
 const CHALLENGE_DEFS = {
   medium: { rowsNeeded: 2, timeLimit: 30, reward: 'meteor', label: '⚡ CLEAR 2 ROWS' },
-  hard:   { rowsNeeded: 3, timeLimit: 20, reward: 'morph',  label: '🔥 CLEAR 3 ROWS' },
-  expert: { rowsNeeded: 4, timeLimit: 15, reward: 'morph',  label: '🔥 CLEAR 4 ROWS' },
+  hard:   { rowsNeeded: 3, timeLimit: 20, reward: 'angel',  label: '🔥 CLEAR 3 ROWS' },
+  expert: { rowsNeeded: 4, timeLimit: 15, reward: 'angel',  label: '🔥 CLEAR 4 ROWS' },
 };
 let challengeActive = false;
 let challengeRowsAtStart = 0;
