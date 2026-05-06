@@ -8470,11 +8470,14 @@ function drawGrid(){
     //   rising  : top=curtainTop*H, bot=H              (curtain receding upward)
     let _topPx = 0, _botPx = _H, _phase = (typeof _gfParisPhase !== 'undefined') ? _gfParisPhase : 'hold';
     if (_phase === 'falling') {
+      // Curtain falls from the top: top edge fixed at 0, bottom edge descends.
       _topPx = 0;
       _botPx = (typeof _gfParisCurtainBot === 'number' ? _gfParisCurtainBot : 1) * _H;
     } else if (_phase === 'rising') {
-      _topPx = (typeof _gfParisCurtainTop === 'number' ? _gfParisCurtainTop : 0) * _H;
-      _botPx = _H;
+      // Curtain leaves from the BOTTOM upward: top edge stays at 0,
+      // bottom edge retreats up (so the lowest rows clear first).
+      _topPx = 0;
+      _botPx = (typeof _gfParisCurtainBot === 'number' ? _gfParisCurtainBot : 1) * _H;
     } else {
       // 'hold' or legacy cm_gfBlackoutActive fallback → full board
       _topPx = 0;
@@ -8776,10 +8779,10 @@ function renderTray(){
 // player can't accidentally drop a piece blind. Tray remains visible —
 // only the act of picking up a piece is paused for the 2-second blackout.
 function _gfDragLockedByBlackout(){
-  if (activeChallengeMode !== 'goldenfrog') return false;
-  if (typeof cm_gfBlackoutActive !== 'undefined' && cm_gfBlackoutActive) return true;
-  // Lock during the entire animated Paris cycle (falling + hold + rising)
-  if (typeof _gfParisPhase !== 'undefined' && _gfParisPhase !== 'off') return true;
+  // Paris design intent: the player MUST be able to place tiles while the
+  // board is dark — memorising target cells under the curtain is the core
+  // challenge of the level. So drag is never blocked by the blackout itself,
+  // even during the legacy non-animated mode.
   return false;
 }
 function startDrag(e,idx){if(duoGameActive&&duoMode==='coop'&&!coopMyTurn){showToast('⏳ Wait for your partner\'s turn!');return;}if(_gfDragLockedByBlackout()){showToast('🌃 PARIS BLACKOUT — wait for the lights');return;}if(trayUsed[idx])return;e.preventDefault();ensureAudio();beginDrag(e.clientX,e.clientY,idx);}
@@ -14799,11 +14802,14 @@ function _parisRafTick() {
     _gfParisCurtainBot = 1;
     if (dt >= PARIS_HOLD_MS) {
       _gfParisPhase = 'rising';
-      _gfParisCurtainTop = 0;
+      _gfParisCurtainBot = 1;
       _gfParisPhaseStart = now;
     }
   } else if (_gfParisPhase === 'rising') {
-    _gfParisCurtainTop = Math.min(1, dt / PARIS_RISE_MS);
+    // RISE: curtain leaves from bottom upward. Top edge stays at 0,
+    // bottom edge shrinks from 1 (full board) toward 0 (curtain gone),
+    // so the lowest rows reveal first and the top is the last to clear.
+    _gfParisCurtainBot = Math.max(0, 1 - dt / PARIS_RISE_MS);
     if (dt >= PARIS_RISE_MS) {
       _gfParisPhase = 'off';
       _gfParisCurtainTop = 0;
