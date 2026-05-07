@@ -8393,6 +8393,8 @@ function drawGrid(){
     if (typeof _gfQuakeHiddenSet !== 'undefined' && _gfQuakeHiddenSet && _gfQuakeHiddenSet.has(r*100+c)) continue;
     // Skip cells that are mid-flight (Maldives conveyor) — the flight overlay draws them
     if (typeof _gfMaldivesHiddenSet !== 'undefined' && _gfMaldivesHiddenSet && _gfMaldivesHiddenSet.has(r*100+c)) continue;
+    // Skip cells that are mid-fall (Venice gravity flip) — the flip overlay draws them
+    if (typeof _gfVeniceHiddenSet !== 'undefined' && _gfVeniceHiddenSet && _gfVeniceHiddenSet.has(r*100+c)) continue;
     drawTile(r,c,getTileColor(grid[r][c]),1,false,isGold);
   }
   // Maldives conveyor flight: draw L→R wind-blown tiles with optional zig-zag wobble.
@@ -8444,6 +8446,43 @@ function drawGrid(){
       ctx.fillStyle = gr2;
       ctx.beginPath(); ctx.roundRect(fx+2, fy+2, w-4, h*0.44, rad-1); ctx.fill();
       // Bright edge
+      ctx.strokeStyle = 'rgba(255,255,255,0.30)'; ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.roundRect(fx+0.5, fy+0.5, w-1, h-1, rad); ctx.stroke();
+      ctx.restore();
+    }
+  }
+
+  // Venice gravity flip: draw the in-fall tiles on top, easing into new position
+  if (typeof _gfVeniceSlides !== 'undefined' && _gfVeniceSlides && _gfVeniceSlides.length) {
+    const _vNow = (typeof performance!=='undefined'?performance.now():Date.now());
+    for (const s of _gfVeniceSlides) {
+      const t = Math.max(0, Math.min(1, (_vNow - s.start) / s.dur));
+      // Bounce-ease: tile falls fast then settles
+      const k = 1 - Math.pow(1 - t, 2);
+      const dyCells = (s.toR - s.fromR) * k;
+      const fx = s.fromC * CELL + PAD;
+      const fy = s.fromR * CELL + PAD + dyCells * CELL;
+      const w = CELL - PAD*2, h = CELL - PAD*2;
+      const rad = Math.max(4, CELL*0.13);
+      ctx.save();
+      // Tropical-water glow trail down the column
+      ctx.globalAlpha = 0.10;
+      ctx.strokeStyle = s.color;
+      ctx.lineWidth = Math.max(2, CELL*0.06);
+      ctx.beginPath();
+      ctx.moveTo(s.fromC*CELL + CELL/2, s.fromR*CELL + CELL/2);
+      ctx.lineTo(fx + w/2, fy + h/2);
+      ctx.stroke();
+      ctx.globalAlpha = 1;
+      ctx.shadowColor = s.color;
+      ctx.shadowBlur = isGold ? 20 : 12;
+      ctx.fillStyle = s.color;
+      ctx.beginPath(); ctx.roundRect(fx, fy, w, h, rad); ctx.fill();
+      ctx.shadowBlur = 0;
+      const gr3 = ctx.createLinearGradient(fx, fy, fx, fy + h*0.5);
+      gr3.addColorStop(0,'rgba(255,255,255,0.40)'); gr3.addColorStop(1,'rgba(255,255,255,0)');
+      ctx.fillStyle = gr3;
+      ctx.beginPath(); ctx.roundRect(fx+2, fy+2, w-4, h*0.44, rad-1); ctx.fill();
       ctx.strokeStyle = 'rgba(255,255,255,0.30)'; ctx.lineWidth = 1;
       ctx.beginPath(); ctx.roundRect(fx+0.5, fy+0.5, w-1, h-1, rad); ctx.stroke();
       ctx.restore();
@@ -14044,6 +14083,9 @@ function initChallengeMode() {
       _gfQuakeSlides = []; _gfQuakeHiddenSet = new Set();
       if (_gfMaldivesRafId) { cancelAnimationFrame(_gfMaldivesRafId); _gfMaldivesRafId = null; }
       _gfMaldivesSlides = []; _gfMaldivesHiddenSet = new Set();
+      if (typeof _gfVeniceRafId !== 'undefined' && _gfVeniceRafId) { cancelAnimationFrame(_gfVeniceRafId); _gfVeniceRafId = null; }
+      if (typeof _gfVeniceSlides !== 'undefined') _gfVeniceSlides = [];
+      if (typeof _gfVeniceHiddenSet !== 'undefined') _gfVeniceHiddenSet = new Set();
       if (typeof gridCanvas !== 'undefined' && gridCanvas) gridCanvas.style.transform = '';
     } catch(_e){}
     cm_gfBlackoutActive = false;
@@ -14424,7 +14466,15 @@ function _gfActivateMechanic(lvl) {
   }
   else if (mech === 'gravity') {
     cm_gfGravityFlip = false;
-    showEventBanner('✨ VENICE — GRAVITY FLIPS ON EACH CLEAR!');
+    showEventBanner('✨ VENICE — GRAVITY FLIPS EVERY 12s!');
+    // Auto-flip every 12s so the mechanic is visible even before the first
+    // line clear. Each flip animates the tiles falling to the new floor over
+    // ~700ms (mirrors Maldives flight pattern: snapshot → commit → tween).
+    const gt = setInterval(() => {
+      if (!gameActive) return;
+      _gfVeniceStartFlip();
+    }, 12000);
+    cm_gfGauntletTimers.push(gt);
   }
   else if (mech === 'ghost') {
     cm_gfGhostTimer = setInterval(() => {
@@ -14519,6 +14569,10 @@ function _gfDemoPulse(lv) {
       // Animated demo: fire one full L→R flight so the player sees what the
       // conveyor looks like the moment they land on Maldives.
       if (typeof _gfMaldivesStartFlight === 'function') _gfMaldivesStartFlight();
+    }
+    if (mech === 'gravity') {
+      // Demo pulse: fire one full gravity flip so the player sees the mechanic on Venice entry.
+      if (typeof _gfVeniceStartFlip === 'function') _gfVeniceStartFlip();
     }
     if (mech === 'shrink') {
       // Tokyo TIDE: the rising-water mechanic shows its own banner from _tokyoStartTide
@@ -15141,6 +15195,10 @@ function _gfStopAllMechanics() {
   if (_gfMaldivesRafId) { cancelAnimationFrame(_gfMaldivesRafId); _gfMaldivesRafId = null; }
   _gfMaldivesSlides = [];
   _gfMaldivesHiddenSet = new Set();
+  // Venice gravity flip cleanup
+  if (typeof _gfVeniceRafId !== 'undefined' && _gfVeniceRafId) { cancelAnimationFrame(_gfVeniceRafId); _gfVeniceRafId = null; }
+  if (typeof _gfVeniceSlides !== 'undefined') _gfVeniceSlides = [];
+  if (typeof _gfVeniceHiddenSet !== 'undefined') _gfVeniceHiddenSet = new Set();
   if (typeof _tokyoStopTide === 'function') _tokyoStopTide();
   if (typeof _parisStopBlackout === 'function') _parisStopBlackout();
   cm_gfSplitLeftColor = null;
@@ -15230,6 +15288,58 @@ function _gfMaldivesStartFlight() {
 }
 
 // ══════════════════════════════════════════════════════════════
+//  VENICE GRAVITY FLIP — animated invert with column-wise tile fall.
+//  Tiles drop from current row to the new gravity floor over ~700ms.
+//  Each column gets a small staggered start so the board ripples like
+//  water tipping a gondola — not a teleport.
+let _gfVeniceSlides = [];
+let _gfVeniceHiddenSet = new Set();
+let _gfVeniceRafId = null;
+function _gfVeniceStartFlip() {
+  if (typeof grid === 'undefined' || !grid || !grid.length) return;
+  if (_gfVeniceRafId) return;
+  const slides = [];
+  const SLIDE_DUR = 700;
+  const startTs = (typeof performance!=='undefined'?performance.now():Date.now());
+  for (let r = 0; r < ROWS; r++) {
+    for (let c = 0; c < COLS; c++) {
+      const v = grid[r][c];
+      if (!v) continue;
+      const toR = ROWS - 1 - r;
+      if (toR === r) continue;
+      const stagger = (c % COLS) * 12;
+      slides.push({
+        fromR: r, fromC: c, toR, toC: c,
+        color: (typeof getTileColor === 'function') ? getTileColor(v) : '#9ED9FF',
+        start: startTs + stagger, dur: SLIDE_DUR
+      });
+    }
+  }
+  grid.reverse();
+  cm_gfGravityFlip = !cm_gfGravityFlip;
+  if (typeof showEventBanner === 'function') {
+    showEventBanner(cm_gfGravityFlip ? '✨ VENICE — GRAVITY UP ↑' : '✨ VENICE — GRAVITY DOWN ↓');
+  }
+  if (!slides.length) return;
+  _gfVeniceSlides = slides;
+  _gfVeniceHiddenSet = new Set(slides.map(s => s.toR * 100 + s.toC));
+  const tick = () => {
+    const now = (typeof performance!=='undefined'?performance.now():Date.now());
+    const elapsed = now - startTs;
+    if (typeof drawGrid === 'function') drawGrid();
+    if (elapsed < SLIDE_DUR + 200) {
+      _gfVeniceRafId = requestAnimationFrame(tick);
+    } else {
+      _gfVeniceSlides = [];
+      _gfVeniceHiddenSet = new Set();
+      _gfVeniceRafId = null;
+      if (typeof drawGrid === 'function') drawGrid();
+      if (typeof _gfRecheckLinesAfterMutation === 'function') _gfRecheckLinesAfterMutation();
+    }
+  };
+  _gfVeniceRafId = requestAnimationFrame(tick);
+}
+
 //  GOLDEN FROG SCENE ENGINE — day/night cycle + per-location skyline + atmospheric particles
 // ══════════════════════════════════════════════════════════════
 let _gfSceneCanvas = null, _gfSceneCtx = null, _gfSceneInitialized = false;
@@ -16714,7 +16824,33 @@ function frogStamp() {
 }
 
 // ── Event wiring ──────────────────────────────────────────────────
-document.getElementById('btn-restart').addEventListener('click',()=>{ensureAudio();activeChallengeMode='standard';selectedChallenge='standard';startGame();});
+document.getElementById('btn-restart').addEventListener('click',()=>{
+  ensureAudio();
+  // BUGFIX: PLAY AGAIN used to silently force standard mode — so dying in
+  // Golden Frog Lv7 then tapping PLAY AGAIN dropped the player back into
+  // tadpole mode at Lv1 with no mechanic. Now we replay the SAME challenge
+  // mode (and same Golden Frog level) the player just lost, so the
+  // PLAY AGAIN flow matches what the user actually intended.
+  const lastMode = (typeof selectedChallenge !== 'undefined' && selectedChallenge) ? selectedChallenge : 'standard';
+  // Capture GF level BEFORE startGame() runs (stopChallengeMode resets it to 0)
+  const lastGfLv = (typeof cm_gfLevel !== 'undefined' && cm_gfLevel >= 1 && cm_gfLevel <= 10) ? cm_gfLevel : 0;
+  if (lastMode === 'goldenfrog' && lastGfLv >= 1) {
+    try { window._gfPendingResumeLv = lastGfLv; } catch(_e){}
+  }
+  startGame();
+  // Set AFTER startGame so stopChallengeMode() inside doesn't wipe it
+  activeChallengeMode = lastMode;
+  // Re-init the GF mechanic at the same level the player just lost
+  if (lastMode === 'goldenfrog' && lastGfLv >= 1 && typeof cm_gfLevel !== 'undefined') {
+    cm_gfLevel = lastGfLv;
+    if (typeof cm_gfLinesCleared !== 'undefined') cm_gfLinesCleared = 0;
+    if (typeof _gfSceneCfgIdx !== 'undefined') _gfSceneCfgIdx = -1;
+    if (typeof initChallengeMode === 'function') initChallengeMode();
+  } else if (lastMode !== 'standard' && typeof initChallengeMode === 'function') {
+    // Other challenge modes (frenzy/survival/colourrun/fog) also need re-init
+    initChallengeMode();
+  }
+});
 document.getElementById('btn-go-menu').addEventListener('click',()=>{stopChallengeMode();showScreen('screen-title');});
 document.getElementById('btn-menu').addEventListener('click',()=>{ openPause(); });
 // Dedicated pause button — visible at top of HUD on every game (solo + duo).
