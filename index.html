@@ -9341,7 +9341,59 @@ function startGame(){
   };
   setTimeout(()=>showEventBanner(msgs[activeChallengeMode]||'🎮 GO!'), 500);
 }
+// Diagnostic snapshot — captures exactly WHY game-over fired so the player
+// (and dev) can see the state instead of being surprised. Renders into the
+// game-over screen as a small debug strip when ?dev=1 is set.
+function _captureGameOverDiagnostic() {
+  try {
+    const isDev = (typeof location !== 'undefined' && /[?&]dev=1/.test(location.search))
+               || (typeof localStorage !== 'undefined' && localStorage.getItem('cd_dev_unlock') === '1');
+    if (!isDev) return;
+    if (typeof grid === 'undefined' || typeof trayPieces === 'undefined') return;
+    let occupied = 0, empty = 0;
+    for (let r = 0; r < ROWS; r++)
+      for (let c = 0; c < COLS; c++)
+        (grid[r][c] ? occupied++ : empty++);
+    const fillPct = Math.round(occupied / (occupied + empty) * 100);
+    // For each tray slot: report fits-anywhere count
+    const trayDiag = [];
+    for (let i = 0; i < 3; i++) {
+      if (trayUsed[i]) { trayDiag.push('slot ' + (i+1) + ': used'); continue; }
+      const piece = trayPieces[i];
+      if (!piece) { trayDiag.push('slot ' + (i+1) + ': empty'); continue; }
+      let fits = 0;
+      for (let r = 0; r < ROWS; r++)
+        for (let c = 0; c < COLS; c++)
+          if (canPlace(piece.shape, r, c)) fits++;
+      const cells = piece.shape.length;
+      trayDiag.push('slot ' + (i+1) + ': ' + cells + '-cell piece, ' + fits + ' fits');
+    }
+    const lvl = (typeof activeChallengeMode !== 'undefined' && activeChallengeMode === 'goldenfrog' && typeof cm_gfLevel !== 'undefined')
+              ? ('GF Lv' + cm_gfLevel) : (activeChallengeMode || 'standard');
+    const piecesPlacedCount = (typeof piecesPlaced !== 'undefined') ? piecesPlaced : '?';
+    const lines = [
+      '🔍 ' + lvl + ' · board ' + fillPct + '% full (' + occupied + '/' + (occupied+empty) + ' cells) · ' + piecesPlacedCount + ' pieces placed',
+      ...trayDiag
+    ];
+    // Render into game-over screen
+    let strip = document.getElementById('go-debug-strip');
+    if (!strip) {
+      strip = document.createElement('div');
+      strip.id = 'go-debug-strip';
+      strip.style.cssText = 'position:relative;margin:14px auto;padding:10px 14px;max-width:340px;background:rgba(255,200,40,0.08);border:1px solid rgba(255,200,40,0.4);border-radius:10px;color:#FFC828;font:11px/1.5 monospace;text-align:left;white-space:pre-line;';
+      const container = document.getElementById('screen-gameover');
+      if (container) container.appendChild(strip);
+    }
+    strip.textContent = 'WHY GAME ENDED:\n' + lines.join('\n');
+    // Also stash in console for easy copy
+    try { console.log('[GAME-OVER DIAG]', { lvl, fillPct, occupied, empty, piecesPlaced: piecesPlacedCount, trayDiag, gridSnap: grid.map(r=>r.slice()) }); } catch(_e) {}
+  } catch(_e) {
+    try { console.warn('diag failed', _e); } catch(_e2) {}
+  }
+}
 function triggerGameOver(){
+  // Capture diagnostic BEFORE clearing state so we see the real reason
+  _captureGameOverDiagnostic();
   stopChallengeMode();
   clearAdderFrogTimer();
   clearPurpleRescueTimer();
