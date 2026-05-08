@@ -9385,9 +9385,12 @@ function startGame(){
 // game-over screen as a small debug strip when ?dev=1 is set.
 function _captureGameOverDiagnostic() {
   try {
-    const isDev = (typeof location !== 'undefined' && /[?&]dev=1/.test(location.search))
-               || (typeof localStorage !== 'undefined' && localStorage.getItem('cd_dev_unlock') === '1');
-    if (!isDev) return;
+    // Diagnostic strip is opt-in via localStorage flag (cd_diag=1). Removed
+    // the auto-show-on-?dev=1 path because dev mode is used for normal
+    // playtesting and the strip looked like a development leak. Re-enable
+    // any time by running localStorage.setItem('cd_diag','1') in console.
+    const isDiag = (typeof localStorage !== 'undefined' && localStorage.getItem('cd_diag') === '1');
+    if (!isDiag) return;
     if (typeof grid === 'undefined' || typeof trayPieces === 'undefined') return;
     let occupied = 0, empty = 0;
     for (let r = 0; r < ROWS; r++)
@@ -9431,6 +9434,17 @@ function _captureGameOverDiagnostic() {
   }
 }
 function triggerGameOver(){
+  // Re-check game-over condition right before firing. Mechanic timers (Venice
+  // gravity flip, Maldives conveyor, Monaco quake, Tokyo tide) can mutate the
+  // grid AFTER game-over was queued via setTimeout(triggerGameOver, 500).
+  // If the post-mutation board has any tray piece that fits, cancel game over
+  // and let the player keep going — they didn't actually lose.
+  try {
+    if (typeof checkGameOver === 'function' && !checkGameOver()) {
+      // Fits exist again — false alarm. Bail.
+      return;
+    }
+  } catch(_e) { /* defensive: never block game-over on a check failure */ }
   // Capture diagnostic BEFORE clearing state so we see the real reason
   _captureGameOverDiagnostic();
   stopChallengeMode();
