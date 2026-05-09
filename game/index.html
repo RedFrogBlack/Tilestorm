@@ -5798,6 +5798,18 @@
     <div class="topbar-right">
       <!-- Powers inline in topbar -->
       <div id="topbar-power-bar"></div>
+      <!-- Level navigation strip — only shown for level-based packs (Golden Frog + City Pack) -->
+      <div id="lvl-nav-strip" style="display:none;align-items:center;gap:4px;margin-right:6px;">
+        <button class="icon-btn topbar-menu-btn lvl-nav-btn" id="btn-lvl-prev" title="Previous level" aria-label="Previous level" style="padding:0 7px;font-size:12px;letter-spacing:0.06em;font-weight:700;">
+          <span style="font-size:11px;line-height:1;">◀</span>
+        </button>
+        <button class="icon-btn topbar-menu-btn lvl-nav-btn" id="btn-lvl-picker" title="All levels" aria-label="Open level picker" style="padding:0 7px;font-size:11px;letter-spacing:0.06em;font-weight:700;">
+          <span id="lvl-nav-current" style="font-size:10px;line-height:1;">LV 1</span>
+        </button>
+        <button class="icon-btn topbar-menu-btn lvl-nav-btn" id="btn-lvl-next" title="Next level" aria-label="Next level" style="padding:0 7px;font-size:12px;letter-spacing:0.06em;font-weight:700;">
+          <span style="font-size:11px;line-height:1;">▶</span>
+        </button>
+      </div>
       <!-- Pause button — visible, dedicated, all games -->
       <button class="icon-btn topbar-menu-btn" id="btn-pause" title="Pause" aria-label="Pause game" style="margin-right:6px;">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round">
@@ -7949,7 +7961,13 @@ function startCityPackGame(cityIdx) {
   const city = CITY_PACK_CITIES[cityPackCityIdx];
   gridMask = buildCityMask(city.colHeights);
   const totalCells = city.colHeights.reduce((a,b)=>a+b,0);
-  cityPackLinesTarget = Math.max(4, Math.round(totalCells / 10));
+  // Difficulty ramp: line target grows with level number.
+  // Lv 1 = 6 lines, +1 per level up to Lv 10 = 15 lines.
+  // Floor is also lifted by skyline size so a bigger silhouette costs more.
+  const lvNum = cityPackCityIdx + 1;
+  const ramp  = 5 + lvNum;                                  // 6 → 15
+  const floor = Math.max(4, Math.round(totalCells / 8));    // bigger skylines = +N
+  cityPackLinesTarget  = Math.max(ramp, floor);
   cityPackLinesCleared = 0;
   _skyReset();
   revealCitySkyline(city).then(() => {
@@ -7959,7 +7977,10 @@ function startCityPackGame(cityIdx) {
     // Init sky engine now that gridCanvas dimensions are set
     _skyInit(gridCanvas.width, gridCanvas.height);
     updateCityPackHUD();
-    setTimeout(()=>showEventBanner(city.emoji+' '+city.name+' — FILL THE SKYLINE!'), 300);
+    // Per-level entry banner: "🇬🇧 LV 1 · LONDON — 6 LINES"
+    setTimeout(() => showEventBanner(
+      (city.emoji||'') + ' LV ' + lvNum + ' · ' + city.name + ' — ' + cityPackLinesTarget + ' LINES!'
+    ), 300);
   });
 }
 
@@ -7984,6 +8005,7 @@ function updateCityPackHUD() {
   hud.querySelector('.cp-progress').textContent  = cityPackLinesCleared+' / '+cityPackLinesTarget+' lines';
   hud.querySelector('.cp-level').textContent = 'City '+(cityPackCityIdx+1)+' / '+CITY_PACK_CITIES.length;
   hud.style.display = 'flex';
+  if (typeof updateLevelNavStrip === 'function') updateLevelNavStrip();
 }
 
 function advanceCityPackLevel() {
@@ -9373,6 +9395,11 @@ function showScreen(id){
   const screens = document.querySelectorAll('.screen');
   const incoming = document.getElementById(id);
   const prefersReduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  // Hide level-nav strip whenever leaving the game screen
+  if (id !== 'screen-game') {
+    const _navStrip = document.getElementById('lvl-nav-strip');
+    if (_navStrip) _navStrip.style.display = 'none';
+  }
 
   screens.forEach(s => {
     if (s.id === id) return; // handle incoming separately
@@ -9442,16 +9469,23 @@ function startGame(){
       _ambientInit(gridCanvas.width, gridCanvas.height);
     }
   });
-  // Welcome banner based on tier challenge
-  const msgs = {
-    standard: '🥚 TADPOLE · EASY — CLEAR ROWS!',
-    frenzy:   '🐸 TREE FROG · FRENZY — BEAT THE TIMER!',
-    survival: '🌫️ FOG THE FROG · SURVIVAL — BEAT THE FOG!',
-    colourrun:'🌟 GOLDEN FROG · COLOUR RUN — MATCH 4!',
-    fog:      '🌫️ FOG THE FROG — 10 LOCATIONS · BEAT THE FOG!',
-    goldenfrog:'✨ GOLDEN FROG — 10 LOCATIONS · 10 MECHANICS!'
-  };
-  setTimeout(()=>showEventBanner(msgs[activeChallengeMode]||'🎮 GO!'), 500);
+  // Welcome banner based on tier challenge.
+  // Skip for Golden Frog: its per-level city banner (e.g. "DUBAI — SPLIT")
+  // already fires from updateGoldenFrogHUD on init, and was being overwritten
+  // by the generic message on Lv 1 entry.
+  // Skip for Fog: same reason — fog mode shows its per-level banner from initChallengeMode.
+  // Skip for City Pack: its per-city banner fires from startCityPackGame; the
+  // generic Tadpole message would otherwise overwrite "🇬🇧 LV 1 · LONDON — 8 LINES".
+  const _isCityPack = (typeof cityPackActive !== 'undefined' && cityPackActive);
+  if (activeChallengeMode !== 'goldenfrog' && activeChallengeMode !== 'fog' && !_isCityPack) {
+    const msgs = {
+      standard: '🥚 TADPOLE · EASY — CLEAR ROWS!',
+      frenzy:   '🐸 TREE FROG · FRENZY — BEAT THE TIMER!',
+      survival: '🌫️ FOG THE FROG · SURVIVAL — BEAT THE FOG!',
+      colourrun:'🌟 GOLDEN FROG · COLOUR RUN — MATCH 4!'
+    };
+    setTimeout(()=>showEventBanner(msgs[activeChallengeMode]||'🎮 GO!'), 500);
+  }
 }
 // Diagnostic snapshot — captures exactly WHY game-over fired so the player
 // (and dev) can see the state instead of being surprised. Renders into the
@@ -14221,6 +14255,7 @@ function initChallengeMode() {
     _gfActivateMechanic(cm_gfLevel);
     // Immediate demo pulse so dev-skipping shows each level's mechanic right away
     _gfDemoPulse(cm_gfLevel);
+    if (typeof updateLevelNavStrip === 'function') updateLevelNavStrip();
   }
 
   // Show dev skip button if in dev mode
@@ -17221,6 +17256,7 @@ function closePause() {
   document.getElementById('pause-overlay').classList.add('hidden');
   gameActive = true;
   if (vsFrogActive) _vsFrogScheduleMove(); // resume frog AI
+  if (typeof updateLevelNavStrip === 'function') updateLevelNavStrip();
 }
 
 // ── Penalty / Glitch functions ────────────────────────────────────
@@ -17340,6 +17376,101 @@ document.getElementById('btn-menu').addEventListener('click',()=>{ openPause(); 
     const overlay = document.getElementById('pause-overlay');
     if (overlay && !overlay.classList.contains('hidden')) closePause();
     else openPause();
+  });
+})();
+
+// ── Level navigation strip (Prev / Picker / Next) ───────────────────
+// Visible only during level-based packs (Golden Frog, City Pack).
+// Prev: jump to lv-1 (always allowed if >1, since you've passed it).
+// Next: jump to lv+1 (only allowed if next is unlocked — i.e. you've already passed it OR dev mode).
+// Picker: opens the existing level picker overlay without leaving the game.
+function _getActiveLevelPack() {
+  // Returns 'goldenfrog' | 'citypack' | null based on current game state.
+  if (typeof cityPackActive !== 'undefined' && cityPackActive) return 'citypack';
+  if (typeof activeChallengeMode !== 'undefined' && activeChallengeMode === 'goldenfrog') return 'goldenfrog';
+  return null;
+}
+function _getActiveLevelNum(pack) {
+  if (pack === 'goldenfrog') return (typeof cm_gfLevel !== 'undefined' ? (cm_gfLevel|0) : 1);
+  if (pack === 'citypack')   return (typeof cityPackCityIdx !== 'undefined' ? ((cityPackCityIdx|0)+1) : 1);
+  return 1;
+}
+function updateLevelNavStrip() {
+  const strip = document.getElementById('lvl-nav-strip');
+  if (!strip) return;
+  const pack = _getActiveLevelPack();
+  if (!pack || !gameActive) { strip.style.display = 'none'; return; }
+  const lv = _getActiveLevelNum(pack);
+  const isDev = (typeof localStorage !== 'undefined' && localStorage.getItem('cd_dev_unlock') === '1');
+  const unlocked = (typeof _cdProgress !== 'undefined') ? _cdProgress.getUnlocked(pack) : 1;
+  const cap = isDev ? 10 : Math.min(10, unlocked);
+  // Update label
+  const lblEl = document.getElementById('lvl-nav-current');
+  if (lblEl) lblEl.textContent = 'LV ' + lv;
+  // Enable/disable buttons
+  const prevBtn = document.getElementById('btn-lvl-prev');
+  const nextBtn = document.getElementById('btn-lvl-next');
+  if (prevBtn) {
+    const canPrev = lv > 1;
+    prevBtn.disabled = !canPrev;
+    prevBtn.style.opacity = canPrev ? '1' : '0.35';
+    prevBtn.style.cursor  = canPrev ? 'pointer' : 'not-allowed';
+  }
+  if (nextBtn) {
+    const canNext = lv < cap;
+    nextBtn.disabled = !canNext;
+    nextBtn.style.opacity = canNext ? '1' : '0.35';
+    nextBtn.style.cursor  = canNext ? 'pointer' : 'not-allowed';
+  }
+  strip.style.display = 'inline-flex';
+}
+function _jumpToLevel(pack, targetLv) {
+  if (!pack) return;
+  const isDev = (typeof localStorage !== 'undefined' && localStorage.getItem('cd_dev_unlock') === '1');
+  const unlocked = (typeof _cdProgress !== 'undefined') ? _cdProgress.getUnlocked(pack) : 1;
+  const cap = isDev ? 10 : Math.min(10, unlocked);
+  if (targetLv < 1 || targetLv > cap) return;
+  if (typeof _cdProgress !== 'undefined') _cdProgress.setLastLevel(pack, targetLv);
+  if (pack === 'citypack') {
+    if (typeof startCityPackGame === 'function') startCityPackGame(targetLv - 1);
+    return;
+  }
+  if (pack === 'goldenfrog') {
+    // Mirror the level-picker GF launch path: tear down current state, set level, re-init.
+    if (typeof cityPackActive !== 'undefined' && cityPackActive) {
+      cityPackActive = false; gridMask = null;
+      if (typeof _skyReset === 'function') _skyReset();
+    }
+    if (typeof TIER_GAME_MAP !== 'undefined' && TIER_GAME_MAP['goldenfrog']) {
+      const map = TIER_GAME_MAP['goldenfrog'];
+      if (typeof setDifficulty === 'function') setDifficulty(map.diff);
+      if (typeof selectedChallenge !== 'undefined') selectedChallenge = map.challenge;
+      if (typeof startGame === 'function') startGame();
+      activeChallengeMode = map.challenge;
+      cm_gfLevel = targetLv;
+      if (typeof cm_gfLinesCleared !== 'undefined') cm_gfLinesCleared = 0;
+      if (typeof _gfSceneCfgIdx !== 'undefined') _gfSceneCfgIdx = -1;
+      if (typeof initChallengeMode === 'function') initChallengeMode();
+    }
+  }
+}
+(function(){
+  const _prev = document.getElementById('btn-lvl-prev');
+  const _next = document.getElementById('btn-lvl-next');
+  const _pick = document.getElementById('btn-lvl-picker');
+  if (_prev) _prev.addEventListener('click', () => {
+    if (_prev.disabled) return;
+    const pack = _getActiveLevelPack(); if (!pack) return;
+    _jumpToLevel(pack, _getActiveLevelNum(pack) - 1);
+  });
+  if (_next) _next.addEventListener('click', () => {
+    if (_next.disabled) return;
+    const pack = _getActiveLevelPack(); if (!pack) return;
+    _jumpToLevel(pack, _getActiveLevelNum(pack) + 1);
+  });
+  if (_pick) _pick.addEventListener('click', () => {
+    const pack = _getActiveLevelPack(); if (!pack) return;
+    if (typeof openLevelPicker === 'function') openLevelPicker(pack);
   });
 })();
 
