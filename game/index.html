@@ -8078,6 +8078,18 @@ function clearLines({completedRows,completedCols,completedHalfRows}){
       if (cm_gfLinesCleared >= GF_LINES_PER_LEVEL && cm_gfLevel < 10) {
         setTimeout(_gfTriggerLevelComplete, 500);
       }
+      // ONE-WAY STREETS (NY Lv8 + gauntlet Lv10) — every line clear shifts
+      // surviving tiles in non-cleared rows by one cell in their row's direction.
+      // Applied after lines are zeroed so cleared rows are excluded automatically.
+      try {
+        const _streetCfg = GF_LOCATIONS_CFG[Math.min(cm_gfLevel-1, 9)];
+        const _streetMech = _streetCfg && _streetCfg.mechanic;
+        if ((_streetMech === 'ghost' || _streetMech === 'gauntlet') && _gfLineCount > 0) {
+          if (typeof _gfStreetApplySlide === 'function') {
+            _gfStreetApplySlide(completedRows);
+          }
+        }
+      } catch(_e2) {}
     } catch(_e) {}
   }
   if(duoGameActive&&duoMode==='hazard'){const _t=completedRows.length+completedCols.length+halfCount;if(_t>0)sendHazardAttack(_t);}
@@ -8395,6 +8407,8 @@ function drawGrid(){
     if (typeof _gfMaldivesHiddenSet !== 'undefined' && _gfMaldivesHiddenSet && _gfMaldivesHiddenSet.has(r*100+c)) continue;
     // Skip cells that are mid-fall (Venice gravity flip) — the flip overlay draws them
     if (typeof _gfVeniceHiddenSet !== 'undefined' && _gfVeniceHiddenSet && _gfVeniceHiddenSet.has(r*100+c)) continue;
+    // Skip cells that are mid-slide (NewYork one-way streets) — the slide overlay draws them
+    if (typeof _gfStreetHiddenSet !== 'undefined' && _gfStreetHiddenSet && _gfStreetHiddenSet.has(r*100+c)) continue;
     drawTile(r,c,getTileColor(grid[r][c]),1,false,isGold);
   }
   // Maldives conveyor flight: draw L→R wind-blown tiles with optional zig-zag wobble.
@@ -8771,19 +8785,59 @@ function drawGrid(){
       ctx.fillText(cm_gfGravityFlip ? '\u2b06' : '\u2b07', W - 22, H/2);
       ctx.restore();
     }
-    // GHOST (New York) - dashed outline around placed tiles to show they'll vanish
-    if (mech === 'ghost') {
-      ctx.save();
-      ctx.strokeStyle = 'rgba(255,150,40,' + (0.4 + 0.3*pulseSin) + ')';
-      ctx.lineWidth = 1.5; ctx.setLineDash([3, 3]);
-      for (let r = 0; r < ROWS; r++) {
-        for (let c = 0; c < COLS; c++) {
-          if (grid[r][c] !== 0) {
-            ctx.strokeRect(c*CELL+2, r*CELL+2, CELL-4, CELL-4);
+    // ONE-WAY STREETS (New York) — small arrow per row at the row's edge,
+    // pulsing in the row's direction. Drawn ON TOP of the grid background but
+    // UNDER the tiles so it reads as a road sign, not as a tile overlay.
+    if (mech === 'ghost' || mech === 'gauntlet') {
+      if (Array.isArray(cm_gfStreetDirs) && cm_gfStreetDirs.length === ROWS) {
+        ctx.save();
+        ctx.font = 'bold 13px monospace'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+        for (let r = 0; r < ROWS; r++) {
+          const dir = cm_gfStreetDirs[r] || 1;
+          // Arrow drawn at the LEFT edge for left-pointing rows, RIGHT edge
+          // for right-pointing rows. Faint NY taxi-yellow with a soft pulse.
+          const alpha = 0.30 + 0.20 * Math.abs(pulseSin);
+          ctx.fillStyle = 'rgba(255,210,60,' + alpha + ')';
+          const y = r*CELL + CELL/2;
+          if (dir > 0) {
+            // Right-pointing: arrow at right edge of row, just inside
+            ctx.fillText('\u25b6', W - 7, y);
+          } else {
+            ctx.fillText('\u25c0', 7, y);
           }
         }
+        ctx.restore();
       }
-      ctx.restore();
+      // STREETS slide overlay: render in-flight tiles tweening to their
+      // destination column. Same pattern as Maldives/Monaco.
+      if (Array.isArray(_gfStreetSlides) && _gfStreetSlides.length > 0) {
+        const now = (typeof performance!=='undefined'?performance.now():Date.now());
+        ctx.save();
+        for (const s of _gfStreetSlides) {
+          const t = Math.max(0, Math.min(1, (now - s.start) / s.dur));
+          // Ease-out cubic
+          const k = 1 - Math.pow(1 - t, 3);
+          const fromX = s.fromC * CELL;
+          const toX   = s.toC * CELL;
+          const x = fromX + (toX - fromX) * k;
+          const y = s.fromR * CELL;
+          // Fall-off-edge tiles fade as they slide off
+          const alpha = s.fall ? (1 - k) : 1;
+          ctx.globalAlpha = alpha;
+          // s.color is already the resolved hex (set in _gfStreetApplySlide).
+          ctx.fillStyle = s.color || '#FFD700';
+          // Use rounded rect to match drawTile aesthetic.
+          const rad = Math.max(4, CELL*0.13);
+          ctx.beginPath();
+          ctx.roundRect(x+PAD, y+PAD, CELL-PAD*2, CELL-PAD*2, rad);
+          ctx.fill();
+          // Subtle highlight
+          ctx.fillStyle = 'rgba(255,255,255,0.18)';
+          ctx.fillRect(x+PAD+1, y+PAD+1, CELL-PAD*2-2, 3);
+        }
+        ctx.globalAlpha = 1;
+        ctx.restore();
+      }
     }
     // ROTATION (Bali) - rotating arrow in top-right corner
     if (mech === 'rotation') {
@@ -13552,7 +13606,13 @@ function openLevelPicker(pack) {
   // Source level data
   let levels = [];
   if (pack === 'goldenfrog' && typeof GF_LOCATIONS_CFG !== 'undefined') {
-    levels = GF_LOCATIONS_CFG.map((c, i) => ({ idx: i, name: c.name, sub: (c.mechanic||'').toUpperCase(), emoji: c.emoji||'' }));
+    levels = GF_LOCATIONS_CFG.map((c, i) => {
+      // Display-friendly mechanic label — 'ghost' is internally a slide-on-clear
+      // mechanic now (NewYork ONE-WAY STREETS), so override its subtitle.
+      let sub = (c.mechanic||'').toUpperCase();
+      if (c.mechanic === 'ghost') sub = 'STREETS';
+      return { idx: i, name: c.name, sub, emoji: c.emoji||'' };
+    });
   } else if (pack === 'citypack' && typeof CITY_PACK_CITIES !== 'undefined') {
     levels = CITY_PACK_CITIES.map((c, i) => ({ idx: i, name: c.name, sub: 'SKYLINE', emoji: c.emoji||'' }));
   }
@@ -13827,7 +13887,18 @@ const PARIS_RISE_MS  = 4000;
 const PARIS_CYCLE_MS = 21000;
 let cm_gfConveyorTimer = null;
 let cm_gfGhostTimer = null;
-let cm_gfGhostCells = [];          // {r,c,placedAt} ghost cells
+let cm_gfGhostCells = [];          // {r,c,placedAt} ghost cells (legacy: kept for gauntlet only)
+// NEW YORK ONE-WAY STREETS state (Lv8 + gauntlet Lv10):
+// each row has a direction (+1 = right, -1 = left). After every line clear,
+// remaining tiles in non-cleared rows slide one cell in their row's direction.
+// Tiles that fall off the edge are lost (dropped off the grid, score tick = 0).
+// Direction arrows render at the row edges as a constant visual hint.
+let cm_gfStreetDirs = [];          // length ROWS, each entry +1 or -1
+let _gfStreetSlides = [];          // [{ fromR, fromC, toR, toC, color, start, dur, fall }]
+let _gfStreetHiddenSet = new Set();// 'r*100+c' keys to suppress in normal grid render during slide
+let _gfStreetRafId = null;         // rAF handle for the slide loop
+const STREET_SLIDE_MS = 350;       // slide duration
+const STREET_FALL_MS = 500;        // fall-off-edge animation duration
 let cm_gfQuakeOffset = {x:0, y:0};
 // Monaco quake slide animation state
 let _gfQuakeSlides = [];           // [{ fromR, fromC, toR, toC, color, start, dur }]
@@ -14112,7 +14183,11 @@ function initChallengeMode() {
     document.getElementById('challenge-hud-icon').textContent = '✨';
     const cfg = GF_LOCATIONS_CFG[Math.min(cm_gfLevel-1, 9)];
     updateGoldenFrogHUD(cfg ? cfg.name : '', cfg ? cfg.mechanic : '');
-    if (cfg) showEventBanner('✨ ' + (cfg.emoji||'') + ' ' + cfg.name.toUpperCase() + ' — ' + cfg.mechanic.toUpperCase() + '!');
+    if (cfg) {
+      let mechLabel = cfg.mechanic.toUpperCase();
+      if (cfg.mechanic === 'ghost') mechLabel = 'STREETS';
+      showEventBanner('✨ ' + (cfg.emoji||'') + ' ' + cfg.name.toUpperCase() + ' — ' + mechLabel + '!');
+    }
     // Initialize per-location day/night scene background
     if (typeof gridCanvas !== 'undefined' && gridCanvas && gridCanvas.width && cfg) {
       _gfSceneReset();
@@ -14138,7 +14213,10 @@ function updateFogHUD(fogCfg) {
 function updateGoldenFrogHUD(loc, mech) {
   document.getElementById('challenge-hud-text').textContent = '✨ GOLDEN FROG';
   const sub = document.getElementById('challenge-hud-sub');
-  if (sub) sub.textContent = (loc || '') + (mech ? ' · ' + mech.toUpperCase() : '');
+  // 'ghost' is the internal mechanic key for NewYork ONE-WAY STREETS — display 'STREETS'.
+  let mechLabel = mech ? mech.toUpperCase() : '';
+  if (mech === 'ghost') mechLabel = 'STREETS';
+  if (sub) sub.textContent = (loc || '') + (mechLabel ? ' · ' + mechLabel : '');
   document.getElementById('challenge-hud-timer').textContent = '';
 }
 
@@ -14491,60 +14569,146 @@ function _gfActivateMechanic(lvl) {
     cm_gfGauntletTimers.push(gt);
   }
   else if (mech === 'ghost') {
-    cm_gfGhostTimer = setInterval(() => {
-      if (!gameActive) return;
-      const now = Date.now();
-      const expired = cm_gfGhostCells.filter(g => now - g.placedAt > 5000);
-      for (const g of expired) {
-        if (g.r >= 0 && g.r < ROWS && g.c >= 0 && g.c < COLS) grid[g.r][g.c] = 0;
-      }
-      cm_gfGhostCells = cm_gfGhostCells.filter(g => now - g.placedAt <= 5000);
-      if (expired.length > 0) drawGrid();
-    }, 500);
-    cm_gfGauntletTimers.push(cm_gfGhostTimer);
-    showEventBanner('✨ NEW YORK — GHOST TILES VANISH IN 5s!');
+    // NEW YORK — ONE-WAY STREETS. Each row gets a fixed direction; every line
+    // clear shifts surviving tiles one cell in their row's direction. Tiles
+    // sliding off the edge are lost. The actual slide is triggered from
+    // clearLines() (search for _gfStreetApplySlide). Here we just init dirs
+    // and show the banner.
+    if (typeof _gfStreetInitDirs === 'function') _gfStreetInitDirs();
+    showEventBanner('🚕 NEW YORK — ONE-WAY STREETS! LINE CLEARS SHIFT ROWS');
   }
   else if (mech === 'rotation') {
     cm_gfRotateAngle = 0;
     showEventBanner('✨ BALI — BOARD ROTATES ON EACH CLEAR!');
   }
   else if (mech === 'gauntlet') {
-    showEventBanner('✨ AMALFI — THE GAUNTLET! ALL MECHANICS ACTIVE!');
-    const qt = setInterval(() => {
-      if (!gameActive) return;
-      let shakes = 0;
-      const qa = setInterval(() => {
-        shakes++;
-        cm_gfQuakeOffset = {x:(Math.random()-0.5)*8, y:(Math.random()-0.5)*6};
-        if (typeof gridCanvas !== 'undefined' && gridCanvas) gridCanvas.style.transform = 'translate(' + cm_gfQuakeOffset.x + 'px,' + cm_gfQuakeOffset.y + 'px)';
-        if (shakes > 10) { clearInterval(qa); cm_gfQuakeOffset={x:0,y:0}; if (typeof gridCanvas !== 'undefined' && gridCanvas) gridCanvas.style.transform=''; }
-      }, 60);
-    }, 10000);
-    cm_gfGauntletTimers.push(qt);
-    const bt = setInterval(() => {
-      if (!gameActive) return;
-      _parisStartBlackoutCycle();
-    }, 12000);
-    cm_gfGauntletTimers.push(bt);
-    const ct = setInterval(() => {
-      if (!gameActive) return;
-      // Use the animated L→R flight (mirrors Lv6 Maldives) so the gauntlet
-      // doesn't tele-port tiles. Recheck happens inside the flight on completion.
-      _gfMaldivesStartFlight();
-    }, 15000);
-    cm_gfGauntletTimers.push(ct);
-    cm_gfGhostTimer = setInterval(() => {
-      if (!gameActive) return;
-      const now = Date.now();
-      const expired = cm_gfGhostCells.filter(g => now - g.placedAt > 4000);
-      for (const g of expired) { if (g.r >= 0 && g.r < ROWS && g.c >= 0 && g.c < COLS) grid[g.r][g.c] = 0; }
-      cm_gfGhostCells = cm_gfGhostCells.filter(g => now - g.placedAt <= 4000);
-      if (expired.length > 0) drawGrid();
-    }, 500);
-    cm_gfGauntletTimers.push(cm_gfGhostTimer);
-    cm_gfGravityFlip = false;
+    // AMALFI — THE FULL GAUNTLET. All 7 mechanics run independently (no
+    // stagger — user explicitly chose 'full chaos'). The intro sequence below
+    // (_gfRunGauntletIntro) demos each mechanic once with a 2s gap before
+    // the timers below kick in, so the player understands what they're up
+    // against.
+    // 1. SPLIT (Dubai) — colour-locked halves. State is set by initChallengeMode
+    //    GF block (cm_gfSplitLeftColor/Right). Tray is constrained too.
+    // 2. MIRROR (Ibiza) — _gfApplyMirror is invoked from the placement handler
+    //    when mechanic === 'mirror' || 'gauntlet'. No timer needed.
+    // 3. ONE-WAY STREETS (NewYork) — init row directions; slide fires from
+    //    clearLines() when mechanic === 'ghost' || 'gauntlet'.
+    if (typeof _gfStreetInitDirs === 'function') _gfStreetInitDirs();
     cm_gfRotateAngle = 0;
+    cm_gfGravityFlip = false;
+    // Init split colours for the gauntlet too (Dubai-style split is one of the
+    // 7 mechanics). Without this, _pickAddTileColor and tray-colour constraint
+    // both early-out and the SPLIT mechanic is silently disabled.
+    {
+      const palette = [1,2,3,4,5,6];
+      const left  = palette[Math.floor(Math.random() * palette.length)];
+      let right;
+      do { right = palette[Math.floor(Math.random() * palette.length)]; } while (right === left);
+      cm_gfSplitLeftColor  = left;
+      cm_gfSplitRightColor = right;
+      cm_gfMechActive = true;
+      try { if (typeof generateTray === 'function') generateTray(); } catch(_e) {}
+    }
+    showEventBanner('✨ AMALFI — THE GAUNTLET! 7 MECHANICS ACTIVE!');
+    // Intro sequence: fire each mechanic once with a 2s gap so the player sees
+    // them before the chaos timers begin. Returns the total intro duration so
+    // the chaos timers can be deferred until after the intro completes.
+    const introMs = (typeof _gfRunGauntletIntro === 'function') ? _gfRunGauntletIntro() : 0;
+    // Defer all interval starts until intro is done, otherwise the player gets
+    // overlapping demos AND chaos timers from the first second.
+    const startChaos = () => {
+      // QUAKE (Monaco) — every 10s
+      const qt = setInterval(() => {
+        if (!gameActive) return;
+        let shakes = 0;
+        const qa = setInterval(() => {
+          shakes++;
+          cm_gfQuakeOffset = {x:(Math.random()-0.5)*8, y:(Math.random()-0.5)*6};
+          if (typeof gridCanvas !== 'undefined' && gridCanvas) gridCanvas.style.transform = 'translate(' + cm_gfQuakeOffset.x + 'px,' + cm_gfQuakeOffset.y + 'px)';
+          if (shakes > 10) { clearInterval(qa); cm_gfQuakeOffset={x:0,y:0}; if (typeof gridCanvas !== 'undefined' && gridCanvas) gridCanvas.style.transform=''; }
+        }, 60);
+      }, 10000);
+      cm_gfGauntletTimers.push(qt);
+      // BLACKOUT (Paris) — every 12s
+      const bt = setInterval(() => {
+        if (!gameActive) return;
+        _parisStartBlackoutCycle();
+      }, 12000);
+      cm_gfGauntletTimers.push(bt);
+      // CONVEYOR (Maldives) — every 15s
+      const ct = setInterval(() => {
+        if (!gameActive) return;
+        _gfMaldivesStartFlight();
+      }, 15000);
+      cm_gfGauntletTimers.push(ct);
+      // GRAVITY FLIP (Venice) — every 14s
+      const vt = setInterval(() => {
+        if (!gameActive) return;
+        if (typeof _gfVeniceStartFlip === 'function') _gfVeniceStartFlip();
+      }, 14000);
+      cm_gfGauntletTimers.push(vt);
+      // TOKYO TIDE — start the regular tide cycle which manages its own timers.
+      // _tokyoStartTide() registers its own intervals; _gfStopAllMechanics calls
+      // _tokyoStopTide() which clears them, so no manual tracking needed here.
+      if (typeof _tokyoStartTide === 'function') _tokyoStartTide();
+      // ROTATION (Bali) — fires on every line clear; _gfRotateOnClear handles it
+      // when mechanic === 'rotation' || 'gauntlet'. No timer needed.
+    };
+    if (introMs > 0) {
+      const introTimer = setTimeout(startChaos, introMs);
+      cm_gfGauntletTimers.push({ _isTimeout: true, id: introTimer });
+    } else {
+      startChaos();
+    }
   }
+}
+
+// AMALFI GAUNTLET intro sequence — fires each mechanic once with a 2s gap so
+// the player sees what every mechanic looks like before chaos timers kick in.
+// Returns the total intro duration in ms; the caller defers the chaos timers
+// by this amount.
+function _gfRunGauntletIntro() {
+  if (activeChallengeMode !== 'goldenfrog') return 0;
+  const STEP_MS = 2200;
+  const steps = [
+    { label: '⚡ QUAKE',     fire: () => {
+        let shakes = 0;
+        const qa = setInterval(() => {
+          shakes++;
+          cm_gfQuakeOffset = {x:(Math.random()-0.5)*8, y:(Math.random()-0.5)*6};
+          if (typeof gridCanvas !== 'undefined' && gridCanvas) gridCanvas.style.transform = 'translate(' + cm_gfQuakeOffset.x + 'px,' + cm_gfQuakeOffset.y + 'px)';
+          if (shakes > 12) { clearInterval(qa); cm_gfQuakeOffset={x:0,y:0}; if (typeof gridCanvas !== 'undefined' && gridCanvas) gridCanvas.style.transform=''; }
+        }, 60);
+        cm_gfGauntletTimers.push(qa);
+    }},
+    { label: '🌫️ BLACKOUT',  fire: () => { if (typeof _parisStartBlackoutCycle === 'function') _parisStartBlackoutCycle(); }},
+    { label: '💨 WIND',       fire: () => { if (typeof _gfMaldivesStartFlight === 'function') _gfMaldivesStartFlight(); }},
+    { label: '🔄 GRAVITY',    fire: () => { if (typeof _gfVeniceStartFlip === 'function') _gfVeniceStartFlip(); }},
+    { label: '🚕 ONE-WAY STREETS', fire: () => {
+        // Show a subtle slide demo: fire one slide on the current (likely empty) board
+        // is harmless. Player gets to see arrows even on empty board via the static render.
+        if (typeof _gfStreetApplySlide === 'function') _gfStreetApplySlide([]);
+    }},
+    { label: '🌊 TIDE',       fire: () => {
+        // Tokyo tide is started by startChaos via _tokyoStartTide(); here we just
+        // flash the banner to introduce it.
+    }},
+    { label: '🪞 MIRROR + SPLIT', fire: () => {
+        // These are passive (apply on placement) so just announce them.
+    }}
+  ];
+  steps.forEach((step, i) => {
+    const t = setTimeout(() => {
+      if (activeChallengeMode !== 'goldenfrog') return;
+      try {
+        if (typeof showEventBanner === 'function') showEventBanner(step.label);
+        if (typeof step.fire === 'function') step.fire();
+      } catch(_e) {}
+    }, i * STEP_MS + 800); // 800ms after entry banner so it doesn't collide
+    cm_gfGauntletTimers.push({ _isTimeout: true, id: t });
+  });
+  // Total intro duration: 800ms offset + (steps * STEP_MS) + 800ms tail
+  return 800 + steps.length * STEP_MS + 800;
 }
 
 // One-shot demonstration of the level's mechanic so dev-skipping shows each level's distinction immediately.
@@ -14602,7 +14766,10 @@ function _gfDemoPulse(lv) {
       showEventBanner('✨ VENICE — GRAVITY FLIPS EACH LINE CLEAR');
     }
     if (mech === 'ghost') {
-      showEventBanner('✨ NEW YORK — PLACED TILES VANISH IN 5s');
+      // NEW YORK — ONE-WAY STREETS demo: arrows are visible from the static
+      // render. Just show the banner (the actual slide demo would shift
+      // an empty board which has no visual effect).
+      showEventBanner('🚕 NEW YORK — EACH ROW HAS A DIRECTION. CLEAR LINES TO SHIFT');
     }
     if (mech === 'rotation') {
       showEventBanner('✨ BALI — BOARD ROTATES EACH LINE CLEAR');
@@ -15195,8 +15362,21 @@ function _gfStopAllMechanics() {
   if (cm_gfBlackoutTimer) { clearInterval(cm_gfBlackoutTimer); cm_gfBlackoutTimer = null; }
   if (cm_gfConveyorTimer) { clearInterval(cm_gfConveyorTimer); cm_gfConveyorTimer = null; }
   if (cm_gfGhostTimer) { clearInterval(cm_gfGhostTimer); cm_gfGhostTimer = null; }
-  for (const t of cm_gfGauntletTimers) clearInterval(t);
+  // Some entries in cm_gfGauntletTimers are setTimeout records (for the intro
+  // sequence). Handle both types.
+  for (const t of cm_gfGauntletTimers) {
+    if (t && typeof t === 'object' && t._isTimeout) {
+      clearTimeout(t.id);
+    } else {
+      clearInterval(t);
+    }
+  }
   cm_gfGauntletTimers = [];
+  // ONE-WAY STREETS cleanup (Lv8 + gauntlet)
+  if (_gfStreetRafId) { cancelAnimationFrame(_gfStreetRafId); _gfStreetRafId = null; }
+  _gfStreetSlides = [];
+  _gfStreetHiddenSet = new Set();
+  cm_gfStreetDirs = [];
   cm_gfBlackoutActive = false;
   cm_gfGravityFlip = false;
   cm_gfRotateAngle = 0;
@@ -15219,6 +15399,103 @@ function _gfStopAllMechanics() {
   cm_gfSplitRightColor = null;
   cm_gfMechActive = false;
   if (typeof gridCanvas !== 'undefined' && gridCanvas) gridCanvas.style.transform = '';
+}
+
+// ════════════════════════════════════════════════════════════════
+//  NEW YORK ONE-WAY STREETS — Lv8 + gauntlet
+//  Each row has a fixed direction (+1 right, -1 left) shown by an arrow
+//  at the row edge. After every line clear, surviving tiles in non-cleared
+//  rows slide one cell in their row's direction. Tiles that would fall off
+//  the edge are animated falling off (gone from grid).
+//  Mirrors Maldives/Monaco pattern: commit grid mutation BEFORE the slide,
+//  suppress destinations from the normal grid pass during the tween.
+// ════════════════════════════════════════════════════════════════
+function _gfStreetInitDirs() {
+  // Build per-row direction array. Bias: alternate to avoid all-same-direction
+  // boards which are easier; randomise within a 60/40 alternation pattern.
+  cm_gfStreetDirs = [];
+  for (let r = 0; r < ROWS; r++) {
+    // Even rows lean right, odd rows lean left, but each row has a 30% chance
+    // to flip — so no two boards play exactly alike.
+    let d = (r % 2 === 0) ? 1 : -1;
+    if (Math.random() < 0.3) d = -d;
+    cm_gfStreetDirs.push(d);
+  }
+}
+
+// Apply a one-cell slide to all rows EXCEPT the rows that were just cleared.
+// excludedRows: array of row indices that were just zeroed by clearLines
+// (their tiles are already 0, so nothing to slide).
+function _gfStreetApplySlide(excludedRows) {
+  if (typeof grid === 'undefined' || !grid || !grid.length) return;
+  if (!cm_gfStreetDirs || cm_gfStreetDirs.length !== ROWS) _gfStreetInitDirs();
+  const excl = new Set(Array.isArray(excludedRows) ? excludedRows : []);
+  const slides = [];
+  const startTs = (typeof performance!=='undefined'?performance.now():Date.now());
+  // Build a fresh after-grid by sliding each non-excluded row one cell in its
+  // direction. Tiles that fall off the edge are dropped (becomes 'fall' slide).
+  for (let r = 0; r < ROWS; r++) {
+    if (excl.has(r)) continue;
+    const row = grid[r];
+    if (!row || !row.length) continue;
+    const dir = cm_gfStreetDirs[r] || 1;
+    const before = row.slice();
+    // Compute the new row state after the shift.
+    const after = new Array(COLS).fill(0);
+    for (let c = 0; c < COLS; c++) {
+      const v = before[c];
+      if (!v) continue;
+      const toC = c + dir;
+      // Resolve the tile colour ONCE here so the slide overlay can render it
+      // without re-looking up the grid (which has already been mutated).
+      const colHex = (typeof getTileColor === 'function') ? getTileColor(v) : '#FFD700';
+      if (toC < 0 || toC >= COLS) {
+        // Tile falls off the edge — record a fall-slide; not present in `after`.
+        slides.push({
+          fromR: r, fromC: c,
+          toR: r,   toC: c + dir, // off-edge target (used for path direction)
+          color: colHex, start: startTs, dur: STREET_FALL_MS, fall: true
+        });
+      } else {
+        after[toC] = v;
+        slides.push({
+          fromR: r, fromC: c,
+          toR: r, toC: toC,
+          color: colHex, start: startTs, dur: STREET_SLIDE_MS, fall: false
+        });
+      }
+    }
+    // Commit the mutation now (overlay handles the visual tween).
+    grid[r] = after;
+  }
+  if (!slides.length) return;
+  // Suppress destination cells in normal grid pass during the tween.
+  _gfStreetSlides = slides;
+  _gfStreetHiddenSet = new Set();
+  for (const s of slides) {
+    if (!s.fall && s.toC >= 0 && s.toC < COLS) {
+      _gfStreetHiddenSet.add(s.toR * 100 + s.toC);
+    }
+  }
+  // Kick rAF loop.
+  if (_gfStreetRafId) cancelAnimationFrame(_gfStreetRafId);
+  const tick = (ts) => {
+    const now = (typeof performance!=='undefined'?performance.now():Date.now());
+    let allDone = true;
+    for (const s of _gfStreetSlides) {
+      if (now - s.start < s.dur) { allDone = false; break; }
+    }
+    if (typeof drawGrid === 'function') drawGrid();
+    if (allDone) {
+      _gfStreetSlides = [];
+      _gfStreetHiddenSet = new Set();
+      _gfStreetRafId = null;
+      if (typeof drawGrid === 'function') drawGrid();
+      return;
+    }
+    _gfStreetRafId = requestAnimationFrame(tick);
+  };
+  _gfStreetRafId = requestAnimationFrame(tick);
 }
 
 // ════════════════════════════════════════════════════════════════
