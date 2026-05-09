@@ -14503,8 +14503,52 @@ function _fogGetTileOpacity(row, col) {
 // This helper runs findCompletedLines() and routes the result through the
 // normal clearLines() pipeline so all scoring/HUD/animation hooks fire.
 // ════════════════════════════════════════════════════════════════════════════════
+// SPLIT colour normalization — walks the grid and re-tints every tile to match
+// the half it currently sits on. Called after every chaos mutation (rotation,
+// gravity flip, quake, streets slide, conveyor) so the visual rule "left half
+// = colour A, right half = colour B" holds even when the mutations push tiles
+// across the split line. Runs only when split colours are active.
+// Resolve the on-screen colour for a tile that is sliding/falling/rotating to
+// (toR, toC). When split is active, the colour is forced to match the
+// destination half so chaos animations look consistent (no green tile briefly
+// passing through the purple half). Returns a hex string.
+function _gfResolveSlideColor(rawVal, toC) {
+  const fallback = (typeof getTileColor === 'function') ? getTileColor(rawVal) : '#FFD700';
+  if (activeChallengeMode !== 'goldenfrog') return fallback;
+  if (!cm_gfSplitLeftColor || !cm_gfSplitRightColor) return fallback;
+  const cfg = (typeof GF_LOCATIONS_CFG !== 'undefined' && typeof cm_gfLevel !== 'undefined')
+    ? GF_LOCATIONS_CFG[Math.min((cm_gfLevel|0)-1, 9)] : null;
+  if (!cfg || (cfg.mechanic !== 'split' && cfg.mechanic !== 'gauntlet')) return fallback;
+  if (typeof toC !== 'number' || toC < 0) return fallback;
+  const want = (toC < GF_SPLIT_COL) ? cm_gfSplitLeftColor : cm_gfSplitRightColor;
+  return (typeof getTileColor === 'function') ? getTileColor(want) : fallback;
+}
+
+function _gfNormalizeSplitColours() {
+  if (activeChallengeMode !== 'goldenfrog') return;
+  if (typeof grid === 'undefined' || !grid || !grid.length) return;
+  if (!cm_gfSplitLeftColor || !cm_gfSplitRightColor) return;
+  const cfg = (typeof GF_LOCATIONS_CFG !== 'undefined' && typeof cm_gfLevel !== 'undefined')
+    ? GF_LOCATIONS_CFG[Math.min((cm_gfLevel|0)-1, 9)] : null;
+  if (!cfg || (cfg.mechanic !== 'split' && cfg.mechanic !== 'gauntlet')) return;
+  let changed = false;
+  for (let r = 0; r < ROWS; r++) {
+    const row = grid[r]; if (!row) continue;
+    for (let c = 0; c < COLS; c++) {
+      const v = row[c]; if (!v) continue;
+      const want = (c < GF_SPLIT_COL) ? cm_gfSplitLeftColor : cm_gfSplitRightColor;
+      if (v !== want) { row[c] = want; changed = true; }
+    }
+  }
+  if (changed && typeof drawGrid === 'function') drawGrid();
+}
+
 function _gfRecheckLinesAfterMutation() {
   if (activeChallengeMode !== 'goldenfrog') return;
+  // GAUNTLET: re-tint any tile that crossed the split line during the mutation
+  // BEFORE checking line completions, so a half-row that's now uniformly
+  // re-coloured can still complete normally.
+  try { _gfNormalizeSplitColours(); } catch(_e) {}
   try {
     if (typeof findCompletedLines !== 'function' || typeof clearLines !== 'function') return;
     const completed = findCompletedLines();
@@ -15099,7 +15143,16 @@ function _gfTriggerMonacoQuake() {
       const [or, oc] = occupied[i];
       const [er, ec] = empty[i];
       const val = grid[or][oc];
-      moves.push({ fromR: or, fromC: oc, toR: er, toC: ec, val: val, color: getTileColor(val) });
+      moves.push({ fromR: or, fromC: oc, toR: er, toC: ec, val: val, color: _gfResolveSlideColor(val, ec) });
+      // Also commit the destination-half colour into the grid so when the
+      // slide settles the tile sits in its half-correct hue (no need to wait
+      // for normalization pass).
+      if (typeof _gfResolveSlideColor === 'function' && cm_gfSplitLeftColor && cm_gfSplitRightColor) {
+        const want = (ec < GF_SPLIT_COL) ? cm_gfSplitLeftColor : cm_gfSplitRightColor;
+        // We mutate moves[].val so the post-slide commit (a few lines below) writes
+        // the half-correct value into grid[er][ec].
+        moves[moves.length-1].val = want;
+      }
     }
   } catch (_e) {}
 
@@ -15519,9 +15572,12 @@ function _gfStreetApplySlide(excludedRows) {
       const v = before[c];
       if (!v) continue;
       const toC = c + dir;
-      // Resolve the tile colour ONCE here so the slide overlay can render it
-      // without re-looking up the grid (which has already been mutated).
-      const colHex = (typeof getTileColor === 'function') ? getTileColor(v) : '#FFD700';
+      // Resolve colour for the destination half so a tile that crosses the
+      // split line shows the destination's colour mid-slide (no green tile
+      // briefly passing through the purple half).
+      const colHex = (typeof _gfResolveSlideColor === 'function')
+        ? _gfResolveSlideColor(v, toC)
+        : ((typeof getTileColor === 'function') ? getTileColor(v) : '#FFD700');
       if (toC < 0 || toC >= COLS) {
         // Tile falls off the edge — record a fall-slide; not present in `after`.
         slides.push({
@@ -15530,7 +15586,17 @@ function _gfStreetApplySlide(excludedRows) {
           color: colHex, start: startTs, dur: STREET_FALL_MS, fall: true
         });
       } else {
-        after[toC] = v;
+        // Write the destination-half colour into the grid so the post-slide
+        // commit lands the tile already half-correct.
+        let writeVal = v;
+        if (cm_gfSplitLeftColor && cm_gfSplitRightColor) {
+          const cfgC = (typeof GF_LOCATIONS_CFG !== 'undefined' && typeof cm_gfLevel !== 'undefined')
+            ? GF_LOCATIONS_CFG[Math.min((cm_gfLevel|0)-1, 9)] : null;
+          if (cfgC && (cfgC.mechanic === 'split' || cfgC.mechanic === 'gauntlet')) {
+            writeVal = (toC < GF_SPLIT_COL) ? cm_gfSplitLeftColor : cm_gfSplitRightColor;
+          }
+        }
+        after[toC] = writeVal;
         slides.push({
           fromR: r, fromC: c,
           toR: r, toC: toC,
@@ -15601,6 +15667,21 @@ function _gfMaldivesStartFlight() {
     // Compute the L→R rotation: new[c] = old[(c-1+N)%N]
     const after = new Array(N);
     for (let c = 0; c < N; c++) after[c] = before[(c - 1 + N) % N];
+    // GAUNTLET split-aware: rewrite the post-rotation row so each cell holds the
+    // colour of the half it now sits in. A tile that just crossed the split
+    // line picks up the destination half's colour.
+    let _splitActive = false;
+    if (cm_gfSplitLeftColor && cm_gfSplitRightColor) {
+      const cfgC = (typeof GF_LOCATIONS_CFG !== 'undefined' && typeof cm_gfLevel !== 'undefined')
+        ? GF_LOCATIONS_CFG[Math.min((cm_gfLevel|0)-1, 9)] : null;
+      _splitActive = !!(cfgC && (cfgC.mechanic === 'split' || cfgC.mechanic === 'gauntlet'));
+    }
+    if (_splitActive) {
+      for (let c = 0; c < N; c++) {
+        if (!after[c]) continue;
+        after[c] = (c < GF_SPLIT_COL) ? cm_gfSplitLeftColor : cm_gfSplitRightColor;
+      }
+    }
     // Build slide records for occupied source tiles.
     for (let c = 0; c < N; c++) {
       const v = before[c];
@@ -15617,7 +15698,9 @@ function _gfMaldivesStartFlight() {
       const wobbleFreq = 1.5 + Math.random() * 1.5; // sine cycles per slide
       slides.push({
         fromR, fromC, toR, toC,
-        color: (typeof getTileColor === 'function') ? getTileColor(v) : '#FFD700',
+        color: (typeof _gfResolveSlideColor === 'function')
+          ? _gfResolveSlideColor(v, toC)
+          : ((typeof getTileColor === 'function') ? getTileColor(v) : '#FFD700'),
         start: startTs, dur: SLIDE_DUR,
         wobbleAmp, wobblePhase, wobbleFreq,
         wrap: isWrap
@@ -17155,6 +17238,9 @@ function _gfRotateBoard() {
   }
   for (let r = 0; r < ROWS; r++) for (let c = 0; c < COLS; c++) grid[r][c] = newGrid[r][c];
   cm_gfRotateAngle = (cm_gfRotateAngle + 90) % 360;
+  // GAUNTLET: re-tint cross-half tiles BEFORE the first draw so we never
+  // render a single frame of wrong-half colours.
+  if (typeof _gfNormalizeSplitColours === 'function') _gfNormalizeSplitColours();
   drawGrid();
   // LESSON FROM DUBAI: rotated tiles may now sit on a completed line
   _gfRecheckLinesAfterMutation();
