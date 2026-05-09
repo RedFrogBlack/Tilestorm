@@ -14517,6 +14517,19 @@ function _gfRecheckLinesAfterMutation() {
       if (typeof updateUI === 'function') updateUI();
     }
   } catch(_e) { /* defensive — never break a mechanic on recheck failure */ }
+  // GAUNTLET FIX: chaos mutations (gravity flip, rotation, conveyor, streets
+  // slide, tide drain) can leave the player with no piece that fits — either
+  // because the board filled, or because the SPLIT colour rule blocks every
+  // empty cell. The placement path checks game-over, but timer-driven
+  // mutations do not, so the game would just hang. Run the check after every
+  // mutation; defer 250ms so any in-flight slide animation settles first.
+  try {
+    if (gameActive && typeof checkGameOver === 'function' && typeof triggerGameOver === 'function') {
+      setTimeout(() => {
+        if (gameActive && checkGameOver()) triggerGameOver();
+      }, 250);
+    }
+  } catch(_e) {}
 }
 
 function _gfActivateMechanic(lvl) {
@@ -15551,6 +15564,9 @@ function _gfStreetApplySlide(excludedRows) {
       _gfStreetHiddenSet = new Set();
       _gfStreetRafId = null;
       if (typeof drawGrid === 'function') drawGrid();
+      // Streets slide may have shoved tiles into a completed line OR left the
+      // player with no playable cell; recheck (also runs game-over check).
+      if (typeof _gfRecheckLinesAfterMutation === 'function') _gfRecheckLinesAfterMutation();
       return;
     }
     _gfStreetRafId = requestAnimationFrame(tick);
