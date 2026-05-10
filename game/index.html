@@ -21089,8 +21089,8 @@ function updateLevelNavStrip() {
   const lv = _getActiveLevelNum(pack);
   const isDev = (typeof localStorage !== 'undefined' && localStorage.getItem('cd_dev_unlock') === '1');
   const unlocked = (typeof _cdProgress !== 'undefined') ? _cdProgress.getUnlocked(pack) : 1;
-  // Monuments: all 10 cities always accessible (testing build). Other packs gated.
-  const cap = (pack === 'monuments' || isDev) ? 10 : Math.min(10, unlocked);
+  // Same gating logic as Golden Frog: only unlocked levels accessible; dev unlocks all.
+  const cap = isDev ? 10 : Math.min(10, unlocked);
   // Update label — "4 / 10" style (no 'LV' prefix)
   const lblEl = document.getElementById('lvl-nav-current');
   if (lblEl) lblEl.textContent = lv + ' / 10';
@@ -21115,8 +21115,8 @@ function _jumpToLevel(pack, targetLv) {
   if (!pack) return;
   const isDev = (typeof localStorage !== 'undefined' && localStorage.getItem('cd_dev_unlock') === '1');
   const unlocked = (typeof _cdProgress !== 'undefined') ? _cdProgress.getUnlocked(pack) : 1;
-  // Monuments: all 10 cities always accessible (testing build). Other packs gated.
-  const cap = (pack === 'monuments' || isDev) ? 10 : Math.min(10, unlocked);
+  // Same gating logic as Golden Frog: only unlocked levels accessible; dev unlocks all.
+  const cap = isDev ? 10 : Math.min(10, unlocked);
   if (targetLv < 1 || targetLv > cap) return;
   if (typeof _cdProgress !== 'undefined') _cdProgress.setLastLevel(pack, targetLv);
   if (pack === 'monuments') {
@@ -22184,11 +22184,17 @@ function updateHomeSubtitles() {
   const DEV_KEY = 'ts_dev_mode';
 
   function isDev() {
-    try { return localStorage.getItem(DEV_KEY) === '1'; } catch(e){ return false; }
+    try {
+      return localStorage.getItem(DEV_KEY) === '1'
+          || localStorage.getItem('cd_dev_unlock') === '1';
+    } catch(e){ return false; }
   }
 
   function setDev(on) {
     try { localStorage.setItem(DEV_KEY, on ? '1' : '0'); } catch(e){}
+    // Also write the canonical 'cd_dev_unlock' key that the rest of the codebase
+    // (cap checks, level-nav strip, dev backdoors) reads. Keep both keys in sync.
+    try { localStorage.setItem('cd_dev_unlock', on ? '1' : '0'); } catch(e){}
     if (on) {
       // Unlock everything via in-scope hook so the let-scoped ownedTiers actually mutates
       try {
