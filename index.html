@@ -9930,70 +9930,106 @@ function _mnDrawCityAccra(ctx, W, H, baseY, season, dayMix, night, ts, horiz) {
   const SH = H * 0.55;
   _mnDrawGroundBand(ctx, W, H, baseY, 'savannah', dayMix, horiz);
 
-  // Low palm-fringed horizon line (distant)
+  // ── Distant Atlantic ocean horizon strip (Accra is coastal) ──
   ctx.save();
-  ctx.fillStyle = `rgba(${20+dayMix*30},${50+dayMix*40},${30+dayMix*20},0.55)`;
-  ctx.fillRect(0, baseY - SH*0.18, W, SH*0.18);
-  // Palm trees scattered
-  ctx.strokeStyle = `rgba(${30+dayMix*20},${20+dayMix*15},${15+dayMix*10},0.92)`;
-  ctx.fillStyle = `rgba(${40+dayMix*40},${110+dayMix*50},${50+dayMix*20},0.95)`;
-  ctx.lineWidth = 3;
-  for (let i = 0; i < 6; i++) {
-    const px = W * (0.08 + i * 0.15);
-    const py = baseY - SH * 0.18;
-    ctx.beginPath();
-    ctx.moveTo(px, py); ctx.quadraticCurveTo(px - 4, py - SH*0.18, px - 2, py - SH*0.32);
-    ctx.stroke();
-    // Fronds
-    for (let f = 0; f < 5; f++) {
-      const ang = -Math.PI/2 + (f - 2) * 0.5;
-      ctx.beginPath();
-      ctx.moveTo(px - 2, py - SH*0.32);
-      ctx.quadraticCurveTo(px - 2 + Math.cos(ang)*9, py - SH*0.32 + Math.sin(ang)*9 - 2,
-                            px - 2 + Math.cos(ang)*18, py - SH*0.32 + Math.sin(ang)*18);
-      ctx.lineWidth = 2.5;
-      ctx.strokeStyle = `rgba(${40+dayMix*40},${110+dayMix*50},${50+dayMix*20},0.95)`;
-      ctx.stroke();
+  ctx.fillStyle = `rgba(${70+dayMix*30},${120+dayMix*40},${160+dayMix*30},0.45)`;
+  ctx.fillRect(0, baseY - SH*0.50, W, SH*0.06);
+  ctx.restore();
+
+  // ── Distant Accra skyline silhouette (far layer, hazy pastel buildings) ──
+  ctx.save();
+  ctx.fillStyle = `rgba(${165+dayMix*25},${135+dayMix*20},${105+dayMix*15},0.65)`;
+  const farBlocks = [
+    [0.00,0.05,0.20],[0.05,0.04,0.16],[0.10,0.05,0.22],[0.16,0.04,0.18],[0.21,0.05,0.24],[0.27,0.04,0.20],
+    [0.72,0.04,0.18],[0.77,0.05,0.22],[0.83,0.04,0.16],[0.88,0.05,0.26],[0.94,0.04,0.20]
+  ];
+  for (const [fx, fw, fh] of farBlocks) ctx.fillRect(fx*W, baseY - fh*SH, fw*W, fh*SH);
+  // A couple of tall communications towers (Accra TV mast, GBC tower)
+  ctx.fillStyle = `rgba(${145+dayMix*20},${115+dayMix*15},${85+dayMix*10},0.85)`;
+  for (const fx of [0.13, 0.86]) {
+    const mx = fx * W;
+    ctx.fillRect(mx - 1.5, baseY - SH*0.50, 3, SH*0.50);
+    // Top crown
+    ctx.beginPath(); ctx.arc(mx, baseY - SH*0.50, 3, Math.PI, 0); ctx.fill();
+    ctx.fillRect(mx - 0.4, baseY - SH*0.56, 0.8, 6);
+  }
+  ctx.restore();
+
+  // ── Near skyline — modern downtown Accra (mid layer, more saturated colors) ──
+  ctx.save();
+  const nearBlocks = [
+    [0.02,0.06,0.32, 175, 90, 70],   // terracotta
+    [0.09,0.05,0.40, 200,150, 80],   // ochre
+    [0.15,0.06,0.28, 160,120, 90],   // muted
+    [0.22,0.05,0.36, 195,135, 85],   // ochre
+    [0.30,0.04,0.30, 175,100, 75],
+    [0.70,0.05,0.34, 180,110, 80],
+    [0.76,0.06,0.42, 210,150, 85],
+    [0.83,0.05,0.30, 165,105, 75],
+    [0.89,0.06,0.38, 195,135, 80],
+    [0.95,0.05,0.28, 175,115, 80]
+  ];
+  for (const [fx, fw, fh, r,g,b] of nearBlocks) {
+    ctx.fillStyle = `rgba(${r+dayMix*15},${g+dayMix*12},${b+dayMix*8},0.94)`;
+    ctx.fillRect(fx*W, baseY - fh*SH, fw*W, fh*SH);
+    // Window grid
+    ctx.fillStyle = `rgba(${230+dayMix*10},${200+dayMix*8},${130+dayMix*5},${0.45 + night*0.3})`;
+    const rows = Math.floor(fh*SH / 8);
+    const cols = Math.max(2, Math.floor(fw*W / 6));
+    for (let rr = 0; rr < rows; rr++) for (let cc = 0; cc < cols; cc++) {
+      if ((rr + cc) % 2 === 0) ctx.fillRect(fx*W + cc*6 + 1, baseY - fh*SH + rr*8 + 1, 2, 3);
     }
   }
   ctx.restore();
 
-  // Independence Square obelisks (left)
+  // ── INDEPENDENCE SQUARE — 3 stone obelisks (centre-left, signature) ──
   ctx.save();
-  ctx.fillStyle = `rgba(${230+dayMix*10},${225+dayMix*8},${215+dayMix*5},0.95)`;
+  ctx.fillStyle = `rgba(${238+dayMix*12},${228+dayMix*8},${210+dayMix*5},0.96)`;
   for (let i = 0; i < 3; i++) {
-    const ox = W * (0.08 + i * 0.07);
-    const oh = SH * (0.40 - i * 0.05);
-    ctx.fillRect(ox - 3, baseY - oh, 6, oh);
+    const ox = W * (0.34 + i * 0.04);
+    const oh = SH * (0.30 - Math.abs(i - 1) * 0.05);
+    ctx.fillRect(ox - 4, baseY - oh, 8, oh);
+    // Pointed cap
     ctx.beginPath();
-    ctx.moveTo(ox - 4, baseY - oh);
-    ctx.lineTo(ox,     baseY - oh - 10);
-    ctx.lineTo(ox + 4, baseY - oh);
+    ctx.moveTo(ox - 5, baseY - oh);
+    ctx.lineTo(ox,     baseY - oh - 12);
+    ctx.lineTo(ox + 5, baseY - oh);
     ctx.closePath(); ctx.fill();
   }
+  // Star atop centre obelisk
+  ctx.fillStyle = `rgba(${15+dayMix*5},${15+dayMix*5},${20+dayMix*5},0.98)`;
+  const cobX = W * 0.38, cobY = baseY - SH * 0.30 - 12;
+  ctx.beginPath();
+  for (let k = 0; k < 10; k++) {
+    const ang = -Math.PI/2 + k * Math.PI / 5;
+    const rr = (k % 2 === 0) ? 6 : 2.5;
+    const px = cobX + Math.cos(ang) * rr, py = cobY - 6 + Math.sin(ang) * rr;
+    if (k === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
+  }
+  ctx.closePath(); ctx.fill();
   ctx.restore();
 
-  // BLACK STAR GATE — centre archway with massive black star on top
+  // ── BLACK STAR GATE — centre archway with massive black star on top (signature) ──
   ctx.save();
-  const gateX = W * 0.50, gateY = baseY, gateW = W * 0.30, gateH = SH * 0.70;
+  const gateX = W * 0.50, gateY = baseY, gateW = W * 0.22, gateH = SH * 0.58;
   // Stone arch base
-  ctx.fillStyle = `rgba(${240+dayMix*10},${225+dayMix*8},${195+dayMix*5},0.96)`;
+  ctx.fillStyle = `rgba(${242+dayMix*10},${228+dayMix*8},${198+dayMix*5},0.96)`;
   // Two pillars
-  ctx.fillRect(gateX - gateW/2,      gateY - gateH, gateW * 0.12, gateH);
-  ctx.fillRect(gateX + gateW/2 - gateW*0.12, gateY - gateH, gateW * 0.12, gateH);
+  ctx.fillRect(gateX - gateW/2,      gateY - gateH, gateW * 0.14, gateH);
+  ctx.fillRect(gateX + gateW/2 - gateW*0.14, gateY - gateH, gateW * 0.14, gateH);
   // Lintel beam
   ctx.fillRect(gateX - gateW/2, gateY - gateH, gateW, gateH * 0.18);
-  // Arched opening (subtract)
-  ctx.fillStyle = `rgba(${horiz[0]},${horiz[1]},${horiz[2]},0.4)`;
+  // Arched opening (cut-out look)
+  ctx.fillStyle = `rgba(${horiz[0]},${horiz[1]},${horiz[2]},0.5)`;
   ctx.beginPath();
-  ctx.moveTo(gateX - gateW/2 + gateW*0.14, gateY);
-  ctx.lineTo(gateX - gateW/2 + gateW*0.14, gateY - gateH * 0.60);
-  ctx.quadraticCurveTo(gateX, gateY - gateH * 0.85, gateX + gateW/2 - gateW*0.14, gateY - gateH * 0.60);
-  ctx.lineTo(gateX + gateW/2 - gateW*0.14, gateY);
+  ctx.moveTo(gateX - gateW/2 + gateW*0.16, gateY);
+  ctx.lineTo(gateX - gateW/2 + gateW*0.16, gateY - gateH * 0.62);
+  ctx.quadraticCurveTo(gateX, gateY - gateH * 0.92, gateX + gateW/2 - gateW*0.16, gateY - gateH * 0.62);
+  ctx.lineTo(gateX + gateW/2 - gateW*0.16, gateY);
   ctx.closePath(); ctx.fill();
   // Big black star atop the arch
   ctx.fillStyle = `rgba(${10+dayMix*5},${10+dayMix*5},${15+dayMix*5},0.98)`;
-  const starX = gateX, starY = gateY - gateH - 18, starR = 24;
+  const starX = gateX, starY = gateY - gateH - 22, starR = 22;
   ctx.beginPath();
   for (let k = 0; k < 10; k++) {
     const ang = -Math.PI/2 + k * Math.PI / 5;
@@ -10002,21 +10038,61 @@ function _mnDrawCityAccra(ctx, W, H, baseY, season, dayMix, night, ts, horiz) {
     if (k === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
   }
   ctx.closePath(); ctx.fill();
-  // Gold trim on star edges
   ctx.strokeStyle = 'rgba(230,180,70,0.9)';
   ctx.lineWidth = 1.5;
   ctx.stroke();
   ctx.restore();
 
-  // Right side: low buildings of city
+  // ── Jamestown Lighthouse — red-and-white striped tower (right of gate, signature) ──
   ctx.save();
-  ctx.fillStyle = `rgba(${180+dayMix*15},${150+dayMix*10},${100+dayMix*5},0.90)`;
-  for (let i = 0; i < 4; i++) {
-    const bx = W * (0.78 + i * 0.05);
-    const bh = SH * (0.25 + (i % 2) * 0.10);
-    ctx.fillRect(bx, baseY - bh, W * 0.045, bh);
+  const lhX = W * 0.62;
+  ctx.fillStyle = `rgba(${245+dayMix*8},${240+dayMix*5},${230+dayMix*3},0.96)`;
+  ctx.fillRect(lhX - 5, baseY - SH*0.46, 10, SH*0.46);
+  // Red stripes
+  ctx.fillStyle = `rgba(${200+dayMix*15},${50+dayMix*15},${50+dayMix*8},0.95)`;
+  for (let r = 0; r < 4; r++) ctx.fillRect(lhX - 5, baseY - SH*0.46 + r * SH*0.12 + SH*0.06, 10, SH*0.04);
+  // Glass lantern room
+  ctx.fillStyle = `rgba(${100+dayMix*30},${120+dayMix*30},${140+dayMix*25},0.88)`;
+  ctx.fillRect(lhX - 7, baseY - SH*0.52, 14, SH*0.06);
+  // Domed cap
+  ctx.fillStyle = `rgba(${200+dayMix*15},${50+dayMix*15},${50+dayMix*8},0.95)`;
+  ctx.beginPath(); ctx.arc(lhX, baseY - SH*0.52, 7, Math.PI, 0); ctx.fill();
+  // Light beam (subtle)
+  ctx.fillStyle = `rgba(255,230,140,${0.25 + night*0.35})`;
+  ctx.beginPath();
+  ctx.moveTo(lhX, baseY - SH*0.51);
+  ctx.lineTo(lhX - 30, baseY - SH*0.30);
+  ctx.lineTo(lhX + 30, baseY - SH*0.30);
+  ctx.closePath(); ctx.fill();
+  ctx.restore();
+
+  // ── Palm trees scattered along foreground ──
+  ctx.save();
+  ctx.strokeStyle = `rgba(${50+dayMix*15},${35+dayMix*10},${20+dayMix*5},0.92)`;
+  ctx.lineWidth = 3;
+  for (const fx of [0.04, 0.17, 0.45, 0.55, 0.78, 0.95]) {
+    const px = fx * W, py = baseY;
+    ctx.beginPath();
+    ctx.moveTo(px, py); ctx.quadraticCurveTo(px - 4, py - SH*0.16, px - 1, py - SH*0.30);
+    ctx.stroke();
+    ctx.fillStyle = `rgba(${60+dayMix*40},${130+dayMix*50},${55+dayMix*20},0.96)`;
+    for (let f = 0; f < 6; f++) {
+      const ang = -Math.PI/2 + (f - 2.5) * 0.5;
+      ctx.beginPath();
+      ctx.moveTo(px - 1, py - SH*0.30);
+      ctx.quadraticCurveTo(px - 1 + Math.cos(ang)*8, py - SH*0.30 + Math.sin(ang)*7,
+                            px - 1 + Math.cos(ang)*16, py - SH*0.30 + Math.sin(ang)*14);
+      ctx.lineWidth = 2.5;
+      ctx.strokeStyle = `rgba(${50+dayMix*40},${120+dayMix*45},${50+dayMix*20},0.95)`;
+      ctx.stroke();
+    }
   }
   ctx.restore();
+
+  _mnNightWindows(ctx, W, H, baseY, dayMix, night, ts, [
+    { x: W*0.02, y: baseY - SH*0.40, w: W*0.30, h: SH*0.35 },
+    { x: W*0.70, y: baseY - SH*0.40, w: W*0.30, h: SH*0.35 }
+  ]);
 }
 
 // ─── 3. CAIRO — Pyramids of Giza + Sphinx + palms ────────────────────────
@@ -10024,35 +10100,18 @@ function _mnDrawCityCairo(ctx, W, H, baseY, season, dayMix, night, ts, horiz) {
   const SH = H * 0.55;
   _mnDrawGroundBand(ctx, W, H, baseY, 'sand', dayMix, horiz);
 
-  // Distant Cairo city skyline silhouette (modern Cairo — minarets + low blocks)
+  // ── Distant Cairo city skyline (BEHIND the pyramids) ──
   ctx.save();
   ctx.fillStyle = `rgba(${175+dayMix*20},${145+dayMix*15},${95+dayMix*10},0.55)`;
-  ctx.fillRect(0, baseY - SH*0.18, W, SH*0.18);
-  // Cluster of low buildings
-  ctx.fillStyle = `rgba(${155+dayMix*20},${125+dayMix*15},${80+dayMix*10},0.7)`;
+  ctx.fillRect(0, baseY - SH*0.35, W, SH*0.30);
+  // Cluster of low building blocks (NOTE: pyramids will cover most of these,
+  // but they fill the far horizon haze so it doesn't look bare)
+  ctx.fillStyle = `rgba(${155+dayMix*20},${125+dayMix*15},${80+dayMix*10},0.78)`;
   const distBlocks = [
-    [0.02,0.04,0.10],[0.07,0.05,0.14],[0.13,0.06,0.18],[0.20,0.04,0.12],
-    [0.62,0.05,0.16],[0.68,0.06,0.20],[0.75,0.04,0.13],[0.81,0.05,0.17],[0.87,0.04,0.11],[0.92,0.06,0.18]
+    [0.00,0.05,0.22],[0.05,0.04,0.18],[0.10,0.05,0.26],[0.16,0.04,0.20],[0.21,0.05,0.30],[0.27,0.04,0.22],
+    [0.72,0.05,0.22],[0.77,0.04,0.30],[0.83,0.05,0.18],[0.88,0.04,0.26],[0.93,0.05,0.22]
   ];
-  for (const [fx, fw, fh] of distBlocks) {
-    ctx.fillRect(fx*W, baseY - fh*SH, fw*W, fh*SH);
-  }
-  // Cairo minarets (slender pencil towers — city of a thousand minarets)
-  ctx.fillStyle = `rgba(${135+dayMix*20},${110+dayMix*15},${75+dayMix*10},0.85)`;
-  const minarets = [0.09, 0.18, 0.70, 0.83, 0.91];
-  for (const fx of minarets) {
-    const mx = fx * W;
-    ctx.fillRect(mx - 1.5, baseY - SH*0.32, 3, SH*0.32);
-    // Top dome + spire
-    ctx.beginPath(); ctx.arc(mx, baseY - SH*0.32, 3, Math.PI, 0); ctx.fill();
-    ctx.fillRect(mx - 0.4, baseY - SH*0.38, 0.8, 4);
-  }
-  // Distant dune ridges in front of city
-  ctx.fillStyle = `rgba(${200+dayMix*15},${165+dayMix*10},${100+dayMix*5},0.7)`;
-  ctx.beginPath();
-  ctx.moveTo(0, baseY);
-  for (let x = 0; x <= W; x += 16) ctx.lineTo(x, baseY - SH*0.08 - Math.sin(x*0.012)*8);
-  ctx.lineTo(W, baseY); ctx.closePath(); ctx.fill();
+  for (const [fx, fw, fh] of distBlocks) ctx.fillRect(fx*W, baseY - fh*SH, fw*W, fh*SH);
   ctx.restore();
 
   // Three pyramids in classic Giza arrangement
@@ -10091,6 +10150,74 @@ function _mnDrawCityCairo(ctx, W, H, baseY, season, dayMix, night, ts, horiz) {
       ctx.stroke();
     }
   }
+  ctx.restore();
+
+  // ── Modern Cairo city cluster IN FRONT of pyramids (low-rise mosques + buildings) ──
+  ctx.save();
+  // Cluster of modern Cairo blocks on the LEFT (peeking in front of Menkaure)
+  ctx.fillStyle = `rgba(${175+dayMix*15},${135+dayMix*10},${85+dayMix*5},0.94)`;
+  const nearBlocks = [
+    [0.01,0.04,0.18],[0.05,0.05,0.24],[0.10,0.04,0.16],[0.14,0.05,0.22],
+    [0.40,0.04,0.12],[0.44,0.03,0.10],
+    [0.92,0.04,0.18],[0.96,0.04,0.14]
+  ];
+  for (const [fx, fw, fh] of nearBlocks) ctx.fillRect(fx*W, baseY - fh*SH, fw*W, fh*SH);
+  // Window grid on near blocks
+  ctx.fillStyle = `rgba(${235+dayMix*10},${205+dayMix*8},${135+dayMix*5},${0.5 + night*0.3})`;
+  for (const [fx, fw, fh] of nearBlocks) {
+    const x = fx*W, w = fw*W, h = fh*SH;
+    for (let rr = 0; rr < Math.floor(h/7); rr++) for (let cc = 0; cc < Math.floor(w/5); cc++) {
+      if ((rr + cc) % 2 === 0) ctx.fillRect(x + cc*5 + 1, baseY - h + rr*7 + 1, 2, 3);
+    }
+  }
+  // Mosque minarets sprinkled in the near layer (visible above the low blocks)
+  ctx.fillStyle = `rgba(${145+dayMix*20},${110+dayMix*15},${75+dayMix*10},0.95)`;
+  const nearMinarets = [
+    [0.07, 0.40], [0.42, 0.30], [0.97, 0.36]
+  ];
+  for (const [fx, fh] of nearMinarets) {
+    const mx = fx * W;
+    const mh = SH * fh;
+    ctx.fillRect(mx - 2, baseY - mh, 4, mh);
+    // Balcony band
+    ctx.fillRect(mx - 3.5, baseY - mh*0.70, 7, 2);
+    // Onion dome
+    ctx.beginPath(); ctx.arc(mx, baseY - mh - 2, 4, Math.PI, 0); ctx.fill();
+    // Spire + crescent
+    ctx.fillRect(mx - 0.6, baseY - mh - 12, 1.2, 8);
+    ctx.fillStyle = `rgba(${235+dayMix*10},${205+dayMix*8},${135+dayMix*5},0.95)`;
+    ctx.beginPath(); ctx.arc(mx, baseY - mh - 15, 2.4, -Math.PI*0.85, Math.PI*0.85, false); ctx.fill();
+    ctx.fillStyle = `rgba(${145+dayMix*20},${110+dayMix*15},${75+dayMix*10},0.95)`;
+  }
+  // CAIRO TOWER — tall modern lattice tower peeking above Khafre (right side)
+  const ctowX = W * 0.65, ctowH = SH * 1.05; // tall enough to peek above Khafre (0.62 SH)
+  // Slightly tapered concrete shaft
+  ctx.fillStyle = `rgba(${190+dayMix*15},${160+dayMix*12},${115+dayMix*8},0.95)`;
+  ctx.beginPath();
+  ctx.moveTo(ctowX - 4, baseY);
+  ctx.lineTo(ctowX - 2.5, baseY - ctowH);
+  ctx.lineTo(ctowX + 2.5, baseY - ctowH);
+  ctx.lineTo(ctowX + 4, baseY);
+  ctx.closePath(); ctx.fill();
+  // Lattice horizontal bands
+  ctx.strokeStyle = `rgba(${140+dayMix*15},${105+dayMix*10},${75+dayMix*5},0.55)`;
+  ctx.lineWidth = 0.8;
+  for (let r = 0; r < 22; r++) {
+    const yy = baseY - r * (ctowH / 22);
+    ctx.beginPath(); ctx.moveTo(ctowX - 3, yy); ctx.lineTo(ctowX + 3, yy); ctx.stroke();
+  }
+  // Lotus-shaped observation deck
+  ctx.fillStyle = `rgba(${210+dayMix*15},${180+dayMix*12},${135+dayMix*8},0.97)`;
+  ctx.beginPath();
+  ctx.moveTo(ctowX - 9, baseY - ctowH);
+  ctx.lineTo(ctowX, baseY - ctowH - 9);
+  ctx.lineTo(ctowX + 9, baseY - ctowH);
+  ctx.lineTo(ctowX + 7, baseY - ctowH + 5);
+  ctx.lineTo(ctowX - 7, baseY - ctowH + 5);
+  ctx.closePath(); ctx.fill();
+  // Antenna
+  ctx.fillStyle = `rgba(${145+dayMix*15},${115+dayMix*10},${85+dayMix*5},0.92)`;
+  ctx.fillRect(ctowX - 0.7, baseY - ctowH - 18, 1.4, 12);
   ctx.restore();
 
   // Sphinx in front of pyramids — BIGGER, more iconic
@@ -10804,47 +10931,57 @@ function _mnDrawCityMarrakech(ctx, W, H, baseY, season, dayMix, night, ts, horiz
   const SH = H * 0.55;
   _mnDrawGroundBand(ctx, W, H, baseY, 'sand', dayMix, horiz);
 
-  // ATLAS MOUNTAINS — dramatic snow-capped range (signature backdrop)
+  // ── ATLAS MOUNTAINS — rounded rolling range with snow caps (NOT triangular!) ──
   ctx.save();
-  // Far range — pale dusty pink-purple haze
-  ctx.fillStyle = `rgba(${175+dayMix*20},${140+dayMix*15},${130+dayMix*10},0.65)`;
+  // Far range — pale dusty pink-purple haze, smooth bumpy ridge
+  ctx.fillStyle = `rgba(${175+dayMix*20},${140+dayMix*15},${130+dayMix*10},0.6)`;
   ctx.beginPath();
   ctx.moveTo(0, baseY);
-  const farAtlas = [[0,0.18],[0.20,0.36],[0.42,0.28],[0.60,0.42],[0.80,0.30],[1.0,0.22]];
-  for (const [fx, fh] of farAtlas) ctx.lineTo(fx*W, baseY - fh*SH);
-  ctx.lineTo(W, baseY); ctx.closePath(); ctx.fill();
-  // NEAR Atlas range — deep red-brown silhouette, taller jagged peaks
-  ctx.fillStyle = `rgba(${120+dayMix*25},${85+dayMix*20},${70+dayMix*15},0.92)`;
-  ctx.beginPath();
-  ctx.moveTo(0, baseY);
-  const pks = [[0,0.18],[0.10,0.32],[0.20,0.40],[0.30,0.28],[0.40,0.50],[0.52,0.62],[0.62,0.45],[0.72,0.55],[0.82,0.38],[0.92,0.46],[1.0,0.30]];
-  for (const [fx, fh] of pks) ctx.lineTo(fx*W, baseY - fh*SH);
-  ctx.lineTo(W, baseY); ctx.closePath(); ctx.fill();
-  // Snow caps on Atlas peaks (always-present — Atlas is snowy most of the year)
-  ctx.fillStyle = `rgba(${245+dayMix*10},${248+dayMix*7},${252},0.92)`;
-  for (let i = 1; i < pks.length - 1; i++) {
-    const [fx, fh] = pks[i];
-    if (fh > 0.35) {
-      const px = fx * W, py = baseY - fh * SH;
-      ctx.beginPath();
-      ctx.moveTo(px - 18, py + 14);
-      ctx.lineTo(px - 6, py + 4);
-      ctx.lineTo(px, py);
-      ctx.lineTo(px + 6, py + 4);
-      ctx.lineTo(px + 18, py + 14);
-      ctx.closePath(); ctx.fill();
-    }
+  ctx.lineTo(0, baseY - SH*0.30);
+  for (let x = 0; x <= W; x += 6) {
+    const yy = baseY - SH*0.30 - Math.sin(x*0.013)*SH*0.06 - Math.sin(x*0.005)*SH*0.04;
+    ctx.lineTo(x, yy);
   }
-  // Ridge shadow lines (dark vertical streaks for rocky texture)
-  ctx.strokeStyle = `rgba(${75+dayMix*20},${50+dayMix*15},${40+dayMix*10},0.45)`;
-  ctx.lineWidth = 1;
-  for (let i = 1; i < pks.length - 1; i++) {
-    const [fx, fh] = pks[i];
-    const px = fx * W, py = baseY - fh * SH;
+  ctx.lineTo(W, baseY); ctx.closePath(); ctx.fill();
+
+  // NEAR Atlas range — deep red-brown silhouette with ROUNDED bumpy peaks (not triangular)
+  ctx.fillStyle = `rgba(${120+dayMix*25},${85+dayMix*20},${70+dayMix*15},0.94)`;
+  ctx.beginPath();
+  ctx.moveTo(0, baseY);
+  // Build a smooth-bumpy ridge using sin waves with peaks at strategic positions
+  for (let x = 0; x <= W; x += 4) {
+    // Multi-octave noise for natural ridge
+    const u = x / W;
+    const peak1 = Math.exp(-Math.pow((u - 0.15) * 4, 2)) * 0.20;
+    const peak2 = Math.exp(-Math.pow((u - 0.32) * 5, 2)) * 0.30;
+    const peak3 = Math.exp(-Math.pow((u - 0.55) * 4, 2)) * 0.42;  // tall central peak
+    const peak4 = Math.exp(-Math.pow((u - 0.75) * 5, 2)) * 0.28;
+    const peak5 = Math.exp(-Math.pow((u - 0.92) * 6, 2)) * 0.18;
+    const wobble = Math.sin(x*0.04) * 0.015 + Math.sin(x*0.09) * 0.008;
+    const fh = 0.22 + peak1 + peak2 + peak3 + peak4 + peak5 + wobble;
+    ctx.lineTo(x, baseY - SH * fh);
+  }
+  ctx.lineTo(W, baseY); ctx.closePath(); ctx.fill();
+
+  // Snow caps on the tallest peaks — sample heights along the curve
+  ctx.fillStyle = `rgba(${245+dayMix*10},${248+dayMix*7},${252},0.92)`;
+  const peakXs = [0.32, 0.55, 0.75];
+  for (const u of peakXs) {
+    const x = u * W;
+    const peak1 = Math.exp(-Math.pow((u - 0.15) * 4, 2)) * 0.20;
+    const peak2 = Math.exp(-Math.pow((u - 0.32) * 5, 2)) * 0.30;
+    const peak3 = Math.exp(-Math.pow((u - 0.55) * 4, 2)) * 0.42;
+    const peak4 = Math.exp(-Math.pow((u - 0.75) * 5, 2)) * 0.28;
+    const peak5 = Math.exp(-Math.pow((u - 0.92) * 6, 2)) * 0.18;
+    const fh = 0.22 + peak1 + peak2 + peak3 + peak4 + peak5;
+    const py = baseY - SH * fh;
+    // Rounded snow cap (cloud-shaped, not triangular)
     ctx.beginPath();
-    ctx.moveTo(px, py + 4);
-    ctx.lineTo(px + 3, baseY - SH*0.10);
-    ctx.stroke();
+    ctx.moveTo(x - 22, py + 14);
+    ctx.quadraticCurveTo(x - 16, py + 4, x - 8, py + 2);
+    ctx.quadraticCurveTo(x - 2, py - 2, x + 4, py + 1);
+    ctx.quadraticCurveTo(x + 12, py + 3, x + 22, py + 14);
+    ctx.closePath(); ctx.fill();
   }
   ctx.restore();
 
