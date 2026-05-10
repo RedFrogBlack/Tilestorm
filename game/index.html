@@ -21266,6 +21266,20 @@ function updateHomeSubtitles() {
 
   function devNextLevel() {
     try {
+      // Monuments flow (London Tower Bridge — autumn/spring/summer/winter)
+      if (typeof monumentsActive !== 'undefined' && monumentsActive) {
+        const total = MONUMENTS_LEVELS.length;
+        const cur = monumentsLevelIdx || 0;
+        const next = (cur + 1) % total;
+        // Use the proper in-place advance (handles same-monument season cross-fade,
+        // resets hazards, keeps board / score / bricks intact).
+        if (typeof advanceMonumentsLevel === 'function') {
+          advanceMonumentsLevel();
+          const newLv = MONUMENTS_LEVELS[monumentsLevelIdx];
+          showDevToast('SEASON: ' + (newLv?.season || '?').toUpperCase());
+        }
+        return;
+      }
       // Duo flow
       if (typeof currentDuoGame !== 'undefined' && currentDuoGame) {
         const next = Math.min((currentDuoLevel||1) + 1, 10);
@@ -21296,6 +21310,31 @@ function updateHomeSubtitles() {
 
   function devPrevLevel() {
     try {
+      // Monuments flow — step backwards through seasons
+      if (typeof monumentsActive !== 'undefined' && monumentsActive) {
+        const total = MONUMENTS_LEVELS.length;
+        const cur = monumentsLevelIdx || 0;
+        const prev = (cur - 1 + total) % total;
+        // Manually do the in-place season swap backwards
+        const curLv = MONUMENTS_LEVELS[cur];
+        const prevLv = MONUMENTS_LEVELS[prev];
+        if (curLv && prevLv && curLv.id === prevLv.id && curLv.zoneMap === prevLv.zoneMap) {
+          monumentsLevelIdx = prev;
+          _mnSeasonPrev = curLv.season;
+          _mnSeasonLerpStart = performance.now();
+          if (typeof _mnStopHazards === 'function') _mnStopHazards();
+          if (typeof _mnHazards !== 'undefined' && _mnHazards && _mnHazards.clear) _mnHazards.clear();
+          if (typeof _gfSeasonParticles !== 'undefined') _gfSeasonParticles = [];
+          if (typeof _mnHazardHintReset === 'function') _mnHazardHintReset();
+          if (typeof _mnStartHazards === 'function') _mnStartHazards();
+          if (typeof showEventBanner === 'function') {
+            const emj = { spring:'🌸', summer:'☀️', autumn:'🍂', winter:'❄️' }[prevLv.season] || '';
+            showEventBanner(emj + ' ' + prevLv.season.toUpperCase() + ' — keep building!');
+          }
+          showDevToast('SEASON: ' + prevLv.season.toUpperCase());
+        }
+        return;
+      }
       if (typeof currentDuoGame !== 'undefined' && currentDuoGame) {
         const prev = Math.max((currentDuoLevel||1) - 1, 1);
         window.currentDuoLevel = prev;
