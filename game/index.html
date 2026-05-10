@@ -7387,6 +7387,37 @@ const MONUMENTS_LEVELS = [
   { id:'syd_oh', name:'SYDNEY OPERA HOUSE', city:'Sydney', emoji:'🇦🇺', season:'winter', zoneMap: MN_OPERA_HOUSE_ZONES, hazardLabel:'blue mountain frost' },
 ];
 
+// ═══════════════════════════════════════════════════════════════════════
+// MONUMENTS_CITIES — picker-facing grouping. Each entry is ONE city; the
+// player picks a city and the game cycles through its 4 seasons (20s each)
+// internally. `startIdx` is the index into MONUMENTS_LEVELS where the
+// city's first season lives. Order MUST match the MONUMENTS_LEVELS layout.
+// ═══════════════════════════════════════════════════════════════════════
+const MONUMENTS_CITIES = [
+  { city:'London',     emoji:'🇬🇧', monument:'TOWER BRIDGE',       startIdx: 0  },
+  { city:'Prague',     emoji:'🇨🇿', monument:'CHARLES BRIDGE',      startIdx: 4  },
+  { city:'Accra',      emoji:'🇬🇭', monument:'BLACK STAR GATE',     startIdx: 8  },
+  { city:'Cairo',      emoji:'🇪🇬', monument:'PYRAMIDS OF GIZA',    startIdx: 12 },
+  { city:'Beijing',    emoji:'🇨🇳', monument:'GREAT WALL',          startIdx: 16 },
+  { city:'Jaipur',     emoji:'🇮🇳', monument:'HAWA MAHAL',          startIdx: 20 },
+  { city:'Rio',        emoji:'🇧🇷', monument:'CHRIST THE REDEEMER', startIdx: 24 },
+  { city:'Reykjavík',  emoji:'🇮🇸', monument:'HALLGRÍMSKIRKJA',     startIdx: 28 },
+  { city:'Marrakech',  emoji:'🇲🇦', monument:'KOUTOUBIA MOSQUE',    startIdx: 32 },
+  { city:'Sydney',     emoji:'🇦🇺', monument:'OPERA HOUSE',         startIdx: 36 },
+];
+// Convert a 1-based picker level (1..10) to the MONUMENTS_LEVELS start index.
+function _mnCityStartIdx(cityLv) {
+  const city = MONUMENTS_CITIES[Math.max(0, (cityLv|0) - 1)];
+  return city ? city.startIdx : 0;
+}
+// Convert a MONUMENTS_LEVELS index back to a 1-based city level number.
+function _mnLvIdxToCityLv(lvIdx) {
+  for (let i = MONUMENTS_CITIES.length - 1; i >= 0; i--) {
+    if (lvIdx >= MONUMENTS_CITIES[i].startIdx) return i + 1;
+  }
+  return 1;
+}
+
 // Look up the per-level intro voice clip for a Monuments level. Maps the
 // level's monument id + season to the right COMMENTARY entry.
 function _mnLevelIntroEntry(lv) {
@@ -8460,9 +8491,11 @@ function advanceCityPackLevel() {
 //  animated city skyline (day/night + 4 seasons). Foreground = monument
 //  silhouette drawn into the play grid, filled brick-by-brick.
 // ══════════════════════════════════════════════════════════════
+// `levelIdx` is the 0-based index into MONUMENTS_LEVELS (40 entries — 10 cities × 4 seasons).
+// To launch by city level (1..10), pass `_mnCityStartIdx(cityLv)`.
 function startMonumentsGame(levelIdx) {
   monumentsActive = true;
-  monumentsLevelIdx = Math.min(levelIdx || 0, MONUMENTS_LEVELS.length - 1);
+  monumentsLevelIdx = Math.min(Math.max(0, levelIdx | 0), MONUMENTS_LEVELS.length - 1);
   const lv = MONUMENTS_LEVELS[monumentsLevelIdx];
   // Piggyback on City Pack engine for line-clear hooks but use monument zone map.
   cityPackActive = true;
@@ -10643,7 +10676,8 @@ function _mnCheckWin() {
       if (typeof showEventBanner === 'function') showEventBanner('🏆 ' + lvName + ' COMPLETE!');
       try {
         if (typeof _cdProgress !== 'undefined') {
-          const curLv = monumentsLevelIdx + 1;
+          // Progress tracks the CITY level (1..10), not the internal season index (1..40).
+          const curLv = (typeof _mnLvIdxToCityLv === 'function') ? _mnLvIdxToCityLv(monumentsLevelIdx) : (monumentsLevelIdx + 1);
           _cdProgress.setLastLevel('monuments', curLv);
           if (typeof _cdProgress.markCompleted === 'function') _cdProgress.markCompleted('monuments', curLv);
         }
@@ -10781,7 +10815,18 @@ function stopMonumentsGame() {
 // When the next level is a DIFFERENT monument, we fall back to the original
 // stop+start flow (since the silhouette must be replaced).
 function advanceMonumentsLevel() {
-  const next = (monumentsLevelIdx + 1) % MONUMENTS_LEVELS.length;
+  // Wrap WITHIN the current city's 4-season block so each picker tile is a
+  // self-contained 4-season loop. Picking "Prague" cycles through Prague's
+  // 4 seasons forever — it never escapes into Accra.
+  let next;
+  if (typeof _mnLvIdxToCityLv === 'function' && typeof _mnCityStartIdx === 'function') {
+    const cityLv = _mnLvIdxToCityLv(monumentsLevelIdx);
+    const startIdx = _mnCityStartIdx(cityLv);
+    const offsetInCity = ((monumentsLevelIdx - startIdx + 1) % 4 + 4) % 4;
+    next = startIdx + offsetInCity;
+  } else {
+    next = (monumentsLevelIdx + 1) % MONUMENTS_LEVELS.length;
+  }
   const curLv  = MONUMENTS_LEVELS[monumentsLevelIdx];
   const nextLv = MONUMENTS_LEVELS[next];
   const curSeason  = (curLv && curLv.season) || null;
@@ -10951,7 +10996,8 @@ function clearLines({completedRows,completedCols,completedHalfRows}){
           // Mark progress (unlock next) — dev mode already has all 10.
           try {
             if (typeof _cdProgress !== 'undefined') {
-              const curLv = monumentsLevelIdx + 1;
+              // Progress is city-level (1..10), not internal season index.
+              const curLv = (typeof _mnLvIdxToCityLv === 'function') ? _mnLvIdxToCityLv(monumentsLevelIdx) : (monumentsLevelIdx + 1);
               _cdProgress.setLastLevel('monuments', curLv);
               if (typeof _cdProgress.markCompleted === 'function') _cdProgress.markCompleted('monuments', curLv);
             }
@@ -12972,7 +13018,7 @@ function buildShopUI(){
         : `<button class="shop-card-btn" data-buy="${idx}">UNLOCK</button>`;
     } else if (tier.isMonuments) {
       btnHtml = owned
-        ? `<button class="shop-card-btn city-play" onclick="closeShop();startMonumentsGame(0);">▶ PLAY</button>`
+        ? `<button class="shop-card-btn city-play" onclick="closeShop();openLevelPicker('monuments');">▶ PLAY</button>`
         : `<button class="shop-card-btn" data-buy="${idx}">UNLOCK</button>`;
     } else {
       btnHtml = owned
@@ -16848,13 +16894,13 @@ function openSoloSetup() {
       startCityPackGame(0);
       return;
     }
-    // City Monuments — new pack with custom renderer (Phase 1: London only).
+    // City Monuments — 10 cities, each with its own 4-season cycle. Open the
+    // city picker so the player can choose a city (LV1 = London, LV2 = Prague, …).
     if (tid === 'monuments') {
       equipTier(tid);
       ensureAudio();
       if (!checkAccessBeforeStart()) return;
-      if (typeof _cdProgress !== 'undefined') _cdProgress.setLastLevel('monuments', 1);
-      startMonumentsGame(0);
+      if (typeof openLevelPicker === 'function') openLevelPicker('monuments');
       return;
     }
     // Equip tier and set difficulty+challenge then start
@@ -16965,6 +17011,11 @@ function openLevelPicker(pack) {
     });
   } else if (pack === 'citypack' && typeof CITY_PACK_CITIES !== 'undefined') {
     levels = CITY_PACK_CITIES.map((c, i) => ({ idx: i, name: c.name, sub: 'SKYLINE', emoji: c.emoji||'' }));
+  } else if (pack === 'monuments' && typeof MONUMENTS_CITIES !== 'undefined') {
+    // City Monuments — each picker tile is ONE city; selecting it starts
+    // that city's 4-season cycle (auto-advances 20s per season, loops).
+    levels = MONUMENTS_CITIES.map((c, i) => ({ idx: i, name: c.city, sub: c.monument, emoji: c.emoji||'' }));
+    PACK_TC.monuments = '#F5A623';
   }
   const unlocked = _cdProgress.getUnlocked(pack);
   const isDev = _cdProgress.isDevUnlocked();
@@ -17021,6 +17072,13 @@ function openLevelPicker(pack) {
       if (typeof checkAccessBeforeStart === 'function' && !checkAccessBeforeStart()) return;
       if (typeof equipTier === 'function') equipTier('citypack');
       startCityPackGame(lv - 1);
+    } else if (p === 'monuments') {
+      ensureAudio();
+      if (typeof checkAccessBeforeStart === 'function' && !checkAccessBeforeStart()) return;
+      if (typeof equipTier === 'function') equipTier('monuments');
+      // lv is a city level (1..10). Start at that city's first season slot.
+      const idx = (typeof _mnCityStartIdx === 'function') ? _mnCityStartIdx(lv) : 0;
+      if (typeof startMonumentsGame === 'function') startMonumentsGame(idx);
     } else if (p === 'goldenfrog') {
       ensureAudio();
       if (typeof checkAccessBeforeStart === 'function' && !checkAccessBeforeStart()) return;
@@ -17082,7 +17140,7 @@ let cm_gfMechTimer = null;
 // ──────────────────────────────────────────────────────────────────
 // Packs that have a 10-level structure use this system. Endless packs
 // (Tadpole/Tree Frog/Fog) only track lifetime + streak (no unlocks).
-const CD_LEVEL_PACKS = ['goldenfrog', 'citypack'];
+const CD_LEVEL_PACKS = ['goldenfrog', 'citypack', 'monuments'];
 const CD_UNLOCK_CURVE = [0, 50, 150, 300, 500, 750, 1050, 1400, 1800, 2300]; // cumulative lifetime lines required for level idx (0-based)
 const CD_STREAK_BONUS_PER_DAY = 5;   // lines added on play, scaled by streak day
 const CD_STREAK_BONUS_CAP = 50;       // never reward more than +50 per session
@@ -20758,7 +20816,7 @@ function _getActiveLevelPack() {
   return null;
 }
 function _getActiveLevelNum(pack) {
-  if (pack === 'monuments')  return (typeof monumentsLevelIdx !== 'undefined' ? ((monumentsLevelIdx|0)+1) : 1);
+  if (pack === 'monuments')  return (typeof monumentsLevelIdx !== 'undefined' && typeof _mnLvIdxToCityLv === 'function') ? _mnLvIdxToCityLv(monumentsLevelIdx|0) : 1;
   if (pack === 'goldenfrog') return (typeof cm_gfLevel !== 'undefined' ? (cm_gfLevel|0) : 1);
   if (pack === 'citypack')   return (typeof cityPackCityIdx !== 'undefined' ? ((cityPackCityIdx|0)+1) : 1);
   return 1;
@@ -20801,9 +20859,8 @@ function _jumpToLevel(pack, targetLv) {
   if (typeof _cdProgress !== 'undefined') _cdProgress.setLastLevel(pack, targetLv);
   if (pack === 'monuments') {
     if (typeof startMonumentsGame === 'function') {
-      // Wrap to available levels (4 painted London seasons, then cycles)
-      const lvCount = (typeof MONUMENTS_LEVELS !== 'undefined') ? MONUMENTS_LEVELS.length : 4;
-      const idx = ((targetLv - 1) % lvCount + lvCount) % lvCount;
+      // targetLv is a CITY level (1..10). Launch that city's first season (autumn for London / season 0 for others).
+      const idx = (typeof _mnCityStartIdx === 'function') ? _mnCityStartIdx(targetLv) : 0;
       startMonumentsGame(idx);
     }
     return;
