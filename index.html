@@ -17069,7 +17069,10 @@ function buildSoloSetupCards() {
             '<button class="gtc-resume-btn" data-resume="' + tid + '">▶ RESUME LV ' + resumeLv + '</button>' +
             streakHtml +
             '<span class="gtc-lines-meta">' + linesText + '</span>' +
-            '<button class="gtc-all-levels-link" data-allvls="' + tid + '">all ' + unlocked + '/10 levels →</button>' +
+            // Monuments: hide the all-levels link — player skips between cities using in-game prev/next.
+            (tid === 'monuments'
+              ? ''
+              : '<button class="gtc-all-levels-link" data-allvls="' + tid + '">all ' + unlocked + '/10 levels →</button>') +
           '</div>';
       } else {
         right.innerHTML = '<span class="gtc-owned-badge">Owned ✓</span>';
@@ -17199,6 +17202,15 @@ function openSoloSetup() {
         ensureAudio();
         if (!checkAccessBeforeStart()) return;
         startCityPackGame(Math.max(0, resumeLv - 1));
+        return;
+      }
+      // Monuments: start at the saved CITY level (1–10). Skip the picker.
+      if (pack === 'monuments') {
+        equipTier(pack);
+        ensureAudio();
+        if (!checkAccessBeforeStart()) return;
+        const idx = (typeof _mnCityStartIdx === 'function') ? _mnCityStartIdx(resumeLv) : 0;
+        startMonumentsGame(idx);
         return;
       }
       // Golden Frog: pre-set a resume-override hint that the play handler reads
