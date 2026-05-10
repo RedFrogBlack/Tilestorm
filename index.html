@@ -7223,6 +7223,21 @@ const MONUMENTS_LEVELS = [
     season:'winter', zoneMap: MN_TOWER_BRIDGE_ZONES },
 ];
 
+// Look up the per-level intro voice clip for a Monuments level. Maps the
+// level's monument id + season to the right COMMENTARY entry. Returns null
+// if no intro is wired for that combination yet (extend as more monuments
+// get audio coverage).
+function _mnLevelIntroEntry(lv) {
+  if (!lv || typeof COMMENTARY === 'undefined') return null;
+  if (lv.id === 'london_tb') {
+    if (lv.season === 'autumn') return COMMENTARY.monLv1Autumn  && COMMENTARY.monLv1Autumn[0];
+    if (lv.season === 'spring') return COMMENTARY.monLv2Spring  && COMMENTARY.monLv2Spring[0];
+    if (lv.season === 'summer') return COMMENTARY.monLv3Summer  && COMMENTARY.monLv3Summer[0];
+    if (lv.season === 'winter') return COMMENTARY.monLv4Winter  && COMMENTARY.monLv4Winter[0];
+  }
+  return null;
+}
+
 // Live state for the active level
 let _mnZoneMap = null;       // current 10×10 zone map
 let _mnZoneCellCount = 0;    // total fillable cells (for win detection)
@@ -8331,6 +8346,12 @@ function startMonumentsGame(levelIdx) {
   // Tutor: tier intro (first time the player ever enters Monuments).
   if (typeof showTutor === 'function') {
     showTutor('tier_monuments', COMMENTARY.tierMonuments[0], { color: 'purple', ribbit: 'warm', delayMs: 2400 });
+  }
+  // Per-level intro — plays every time the player enters this level. We
+  // delay it after the tier intro so the two clips don't collide.
+  if (typeof sayLevelIntro === 'function') {
+    const _levelEntry = _mnLevelIntroEntry(lv);
+    if (_levelEntry) sayLevelIntro(_levelEntry, { color: 'purple', ribbit: 'warm', delayMs: 7500 });
   }
   // Arm 20s auto-advance so all four seasons cycle automatically.
   if (typeof _mnArmSeasonAutoAdvance === 'function') _mnArmSeasonAutoAdvance();
@@ -10596,6 +10617,11 @@ function advanceMonumentsLevel() {
         showEventBanner(seasonEmoji + ' ' + seasonName + ' — keep building!');
       }
     } catch(_e) {}
+    // Per-level intro for the new season — fires every time we swap in.
+    if (typeof sayLevelIntro === 'function') {
+      const _intro = _mnLevelIntroEntry(nextLv);
+      if (_intro) sayLevelIntro(_intro, { color: 'purple', ribbit: 'warm', delayMs: 900 });
+    }
     // Re-arm the 20s auto-advance for this fresh season.
     if (typeof _mnArmSeasonAutoAdvance === 'function') _mnArmSeasonAutoAdvance();
     return;
@@ -12271,6 +12297,11 @@ function startGame(){
   document.getElementById('event-banner').classList.remove('show');
   document.getElementById('hazard-overlay').classList.remove('flash');
   document.getElementById('bonus-popup').classList.remove('show');
+  // Game intro — fires ONCE EVER (persists in localStorage). The frog
+  // explains what Croakdown is on the player's very first game.
+  if (typeof showTutor === 'function' && typeof COMMENTARY !== 'undefined' && COMMENTARY.gameIntro) {
+    showTutor('game_intro', COMMENTARY.gameIntro[0], { color: 'purple', ribbit: 'warm', delayMs: 1200 });
+  }
   showScreen('screen-game');
   // Recalc AFTER screen is visible so tray-section has real offsetHeight + TRAY_CELL is correct
   requestAnimationFrame(() => {
@@ -13585,6 +13616,14 @@ const COMMENTARY = {
   gfLv8NewYork:  [['🌃 New York. One-way streets — clears shove rows sideways.', 'gf_lv8_newyork_0']],
   gfLv9Bali:     [['🌺 Bali. The board rotates with every clear.', 'gf_lv9_bali_0']],
   gfLv10Amalfi:  [['🌋 Amalfi. THE GAUNTLET — seven mechanics at once.', 'gf_lv10_amalfi_0']],
+  // First-ever app open: the frog explains what Croakdown is. Persists in
+  // localStorage so returning players don't get the intro again.
+  gameIntro:     [['🐸 Welcome to Croakdown — your frog guide is here.', 'game_intro_0']],
+  // Monuments per-season level intros — fire EVERY time the player enters that level.
+  monLv1Autumn:  [['🍂 London · Autumn — fill the bridge, watch the leaves.', 'mon_lv1_london_autumn_0']],
+  monLv2Spring:  [['🌸 London · Spring — blossoms drop in for 6 seconds.', 'mon_lv2_london_spring_0']],
+  monLv3Summer:  [['☀️ London · Summer — bricks melt in the heatwave.', 'mon_lv3_london_summer_0']],
+  monLv4Winter:  [['❄️ London · Winter — ice locks rows until it thaws.', 'mon_lv4_london_winter_0']],
   // Golden Frog mechanic in-game tips — fire ONCE per level on first hazard tick.
   gfTipQuake:    [['🌍 Brace! Quake incoming — tiles will slide.', 'gf_tip_quake_0']],
   gfTipTide:     [['🌊 Tide rising — clear bottom rows fast.', 'gf_tip_tide_0']],
@@ -13612,6 +13651,24 @@ function _tutorMarkShown(key) {
   _tutorShown[key] = true;
   try { localStorage.setItem('cd_tut_' + key, '1'); } catch(_e) {}
 }
+// Speak a line WITHOUT once-only gating — use for per-level intros that
+// should fire every time the player enters a level (e.g. Monuments
+// London · Autumn re-entered via DEV NEXT cycle). Honors tutorOn so users
+// who turn off tutor hints aren't pestered.
+function sayLevelIntro(entries, opts) {
+  if (typeof tutorOn !== 'undefined' && !tutorOn) return;
+  const arr = Array.isArray(entries) && Array.isArray(entries[0]) ? entries : [entries];
+  const color = (opts && opts.color) || 'purple';
+  const ribbit = (opts && opts.ribbit) || 'warm';
+  const startDelay = (opts && opts.delayMs) || 800;
+  const stepDelay  = (opts && opts.stepMs)  || 4200;
+  arr.forEach((entry, i) => {
+    setTimeout(() => {
+      if (typeof showFrogSpeech === 'function') showFrogSpeech(color, entry, ribbit);
+    }, startDelay + i * stepDelay);
+  });
+}
+
 // Show a tutor line with a delay, gated by tutorOn + once-per-key.
 // `entries` may be a single COMMENTARY entry [text,audioKey] OR an array of
 // entries to play in sequence (with delayMs between).
