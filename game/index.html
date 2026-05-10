@@ -7146,19 +7146,20 @@ const MN_BRICK_HEX = {
 };
 
 // Tower Bridge silhouette on a 10×10 grid (row 0 = top of grid).
-// 0=sky/water (blocked), 1=orange top, 2=red middle, 3=brown bottom.
+// Stretched edge-to-edge so the bridge spans the full board.
+// 1=orange top (spires), 2=red middle (towers + walkway), 3=brown bottom (deck + piers).
 const MN_TOWER_BRIDGE_ZONES = [
   // c: 0  1  2  3  4  5  6  7  8  9
-     [ 0, 0, 1, 1, 0, 0, 1, 1, 0, 0 ], // r0 spires
-     [ 0, 1, 1, 1, 0, 0, 1, 1, 1, 0 ], // r1 tower roofs
-     [ 0, 1, 1, 1, 0, 0, 1, 1, 1, 0 ], // r2 upper towers
-     [ 0, 2, 2, 2, 1, 1, 2, 2, 2, 0 ], // r3 walkway / mid towers
-     [ 0, 2, 2, 2, 0, 0, 2, 2, 2, 0 ], // r4 mid towers
-     [ 0, 2, 2, 2, 0, 0, 2, 2, 2, 0 ], // r5 mid towers
-     [ 2, 2, 2, 2, 0, 0, 2, 2, 2, 2 ], // r6 lower towers + cable anchors
-     [ 2, 2, 2, 2, 0, 0, 2, 2, 2, 2 ], // r7 lower towers + cable anchors
-     [ 3, 3, 3, 3, 3, 3, 3, 3, 3, 3 ], // r8 bridge deck (brown)
-     [ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 ], // r9 water (no tiles)
+     [ 0, 1, 1, 0, 0, 0, 0, 1, 1, 0 ], // r0 spire tips
+     [ 1, 1, 1, 1, 0, 0, 1, 1, 1, 1 ], // r1 spires
+     [ 1, 1, 1, 1, 0, 0, 1, 1, 1, 1 ], // r2 tower roofs
+     [ 1, 1, 1, 1, 1, 1, 1, 1, 1, 1 ], // r3 upper walkway (orange band)
+     [ 2, 2, 2, 2, 2, 2, 2, 2, 2, 2 ], // r4 walkway / mid (red band)
+     [ 2, 2, 2, 2, 0, 0, 2, 2, 2, 2 ], // r5 mid towers (red)
+     [ 2, 2, 2, 2, 0, 0, 2, 2, 2, 2 ], // r6 mid towers (red)
+     [ 2, 2, 2, 2, 0, 0, 2, 2, 2, 2 ], // r7 lower towers (red)
+     [ 3, 3, 3, 3, 3, 3, 3, 3, 3, 3 ], // r8 bridge deck (brown — full span)
+     [ 3, 3, 3, 3, 3, 3, 3, 3, 3, 3 ], // r9 piers / waterline (brown — full span)
 ];
 
 const MONUMENTS_LEVELS = [
@@ -8779,27 +8780,20 @@ function _mnGenerateBrickTray() {
   if (typeof renderTray === 'function') renderTray();
 }
 
-// ── Strict zone colour matching for canPlace ───────────────────────────
-// Wrap the existing canPlace so that during monuments mode, every cell of
-// the candidate placement must match the brick colour to its zone code.
+// ── Permissive zone placement for canPlace ─────────────────────────────
+// During monuments mode every cell of the candidate placement must lie on
+// the bridge silhouette (zone > 0). Colour mismatch is allowed — player
+// earns a per-cell bonus when the brick matches its row's suggested colour.
 (function() {
   const _origCanPlace = canPlace;
   // Replace the global canPlace
   canPlace = function(shape, r, c) {
     if (!_origCanPlace(shape, r, c)) return false;
     if (typeof monumentsActive !== 'undefined' && monumentsActive && _mnZoneMap) {
-      // Determine the colour of the piece being placed. The tray tracks colour;
-      // we have to look it up — when canPlace is called during drag we get the
-      // shape only. Use an in-flight colour stash if drag set it; otherwise
-      // accept any monument colour for non-drag intent (engine will revalidate).
-      const colour = (typeof _mnInFlightColour === 'number') ? _mnInFlightColour : null;
-      if (colour === null) return true; // allow detection passes (e.g. checkGameOver)
       for (const [dr, dc] of shape) {
         const nr = r + dr, nc = c + dc;
         const z = _mnZoneMap[nr] ? _mnZoneMap[nr][nc] : 0;
-        if (!z) return false;
-        const need = (z === 1) ? 91 : (z === 2) ? 92 : 93;
-        if (colour !== need) return false;
+        if (!z) return false; // sky/water cell — not part of the bridge
       }
     }
     return true;
@@ -8924,6 +8918,31 @@ function _mnCheckWin() {
     _origPlaceShape(shape, r, c, color);
     if (monumentsActive) {
       _mnInFlightColour = null;
+      // Per-cell colour-match bonus — reward keeping zone colours intact.
+      // +20 per matching cell, plus a +30 "perfect piece" bonus when every
+      // cell of the placed shape matches its zone.
+      try {
+        if (_mnZoneMap) {
+          let matched = 0, total = 0;
+          for (const [dr, dc] of shape) {
+            const nr = r + dr, nc = c + dc;
+            const z = _mnZoneMap[nr] ? _mnZoneMap[nr][nc] : 0;
+            if (!z) continue;
+            const need = (z === 1) ? 91 : (z === 2) ? 92 : 93;
+            total++;
+            if (color === need) matched++;
+          }
+          if (matched > 0 && typeof score !== 'undefined') {
+            let bonus = matched * 20;
+            if (matched === total && total > 1) bonus += 30; // whole-piece bonus
+            score += bonus;
+            if (typeof updateUI === 'function') updateUI();
+            if (matched === total && total > 1) {
+              if (typeof showEventBanner === 'function') showEventBanner('✨ PERFECT COLOUR  +' + bonus);
+            }
+          }
+        }
+      } catch(_e) {}
       _mnCheckWin();
     }
   };
@@ -9005,9 +9024,26 @@ function _isHalfBoardMode(){
 }
 function findCompletedLines(){
   const rows=[],cols=[],halfRows=[];
-  // Monuments mode: no line clears — we win by FILLING the silhouette, not clearing rows.
-  if (typeof monumentsActive !== 'undefined' && monumentsActive) {
-    return { completedRows: [], completedCols: [], completedHalfRows: [] };
+  // Monuments mode: a row clears when every BRIDGE cell in that row is filled
+  // (sky/water cells are masked out via _mnZoneMap and don't count).
+  // Cleared rows reward extra points; the win condition (silhouette filled) is
+  // checked separately in _mnCheckWin so completion still works.
+  if (typeof monumentsActive !== 'undefined' && monumentsActive && _mnZoneMap) {
+    for (let r = 0; r < ROWS; r++) {
+      const bridgeCols = [];
+      for (let c = 0; c < COLS; c++) {
+        if (_mnZoneMap[r] && _mnZoneMap[r][c]) bridgeCols.push(c);
+      }
+      if (bridgeCols.length > 0 && bridgeCols.every(c => grid[r][c] !== 0)) rows.push(r);
+    }
+    for (let c = 0; c < COLS; c++) {
+      const bridgeRows = [];
+      for (let r = 0; r < ROWS; r++) {
+        if (_mnZoneMap[r] && _mnZoneMap[r][c]) bridgeRows.push(r);
+      }
+      if (bridgeRows.length > 0 && bridgeRows.every(r => grid[r][c] !== 0)) cols.push(c);
+    }
+    return { completedRows: rows, completedCols: cols, completedHalfRows: [] };
   }
   const halfMode = _isHalfBoardMode();
   for(let r=0;r<ROWS;r++){
@@ -9046,13 +9082,26 @@ function clearLines({completedRows,completedCols,completedHalfRows}){
     cityPackLinesCleared += _cpLineCount;
     // Monuments mode piggybacks on cityPackActive but uses its own counters/HUD/advance.
     if (typeof monumentsActive !== 'undefined' && monumentsActive) {
-      monumentsLinesCleared += _cpLineCount;
-      if (_cpLineCount > 0 && typeof _cdProgress !== 'undefined') {
-        _cdProgress.addLines('monuments', _cpLineCount);
-        _cdProgress.noteActivity('monuments');
+      // Clearing rows on the bridge awards a bonus power-bar credit, but does
+      // NOT count toward the goal — the goal is to FILL the silhouette
+      // (tracked separately by _mnCheckWin against _mnZoneCellCount).
+      if (_cpLineCount > 0) {
+        if (typeof score !== 'undefined') {
+          score += 100 * _cpLineCount;
+          if (typeof updateUI === 'function') updateUI();
+        }
+        if (typeof showEventBanner === 'function') {
+          showEventBanner('🧱 ROW CLEAR  +' + (100 * _cpLineCount));
+        }
+        if (typeof _cdProgress !== 'undefined') {
+          _cdProgress.addLines('monuments', _cpLineCount);
+          _cdProgress.noteActivity('monuments');
+        }
       }
-      _monumentsHudUpdate();
-      if (monumentsLinesCleared >= monumentsLinesTarget) {
+      // Recompute the goal counter from filled-silhouette cells — line clears
+      // emptied cells, so this could DECREASE the count.
+      if (typeof _mnCheckWin === 'function') _mnCheckWin();
+      if (false) {
         setTimeout(() => {
           const _lvName = MONUMENTS_LEVELS[monumentsLevelIdx].name;
           showEventBanner('🏆 ' + _lvName + ' COMPLETE!');
@@ -9127,8 +9176,27 @@ function randomColor(){return Math.floor(Math.random()*7)+1;}
 // on the grid must use the active split colours — and must respect the
 // half it lands on (col<5 = LEFT colour, col>=5 = RIGHT colour). Otherwise
 // fall back to randomColor() so other modes/games are untouched.
-function _pickAddTileColor(c){
+function _pickAddTileColor(c, r){
   try {
+    // Monuments mode: any tile dropped by frogs/penalties must use the brick
+    // palette (orange/red/brown). When a row is known, prefer that row's zone
+    // colour so the bridge stays visually coherent; otherwise pick at random.
+    if (typeof monumentsActive !== 'undefined' && monumentsActive) {
+      if (typeof r === 'number' && _mnZoneMap && _mnZoneMap[r]) {
+        // Try to match the zone of (r,c); fall back to any zone in the row.
+        let z = (typeof c === 'number') ? (_mnZoneMap[r][c] || 0) : 0;
+        if (!z) {
+          for (let cc = 0; cc < COLS; cc++) {
+            if (_mnZoneMap[r][cc]) { z = _mnZoneMap[r][cc]; break; }
+          }
+        }
+        if (z === 1) return 91;
+        if (z === 2) return 92;
+        if (z === 3) return 93;
+      }
+      const pick = Math.random();
+      return (pick < 0.34) ? 91 : (pick < 0.67) ? 92 : 93;
+    }
     if (typeof activeChallengeMode !== 'undefined' && activeChallengeMode === 'goldenfrog'
         && typeof cm_gfSplitLeftColor !== 'undefined' && typeof cm_gfSplitRightColor !== 'undefined'
         && cm_gfSplitLeftColor && cm_gfSplitRightColor) {
@@ -12264,7 +12332,7 @@ function maybeHazard(){
   const empty = [];
   for(let r=0;r<ROWS;r++) for(let c=0;c<COLS;c++) if(grid[r][c]===0) empty.push([r,c]);
   shuffle(empty);
-  empty.slice(0, numAdd).forEach(([r,c]) => grid[r][c] = _pickAddTileColor(c));
+  empty.slice(0, numAdd).forEach(([r,c]) => grid[r][c] = _pickAddTileColor(c, r));
   flashHazard();
   showEventBanner('🌫️  FOG STRIKES — EXTRA TILES INCOMING!');
   drawGrid();
@@ -18395,7 +18463,9 @@ function closePause() {
 // ── Penalty / Glitch functions ────────────────────────────────────
 function addPenaltyRow() {
   grid.shift();
-  const penaltyRow = Array(COLS).fill(0).map((_,c) => _pickAddTileColor(c));
+  // Penalty row is appended at the bottom (ROWS-1) — use that row index
+  // so the colour picker can match the bridge zone in monuments mode.
+  const penaltyRow = Array(COLS).fill(0).map((_,c) => _pickAddTileColor(c, ROWS - 1));
   grid.push(penaltyRow);
   drawGrid();
   if(checkGameOver()) setTimeout(triggerGameOver, 400);
@@ -18415,7 +18485,7 @@ function glitchFrogAttack() {
   shuffle(empty);
   // Drop 4-6 random tiles into empty spaces
   const toFill = empty.slice(0, 4 + Math.floor(Math.random() * 3));
-  toFill.forEach(([r,c]) => grid[r][c] = _pickAddTileColor(c));
+  toFill.forEach(([r,c]) => grid[r][c] = _pickAddTileColor(c, r));
 
   drawGrid();
   flashHazard();
@@ -18437,7 +18507,7 @@ function addObstacleTiles(n) {
   const empty = [];
   for(let r=0;r<ROWS;r++) for(let c=0;c<COLS;c++) if(grid[r][c]===0) empty.push([r,c]);
   shuffle(empty);
-  empty.slice(0,n).forEach(([r,c]) => grid[r][c] = _pickAddTileColor(c));
+  empty.slice(0,n).forEach(([r,c]) => grid[r][c] = _pickAddTileColor(c, r));
   drawGrid();
   if(gameActive && checkGameOver()) setTimeout(triggerGameOver, 400);
 }
@@ -18933,7 +19003,7 @@ function spawnJumpingFrog(type, targetR, targetC) {
         setTimeout(() => {
           if (!gameActive) return;
           if (grid[hr] && grid[hr][hc] === 0) {
-            grid[hr][hc] = _pickAddTileColor(hc);
+            grid[hr][hc] = _pickAddTileColor(hc, hr);
             drawGrid();
             if(gameActive && checkGameOver()) setTimeout(triggerGameOver, 400);
           }
