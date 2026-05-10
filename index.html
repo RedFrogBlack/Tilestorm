@@ -5873,92 +5873,48 @@
     flex-shrink:0;
   }
 
-  /* ═════ CITY MONUMENTS — painted scene bg + animated traffic + candy HUD ═════ */
-  #monuments-bg {
-    position: fixed; inset: 0;
-    z-index: 0; pointer-events: none;
-    overflow: hidden;
-    display: none;
-    background: #F4A35A; /* fallback warm tone before image loads */
-  }
-  /* Day + Night scene layers — night fades in over day via opacity */
-  #monuments-bg .mn-scene {
-    position: absolute; inset: 0;
-    background-size: cover;
-    background-position: center top;
-    background-repeat: no-repeat;
-    transition: opacity 1.2s ease;
-  }
-  #monuments-bg .mn-scene-day   { z-index: 1; opacity: 1; }
-  #monuments-bg .mn-scene-night { z-index: 2; opacity: 0; } /* JS animates 0→1→0 */
-
-  /* Subtle warm tint over the scene to anchor with the play board */
-  #monuments-bg .mn-tint {
-    position: absolute; inset: 0;
-    z-index: 3;
-    background: linear-gradient(180deg, rgba(255,180,90,0) 0%, rgba(255,180,90,0) 55%, rgba(40,18,12,0.18) 100%);
-  }
-  /* Animated busy traffic — multiple sliding vehicles across the plaza road area. */
-  #monuments-bg .mn-traffic {
-    position: absolute;
-    z-index: 4;
-    font-size: 22px;
-    line-height: 1;
-    filter: drop-shadow(0 2px 3px rgba(0,0,0,0.45));
-    will-change: transform;
-    white-space: nowrap;
-  }
-  /* Lower road strip — closer to viewer, larger sprites */
-  #monuments-bg .mn-traffic-r1 { left: -80px;  top: 56%; font-size: 24px; animation: mnDriveR 26s linear infinite; }
-  #monuments-bg .mn-traffic-r2 { left: -140px; top: 58%; font-size: 19px; opacity: 0.95; animation: mnDriveR 38s linear infinite 11s; }
-  #monuments-bg .mn-traffic-l1 { right: -80px; top: 60%; font-size: 22px; animation: mnDriveL 30s linear infinite 4s; }
-  #monuments-bg .mn-traffic-l2 { right: -120px; top: 57%; font-size: 18px; opacity: 0.9; animation: mnDriveL 44s linear infinite 17s; }
-  /* Distant tube/train sliding past in the back — smaller and slower */
-  #monuments-bg .mn-traffic-train { left: -180px; top: 38%; font-size: 16px; opacity: 0.55; animation: mnDriveR 60s linear infinite 25s; }
-  /* Small motorbike scooter weaving through */
-  #monuments-bg .mn-traffic-bike { left: -60px; top: 61%; font-size: 16px; animation: mnDriveR 18s linear infinite 9s; }
-  @keyframes mnDriveR { from { transform: translateX(0); } to { transform: translateX(140vw); } }
-  @keyframes mnDriveL { from { transform: translateX(0); } to { transform: translateX(-140vw); } }
-
-  /* When monuments-bg is visible, soften the dark game background so warm sky shows through */
-  body.mn-active #screen-game { background: transparent !important; }
+  /* ═════ CITY MONUMENTS — procedural canvas backdrop + brick play area ═════ */
+  /* Procedural London skyline canvas is created by JS at runtime (#mn-scene-canvas). */
+  /* When monuments mode is visible, body becomes transparent so the procedural sky shows through */
+  body.mn-active { background: transparent !important; }
+  body.mn-active #screen-game { background: transparent !important; position: relative; z-index: 1; }
+  body.mn-active #grid-canvas-wrap { position: relative; z-index: 2; }
+  body.mn-active #tray-wrap, body.mn-active .tray-area, body.mn-active .tray-section { position: relative; z-index: 2; }
+  body.mn-active .game-topbar { position: relative; z-index: 3; }
   body.mn-active .game-topbar { background: rgba(40, 18, 14, 0.55) !important; backdrop-filter: blur(8px); }
   body.mn-active #grid-canvas-wrap { background: transparent !important; }
   body.mn-active #grid-canvas { background: transparent !important; border-radius: 14px; box-shadow: 0 8px 28px rgba(0,0,0,0.35), inset 0 0 0 2px rgba(255,210,150,0.35); }
   body.mn-active #grid-canvas-wrap { padding: 0 8px; background: transparent !important; }
 
-  /* Candy-pill HUD overlay (only shown for City Monuments) */
+  /* Compact monuments HUD: pinned to the gap between play-board bottom and tray top.
+     Bricks-and-mortar styling to match the rebuild theme — NOT candy. */
   #monuments-hud {
     position: fixed;
-    top: 56px; left: 50%; transform: translateX(-50%);
-    display: none; gap: 10px;
+    top: 480px; left: 50%; transform: translateX(-50%);
+    display: none; gap: 6px;
     z-index: 30;
     pointer-events: none;
   }
   #monuments-hud .mn-pill {
-    display: flex; flex-direction: column; align-items: center;
-    padding: 6px 14px;
-    background: linear-gradient(180deg, #FFF6E0, #FFD787);
-    border: 2px solid #B86A1F;
-    border-radius: 18px;
-    box-shadow: 0 3px 0 #8C4A12, 0 6px 14px rgba(0,0,0,0.35);
+    display: flex; flex-direction: row; align-items: baseline; gap: 6px;
+    padding: 4px 10px;
+    background: linear-gradient(180deg, rgba(28,16,12,0.86), rgba(20,10,8,0.92));
+    border: 1px solid rgba(255,200,140,0.45);
+    border-radius: 10px;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.55), inset 0 1px 0 rgba(255,220,170,0.18);
     font-family: var(--font-display, sans-serif);
-    min-width: 60px;
   }
   #monuments-hud .mn-label {
-    font-size: 9px; letter-spacing: 0.10em;
-    color: #8C4A12; font-weight: 800;
+    font-size: 9px; letter-spacing: 0.12em;
+    color: rgba(255,210,160,0.85); font-weight: 700;
   }
   #monuments-hud .mn-val {
-    font-size: 16px; font-weight: 900;
-    color: #5A2D08; letter-spacing: 0.04em;
-    margin-top: 1px;
+    font-size: 13px; font-weight: 900;
+    color: #FFE2B0; letter-spacing: 0.04em;
   }
-  #monuments-hud .mn-pill-score { background: linear-gradient(180deg, #FFEAB0, #FFC04A); }
-  #monuments-hud .mn-pill-goal  { background: linear-gradient(180deg, #FFD7C0, #FF8E5A); border-color: #B83A1F; }
-  #monuments-hud .mn-pill-goal .mn-label, #monuments-hud .mn-pill-goal .mn-val { color: #5A1808; }
-  #monuments-hud .mn-pill-level { background: linear-gradient(180deg, #FFE8E8, #FF8080); border-color: #A82020; }
-  #monuments-hud .mn-pill-level .mn-label, #monuments-hud .mn-pill-level .mn-val { color: #5A0808; }
+  #monuments-hud .mn-pill-score .mn-val { color: #FFD24A; }
+  #monuments-hud .mn-pill-goal  .mn-val { color: #FF8E5A; }
+  #monuments-hud .mn-pill-level .mn-val { color: #FFB0A0; }
 </style>
 <div id="city-reveal-overlay">
   <div id="city-reveal-name" style="font-family:var(--font-display);font-size:clamp(2rem,8vw,3.5rem);color:#fff;letter-spacing:0.12em;text-align:center;margin-bottom:10px;"></div>
@@ -7171,49 +7127,64 @@ let monumentsLevelIdx = 0;
 let monumentsLinesTarget = 0;
 let monumentsLinesCleared = 0;
 
-// Per-level monument config. Each monument is a column range with a target
-// colour and a column-height profile that defines its silhouette.
-// colHeights array length = COLS (10). Zero = empty column (gap).
-// Each Monuments level = 1 city + 1 fixed season. Day/night cycles inside the level.
-// Phase 1 ships 4 London levels (one per season) so all 4 day/night PNGs are exercised.
-const MONUMENTS_LEVELS = [
-  {
-    id: 'london', name: 'LONDON', emoji: '🇬🇧',
-    season: 'autumn', sceneCity: 'london',
-    colHeights: [0, 0, 13, 13, 0, 9, 9, 9, 0, 0],
-    monuments: [
-      { name: 'BIG BEN',   cols: [2,3],   colour: '#E03A3A' },
-      { name: 'TOWN HALL', cols: [5,6,7], colour: '#F5A623' },
-    ],
-  },
-  {
-    id: 'london', name: 'LONDON', emoji: '🇬🇧',
-    season: 'spring', sceneCity: 'london',
-    colHeights: [0, 0, 13, 13, 0, 9, 9, 9, 0, 0],
-    monuments: [
-      { name: 'BIG BEN',   cols: [2,3],   colour: '#E03A3A' },
-      { name: 'TOWN HALL', cols: [5,6,7], colour: '#F5A623' },
-    ],
-  },
-  {
-    id: 'london', name: 'LONDON', emoji: '🇬🇧',
-    season: 'summer', sceneCity: 'london',
-    colHeights: [0, 0, 13, 13, 0, 9, 9, 9, 0, 0],
-    monuments: [
-      { name: 'BIG BEN',   cols: [2,3],   colour: '#E03A3A' },
-      { name: 'TOWN HALL', cols: [5,6,7], colour: '#F5A623' },
-    ],
-  },
-  {
-    id: 'london', name: 'LONDON', emoji: '🇬🇧',
-    season: 'winter', sceneCity: 'london',
-    colHeights: [0, 0, 13, 13, 0, 9, 9, 9, 0, 0],
-    monuments: [
-      { name: 'BIG BEN',   cols: [2,3],   colour: '#E03A3A' },
-      { name: 'TOWN HALL', cols: [5,6,7], colour: '#F5A623' },
-    ],
-  },
+// City Monuments — build a single iconic landmark by filling its silhouette
+// with bricks of the matching colour zone (orange top, red middle, brown bottom).
+//
+// `zoneMap` is a 10×10 grid of zone codes:
+//    0 = blocked (sky / water / not part of the silhouette — player can't place here)
+//    1 = ORANGE zone (tower roofs / spires / top of monument)
+//    2 = RED zone    (main body of the monument)
+//    3 = BROWN zone  (foundation / bridge deck / lower section)
+//
+// Tile colour codes used by the engine: orange brick = MN_BRICK_ORANGE,
+// red brick = MN_BRICK_RED, brown brick = MN_BRICK_BROWN. canPlace blocks
+// any non-matching colour. Win = every non-zero zone cell filled.
+//
+// Each level = 1 monument + 1 season. Day/night cycles inside the level via
+// the same engine as Golden Frog (procedural skyline backdrop, seasonal tint).
+const MN_BRICK_ORANGE = 91;  // unique tile-colour codes (avoid clash with standard tiles 1–7)
+const MN_BRICK_RED    = 92;
+const MN_BRICK_BROWN  = 93;
+const MN_BRICK_HEX = {
+  91: { base: '#F39A2B', light: '#FFCB6B', dark:  '#A85A0E', name: 'orange' },
+  92: { base: '#C8362B', light: '#F26054', dark:  '#7A1A14', name: 'red'    },
+  93: { base: '#7A4A28', light: '#A86A3D', dark:  '#42230F', name: 'brown'  },
+};
+
+// Tower Bridge silhouette on a 10×10 grid (row 0 = top of grid).
+// 0=sky/water (blocked), 1=orange top, 2=red middle, 3=brown bottom.
+const MN_TOWER_BRIDGE_ZONES = [
+  // c: 0  1  2  3  4  5  6  7  8  9
+     [ 0, 0, 1, 1, 0, 0, 1, 1, 0, 0 ], // r0 spires
+     [ 0, 1, 1, 1, 0, 0, 1, 1, 1, 0 ], // r1 tower roofs
+     [ 0, 1, 1, 1, 0, 0, 1, 1, 1, 0 ], // r2 upper towers
+     [ 0, 2, 2, 2, 1, 1, 2, 2, 2, 0 ], // r3 walkway / mid towers
+     [ 0, 2, 2, 2, 0, 0, 2, 2, 2, 0 ], // r4 mid towers
+     [ 0, 2, 2, 2, 0, 0, 2, 2, 2, 0 ], // r5 mid towers
+     [ 2, 2, 2, 2, 0, 0, 2, 2, 2, 2 ], // r6 lower towers + cable anchors
+     [ 2, 2, 2, 2, 0, 0, 2, 2, 2, 2 ], // r7 lower towers + cable anchors
+     [ 3, 3, 3, 3, 3, 3, 3, 3, 3, 3 ], // r8 bridge deck (brown)
+     [ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 ], // r9 water (no tiles)
 ];
+
+const MONUMENTS_LEVELS = [
+  { id:'london_tb', name:'TOWER BRIDGE', city:'London', emoji:'🇬🇧',
+    season:'autumn', zoneMap: MN_TOWER_BRIDGE_ZONES },
+  { id:'london_tb', name:'TOWER BRIDGE', city:'London', emoji:'🇬🇧',
+    season:'spring', zoneMap: MN_TOWER_BRIDGE_ZONES },
+  { id:'london_tb', name:'TOWER BRIDGE', city:'London', emoji:'🇬🇧',
+    season:'summer', zoneMap: MN_TOWER_BRIDGE_ZONES },
+  { id:'london_tb', name:'TOWER BRIDGE', city:'London', emoji:'🇬🇧',
+    season:'winter', zoneMap: MN_TOWER_BRIDGE_ZONES },
+];
+
+// Live state for the active level
+let _mnZoneMap = null;       // current 10×10 zone map
+let _mnZoneCellCount = 0;    // total fillable cells (for win detection)
+let _mnSceneT = 0.62;        // day/night cycle phase (0..1, 0.5 = full night)
+let _mnSceneLastTS = 0;
+let _mnSeasonParticles = []; // for season particle FX
+const MN_SCENE_CYCLE_MS = 90 * 1000;
 
 // ── City Sky Animation Engine ──────────────────────────────────────────
 // Self-contained animated sky renderer for City Pack mode.
@@ -8238,103 +8209,733 @@ function advanceCityPackLevel() {
 }
 
 // ══════════════════════════════════════════════════════════════
-//  CITY MONUMENTS — Phase 1 prototype (London only)
-//  Reuses City Pack engine (mask + line clearing) but injects a custom
-//  warm-sunset background, animated bus + taxi, candy-pill HUD, and
-//  monument-coloured target pieces.
+//  CITY MONUMENTS — build an iconic landmark by filling its silhouette
+//  with colour-zone bricks. Background = procedural Golden-Frog-style
+//  animated city skyline (day/night + 4 seasons). Foreground = monument
+//  silhouette drawn into the play grid, filled brick-by-brick.
 // ══════════════════════════════════════════════════════════════
 function startMonumentsGame(levelIdx) {
   monumentsActive = true;
   monumentsLevelIdx = Math.min(levelIdx || 0, MONUMENTS_LEVELS.length - 1);
   const lv = MONUMENTS_LEVELS[monumentsLevelIdx];
-  // Reuse City Pack masking engine — monuments are columns with heights.
+  // Piggyback on City Pack engine for line-clear hooks but use monument zone map.
   cityPackActive = true;
   cityPackCityIdx = 0;
-  gridMask = buildCityMask(lv.colHeights);
-  const totalCells = lv.colHeights.reduce((a,b)=>a+b,0);
-  monumentsLinesTarget = Math.max(6, Math.round(totalCells / 6));
+
+  // Set zone map and build a gridMask that blocks all NON-zone cells.
+  _mnZoneMap = lv.zoneMap.map(row => row.slice());
+  _mnZoneCellCount = 0;
+  // gridMask format used elsewhere: { mask: [bool[]] }. Build using buildCityMask format.
+  // For monuments we need direct boolean mask. We'll use a custom array and isMasked
+  // override falls back to gridMask check; simpler: build gridMask in same format buildCityMask uses.
+  // gridMask convention: TRUE = playable, FALSE = masked/blocked (matches isMasked() which returns !gridMask[r][c])
+  const maskArr = Array.from({length: ROWS}, () => new Array(COLS).fill(false));
+  for (let r = 0; r < ROWS; r++) for (let c = 0; c < COLS; c++) {
+    if (_mnZoneMap[r] && _mnZoneMap[r][c]) {
+      maskArr[r][c] = true; // playable (inside silhouette)
+      _mnZoneCellCount++;
+    } // else stays false (blocked)
+  }
+  gridMask = maskArr;
+
+  monumentsLinesTarget = _mnZoneCellCount; // win = fill every silhouette cell
   monumentsLinesCleared = 0;
   cityPackLinesTarget  = monumentsLinesTarget;
   cityPackLinesCleared = 0;
-  _skyReset();
-  _monumentsBgInit(lv.sceneCity, lv.season);
-  _monumentsCycleStart();
+
+  // Reset procedural scene engine
+  _mnSceneT = 0.62; // start late afternoon
+  _mnSceneLastTS = 0;
+  _mnSeasonParticles = [];
+  _mnInitSceneCanvas();
+
   document.body.classList.add('mn-active');
   startGame();
-  gridMask = buildCityMask(lv.colHeights);
-  for (let r=0;r<ROWS;r++) for (let c=0;c<COLS;c++) if(isMasked(r,c)) grid[r][c]=0;
-  if (typeof _skyInit === 'function') _skyInit(gridCanvas.width, gridCanvas.height);
-  _monumentsHudShow();
-  // Update banner with season label
+  // Re-apply mask after startGame which may reinit the grid
+  for (let r = 0; r < ROWS; r++) for (let c = 0; c < COLS; c++) {
+    if (gridMask[r][c]) grid[r][c] = 0;
+  }
+  // Hide candy-pill HUD — the existing topbar already shows score/level/lines.
+  _monumentsHudHide();
+  // Override tray with bricks of the 3 zone colours
+  if (typeof _mnGenerateBrickTray === 'function') _mnGenerateBrickTray();
+
   const seasonEmoji = { spring:'🌸', summer:'☀️', autumn:'🍂', winter:'❄️' }[lv.season] || '';
   setTimeout(() => showEventBanner(
-    lv.emoji + ' LEVEL ' + (monumentsLevelIdx+1) + ' · ' + lv.name + ' ' + seasonEmoji + ' — ' + monumentsLinesTarget + ' LINES!'
+    lv.emoji + ' LEVEL ' + (monumentsLevelIdx+1) + ' · ' + lv.name + ' ' + seasonEmoji + ' — BUILD ' + lv.name + '!'
   ), 300);
 }
 
-function _monumentsBgInit(city, season) {
-  // Inject (or refresh) the painted scene background layer + animated traffic
-  // behind the play canvas. Day + night PNGs are layered; JS oscillates night opacity.
-  let bg = document.getElementById('monuments-bg');
-  if (!bg) {
-    bg = document.createElement('div');
-    bg.id = 'monuments-bg';
-    bg.innerHTML =
-      '<div class="mn-scene mn-scene-day"></div>' +
-      '<div class="mn-scene mn-scene-night"></div>' +
-      '<div class="mn-tint"></div>' +
-      '<div class="mn-traffic mn-traffic-r1">🚌</div>' +
-      '<div class="mn-traffic mn-traffic-r2">🚗</div>' +
-      '<div class="mn-traffic mn-traffic-l1">🚕</div>' +
-      '<div class="mn-traffic mn-traffic-l2">🚚</div>' +
-      '<div class="mn-traffic mn-traffic-train">🚈🚈🚈</div>' +
-      '<div class="mn-traffic mn-traffic-bike">🏍️</div>';
-    const gameScreen = document.getElementById('screen-game');
-    if (gameScreen) gameScreen.insertBefore(bg, gameScreen.firstChild);
+// ── Procedural background scene canvas (Golden-Frog style) ──────────────
+// Drawn behind the play grid, fixed full-viewport. Animated sky + sun/moon
+// + skyline silhouette + season particles. RAF-driven.
+let _mnSceneCanvas = null, _mnSceneCtx = null;
+let _mnSceneRAF = null;
+function _mnInitSceneCanvas() {
+  let el = document.getElementById('mn-scene-canvas');
+  if (!el) {
+    el = document.createElement('canvas');
+    el.id = 'mn-scene-canvas';
+    // Position it as a fixed full-viewport canvas BEHIND everything.
+    // The Thames/skyline silhouettes are drawn anchored to the BOTTOM of
+    // the play board (computed dynamically) so they read as backdrop
+    // for the bridge, not as content below the tray.
+    el.style.cssText = 'position:fixed;inset:0;width:100vw;height:100vh;z-index:0;pointer-events:none;display:block;';
+    document.body.insertBefore(el, document.body.firstChild);
   }
-  // Set day + night scene images for this level
-  const c = city || 'london';
-  const s = season || 'autumn';
-  const dayEl   = bg.querySelector('.mn-scene-day');
-  const nightEl = bg.querySelector('.mn-scene-night');
-  if (dayEl)   dayEl.style.backgroundImage   = "url('assets/monuments/" + c + "_" + s + "_day.png')";
-  if (nightEl) nightEl.style.backgroundImage = "url('assets/monuments/" + c + "_" + s + "_night.png')";
-  bg.style.display = 'block';
+  _mnSceneCanvas = el;
+  _mnSceneCtx = el.getContext('2d');
+  _mnResizeSceneCanvas();
+  el.style.display = 'block';
+  _mnStartSceneLoop();
 }
-
-// Day/night cycle: ramp night-layer opacity from 0 → 1 → 0 over MN_CYCLE_MS.
-// Matches Golden Frog feel — a full day passes during a level.
-let _mnCycleRAF = null;
-let _mnCycleStart = 0;
-const MN_CYCLE_MS = 90 * 1000; // 90s for one full day-night-day cycle
-function _monumentsCycleStart() {
-  _monumentsCycleStop();
-  _mnCycleStart = performance.now();
-  const tick = () => {
-    if (typeof monumentsActive === 'undefined' || !monumentsActive) {
-      _mnCycleRAF = null; return;
-    }
-    const t = ((performance.now() - _mnCycleStart) % MN_CYCLE_MS) / MN_CYCLE_MS; // 0..1
-    // Phase: 0 = full day, 0.5 = full night, 1 = full day. Smooth via cosine curve.
-    const nightOpacity = 0.5 - 0.5 * Math.cos(t * Math.PI * 2);
-    const bg = document.getElementById('monuments-bg');
-    const nightEl = bg && bg.querySelector('.mn-scene-night');
-    if (nightEl) nightEl.style.opacity = String(nightOpacity);
-    _mnCycleRAF = requestAnimationFrame(tick);
+function _mnResizeSceneCanvas() {
+  if (!_mnSceneCanvas) return;
+  const dpr = Math.min(2, window.devicePixelRatio || 1);
+  _mnSceneCanvas.width  = Math.round(window.innerWidth  * dpr);
+  _mnSceneCanvas.height = Math.round(window.innerHeight * dpr);
+  if (_mnSceneCtx) _mnSceneCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
+}
+// Compute the y-position (in CSS px) where the Thames/silhouette horizon
+// should anchor — at the bottom edge of the play board.
+function _mnHorizonY() {
+  const cand = document.getElementById('grid-canvas-wrap')
+            || document.getElementById('grid-canvas')
+            || document.querySelector('#screen-game canvas');
+  if (cand) {
+    const r = cand.getBoundingClientRect();
+    if (r.height > 0) return r.bottom;
+  }
+  return Math.round((window.innerHeight || 800) * 0.55);
+}
+window.addEventListener('resize', () => { if (monumentsActive) _mnResizeSceneCanvas(); });
+function _mnStartSceneLoop() {
+  _mnStopSceneLoop();
+  const tick = (ts) => {
+    if (!monumentsActive) { _mnSceneRAF = null; return; }
+    _mnDrawScene(ts);
+    _mnSceneRAF = requestAnimationFrame(tick);
   };
-  _mnCycleRAF = requestAnimationFrame(tick);
+  _mnSceneRAF = requestAnimationFrame(tick);
 }
-function _monumentsCycleStop() {
-  if (_mnCycleRAF) { cancelAnimationFrame(_mnCycleRAF); _mnCycleRAF = null; }
-  const bg = document.getElementById('monuments-bg');
-  const nightEl = bg && bg.querySelector('.mn-scene-night');
-  if (nightEl) nightEl.style.opacity = '0';
+function _mnStopSceneLoop() {
+  if (_mnSceneRAF) { cancelAnimationFrame(_mnSceneRAF); _mnSceneRAF = null; }
+}
+function _mnHideSceneCanvas() {
+  if (_mnSceneCanvas) _mnSceneCanvas.style.display = 'none';
 }
 
-function _monumentsBgHide() {
-  const bg = document.getElementById('monuments-bg');
-  if (bg) bg.style.display = 'none';
+// ── Procedural London Skyline + Sky (Golden-Frog style) ────────────────
+// Self-contained — does not depend on GF_LOCATIONS_CFG. Uses the season
+// from the active monuments level.
+let _mnStars = [];
+let _mnEyeAngle = 0;        // London Eye rotation
+let _mnBoatX = 0;           // Thames riverboat drift
+let _mnBigBenChimePh = 0;   // Big Ben tower-clock illumination phase
+
+function _mnInitStarsIfNeeded() {
+  if (_mnStars.length) return;
+  for (let i = 0; i < 65; i++) {
+    _mnStars.push({
+      fx: Math.random(),
+      fy: Math.random() * 0.55,
+      r: Math.random()*0.9 + 0.3,
+      base: Math.random()*0.5 + 0.3,
+      spd: Math.random()*2 + 0.6,
+      off: Math.random()*Math.PI*2,
+      warm: Math.random() > 0.78,
+    });
+  }
 }
+
+// Golden-Frog style: London-specific sky palette per phase. Day = warm UK
+// blue with golden horizon. Night = deep navy with violet horizon glow.
+// We then apply seasonal tint to nudge the colours per season.
+const MN_LONDON_SKY = {
+  dayTop:    [104, 178, 232],   // pale UK blue
+  dayHoriz:  [255, 198, 132],   // warm horizon glow (London golden hour)
+  nightTop:  [10, 18, 44],      // deep night navy
+  nightHoriz:[58, 36, 86],      // violet glow over the river
+  sunColor:  [255, 196, 92],
+  edgeColor: [255, 220, 150],
+  accentColor:[255, 200, 110],
+};
+
+function _mnDrawScene(ts) {
+  if (!_mnSceneCanvas || !_mnSceneCtx) return;
+  if (!monumentsActive) return;
+  if (_mnSceneLastTS === 0) _mnSceneLastTS = ts;
+  const dt = ts - _mnSceneLastTS;
+  _mnSceneLastTS = ts;
+  _mnSceneT = (_mnSceneT + dt / MN_SCENE_CYCLE_MS) % 1;
+  _mnEyeAngle = (_mnEyeAngle + dt * 0.00018) % (Math.PI * 2);
+  _mnBoatX = (_mnBoatX + dt * 0.00004) % 1;
+  _mnBigBenChimePh = (_mnBigBenChimePh + dt * 0.0006) % (Math.PI * 2);
+  _mnInitStarsIfNeeded();
+
+  const lv = MONUMENTS_LEVELS[monumentsLevelIdx] || MONUMENTS_LEVELS[0];
+  const season = lv.season;
+  const W = _mnSceneCanvas.width / (window.devicePixelRatio || 1);
+  const H = _mnSceneCanvas.height / (window.devicePixelRatio || 1);
+  const ctx = _mnSceneCtx;
+  ctx.clearRect(0, 0, W, H);
+
+  const t = _mnSceneT;
+  const night = (typeof _skyNight === 'function') ? _skyNight(t) : ((Math.cos(t*Math.PI*2)+1)/2);
+  const dayMix = 1 - night;
+
+  // Sky gradient with seasonal tint applied to base colours.
+  // The horizon tint is anchored to the play-board bottom so the upper
+  // (visible) part of the sky stays cool/blue and the warm horizon glow
+  // only appears at the actual horizon line behind the bridge.
+  const sDay   = (typeof _gfApplySeasonTint === 'function') ? _gfApplySeasonTint(MN_LONDON_SKY.dayTop, season, false)    : MN_LONDON_SKY.dayTop;
+  const sNight = (typeof _gfApplySeasonTint === 'function') ? _gfApplySeasonTint(MN_LONDON_SKY.nightTop, season, true)   : MN_LONDON_SKY.nightTop;
+  const sDayH  = (typeof _gfApplySeasonTint === 'function') ? _gfApplySeasonTint(MN_LONDON_SKY.dayHoriz, season, false)  : MN_LONDON_SKY.dayHoriz;
+  const sNightH= (typeof _gfApplySeasonTint === 'function') ? _gfApplySeasonTint(MN_LONDON_SKY.nightHoriz, season, true) : MN_LONDON_SKY.nightHoriz;
+  const top   = sDay.map((d,i)  => Math.round(d * dayMix + sNight[i]  * night));
+  const horiz = sDayH.map((d,i) => Math.round(d * dayMix + sNightH[i] * night));
+  // horizonY anchored to bottom of play board
+  const _hYsky = (typeof _mnHorizonY === 'function') ? _mnHorizonY() : H * 0.78;
+  const grad = ctx.createLinearGradient(0, 0, 0, _hYsky);
+  grad.addColorStop(0,    `rgb(${top[0]},${top[1]},${top[2]})`);
+  grad.addColorStop(0.85, `rgb(${Math.round((top[0]*0.6+horiz[0]*0.4))},${Math.round((top[1]*0.6+horiz[1]*0.4))},${Math.round((top[2]*0.6+horiz[2]*0.4))})`);
+  grad.addColorStop(1,    `rgb(${horiz[0]},${horiz[1]},${horiz[2]})`);
+  ctx.fillStyle = grad;
+  ctx.fillRect(0, 0, W, _hYsky);
+  // Below the horizon (riverbank → viewport bottom) — deep ground tone so
+  // the area below the tray doesn't show stale gradient. Most of this is
+  // covered by the tray + bottom UI, but anything peeking through reads as
+  // dark embankment.
+  const groundR = Math.round(horiz[0]*0.20), groundG = Math.round(horiz[1]*0.18), groundB = Math.round(horiz[2]*0.30);
+  ctx.fillStyle = `rgb(${groundR},${groundG},${groundB})`;
+  ctx.fillRect(0, _hYsky, W, H - _hYsky);
+
+  // Stars at night — above the horizon only
+  if (night > 0.4) {
+    ctx.save();
+    const _hYst = (typeof _mnHorizonY === 'function') ? _mnHorizonY() : H * 0.55;
+    for (const s of _mnStars) {
+      const tw = 0.4 + 0.6 * Math.abs(Math.sin(ts*0.001*s.spd + s.off));
+      ctx.globalAlpha = (s.base + tw*0.4) * Math.min(1, (night - 0.3) * 1.6);
+      ctx.fillStyle = s.warm ? 'rgba(255,220,160,1)' : 'rgba(220,235,255,1)';
+      ctx.beginPath(); ctx.arc(s.fx*W, s.fy * _hYst * 0.9, s.r, 0, Math.PI*2); ctx.fill();
+    }
+    ctx.restore();
+  }
+
+  // Sun / moon arc — constrained to the SKY (above the play-board horizon)
+  const _hYsun = (typeof _mnHorizonY === 'function') ? _mnHorizonY() : H * 0.55;
+  const sunY = _hYsun * (0.15 + 0.55 * (1 - Math.sin(t * Math.PI))); // higher when t near 0/1, lower (still above horizon) at noon
+  // Better: arc that peaks near noon. Re-do clearly.
+  const _sunBandTop = _hYsun * 0.10;
+  const _sunBandBot = _hYsun * 0.75;
+  const sunArc = Math.sin(t * Math.PI); // 0..1..0
+  const sunY2 = _sunBandBot - (sunArc * (_sunBandBot - _sunBandTop));
+  const sunX = W * (0.12 + 0.76 * t);
+  if (sunY2 > 0 && sunY2 < _hYsun) {
+    ctx.save();
+    if (night > 0.55) {
+      // Moon
+      ctx.globalAlpha = 0.85;
+      ctx.fillStyle = 'rgba(240,240,220,1)';
+      ctx.beginPath(); ctx.arc(sunX, sunY2, 16, 0, Math.PI*2); ctx.fill();
+      ctx.globalAlpha = 0.25;
+      ctx.beginPath(); ctx.arc(sunX, sunY2, 26, 0, Math.PI*2); ctx.fill();
+    } else {
+      const sc = MN_LONDON_SKY.sunColor;
+      const r = ctx.createRadialGradient(sunX, sunY2, 4, sunX, sunY2, 60);
+      r.addColorStop(0, `rgba(${sc[0]},${sc[1]},${sc[2]},0.95)`);
+      r.addColorStop(0.4, `rgba(${sc[0]},${sc[1]},${sc[2]},0.5)`);
+      r.addColorStop(1, `rgba(${sc[0]},${sc[1]},${sc[2]},0)`);
+      ctx.fillStyle = r;
+      ctx.beginPath(); ctx.arc(sunX, sunY2, 60, 0, Math.PI*2); ctx.fill();
+      ctx.fillStyle = `rgb(${sc[0]},${sc[1]},${sc[2]})`;
+      ctx.beginPath(); ctx.arc(sunX, sunY2, 12, 0, Math.PI*2); ctx.fill();
+    }
+    ctx.restore();
+  }
+
+  // Soft drifting clouds (4-5 across the sky) — above the horizon only
+  ctx.save();
+  const _hYcl = (typeof _mnHorizonY === 'function') ? _mnHorizonY() : H * 0.55;
+  ctx.globalAlpha = 0.28 + dayMix * 0.18;
+  ctx.fillStyle = `rgba(255,255,255,0.85)`;
+  for (let i = 0; i < 5; i++) {
+    const cx = ((i * 0.21 + (_mnSceneT * 0.05) + i * 0.07) % 1.1) * W;
+    const cy = _hYcl * (0.18 + (i % 2) * 0.10);
+    const cw = (0.10 + (i % 3) * 0.04) * W;
+    const ch = 12 + (i % 2) * 6;
+    ctx.beginPath();
+    ctx.ellipse(cx, cy, cw, ch, 0, 0, Math.PI * 2);
+    ctx.ellipse(cx + cw*0.5, cy + 2, cw*0.7, ch*0.85, 0, 0, Math.PI * 2);
+    ctx.ellipse(cx - cw*0.4, cy + 1, cw*0.6, ch*0.8, 0, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  ctx.restore();
+
+  // ─── London skyline (back layer, soft / distant) ───
+  // Anchor the skyline horizon to the BOTTOM of the play board so the
+  // silhouettes read as a backdrop FOR the bridge (not as content below
+  // the tray). The Thames sits in the gap between play board + tray.
+  const horizonY = _mnHorizonY();
+  // baseY = where building bases sit (= horizon line at play-board bottom)
+  const baseY = horizonY - 4;
+  // SH controls skyline silhouette HEIGHT. We deliberately keep this
+  // SMALL — buildings should peek just above the horizon (only ~the
+  // bottom 1–2 grid rows of the play area). Tallest building = SH * 0.42
+  // (Shard) so we cap SH around 80–90px.
+  const SH = Math.min(85, Math.max(55, baseY * 0.18));
+  const back  = `rgba(${Math.round(20+dayMix*30)},${Math.round(20+dayMix*30)},${Math.round(40+dayMix*20)},0.55)`;
+  const front = `rgba(${Math.round(8+dayMix*14)},${Math.round(8+dayMix*12)},${Math.round(20+dayMix*15)},0.92)`;
+  const edgeRgb = MN_LONDON_SKY.edgeColor;
+  const accRgb  = MN_LONDON_SKY.accentColor;
+
+  // BACK layer — distant rooftops (parliament + houses of parliament left side)
+  ctx.save(); ctx.fillStyle = back;
+  // Distant Parliament block (left of centre)
+  const parlX = W*0.30, parlW = W*0.18, parlH = SH*0.13;
+  ctx.fillRect(parlX, baseY - parlH, parlW, parlH + 4);
+  // tiny crenellations on roof
+  for (let i = 0; i < 6; i++) ctx.fillRect(parlX + i*(parlW/6), baseY - parlH - 4, parlW/12, 4);
+  // Distant houses (right side terrace)
+  const housesXs = [{x:0.62,w:0.04,h:0.07},{x:0.67,w:0.05,h:0.08},{x:0.73,w:0.04,h:0.06},{x:0.78,w:0.05,h:0.075},{x:0.84,w:0.04,h:0.065},{x:0.89,w:0.06,h:0.08}];
+  for (const a of housesXs) ctx.fillRect(a.x*W, baseY - a.h*SH, a.w*W, a.h*SH + 4);
+  ctx.restore();
+
+  // FRONT silhouette layer — Big Ben, Parliament tower, London Eye, Shard, Gherkin, St Paul's
+  ctx.save(); ctx.fillStyle = front;
+
+  // ─ St Paul's Cathedral (left, iconic dome) ─
+  const spX = W * 0.13, spBase = baseY + 2, spH = SH * 0.18;
+  // base building
+  ctx.fillRect(spX - W*0.05, spBase - spH*0.5, W*0.10, spH*0.5 + 2);
+  // dome
+  ctx.beginPath();
+  ctx.arc(spX, spBase - spH*0.5, W*0.045, Math.PI, 0);
+  ctx.fill();
+  // little cross-spire on top
+  ctx.fillRect(spX - 1.2, spBase - spH*0.5 - W*0.045 - 14, 2.4, 14);
+  ctx.fillRect(spX - 4, spBase - spH*0.5 - W*0.045 - 9, 8, 2);
+  // flanking towers
+  ctx.fillRect(spX - W*0.06, spBase - spH*0.42, W*0.012, spH*0.18);
+  ctx.fillRect(spX + W*0.048, spBase - spH*0.42, W*0.012, spH*0.18);
+  // tiny pinnacles
+  ctx.beginPath(); ctx.moveTo(spX - W*0.054, spBase - spH*0.42);
+  ctx.lineTo(spX - W*0.054 + W*0.006, spBase - spH*0.45);
+  ctx.lineTo(spX - W*0.054 + W*0.012, spBase - spH*0.42); ctx.closePath(); ctx.fill();
+  ctx.beginPath(); ctx.moveTo(spX + W*0.048, spBase - spH*0.42);
+  ctx.lineTo(spX + W*0.048 + W*0.006, spBase - spH*0.45);
+  ctx.lineTo(spX + W*0.048 + W*0.012, spBase - spH*0.42); ctx.closePath(); ctx.fill();
+
+  // ─ Big Ben / Elizabeth Tower (left-centre, gothic clock tower) ─
+  const bbX = W * 0.28, bbBase = baseY + 2, bbH = SH * 0.30;
+  // main shaft
+  ctx.fillRect(bbX - W*0.018, bbBase - bbH, W*0.036, bbH);
+  // clock face section (slight bulge)
+  ctx.fillRect(bbX - W*0.022, bbBase - bbH*0.78, W*0.044, SH*0.045);
+  // pointed roof
+  ctx.beginPath();
+  ctx.moveTo(bbX - W*0.018, bbBase - bbH);
+  ctx.lineTo(bbX, bbBase - bbH - SH*0.045);
+  ctx.lineTo(bbX + W*0.018, bbBase - bbH);
+  ctx.closePath(); ctx.fill();
+  // gold finial dot
+  ctx.fillRect(bbX - 1.4, bbBase - bbH - SH*0.05, 2.8, 2.8);
+
+  // ─ Houses of Parliament block (centre, twin pinnacles) ─
+  const hpX = W * 0.36, hpW = W * 0.10, hpH = SH * 0.15;
+  ctx.fillRect(hpX, bbBase - hpH, hpW, hpH + 2);
+  // crenellated roofline
+  for (let i = 0; i < 7; i++) ctx.fillRect(hpX + i*(hpW/7), bbBase - hpH - 3, hpW/14, 3);
+  // two side spires
+  ctx.fillRect(hpX + W*0.005, bbBase - hpH - SH*0.04, W*0.005, SH*0.04);
+  ctx.fillRect(hpX + hpW - W*0.01, bbBase - hpH - SH*0.04, W*0.005, SH*0.04);
+
+  // ─ London Eye (centre-right, slow rotating wheel) ─
+  const leX = W * 0.55, leY = baseY - SH * 0.18, leR = SH * 0.12;
+  // support leg
+  ctx.fillRect(leX - 1.5, baseY, 3, -SH*0.06);
+  // wheel rim — outer ring
+  ctx.lineWidth = 2;
+  ctx.strokeStyle = front;
+  ctx.beginPath();
+  ctx.arc(leX, leY, leR, 0, Math.PI*2);
+  ctx.stroke();
+  // 12 spokes that rotate slowly
+  ctx.lineWidth = 1.2;
+  for (let i = 0; i < 12; i++) {
+    const ang = _mnEyeAngle + (i * Math.PI*2 / 12);
+    ctx.beginPath();
+    ctx.moveTo(leX, leY);
+    ctx.lineTo(leX + Math.cos(ang)*leR, leY + Math.sin(ang)*leR);
+    ctx.stroke();
+  }
+  // capsule pods
+  for (let i = 0; i < 12; i++) {
+    const ang = _mnEyeAngle + (i * Math.PI*2 / 12);
+    const px = leX + Math.cos(ang)*leR;
+    const py = leY + Math.sin(ang)*leR;
+    ctx.beginPath(); ctx.arc(px, py, 2.6, 0, Math.PI*2); ctx.fill();
+  }
+  // hub
+  ctx.beginPath(); ctx.arc(leX, leY, 4, 0, Math.PI*2); ctx.fill();
+
+  // ─ The Gherkin (30 St Mary Axe — lozenge dome) ─
+  const ghX = W * 0.71, ghBase = baseY + 2, ghH = SH * 0.22;
+  // wide bullet shape
+  ctx.beginPath();
+  ctx.moveTo(ghX - W*0.025, ghBase);
+  ctx.bezierCurveTo(ghX - W*0.040, ghBase - ghH*0.40, ghX - W*0.030, ghBase - ghH*0.85, ghX, ghBase - ghH);
+  ctx.bezierCurveTo(ghX + W*0.030, ghBase - ghH*0.85, ghX + W*0.040, ghBase - ghH*0.40, ghX + W*0.025, ghBase);
+  ctx.closePath(); ctx.fill();
+  // tip
+  ctx.fillRect(ghX - 1.2, ghBase - ghH - 6, 2.4, 6);
+
+  // ─ The Shard (right, tapered glass spire) ─
+  const shX = W * 0.85, shBase = baseY + 2, shH = SH * 0.42;
+  ctx.beginPath();
+  ctx.moveTo(shX - W*0.034, shBase);
+  ctx.lineTo(shX - W*0.005, shBase - shH);
+  ctx.lineTo(shX, shBase - shH - 8);
+  ctx.lineTo(shX + W*0.005, shBase - shH);
+  ctx.lineTo(shX + W*0.034, shBase);
+  ctx.closePath(); ctx.fill();
+
+  ctx.restore();
+
+  // Edge glow on Big Ben + Shard for definition
+  ctx.save();
+  ctx.globalAlpha = 0.7;
+  ctx.strokeStyle = `rgba(${edgeRgb[0]},${edgeRgb[1]},${edgeRgb[2]},0.85)`;
+  ctx.lineWidth = 1.2;
+  // Big Ben outline
+  ctx.beginPath();
+  ctx.moveTo(bbX - W*0.018, bbBase);
+  ctx.lineTo(bbX - W*0.018, bbBase - bbH);
+  ctx.lineTo(bbX, bbBase - bbH - SH*0.045);
+  ctx.lineTo(bbX + W*0.018, bbBase - bbH);
+  ctx.lineTo(bbX + W*0.018, bbBase);
+  ctx.stroke();
+  // Shard outline
+  ctx.beginPath();
+  ctx.moveTo(shX - W*0.034, shBase);
+  ctx.lineTo(shX, shBase - shH - 8);
+  ctx.lineTo(shX + W*0.034, shBase);
+  ctx.stroke();
+  ctx.restore();
+
+  // ── Big Ben clock face — golden glow that pulses softly ──
+  ctx.save();
+  const clockY = bbBase - bbH*0.78 + SH*0.022;
+  const clockR = Math.max(3, W*0.013);
+  const clockGlow = 0.55 + 0.35 * Math.abs(Math.sin(_mnBigBenChimePh));
+  ctx.fillStyle = `rgba(255, 220, 130, ${clockGlow * (0.55 + dayMix*0.4)})`;
+  ctx.beginPath(); ctx.arc(bbX, clockY, clockR, 0, Math.PI*2); ctx.fill();
+  // dark hands
+  ctx.strokeStyle = 'rgba(20,20,30,0.85)';
+  ctx.lineWidth = 1.4;
+  const minute = (ts * 0.0008) % (Math.PI*2);
+  const hour   = minute / 12;
+  ctx.beginPath(); ctx.moveTo(bbX, clockY);
+  ctx.lineTo(bbX + Math.cos(hour - Math.PI/2)*clockR*0.55, clockY + Math.sin(hour - Math.PI/2)*clockR*0.55);
+  ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(bbX, clockY);
+  ctx.lineTo(bbX + Math.cos(minute - Math.PI/2)*clockR*0.85, clockY + Math.sin(minute - Math.PI/2)*clockR*0.85);
+  ctx.stroke();
+  ctx.restore();
+
+  // ── Window lights at night (Parliament + Shard + Gherkin sparkle) ──
+  if (dayMix < 0.55) {
+    ctx.save();
+    ctx.fillStyle = `rgba(${accRgb[0]},${accRgb[1]},${accRgb[2]},${0.85 - dayMix*0.5})`;
+    // Parliament windows
+    for (let r2=0;r2<3;r2++) for (let c2=0;c2<8;c2++) {
+      if ((r2*5+c2*3+Math.floor(_mnSceneT*120))%9 < 5)
+        ctx.fillRect(hpX + 2 + c2*(hpW-4)/7, bbBase - hpH + 4 + r2*(hpH-8)/3, 1, 1);
+    }
+    // Shard windows (vertical strip up)
+    for (let k=0;k<22;k++) {
+      const fy = shBase - 6 - k*(shH/24);
+      if ((k*4 + Math.floor(_mnSceneT*180))%5 < 3)
+        ctx.fillRect(shX - 0.6 + (Math.random()-0.5)*W*0.012, fy, 1, 1);
+    }
+    // Gherkin diagonal pattern
+    for (let k=0;k<14;k++) {
+      const fy = ghBase - 8 - k*(ghH/16);
+      if ((k*7 + Math.floor(_mnSceneT*150))%9 < 5) {
+        const xo = Math.sin(k*0.6 + _mnSceneT*4)*W*0.015;
+        ctx.fillRect(ghX + xo, fy, 1.1, 1.1);
+      }
+    }
+    // London Eye pod lights
+    ctx.fillStyle = `rgba(180, 220, 255, ${0.9 - dayMix*0.5})`;
+    for (let i=0;i<12;i++) {
+      const ang = _mnEyeAngle + (i*Math.PI*2/12);
+      ctx.beginPath();
+      ctx.arc(leX + Math.cos(ang)*leR, leY + Math.sin(ang)*leR, 1.4, 0, Math.PI*2);
+      ctx.fill();
+    }
+    ctx.restore();
+  }
+
+  // ── Thames river — narrow band JUST below play board, in front of skyline ──
+  // The river sits between the play-board bottom and the tray. Use a small
+  // fixed strip so it doesn't bleed into / below the tray.
+  ctx.save();
+  const riverTop = baseY;
+  const riverH   = Math.min(40, Math.max(18, H * 0.04));
+  const riverBot = riverTop + riverH;
+  const riverGrad = ctx.createLinearGradient(0, riverTop, 0, riverBot);
+  // River reflects the sky horizon colours
+  riverGrad.addColorStop(0, `rgba(${horiz[0]},${horiz[1]},${horiz[2]},0.92)`);
+  riverGrad.addColorStop(1, `rgba(${Math.round(horiz[0]*0.35)},${Math.round(horiz[1]*0.35)},${Math.round(horiz[2]*0.45)},0.96)`);
+  ctx.fillStyle = riverGrad;
+  ctx.fillRect(0, riverTop, W, riverH);
+  // shimmer streaks
+  ctx.globalAlpha = 0.35;
+  ctx.strokeStyle = `rgba(255,255,255,${0.55 - dayMix*0.2})`;
+  ctx.lineWidth = 1;
+  for (let k=0;k<10;k++) {
+    const fx = ((k*0.13 + _mnSceneT*0.6 + Math.sin(_mnSceneT*Math.PI*2 + k)*0.05) % 1) * W;
+    const fy = riverTop + 4 + (k%4)*((riverH-6)/4);
+    ctx.beginPath();
+    ctx.moveTo(fx - 14, fy); ctx.lineTo(fx + 14, fy);
+    ctx.stroke();
+  }
+  // small riverboat drifting
+  const bx = (_mnBoatX + 0.15) * W;
+  const by = riverTop + riverH * 0.45;
+  ctx.globalAlpha = 0.85;
+  ctx.fillStyle = front;
+  ctx.beginPath();
+  ctx.moveTo(bx - 14, by + 4); ctx.lineTo(bx - 10, by);
+  ctx.lineTo(bx + 10, by); ctx.lineTo(bx + 14, by + 4);
+  ctx.closePath(); ctx.fill();
+  // little cabin
+  ctx.fillRect(bx - 4, by - 5, 8, 5);
+  // boat lights at night
+  if (dayMix < 0.55) {
+    ctx.fillStyle = `rgba(255, 220, 140, 0.95)`;
+    ctx.beginPath(); ctx.arc(bx + 12, by - 1, 1.4, 0, Math.PI*2); ctx.fill();
+    ctx.beginPath(); ctx.arc(bx - 12, by - 1, 1.4, 0, Math.PI*2); ctx.fill();
+  }
+  ctx.restore();
+
+  // ── Seasonal particle overlay (snow / leaves / pollen) ──
+  if (typeof _gfSeasonDrawParticles === 'function') {
+    // Lazy-init the seasonal particle pool (shares _gfSeasonParticles)
+    if (typeof _gfSeasonInitParticles === 'function' && _gfSeasonParticles && _gfSeasonParticles.length === 0) {
+      _gfSeasonInitParticles(season);
+    }
+    _gfSeasonDrawParticles(ctx, W, H, season, dt);
+  }
+}
+
+// ── Brick tray generator ───────────────────────────────────────────────
+// Generate a tray of 3 small/medium pieces, each painted with one of the
+// three monument zone colours (orange / red / brown). Mix the colours so
+// every brick zone gets work over time.
+function _mnGenerateBrickTray() {
+  if (!monumentsActive) return;
+  // Count remaining empty cells per zone so we don't keep handing out colours
+  // for already-finished zones.
+  const remaining = { 91: 0, 92: 0, 93: 0 };
+  for (let r = 0; r < ROWS; r++) for (let c = 0; c < COLS; c++) {
+    if (!_mnZoneMap || !_mnZoneMap[r]) continue;
+    const z = _mnZoneMap[r][c];
+    if (!z) continue;
+    if (grid[r][c] === 0) {
+      const code = (z === 1) ? 91 : (z === 2) ? 92 : 93;
+      remaining[code]++;
+    }
+  }
+  const totalRemaining = remaining[91] + remaining[92] + remaining[93];
+  function pickColour() {
+    if (totalRemaining <= 0) return 92; // fallback
+    let n = Math.random() * totalRemaining;
+    if ((n -= remaining[91]) < 0) return 91;
+    if ((n -= remaining[92]) < 0) return 92;
+    return 93;
+  }
+  // Use small/medium pieces only — bricks should look like bricks, not big slabs.
+  // Reuse engine PIECES but bias towards single tiles + dominoes + L-trios.
+  function pickShape() {
+    if (typeof randomPieceDiff === 'function') {
+      // 50% single tile, 30% small, rest random
+      const r = Math.random();
+      if (r < 0.45) return [[0,0]];                       // single brick
+      if (r < 0.75) return [[0,0],[0,1]];                  // 2-wide horizontal
+      if (r < 0.88) return [[0,0],[1,0]];                  // 2-tall vertical
+      return randomPieceDiff();
+    }
+    return [[0,0]];
+  }
+  trayPieces = [
+    { shape: pickShape(), color: pickColour() },
+    { shape: pickShape(), color: pickColour() },
+    { shape: pickShape(), color: pickColour() },
+  ];
+  trayUsed = [false, false, false];
+  if (typeof renderTray === 'function') renderTray();
+}
+
+// ── Strict zone colour matching for canPlace ───────────────────────────
+// Wrap the existing canPlace so that during monuments mode, every cell of
+// the candidate placement must match the brick colour to its zone code.
+(function() {
+  const _origCanPlace = canPlace;
+  // Replace the global canPlace
+  canPlace = function(shape, r, c) {
+    if (!_origCanPlace(shape, r, c)) return false;
+    if (typeof monumentsActive !== 'undefined' && monumentsActive && _mnZoneMap) {
+      // Determine the colour of the piece being placed. The tray tracks colour;
+      // we have to look it up — when canPlace is called during drag we get the
+      // shape only. Use an in-flight colour stash if drag set it; otherwise
+      // accept any monument colour for non-drag intent (engine will revalidate).
+      const colour = (typeof _mnInFlightColour === 'number') ? _mnInFlightColour : null;
+      if (colour === null) return true; // allow detection passes (e.g. checkGameOver)
+      for (const [dr, dc] of shape) {
+        const nr = r + dr, nc = c + dc;
+        const z = _mnZoneMap[nr] ? _mnZoneMap[nr][nc] : 0;
+        if (!z) return false;
+        const need = (z === 1) ? 91 : (z === 2) ? 92 : 93;
+        if (colour !== need) return false;
+      }
+    }
+    return true;
+  };
+})();
+
+// In-flight colour set by the drag handler so canPlace knows what's being
+// placed (so it can enforce zone matching). Cleared after place/cancel.
+let _mnInFlightColour = null;
+
+// ── Glossy brick render (override drawTile when colour code is 91/92/93) ─
+// We patch drawTile by wrapping the original. For brick codes 91/92/93 we
+// fully render a brick tile; otherwise call the original.
+(function() {
+  const _origDrawTile = drawTile;
+  drawTile = function(r, c, color, alpha = 1, glow = false, gold = false) {
+    // Some callers pass a CSS hex string for `color` (placed tiles via
+    // getTileColor(grid[r][c])). For brick render path we need the colour
+    // CODE, but the regular tile loop in drawGrid already converted it.
+    // We detect bricks via the GRID value at (r,c) instead of relying on
+    // the passed-in colour string.
+    if (typeof monumentsActive !== 'undefined' && monumentsActive && grid && grid[r] && [91,92,93].includes(grid[r][c])) {
+      _mnDrawBrickTile(r, c, grid[r][c], alpha);
+      return;
+    }
+    _origDrawTile(r, c, color, alpha, glow, gold);
+  };
+})();
+
+function _mnDrawBrickTile(r, c, code, alpha = 1) {
+  const pal = MN_BRICK_HEX[code];
+  if (!pal) return;
+  const x = c*CELL + PAD, y = r*CELL + PAD, w = CELL - PAD*2, h = CELL - PAD*2;
+  const rad = Math.max(3, CELL*0.10);
+  ctx.save();
+  ctx.globalAlpha = alpha;
+
+  // Base fill — vertical gradient light → base → dark
+  const grad = ctx.createLinearGradient(x, y, x, y + h);
+  grad.addColorStop(0, pal.light);
+  grad.addColorStop(0.55, pal.base);
+  grad.addColorStop(1, pal.dark);
+  ctx.fillStyle = grad;
+  ctx.beginPath(); ctx.roundRect(x, y, w, h, rad); ctx.fill();
+
+  // Mortar groove — half a brick course (so it looks like a brick lying flat)
+  ctx.strokeStyle = `rgba(0,0,0,0.30)`;
+  ctx.lineWidth = 1.1;
+  ctx.beginPath();
+  ctx.moveTo(x + 2, y + h * 0.5);
+  ctx.lineTo(x + w - 2, y + h * 0.5);
+  ctx.stroke();
+  // tiny vertical pin stripes (brick joints)
+  ctx.beginPath();
+  ctx.moveTo(x + w * 0.33, y + 2); ctx.lineTo(x + w * 0.33, y + h * 0.5);
+  ctx.moveTo(x + w * 0.66, y + h * 0.5); ctx.lineTo(x + w * 0.66, y + h - 2);
+  ctx.stroke();
+
+  // Glossy top sheen
+  const sheen = ctx.createLinearGradient(x, y, x, y + h * 0.5);
+  sheen.addColorStop(0, 'rgba(255,255,255,0.42)');
+  sheen.addColorStop(1, 'rgba(255,255,255,0)');
+  ctx.fillStyle = sheen;
+  ctx.beginPath(); ctx.roundRect(x + 2, y + 2, w - 4, h * 0.42, rad - 1); ctx.fill();
+
+  // Bottom shadow band
+  ctx.fillStyle = 'rgba(0,0,0,0.28)';
+  ctx.beginPath();
+  ctx.roundRect(x, y + h*0.74, w, h*0.26, { upperLeft: 0, upperRight: 0, lowerLeft: rad, lowerRight: rad });
+  ctx.fill();
+
+  // Edge stroke for crispness
+  ctx.strokeStyle = 'rgba(0,0,0,0.45)';
+  ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.roundRect(x + 0.5, y + 0.5, w - 1, h - 1, rad); ctx.stroke();
+
+  // Bright top edge highlight
+  ctx.strokeStyle = 'rgba(255,255,255,0.32)';
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(x + 2, y + 1.5);
+  ctx.lineTo(x + w - 2, y + 1.5);
+  ctx.stroke();
+
+  ctx.restore();
+}
+
+// ── Win check based on filled silhouette cells (overrides line-clear win) ─
+// Called after every placement.
+function _mnCheckWin() {
+  if (!monumentsActive || !_mnZoneMap) return;
+  let filled = 0;
+  for (let r = 0; r < ROWS; r++) for (let c = 0; c < COLS; c++) {
+    if (_mnZoneMap[r] && _mnZoneMap[r][c] && grid[r][c] !== 0) filled++;
+  }
+  monumentsLinesCleared = filled;
+  cityPackLinesCleared  = filled;
+  if (typeof _monumentsHudUpdate === 'function') _monumentsHudUpdate();
+  if (filled >= _mnZoneCellCount && _mnZoneCellCount > 0) {
+    setTimeout(() => {
+      const lvName = MONUMENTS_LEVELS[monumentsLevelIdx].name;
+      if (typeof showEventBanner === 'function') showEventBanner('🏆 ' + lvName + ' COMPLETE!');
+      try {
+        if (typeof _cdProgress !== 'undefined') {
+          const curLv = monumentsLevelIdx + 1;
+          _cdProgress.setLastLevel('monuments', curLv);
+          if (typeof _cdProgress.markCompleted === 'function') _cdProgress.markCompleted('monuments', curLv);
+        }
+      } catch(_e) {}
+      setTimeout(() => { if (typeof advanceMonumentsLevel === 'function') advanceMonumentsLevel(); }, 1500);
+    }, 600);
+    _mnZoneCellCount = 0; // prevent retrigger
+  }
+}
+
+// Patch placeShape so each placement (a) sets _mnInFlightColour for canPlace,
+// (b) re-generates a fresh brick tray when all 3 are used (already handled by
+// engine's checkAllUsed -> generateTray), but we override generateTray below.
+(function() {
+  const _origPlaceShape = placeShape;
+  placeShape = function(shape, r, c, color) {
+    _origPlaceShape(shape, r, c, color);
+    if (monumentsActive) {
+      _mnInFlightColour = null;
+      _mnCheckWin();
+    }
+  };
+  // Override generateTray so monuments mode produces brick tray
+  const _origGenerateTray = generateTray;
+  generateTray = function() {
+    if (monumentsActive) { _mnGenerateBrickTray(); return; }
+    _origGenerateTray();
+  };
+})();
+
+
 
 function _monumentsHudShow() {
   let hud = document.getElementById('monuments-hud');
@@ -8371,8 +8972,8 @@ function stopMonumentsGame() {
   monumentsActive = false;
   cityPackActive = false;
   gridMask = null;
-  _monumentsCycleStop();
-  _monumentsBgHide();
+  _mnStopSceneLoop();
+  _mnHideSceneCanvas();
   _monumentsHudHide();
   document.body.classList.remove('mn-active');
   if (typeof _skyReset === 'function') _skyReset();
@@ -8404,6 +9005,10 @@ function _isHalfBoardMode(){
 }
 function findCompletedLines(){
   const rows=[],cols=[],halfRows=[];
+  // Monuments mode: no line clears — we win by FILLING the silhouette, not clearing rows.
+  if (typeof monumentsActive !== 'undefined' && monumentsActive) {
+    return { completedRows: [], completedCols: [], completedHalfRows: [] };
+  }
   const halfMode = _isHalfBoardMode();
   for(let r=0;r<ROWS;r++){
     const mc=[];for(let c=0;c<COLS;c++)if(!isMasked(r,c))mc.push(c);
@@ -8579,6 +9184,8 @@ const PAD=2;
 function getTileColor(idx){
   const colors=getTileColors();
   if(idx>=1&&idx<colors.length) return colors[idx];
+  // Monument brick colour codes (91=orange, 92=red, 93=brown)
+  if (typeof MN_BRICK_HEX !== 'undefined' && MN_BRICK_HEX[idx]) return MN_BRICK_HEX[idx].base;
   // Special brick / stamp colours by index 8+
   if(idx === 8) return '#8B0000'; // Frog Stamp dark red
   const specialFallbacks=['#00C5CD','#E62298','#F5E000'];
@@ -8752,10 +9359,35 @@ function drawGrid(){
   }
 
   if(gridMask){
-    // City Monuments: keep play canvas fully transparent so painted CSS scene shows through.
-    // Skip the sky-canvas composite AND the dark masked-cell overlay entirely.
+    // City Monuments: faint silhouette + zone tint inside the play area so the
+    // player can SEE where the bridge needs to be built. Outside the silhouette
+    // the play canvas is fully transparent so the procedural sky shows through.
     if (_isMonuments) {
-      // nothing — painted CSS background is all we need
+      ctx.save();
+      // Per-cell soft zone tint (transparent inside silhouette)
+      for (let r = 0; r < ROWS; r++) for (let c = 0; c < COLS; c++) {
+        if (!_mnZoneMap || !_mnZoneMap[r]) continue;
+        const z = _mnZoneMap[r][c];
+        if (!z || grid[r][c] !== 0) continue;
+        const code = (z === 1) ? 91 : (z === 2) ? 92 : 93;
+        const pal = MN_BRICK_HEX && MN_BRICK_HEX[code];
+        if (!pal) continue;
+        // Faint zone-coloured cell so the player sees the silhouette + which colour goes where.
+        // Soft fill (low alpha) + light dashed outline. We keep this subtle so the
+        // sky/skyline remain visible behind the silhouette.
+        const x = c*CELL + 1, y = r*CELL + 1, w = CELL - 2, h = CELL - 2;
+        const rad = Math.max(3, CELL*0.10);
+        ctx.globalAlpha = 0.10;
+        ctx.fillStyle = pal.base;
+        ctx.beginPath(); ctx.roundRect(x, y, w, h, rad); ctx.fill();
+        ctx.globalAlpha = 0.32;
+        ctx.setLineDash([3, 3]);
+        ctx.strokeStyle = pal.dark;
+        ctx.lineWidth = 1;
+        ctx.beginPath(); ctx.roundRect(x + 0.5, y + 0.5, w - 1, h - 1, rad); ctx.stroke();
+        ctx.setLineDash([]);
+      }
+      ctx.restore();
     } else if(cityPackActive && _skyInitialized && _skyCanvas) {
       // City Pack: composite animated sky layer
       ctx.drawImage(_skyCanvas, 0, 0);
@@ -9415,6 +10047,10 @@ function startDragTouch(e,idx){if(duoGameActive&&duoMode==='coop'&&!coopMyTurn){
 function beginDrag(cx,cy,idx){
   if(powerupActive)return;
   dragging=true;dragPieceIdx=idx;dragShape=trayPieces[idx].shape;dragColor=trayPieces[idx].color;
+  // Monuments mode: stash colour so canPlace can enforce zone matching
+  if (typeof monumentsActive !== 'undefined' && monumentsActive) {
+    _mnInFlightColour = dragColor;
+  }
   const _sp=trayPieces[idx].special;
   const _spColor=_sp?(SPECIAL_META[_sp]?.color||null):null;
   const maxR=Math.max(...dragShape.map(([r])=>r));const maxC=Math.max(...dragShape.map(([,c])=>c));
@@ -9448,6 +10084,9 @@ function onDragEndTouch(e){const t=e.changedTouches[0];endDrag(t.clientX,t.clien
 
 function endDrag(cx,cy){
   ghostCanvas.style.display='none';
+  // Monuments mode: keep _mnInFlightColour active during the drop check below.
+  // It is cleared inside placeShape() (via patched wrapper) on successful placement,
+  // and reset to null at the end of this function (covers cancel cases too).
   document.removeEventListener('mousemove',onDragMove);document.removeEventListener('mouseup',onDragEnd);
   document.removeEventListener('touchmove',onDragMoveTouch);document.removeEventListener('touchend',onDragEndTouch);
   document.querySelector(`.tray-piece[data-idx="${dragPieceIdx}"]`)?.classList.remove('dragging');
@@ -9470,6 +10109,7 @@ function endDrag(cx,cy){
         if (typeof showEventBanner === 'function') showEventBanner('✨ DUBAI — WRONG COLOUR FOR THIS HALF!');
         if (typeof playInvalid === 'function') { try { playInvalid(); } catch(e){} }
         dragging=false; dragShape=null; hoverCell=null; dragPieceIdx=-1;
+        if (typeof _mnInFlightColour !== 'undefined') _mnInFlightColour = null;
         if (typeof drawGrid === 'function') drawGrid();
         return;
       }
@@ -9554,7 +10194,9 @@ function endDrag(cx,cy){
     checkAllUsed();
     if(checkGameOver())setTimeout(triggerGameOver,500);
   }
-  dragging=false;dragPieceIdx=-1;dragShape=null;hoverCell=null;drawGrid();
+  dragging=false;dragPieceIdx=-1;dragShape=null;hoverCell=null;
+  if (typeof _mnInFlightColour !== 'undefined') _mnInFlightColour = null;
+  drawGrid();
   // If piece snapped back (couldn't place), check if any tray piece fits anywhere
   if(gameActive && checkGameOver()) setTimeout(triggerGameOver, 500);
 }
