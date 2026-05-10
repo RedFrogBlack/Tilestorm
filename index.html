@@ -5875,16 +5875,10 @@
 
   /* ═════ CITY MONUMENTS — procedural canvas backdrop + brick play area ═════ */
   /* Procedural London skyline canvas is created by JS at runtime (#mn-scene-canvas). */
-  /* When monuments mode is visible, body becomes transparent so the procedural sky shows through */
-  body.mn-active { background: transparent !important; }
-  body.mn-active #screen-game { background: transparent !important; position: relative; z-index: 1; }
-  body.mn-active #grid-canvas-wrap { position: relative; z-index: 2; }
-  body.mn-active #tray-wrap, body.mn-active .tray-area, body.mn-active .tray-section { position: relative; z-index: 2; }
-  body.mn-active .game-topbar { position: relative; z-index: 3; }
-  body.mn-active .game-topbar { background: rgba(40, 18, 14, 0.55) !important; backdrop-filter: blur(8px); }
-  body.mn-active #grid-canvas-wrap { background: transparent !important; }
-  body.mn-active #grid-canvas { background: transparent !important; border-radius: 14px; box-shadow: 0 8px 28px rgba(0,0,0,0.35), inset 0 0 0 2px rgba(255,210,150,0.35); }
-  body.mn-active #grid-canvas-wrap { padding: 0 8px; background: transparent !important; }
+  /* Monuments mode: scene canvas is composited INTO the grid canvas (board-only),
+     so the body and chrome keep their normal styling. Just give the play board
+     a warm border + glow so it reads as a city diorama. */
+  body.mn-active #grid-canvas { border-radius: 14px; box-shadow: 0 8px 28px rgba(0,0,0,0.35), inset 0 0 0 2px rgba(255,210,150,0.35); }
 
   /* Compact monuments HUD: pinned to the gap between play-board bottom and tray top.
      Bricks-and-mortar styling to match the rebuild theme — NOT candy. */
@@ -8272,29 +8266,26 @@ function startMonumentsGame(levelIdx) {
 let _mnSceneCanvas = null, _mnSceneCtx = null;
 let _mnSceneRAF = null;
 function _mnInitSceneCanvas() {
-  let el = document.getElementById('mn-scene-canvas');
-  if (!el) {
-    el = document.createElement('canvas');
-    el.id = 'mn-scene-canvas';
-    // Position it as a fixed full-viewport canvas BEHIND everything.
-    // The Thames/skyline silhouettes are drawn anchored to the BOTTOM of
-    // the play board (computed dynamically) so they read as backdrop
-    // for the bridge, not as content below the tray.
-    el.style.cssText = 'position:fixed;inset:0;width:100vw;height:100vh;z-index:0;pointer-events:none;display:block;';
-    document.body.insertBefore(el, document.body.firstChild);
+  // Offscreen canvas sized to the play board (same approach as Golden Frog).
+  // We composite this onto the grid canvas in drawGrid so the London skyline
+  // appears INSIDE the play board only — not spread across the viewport.
+  if (!_mnSceneCanvas) {
+    _mnSceneCanvas = document.createElement('canvas');
   }
-  _mnSceneCanvas = el;
-  _mnSceneCtx = el.getContext('2d');
+  _mnSceneCtx = _mnSceneCanvas.getContext('2d');
   _mnResizeSceneCanvas();
-  el.style.display = 'block';
   _mnStartSceneLoop();
 }
 function _mnResizeSceneCanvas() {
   if (!_mnSceneCanvas) return;
-  const dpr = Math.min(2, window.devicePixelRatio || 1);
-  _mnSceneCanvas.width  = Math.round(window.innerWidth  * dpr);
-  _mnSceneCanvas.height = Math.round(window.innerHeight * dpr);
-  if (_mnSceneCtx) _mnSceneCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  // Match the grid canvas size in CSS pixels (no DPR scaling — the grid
+  // canvas itself isn't DPR-scaled, so we match its native dimensions).
+  const gc = (typeof gridCanvas !== 'undefined' && gridCanvas) ? gridCanvas : document.getElementById('grid-canvas');
+  const w = (gc && gc.width)  ? gc.width  : 480;
+  const h = (gc && gc.height) ? gc.height : 480;
+  _mnSceneCanvas.width  = w;
+  _mnSceneCanvas.height = h;
+  if (_mnSceneCtx) _mnSceneCtx.setTransform(1, 0, 0, 1, 0, 0);
 }
 // Compute the y-position (in CSS px) where the Thames/silhouette horizon
 // should anchor — at the bottom edge of the play board.
@@ -8314,6 +8305,10 @@ function _mnStartSceneLoop() {
   const tick = (ts) => {
     if (!monumentsActive) { _mnSceneRAF = null; return; }
     _mnDrawScene(ts);
+    // Trigger a board re-composite so the animated sky/skyline shows on
+    // the grid canvas. drawGrid will pick up _mnSceneCanvas via the
+    // monuments branch composite.
+    if (typeof drawGrid === 'function') drawGrid();
     _mnSceneRAF = requestAnimationFrame(tick);
   };
   _mnSceneRAF = requestAnimationFrame(tick);
@@ -8375,8 +8370,15 @@ function _mnDrawScene(ts) {
 
   const lv = MONUMENTS_LEVELS[monumentsLevelIdx] || MONUMENTS_LEVELS[0];
   const season = lv.season;
-  const W = _mnSceneCanvas.width / (window.devicePixelRatio || 1);
-  const H = _mnSceneCanvas.height / (window.devicePixelRatio || 1);
+  // Keep the offscreen size in sync with the grid canvas (it can change on
+  // resize / orientation flip / level change).
+  const _gc = (typeof gridCanvas !== 'undefined' && gridCanvas) ? gridCanvas : document.getElementById('grid-canvas');
+  if (_gc && (_mnSceneCanvas.width !== _gc.width || _mnSceneCanvas.height !== _gc.height)) {
+    _mnSceneCanvas.width  = _gc.width;
+    _mnSceneCanvas.height = _gc.height;
+  }
+  const W = _mnSceneCanvas.width;
+  const H = _mnSceneCanvas.height;
   const ctx = _mnSceneCtx;
   ctx.clearRect(0, 0, W, H);
 
@@ -8394,26 +8396,25 @@ function _mnDrawScene(ts) {
   const sNightH= (typeof _gfApplySeasonTint === 'function') ? _gfApplySeasonTint(MN_LONDON_SKY.nightHoriz, season, true) : MN_LONDON_SKY.nightHoriz;
   const top   = sDay.map((d,i)  => Math.round(d * dayMix + sNight[i]  * night));
   const horiz = sDayH.map((d,i) => Math.round(d * dayMix + sNightH[i] * night));
-  // horizonY anchored to bottom of play board
-  const _hYsky = (typeof _mnHorizonY === 'function') ? _mnHorizonY() : H * 0.78;
+  // Sky fills the upper ~92% of the board (the bottom 8% is river / Thames).
+  // The gradient peaks WARM at the horizon line (just above the skyline) so
+  // the city silhouettes read against a glowing sunset/sunrise band.
+  const _hYsky = H * 0.92;
   const grad = ctx.createLinearGradient(0, 0, 0, _hYsky);
   grad.addColorStop(0,    `rgb(${top[0]},${top[1]},${top[2]})`);
-  grad.addColorStop(0.85, `rgb(${Math.round((top[0]*0.6+horiz[0]*0.4))},${Math.round((top[1]*0.6+horiz[1]*0.4))},${Math.round((top[2]*0.6+horiz[2]*0.4))})`);
+  grad.addColorStop(0.70, `rgb(${Math.round((top[0]*0.4+horiz[0]*0.6))},${Math.round((top[1]*0.4+horiz[1]*0.6))},${Math.round((top[2]*0.4+horiz[2]*0.6))})`);
   grad.addColorStop(1,    `rgb(${horiz[0]},${horiz[1]},${horiz[2]})`);
   ctx.fillStyle = grad;
   ctx.fillRect(0, 0, W, _hYsky);
-  // Below the horizon (riverbank → viewport bottom) — deep ground tone so
-  // the area below the tray doesn't show stale gradient. Most of this is
-  // covered by the tray + bottom UI, but anything peeking through reads as
-  // dark embankment.
-  const groundR = Math.round(horiz[0]*0.20), groundG = Math.round(horiz[1]*0.18), groundB = Math.round(horiz[2]*0.30);
-  ctx.fillStyle = `rgb(${groundR},${groundG},${groundB})`;
+  // River band fills the bottom 8% with deep horizon-tinted water.
+  const _gR = Math.round(horiz[0]*0.55), _gG = Math.round(horiz[1]*0.50), _gB = Math.round(horiz[2]*0.65);
+  ctx.fillStyle = `rgb(${_gR},${_gG},${_gB})`;
   ctx.fillRect(0, _hYsky, W, H - _hYsky);
 
   // Stars at night — above the horizon only
   if (night > 0.4) {
     ctx.save();
-    const _hYst = (typeof _mnHorizonY === 'function') ? _mnHorizonY() : H * 0.55;
+    const _hYst = H * 0.92;
     for (const s of _mnStars) {
       const tw = 0.4 + 0.6 * Math.abs(Math.sin(ts*0.001*s.spd + s.off));
       ctx.globalAlpha = (s.base + tw*0.4) * Math.min(1, (night - 0.3) * 1.6);
@@ -8424,7 +8425,7 @@ function _mnDrawScene(ts) {
   }
 
   // Sun / moon arc — constrained to the SKY (above the play-board horizon)
-  const _hYsun = (typeof _mnHorizonY === 'function') ? _mnHorizonY() : H * 0.55;
+  const _hYsun = H * 0.92;
   const sunY = _hYsun * (0.15 + 0.55 * (1 - Math.sin(t * Math.PI))); // higher when t near 0/1, lower (still above horizon) at noon
   // Better: arc that peaks near noon. Re-do clearly.
   const _sunBandTop = _hYsun * 0.10;
@@ -8457,7 +8458,7 @@ function _mnDrawScene(ts) {
 
   // Soft drifting clouds (4-5 across the sky) — above the horizon only
   ctx.save();
-  const _hYcl = (typeof _mnHorizonY === 'function') ? _mnHorizonY() : H * 0.55;
+  const _hYcl = H * 0.92;
   ctx.globalAlpha = 0.28 + dayMix * 0.18;
   ctx.fillStyle = `rgba(255,255,255,0.85)`;
   for (let i = 0; i < 5; i++) {
@@ -8474,17 +8475,16 @@ function _mnDrawScene(ts) {
   ctx.restore();
 
   // ─── London skyline (back layer, soft / distant) ───
-  // Anchor the skyline horizon to the BOTTOM of the play board so the
-  // silhouettes read as a backdrop FOR the bridge (not as content below
-  // the tray). The Thames sits in the gap between play board + tray.
-  const horizonY = _mnHorizonY();
-  // baseY = where building bases sit (= horizon line at play-board bottom)
-  const baseY = horizonY - 4;
-  // SH controls skyline silhouette HEIGHT. We deliberately keep this
-  // SMALL — buildings should peek just above the horizon (only ~the
-  // bottom 1–2 grid rows of the play area). Tallest building = SH * 0.42
-  // (Shard) so we cap SH around 80–90px.
-  const SH = Math.min(85, Math.max(55, baseY * 0.18));
+  // Scene canvas is sized to the play board (same approach as Golden Frog),
+  // so W and H are the board's pixel dimensions. The skyline lays out
+  // naturally inside the board.
+  // baseY = where building bases sit (just above bottom of play board)
+  const baseY = H * 0.92 - 4;
+  // CX/CW operate on the FULL board width (W) since this canvas IS the board.
+  const CX = (f) => f * W;
+  const CW = (f) => f * W;
+  // SH controls skyline silhouette HEIGHT. Scales with board width.
+  const SH = Math.min(120, Math.max(55, W * 0.18));
   const back  = `rgba(${Math.round(20+dayMix*30)},${Math.round(20+dayMix*30)},${Math.round(40+dayMix*20)},0.55)`;
   const front = `rgba(${Math.round(8+dayMix*14)},${Math.round(8+dayMix*12)},${Math.round(20+dayMix*15)},0.92)`;
   const edgeRgb = MN_LONDON_SKY.edgeColor;
@@ -8493,66 +8493,66 @@ function _mnDrawScene(ts) {
   // BACK layer — distant rooftops (parliament + houses of parliament left side)
   ctx.save(); ctx.fillStyle = back;
   // Distant Parliament block (left of centre)
-  const parlX = W*0.30, parlW = W*0.18, parlH = SH*0.13;
+  const parlX = CX(0.30), parlW = CW(0.18), parlH = SH*0.13;
   ctx.fillRect(parlX, baseY - parlH, parlW, parlH + 4);
   // tiny crenellations on roof
   for (let i = 0; i < 6; i++) ctx.fillRect(parlX + i*(parlW/6), baseY - parlH - 4, parlW/12, 4);
   // Distant houses (right side terrace)
   const housesXs = [{x:0.62,w:0.04,h:0.07},{x:0.67,w:0.05,h:0.08},{x:0.73,w:0.04,h:0.06},{x:0.78,w:0.05,h:0.075},{x:0.84,w:0.04,h:0.065},{x:0.89,w:0.06,h:0.08}];
-  for (const a of housesXs) ctx.fillRect(a.x*W, baseY - a.h*SH, a.w*W, a.h*SH + 4);
+  for (const a of housesXs) ctx.fillRect(CX(a.x), baseY - a.h*SH, CW(a.w), a.h*SH + 4);
   ctx.restore();
 
   // FRONT silhouette layer — Big Ben, Parliament tower, London Eye, Shard, Gherkin, St Paul's
   ctx.save(); ctx.fillStyle = front;
 
   // ─ St Paul's Cathedral (left, iconic dome) ─
-  const spX = W * 0.13, spBase = baseY + 2, spH = SH * 0.18;
+  const spX = CX(0.13), spBase = baseY + 2, spH = SH * 0.18;
   // base building
-  ctx.fillRect(spX - W*0.05, spBase - spH*0.5, W*0.10, spH*0.5 + 2);
+  ctx.fillRect(spX - CW(0.05), spBase - spH*0.5, CW(0.10), spH*0.5 + 2);
   // dome
   ctx.beginPath();
-  ctx.arc(spX, spBase - spH*0.5, W*0.045, Math.PI, 0);
+  ctx.arc(spX, spBase - spH*0.5, CW(0.045), Math.PI, 0);
   ctx.fill();
   // little cross-spire on top
-  ctx.fillRect(spX - 1.2, spBase - spH*0.5 - W*0.045 - 14, 2.4, 14);
-  ctx.fillRect(spX - 4, spBase - spH*0.5 - W*0.045 - 9, 8, 2);
+  ctx.fillRect(spX - 1.2, spBase - spH*0.5 - CW(0.045) - 14, 2.4, 14);
+  ctx.fillRect(spX - 4, spBase - spH*0.5 - CW(0.045) - 9, 8, 2);
   // flanking towers
-  ctx.fillRect(spX - W*0.06, spBase - spH*0.42, W*0.012, spH*0.18);
-  ctx.fillRect(spX + W*0.048, spBase - spH*0.42, W*0.012, spH*0.18);
+  ctx.fillRect(spX - CW(0.06), spBase - spH*0.42, CW(0.012), spH*0.18);
+  ctx.fillRect(spX + CW(0.048), spBase - spH*0.42, CW(0.012), spH*0.18);
   // tiny pinnacles
-  ctx.beginPath(); ctx.moveTo(spX - W*0.054, spBase - spH*0.42);
-  ctx.lineTo(spX - W*0.054 + W*0.006, spBase - spH*0.45);
-  ctx.lineTo(spX - W*0.054 + W*0.012, spBase - spH*0.42); ctx.closePath(); ctx.fill();
-  ctx.beginPath(); ctx.moveTo(spX + W*0.048, spBase - spH*0.42);
-  ctx.lineTo(spX + W*0.048 + W*0.006, spBase - spH*0.45);
-  ctx.lineTo(spX + W*0.048 + W*0.012, spBase - spH*0.42); ctx.closePath(); ctx.fill();
+  ctx.beginPath(); ctx.moveTo(spX - CW(0.054), spBase - spH*0.42);
+  ctx.lineTo(spX - CW(0.054) + CW(0.006), spBase - spH*0.45);
+  ctx.lineTo(spX - CW(0.054) + CW(0.012), spBase - spH*0.42); ctx.closePath(); ctx.fill();
+  ctx.beginPath(); ctx.moveTo(spX + CW(0.048), spBase - spH*0.42);
+  ctx.lineTo(spX + CW(0.048) + CW(0.006), spBase - spH*0.45);
+  ctx.lineTo(spX + CW(0.048) + CW(0.012), spBase - spH*0.42); ctx.closePath(); ctx.fill();
 
   // ─ Big Ben / Elizabeth Tower (left-centre, gothic clock tower) ─
-  const bbX = W * 0.28, bbBase = baseY + 2, bbH = SH * 0.30;
+  const bbX = CX(0.28), bbBase = baseY + 2, bbH = SH * 0.30;
   // main shaft
-  ctx.fillRect(bbX - W*0.018, bbBase - bbH, W*0.036, bbH);
+  ctx.fillRect(bbX - CW(0.018), bbBase - bbH, CW(0.036), bbH);
   // clock face section (slight bulge)
-  ctx.fillRect(bbX - W*0.022, bbBase - bbH*0.78, W*0.044, SH*0.045);
+  ctx.fillRect(bbX - CW(0.022), bbBase - bbH*0.78, CW(0.044), SH*0.045);
   // pointed roof
   ctx.beginPath();
-  ctx.moveTo(bbX - W*0.018, bbBase - bbH);
+  ctx.moveTo(bbX - CW(0.018), bbBase - bbH);
   ctx.lineTo(bbX, bbBase - bbH - SH*0.045);
-  ctx.lineTo(bbX + W*0.018, bbBase - bbH);
+  ctx.lineTo(bbX + CW(0.018), bbBase - bbH);
   ctx.closePath(); ctx.fill();
   // gold finial dot
   ctx.fillRect(bbX - 1.4, bbBase - bbH - SH*0.05, 2.8, 2.8);
 
   // ─ Houses of Parliament block (centre, twin pinnacles) ─
-  const hpX = W * 0.36, hpW = W * 0.10, hpH = SH * 0.15;
+  const hpX = CX(0.36), hpW = CW(0.10), hpH = SH * 0.15;
   ctx.fillRect(hpX, bbBase - hpH, hpW, hpH + 2);
   // crenellated roofline
   for (let i = 0; i < 7; i++) ctx.fillRect(hpX + i*(hpW/7), bbBase - hpH - 3, hpW/14, 3);
   // two side spires
-  ctx.fillRect(hpX + W*0.005, bbBase - hpH - SH*0.04, W*0.005, SH*0.04);
-  ctx.fillRect(hpX + hpW - W*0.01, bbBase - hpH - SH*0.04, W*0.005, SH*0.04);
+  ctx.fillRect(hpX + CW(0.005), bbBase - hpH - SH*0.04, CW(0.005), SH*0.04);
+  ctx.fillRect(hpX + hpW - CW(0.01), bbBase - hpH - SH*0.04, CW(0.005), SH*0.04);
 
   // ─ London Eye (centre-right, slow rotating wheel) ─
-  const leX = W * 0.55, leY = baseY - SH * 0.18, leR = SH * 0.12;
+  const leX = CX(0.55), leY = baseY - SH * 0.18, leR = SH * 0.12;
   // support leg
   ctx.fillRect(leX - 1.5, baseY, 3, -SH*0.06);
   // wheel rim — outer ring
@@ -8581,24 +8581,24 @@ function _mnDrawScene(ts) {
   ctx.beginPath(); ctx.arc(leX, leY, 4, 0, Math.PI*2); ctx.fill();
 
   // ─ The Gherkin (30 St Mary Axe — lozenge dome) ─
-  const ghX = W * 0.71, ghBase = baseY + 2, ghH = SH * 0.22;
+  const ghX = CX(0.71), ghBase = baseY + 2, ghH = SH * 0.22;
   // wide bullet shape
   ctx.beginPath();
-  ctx.moveTo(ghX - W*0.025, ghBase);
-  ctx.bezierCurveTo(ghX - W*0.040, ghBase - ghH*0.40, ghX - W*0.030, ghBase - ghH*0.85, ghX, ghBase - ghH);
-  ctx.bezierCurveTo(ghX + W*0.030, ghBase - ghH*0.85, ghX + W*0.040, ghBase - ghH*0.40, ghX + W*0.025, ghBase);
+  ctx.moveTo(ghX - CW(0.025), ghBase);
+  ctx.bezierCurveTo(ghX - CW(0.040), ghBase - ghH*0.40, ghX - CW(0.030), ghBase - ghH*0.85, ghX, ghBase - ghH);
+  ctx.bezierCurveTo(ghX + CW(0.030), ghBase - ghH*0.85, ghX + CW(0.040), ghBase - ghH*0.40, ghX + CW(0.025), ghBase);
   ctx.closePath(); ctx.fill();
   // tip
   ctx.fillRect(ghX - 1.2, ghBase - ghH - 6, 2.4, 6);
 
   // ─ The Shard (right, tapered glass spire) ─
-  const shX = W * 0.85, shBase = baseY + 2, shH = SH * 0.42;
+  const shX = CX(0.85), shBase = baseY + 2, shH = SH * 0.42;
   ctx.beginPath();
-  ctx.moveTo(shX - W*0.034, shBase);
-  ctx.lineTo(shX - W*0.005, shBase - shH);
+  ctx.moveTo(shX - CW(0.034), shBase);
+  ctx.lineTo(shX - CW(0.005), shBase - shH);
   ctx.lineTo(shX, shBase - shH - 8);
-  ctx.lineTo(shX + W*0.005, shBase - shH);
-  ctx.lineTo(shX + W*0.034, shBase);
+  ctx.lineTo(shX + CW(0.005), shBase - shH);
+  ctx.lineTo(shX + CW(0.034), shBase);
   ctx.closePath(); ctx.fill();
 
   ctx.restore();
@@ -8610,24 +8610,24 @@ function _mnDrawScene(ts) {
   ctx.lineWidth = 1.2;
   // Big Ben outline
   ctx.beginPath();
-  ctx.moveTo(bbX - W*0.018, bbBase);
-  ctx.lineTo(bbX - W*0.018, bbBase - bbH);
+  ctx.moveTo(bbX - CW(0.018), bbBase);
+  ctx.lineTo(bbX - CW(0.018), bbBase - bbH);
   ctx.lineTo(bbX, bbBase - bbH - SH*0.045);
-  ctx.lineTo(bbX + W*0.018, bbBase - bbH);
-  ctx.lineTo(bbX + W*0.018, bbBase);
+  ctx.lineTo(bbX + CW(0.018), bbBase - bbH);
+  ctx.lineTo(bbX + CW(0.018), bbBase);
   ctx.stroke();
   // Shard outline
   ctx.beginPath();
-  ctx.moveTo(shX - W*0.034, shBase);
+  ctx.moveTo(shX - CW(0.034), shBase);
   ctx.lineTo(shX, shBase - shH - 8);
-  ctx.lineTo(shX + W*0.034, shBase);
+  ctx.lineTo(shX + CW(0.034), shBase);
   ctx.stroke();
   ctx.restore();
 
   // ── Big Ben clock face — golden glow that pulses softly ──
   ctx.save();
   const clockY = bbBase - bbH*0.78 + SH*0.022;
-  const clockR = Math.max(3, W*0.013);
+  const clockR = Math.max(3, CW(0.013));
   const clockGlow = 0.55 + 0.35 * Math.abs(Math.sin(_mnBigBenChimePh));
   ctx.fillStyle = `rgba(255, 220, 130, ${clockGlow * (0.55 + dayMix*0.4)})`;
   ctx.beginPath(); ctx.arc(bbX, clockY, clockR, 0, Math.PI*2); ctx.fill();
@@ -9364,6 +9364,14 @@ function drawGrid(){
     // the play canvas is fully transparent so the procedural sky shows through.
     if (_isMonuments) {
       ctx.save();
+      // ── 0. Composite the procedural London scene INTO the play board ──
+      // The scene canvas is pre-rendered each frame in _mnDrawScene at the
+      // exact size of the grid canvas, so this composite shows sky, sun/moon,
+      // London skyline, and Thames — all naturally fitted to the play board.
+      if (_mnSceneCanvas && _mnSceneCanvas.width > 0) {
+        ctx.globalAlpha = 1;
+        ctx.drawImage(_mnSceneCanvas, 0, 0, gridCanvas.width, gridCanvas.height);
+      }
       // ── 1. Per-cell soft zone tint (so colour assignment is clear) ──
       // Empty silhouette cells get a coloured wash matching the brick that
       // belongs there (orange/red/brown). Filled cells render as bricks.
