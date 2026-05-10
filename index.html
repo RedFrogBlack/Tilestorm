@@ -22301,20 +22301,17 @@ function updateHomeSubtitles() {
 
   function devNextLevel() {
     try {
-      // Monuments flow (London Tower Bridge — autumn/spring/summer/winter)
+      // Monuments: jump to the NEXT CITY (1–10), not the next season.
+      // Cities are: London → Prague → Accra → Cairo → … Sydney.
       if (typeof monumentsActive !== 'undefined' && monumentsActive) {
-        const total = MONUMENTS_LEVELS.length;
-        const cur = monumentsLevelIdx || 0;
-        const next = (cur + 1) % total;
-        // Cancel the auto-advance timer — user is manually advancing; avoid
-        // a double-advance race.
         if (typeof _mnClearSeasonAutoAdvance === 'function') _mnClearSeasonAutoAdvance();
-        // Use the proper in-place advance (handles same-monument season cross-fade,
-        // resets hazards, keeps board / score / bricks intact).
-        if (typeof advanceMonumentsLevel === 'function') {
-          advanceMonumentsLevel();
-          const newLv = MONUMENTS_LEVELS[monumentsLevelIdx];
-          showDevToast('SEASON: ' + (newLv?.season || '?').toUpperCase());
+        const curCityLv = (typeof _mnLvIdxToCityLv === 'function') ? _mnLvIdxToCityLv(monumentsLevelIdx|0) : 1;
+        const nextCityLv = Math.min(10, curCityLv + 1);
+        if (nextCityLv === curCityLv) { showDevToast('LAST CITY'); return; }
+        if (typeof _jumpToLevel === 'function') {
+          _jumpToLevel('monuments', nextCityLv);
+          const city = (typeof _mnCurrentCity === 'function') ? _mnCurrentCity().city : ('LV ' + nextCityLv);
+          showDevToast('CITY ' + nextCityLv + ' · ' + city.toUpperCase());
         }
         return;
       }
@@ -22348,28 +22345,16 @@ function updateHomeSubtitles() {
 
   function devPrevLevel() {
     try {
-      // Monuments flow — step backwards through seasons
+      // Monuments: jump to the PREVIOUS CITY (1–10), not the previous season.
       if (typeof monumentsActive !== 'undefined' && monumentsActive) {
-        const total = MONUMENTS_LEVELS.length;
-        const cur = monumentsLevelIdx || 0;
-        const prev = (cur - 1 + total) % total;
-        // Manually do the in-place season swap backwards
-        const curLv = MONUMENTS_LEVELS[cur];
-        const prevLv = MONUMENTS_LEVELS[prev];
-        if (curLv && prevLv && curLv.id === prevLv.id && curLv.zoneMap === prevLv.zoneMap) {
-          monumentsLevelIdx = prev;
-          _mnSeasonPrev = curLv.season;
-          _mnSeasonLerpStart = performance.now();
-          if (typeof _mnStopHazards === 'function') _mnStopHazards();
-          if (typeof _mnHazards !== 'undefined' && _mnHazards && _mnHazards.clear) _mnHazards.clear();
-          if (typeof _gfSeasonParticles !== 'undefined') _gfSeasonParticles = [];
-          if (typeof _mnHazardHintReset === 'function') _mnHazardHintReset();
-          if (typeof _mnStartHazards === 'function') _mnStartHazards();
-          if (typeof showEventBanner === 'function') {
-            const emj = { spring:'🌸', summer:'☀️', autumn:'🍂', winter:'❄️' }[prevLv.season] || '';
-            showEventBanner(emj + ' ' + prevLv.season.toUpperCase() + ' — keep building!');
-          }
-          showDevToast('SEASON: ' + prevLv.season.toUpperCase());
+        if (typeof _mnClearSeasonAutoAdvance === 'function') _mnClearSeasonAutoAdvance();
+        const curCityLv = (typeof _mnLvIdxToCityLv === 'function') ? _mnLvIdxToCityLv(monumentsLevelIdx|0) : 1;
+        const prevCityLv = Math.max(1, curCityLv - 1);
+        if (prevCityLv === curCityLv) { showDevToast('FIRST CITY'); return; }
+        if (typeof _jumpToLevel === 'function') {
+          _jumpToLevel('monuments', prevCityLv);
+          const city = (typeof _mnCurrentCity === 'function') ? _mnCurrentCity().city : ('LV ' + prevCityLv);
+          showDevToast('CITY ' + prevCityLv + ' · ' + city.toUpperCase());
         }
         return;
       }
