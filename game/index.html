@@ -9292,6 +9292,28 @@ function _mnPickRandomFilledZoneCell() {
   if (!candidates.length) return null;
   return candidates[Math.floor(Math.random() * candidates.length)];
 }
+// Hazard hints fire ONCE per (level, hazard type) — the user explicitly
+// complained that the frog repeats the frost/leaves explanation every tick.
+// We reset this map when the player advances to a new monuments level.
+let _mnHazardHintShown = Object.create(null);
+function _mnHazardHintKey(season) {
+  return monumentsLevelIdx + ':' + season;
+}
+function _mnHazardHintAlreadyShown(season) {
+  return !!_mnHazardHintShown[_mnHazardHintKey(season)];
+}
+function _mnHazardHintMark(season) {
+  _mnHazardHintShown[_mnHazardHintKey(season)] = true;
+}
+function _mnHazardHintReset() { _mnHazardHintShown = Object.create(null); }
+function _mnSayHazardOnce(season, color, pool, ribbit) {
+  if (!hazardHintsOn) return;
+  if (_mnHazardHintAlreadyShown(season)) return;
+  if (typeof showFrogSpeech !== 'function') return;
+  _mnHazardHintMark(season);
+  showFrogSpeech(color, _pick(pool), ribbit);
+}
+
 function _mnSpawnSeasonHazard() {
   if (!monumentsActive || typeof gameActive === 'undefined' || !gameActive) return;
   const lv = MONUMENTS_LEVELS[monumentsLevelIdx];
@@ -9320,7 +9342,7 @@ function _mnSpawnSeasonHazard() {
           froze = true;
         }
       }
-      if (froze && hazardHintsOn && typeof showFrogSpeech === 'function') showFrogSpeech('purple', _pick(COMMENTARY.frost), 'slow');
+      if (froze) _mnSayHazardOnce('winter', 'purple', COMMENTARY.frost, 'slow');
     }
     if (!froze) {
       // Fallback: freeze a random EMPTY zone row — ice on empty cells blocks
@@ -9340,7 +9362,7 @@ function _mnSpawnSeasonHazard() {
             _mnHazardSet(r, c, { type: 'ice', startedAt: now, expiresAt: now + lifetime });
           }
         }
-        if (hazardHintsOn && typeof showFrogSpeech === 'function') showFrogSpeech('purple', _pick(COMMENTARY.frost), 'slow');
+        _mnSayHazardOnce('winter', 'purple', COMMENTARY.frost, 'slow');
       }
     }
   } else if (lv.season === 'summer') {
@@ -9365,7 +9387,7 @@ function _mnSpawnSeasonHazard() {
         const [nr, nc] = neighbors[i];
         _mnHazardSet(nr, nc, { type: 'puddle', startedAt: now, expiresAt: now + lifetime });
       }
-      if (hazardHintsOn && typeof showFrogSpeech === 'function') showFrogSpeech('red', _pick(COMMENTARY.heatwave), 'panic');
+      _mnSayHazardOnce('summer', 'red', COMMENTARY.heatwave, 'panic');
     } else {
       // Empty board fallback — spawn 2-3 puddles on random empty zone cells
       const placed = [];
@@ -9378,7 +9400,7 @@ function _mnSpawnSeasonHazard() {
           placed.push([r, c]);
         }
       }
-      if (placed.length && hazardHintsOn && typeof showFrogSpeech === 'function') showFrogSpeech('red', _pick(COMMENTARY.heatwave), 'panic');
+      if (placed.length) _mnSayHazardOnce('summer', 'red', COMMENTARY.heatwave, 'panic');
     }
   } else if (lv.season === 'autumn') {
     // Drop 1-3 leaf piles on empty zone cells anywhere on the board.
@@ -9390,7 +9412,7 @@ function _mnSpawnSeasonHazard() {
       const [r, c] = cell;
       _mnHazardSet(r, c, { type: 'leaves', startedAt: now, expiresAt: now + lifetime });
     }
-    if (hazardHintsOn && typeof showFrogSpeech === 'function') showFrogSpeech('purple', _pick(COMMENTARY.leaves), 'warm');
+    _mnSayHazardOnce('autumn', 'purple', COMMENTARY.leaves, 'warm');
   } else if (lv.season === 'spring') {
     // Friendly bonus: +50 pts, gentle petal burst.
     if (typeof score !== 'undefined') {
@@ -9398,7 +9420,7 @@ function _mnSpawnSeasonHazard() {
       if (typeof bestScore !== 'undefined' && score > bestScore) bestScore = score;
       if (typeof updateUI === 'function') updateUI();
     }
-    if (hazardHintsOn && typeof showFrogSpeech === 'function') showFrogSpeech('purple', _pick(COMMENTARY.blossom), 'fast');
+    _mnSayHazardOnce('spring', 'purple', COMMENTARY.blossom, 'fast');
   }
 }
 function _mnHazardSpawnTick() {
@@ -9843,6 +9865,9 @@ function advanceMonumentsLevel() {
     _mnSeasonLerpStart = 0;
   }
   stopMonumentsGame();
+  // Reset per-level hazard-hint memory so the new level's first frost/leaves/heatwave/blossom
+  // is explained ONCE (not every tick).
+  if (typeof _mnHazardHintReset === 'function') _mnHazardHintReset();
   startMonumentsGame(next);
   // Re-arm the lerp AFTER startMonumentsGame (which resets _mnSceneT). The
   // lerp state is read each draw frame, so just setting it again here is fine.
@@ -12803,12 +12828,27 @@ const _AUDIO_BASE = (()=>{
   return '/audio/'; // local dev
 })();
 
+// Track whether a clip is currently playing so we DON'T cut the frog off
+// mid-sentence with a fresh commentary line. New requests are dropped
+// while a clip is in-flight (the on-screen banner may still update via
+// showFrogSpeech, but the voice will stay coherent).
+let _frogVoicePlayingUntil = 0; // performance.now() ms when the current clip will end
+function _frogVoiceIsPlaying() {
+  return _frogAudioNode && performance.now() < _frogVoicePlayingUntil;
+}
 function _playFrogVoice(key) {
   if (!soundOn || !commentaryOn) return;
+  // CRITICAL: if a frog clip is currently playing, DROP this new request
+  // instead of cutting the previous one off mid-sentence. The user explicitly
+  // complained: "he keeps talking and than interrupt himself".
+  if (_frogVoiceIsPlaying()) return;
   ensureAudio().then(() => {
     if (!audioCtx || audioCtx.state !== 'running') return;
-    // Stop any currently playing voice
-    if (_frogAudioNode) { try { _frogAudioNode.stop(); } catch(e){} _frogAudioNode = null; }
+    // Defensive: if we somehow still have a node (stale), drop the reference
+    // without forcibly stopping it — it has already finished.
+    if (_frogAudioNode && performance.now() >= _frogVoicePlayingUntil) {
+      _frogAudioNode = null;
+    }
     const play = (buf) => {
       const src = audioCtx.createBufferSource();
       const gain = audioCtx.createGain();
@@ -12817,6 +12857,11 @@ function _playFrogVoice(key) {
       src.connect(gain).connect(audioCtx.destination);
       src.start(0);
       _frogAudioNode = src;
+      // Mark how long this clip will be playing (+ a 250ms tail to avoid
+      // back-to-back overlaps). idle ribbit + hazard gates respect this.
+      _frogVoicePlayingUntil = performance.now() + (buf.duration * 1000) + 250;
+      try { _lastVoiceAt = Date.now(); } catch(_e) {} // make idle ribbit respect TTS
+      src.onended = () => { if (_frogAudioNode === src) _frogAudioNode = null; };
     };
     if (_frogAudioCache[key]) { play(_frogAudioCache[key]); return; }
     fetch(_AUDIO_BASE + key + '.mp3')
