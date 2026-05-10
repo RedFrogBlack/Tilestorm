@@ -21099,9 +21099,8 @@ function updateLevelNavStrip() {
   const lv = _getActiveLevelNum(pack);
   const isDev = (typeof localStorage !== 'undefined' && localStorage.getItem('cd_dev_unlock') === '1');
   const unlocked = (typeof _cdProgress !== 'undefined') ? _cdProgress.getUnlocked(pack) : 1;
-  // Monuments: all 10 cities are freely accessible — the player picks which city
-  // to visit (it's a sightseeing tour, not a progression gate).
-  const cap = (pack === 'monuments' || isDev) ? 10 : Math.min(10, unlocked);
+  // Same gating logic as Golden Frog: only unlocked levels accessible; dev unlocks all.
+  const cap = isDev ? 10 : Math.min(10, unlocked);
   // Update label — "4 / 10" style (no 'LV' prefix)
   const lblEl = document.getElementById('lvl-nav-current');
   if (lblEl) lblEl.textContent = lv + ' / 10';
@@ -21126,8 +21125,8 @@ function _jumpToLevel(pack, targetLv) {
   if (!pack) return;
   const isDev = (typeof localStorage !== 'undefined' && localStorage.getItem('cd_dev_unlock') === '1');
   const unlocked = (typeof _cdProgress !== 'undefined') ? _cdProgress.getUnlocked(pack) : 1;
-  // Monuments: all 10 cities are freely accessible (sightseeing, not a gate).
-  const cap = (pack === 'monuments' || isDev) ? 10 : Math.min(10, unlocked);
+  // Same gating logic as Golden Frog: only unlocked levels accessible; dev unlocks all.
+  const cap = isDev ? 10 : Math.min(10, unlocked);
   if (targetLv < 1 || targetLv > cap) return;
   if (typeof _cdProgress !== 'undefined') _cdProgress.setLastLevel(pack, targetLv);
   if (pack === 'monuments') {
