@@ -9364,7 +9364,9 @@ function drawGrid(){
     // the play canvas is fully transparent so the procedural sky shows through.
     if (_isMonuments) {
       ctx.save();
-      // Per-cell soft zone tint (transparent inside silhouette)
+      // ── 1. Per-cell soft zone tint (so colour assignment is clear) ──
+      // Empty silhouette cells get a coloured wash matching the brick that
+      // belongs there (orange/red/brown). Filled cells render as bricks.
       for (let r = 0; r < ROWS; r++) for (let c = 0; c < COLS; c++) {
         if (!_mnZoneMap || !_mnZoneMap[r]) continue;
         const z = _mnZoneMap[r][c];
@@ -9372,20 +9374,71 @@ function drawGrid(){
         const code = (z === 1) ? 91 : (z === 2) ? 92 : 93;
         const pal = MN_BRICK_HEX && MN_BRICK_HEX[code];
         if (!pal) continue;
-        // Faint zone-coloured cell so the player sees the silhouette + which colour goes where.
-        // Soft fill (low alpha) + light dashed outline. We keep this subtle so the
-        // sky/skyline remain visible behind the silhouette.
         const x = c*CELL + 1, y = r*CELL + 1, w = CELL - 2, h = CELL - 2;
         const rad = Math.max(3, CELL*0.10);
-        ctx.globalAlpha = 0.10;
+        ctx.globalAlpha = 0.22;
         ctx.fillStyle = pal.base;
         ctx.beginPath(); ctx.roundRect(x, y, w, h, rad); ctx.fill();
-        ctx.globalAlpha = 0.32;
+        ctx.globalAlpha = 0.45;
         ctx.setLineDash([3, 3]);
         ctx.strokeStyle = pal.dark;
         ctx.lineWidth = 1;
         ctx.beginPath(); ctx.roundRect(x + 0.5, y + 0.5, w - 1, h - 1, rad); ctx.stroke();
         ctx.setLineDash([]);
+      }
+      ctx.globalAlpha = 1;
+
+      // ── 2. Tower Bridge SILHOUETTE OUTLINE ──
+      // Trace the boundary between in-silhouette cells (z>0) and out-of-silhouette
+      // cells (z===0 or out of bounds). Draw a thick dark stroke for every such
+      // boundary edge. This makes the Tower Bridge SHAPE dominant on the board
+      // even though the per-cell fills are semi-transparent (London shows through).
+      const _isIn = (r, c) => {
+        if (r < 0 || r >= ROWS || c < 0 || c >= COLS) return false;
+        if (!_mnZoneMap || !_mnZoneMap[r]) return false;
+        return _mnZoneMap[r][c] > 0;
+      };
+      // Build path of boundary edges
+      ctx.beginPath();
+      for (let r = 0; r < ROWS; r++) for (let c = 0; c < COLS; c++) {
+        if (!_isIn(r, c)) continue;
+        const x = c * CELL, y = r * CELL;
+        // Top edge
+        if (!_isIn(r - 1, c)) { ctx.moveTo(x, y); ctx.lineTo(x + CELL, y); }
+        // Bottom edge
+        if (!_isIn(r + 1, c)) { ctx.moveTo(x, y + CELL); ctx.lineTo(x + CELL, y + CELL); }
+        // Left edge
+        if (!_isIn(r, c - 1)) { ctx.moveTo(x, y); ctx.lineTo(x, y + CELL); }
+        // Right edge
+        if (!_isIn(r, c + 1)) { ctx.moveTo(x + CELL, y); ctx.lineTo(x + CELL, y + CELL); }
+      }
+      // Outline: thick dark stroke + bright halo so it pops against the warm sky
+      ctx.lineCap = 'round';
+      ctx.lineJoin = 'round';
+      // Outer halo (cream/gold) — gives that "monument is glowing" silhouette feel
+      ctx.globalAlpha = 0.55;
+      ctx.strokeStyle = '#FFE4A8';
+      ctx.lineWidth = Math.max(7, CELL * 0.18);
+      ctx.stroke();
+      // Main outline (deep brown/black) — defines the Tower Bridge shape
+      ctx.globalAlpha = 0.92;
+      ctx.strokeStyle = '#1A0F08';
+      ctx.lineWidth = Math.max(3.5, CELL * 0.09);
+      ctx.stroke();
+      // Thin inner highlight (soft warm white) for definition
+      ctx.globalAlpha = 0.6;
+      ctx.strokeStyle = '#FFF2D8';
+      ctx.lineWidth = 1;
+      ctx.stroke();
+      ctx.globalAlpha = 1;
+
+      // ── 3. Subtle "BUILD ME" label inside the deck row when empty ──
+      // Only show if the deck (row 8) is completely empty — disappears as user builds.
+      let _deckEmpty = true;
+      if (_mnZoneMap && _mnZoneMap[8]) {
+        for (let c = 0; c < COLS; c++) {
+          if (_mnZoneMap[8][c] > 0 && grid[8][c] !== 0) { _deckEmpty = false; break; }
+        }
       }
       ctx.restore();
     } else if(cityPackActive && _skyInitialized && _skyCanvas) {
