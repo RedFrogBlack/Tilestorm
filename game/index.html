@@ -8672,11 +8672,8 @@ function drawGrid(){
     }
     ctx.restore();
   } else {
-    // For monuments: very faint cream tint just so the play area is identifiable
-    ctx.save();
-    ctx.fillStyle = 'rgba(20,10,6,0.18)';
-    ctx.beginPath(); ctx.roundRect(0,0,W,H,10); ctx.fill();
-    ctx.restore();
+    // For monuments: leave canvas fully transparent — painted CSS background
+    // (with day/night crossfade) is the play area visual. No tint, no overlay.
   }
 
   if(isGold)drawStarfield();
@@ -8755,8 +8752,12 @@ function drawGrid(){
   }
 
   if(gridMask){
-    // City Pack: composite animated sky layer
-    if(cityPackActive && _skyInitialized && _skyCanvas) {
+    // City Monuments: keep play canvas fully transparent so painted CSS scene shows through.
+    // Skip the sky-canvas composite AND the dark masked-cell overlay entirely.
+    if (_isMonuments) {
+      // nothing — painted CSS background is all we need
+    } else if(cityPackActive && _skyInitialized && _skyCanvas) {
+      // City Pack: composite animated sky layer
       ctx.drawImage(_skyCanvas, 0, 0);
     } else {
       // Fallback: plain dark masked cells
