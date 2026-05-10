@@ -8579,6 +8579,9 @@ function startMonumentsGame(levelIdx) {
   }
   // Arm 20s auto-advance so all four seasons cycle automatically.
   if (typeof _mnArmSeasonAutoAdvance === 'function') _mnArmSeasonAutoAdvance();
+  // Refresh top-bar level nav strip (label "N / 10" + prev/next enable state)
+  // — mirrors Golden Frog which calls this in initChallengeMode.
+  if (typeof updateLevelNavStrip === 'function') updateLevelNavStrip();
 }
 
 // ── Procedural background scene canvas (Golden-Frog style) ──────────────
