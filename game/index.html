@@ -9682,151 +9682,246 @@ function _mnDrawCityPrague(ctx, W, H, baseY, season, dayMix, night, ts, horiz) {
   const SH = H * 0.55;
   _mnDrawGroundBand(ctx, W, H, baseY, 'river', dayMix, horiz);
 
-  // Terracotta city silhouette behind: cluster of medieval rooftops with chimneys.
+  // ── Castle hill on far left ──
   ctx.save();
-  const roofR = [180, 90, 60];          // burnt terracotta
-  const roofD = [110, 50, 35];          // shadow
-  const wall  = [225, 200, 165];        // sandstone walls
-  ctx.fillStyle = `rgba(${wall[0]},${wall[1]},${wall[2]},${0.75 + dayMix*0.15})`;
-  ctx.fillRect(0, baseY - SH*0.35, W, SH*0.35);
-  // Triangular gabled rooftops
-  for (let i = 0; i < 14; i++) {
-    const cx = (i + 0.5) * (W / 14);
-    const rh = 14 + (i % 3) * 6;
-    ctx.fillStyle = `rgba(${roofR[0]+i*2},${roofR[1]},${roofR[2]},${0.85 + dayMix*0.1})`;
-    ctx.beginPath();
-    ctx.moveTo(cx - W/28 - 2, baseY - SH*0.35);
-    ctx.lineTo(cx,             baseY - SH*0.35 - rh);
-    ctx.lineTo(cx + W/28 + 2,  baseY - SH*0.35);
-    ctx.closePath(); ctx.fill();
-    // Chimney
-    ctx.fillStyle = `rgba(${roofD[0]},${roofD[1]},${roofD[2]},0.9)`;
-    ctx.fillRect(cx - 1, baseY - SH*0.35 - rh - 6, 3, 6);
-  }
-  ctx.restore();
-
-  // Týn Church — twin black-gothic spires (signature Prague silhouette)
-  ctx.save();
-  ctx.fillStyle = `rgba(${30+dayMix*10},${22+dayMix*8},${40+dayMix*10},0.96)`;
-  const tynX = W * 0.62;
-  for (const dx of [-22, 22]) {
-    const tcx = tynX + dx;
-    // Tower base
-    ctx.fillRect(tcx - 9, baseY - SH*0.75, 18, SH*0.40);
-    // Crenellations
-    ctx.fillRect(tcx - 12, baseY - SH*0.78, 24, 6);
-    // Tall black spire
-    ctx.beginPath();
-    ctx.moveTo(tcx - 9, baseY - SH*0.78);
-    ctx.lineTo(tcx,     baseY - SH*1.02);
-    ctx.lineTo(tcx + 9, baseY - SH*0.78);
-    ctx.closePath(); ctx.fill();
-    // 4 small pinnacles around base of spire
-    for (const px of [-7, -2.5, 2.5, 7]) {
-      ctx.beginPath();
-      ctx.moveTo(tcx + px - 1.5, baseY - SH*0.78);
-      ctx.lineTo(tcx + px,       baseY - SH*0.85);
-      ctx.lineTo(tcx + px + 1.5, baseY - SH*0.78);
-      ctx.closePath(); ctx.fill();
-    }
-    // Gold finial dot
-    ctx.fillStyle = 'rgba(220,180,90,0.95)';
-    ctx.fillRect(tcx - 1, baseY - SH*1.04, 2, 2);
-    ctx.fillStyle = `rgba(${30+dayMix*10},${22+dayMix*8},${40+dayMix*10},0.96)`;
-  }
-  ctx.restore();
-
-  // Prague Castle complex on the hill to the left — multi-tier silhouette
-  ctx.save();
-  // Castle hill (mound under castle)
-  ctx.fillStyle = `rgba(${75+dayMix*20},${85+dayMix*18},${70+dayMix*15},0.75)`;
+  ctx.fillStyle = `rgba(${70+dayMix*22},${82+dayMix*20},${68+dayMix*15},0.78)`;
   ctx.beginPath();
   ctx.moveTo(0, baseY);
-  ctx.lineTo(0, baseY - SH*0.30);
-  ctx.quadraticCurveTo(W*0.18, baseY - SH*0.45, W*0.36, baseY - SH*0.32);
-  ctx.lineTo(W*0.36, baseY); ctx.closePath(); ctx.fill();
-  // Castle main wall (long ridge of buildings on top of hill)
-  ctx.fillStyle = `rgba(${95+dayMix*18},${82+dayMix*15},${80+dayMix*15},0.93)`;
-  ctx.fillRect(W*0.03, baseY - SH*0.55, W*0.34, SH*0.25);
-  // Crenellated upper edge
-  for (let i = 0; i < 18; i++) ctx.fillRect(W*0.03 + i*(W*0.34/18), baseY - SH*0.57, W*0.34/36, 4);
-  // Red-tile rooftops on top of castle wall
-  ctx.fillStyle = `rgba(${175+dayMix*15},${85+dayMix*10},${55+dayMix*5},0.92)`;
-  for (let i = 0; i < 6; i++) {
-    const rx = W*0.05 + i * W*0.055;
-    ctx.beginPath();
-    ctx.moveTo(rx, baseY - SH*0.55);
-    ctx.lineTo(rx + W*0.025, baseY - SH*0.62);
-    ctx.lineTo(rx + W*0.05, baseY - SH*0.55);
-    ctx.closePath(); ctx.fill();
-  }
-  // Castle towers (3 round bastions)
-  ctx.fillStyle = `rgba(${110+dayMix*18},${95+dayMix*15},${90+dayMix*15},0.95)`;
-  for (const fx of [0.08, 0.22, 0.33]) {
-    const tx = W * fx;
-    ctx.fillRect(tx - 5, baseY - SH*0.65, 10, SH*0.10);
-    // Conical red roof
-    ctx.fillStyle = `rgba(${180+dayMix*15},${85+dayMix*10},${50+dayMix*5},0.95)`;
-    ctx.beginPath();
-    ctx.moveTo(tx - 6, baseY - SH*0.65);
-    ctx.lineTo(tx, baseY - SH*0.75);
-    ctx.lineTo(tx + 6, baseY - SH*0.65);
-    ctx.closePath(); ctx.fill();
-    ctx.fillStyle = `rgba(${110+dayMix*18},${95+dayMix*15},${90+dayMix*15},0.95)`;
-  }
-  // St Vitus Cathedral — twin black-Gothic spires towering over castle (signature)
-  ctx.fillStyle = `rgba(${35+dayMix*12},${28+dayMix*10},${45+dayMix*12},0.96)`;
-  for (const dx of [W*0.15, W*0.20]) {
-    // Tower shaft
-    ctx.fillRect(dx - 4, baseY - SH*0.78, 8, SH*0.23);
-    // Pinnacle base
-    ctx.fillRect(dx - 6, baseY - SH*0.80, 12, 4);
-    // Tall spire
-    ctx.beginPath();
-    ctx.moveTo(dx - 5, baseY - SH*0.80);
-    ctx.lineTo(dx,     baseY - SH*1.00);
-    ctx.lineTo(dx + 5, baseY - SH*0.80);
-    ctx.closePath(); ctx.fill();
-    // Gold cross finial
-    ctx.fillStyle = 'rgba(220,180,90,0.95)';
-    ctx.fillRect(dx - 0.6, baseY - SH*1.03, 1.2, 4);
-    ctx.fillRect(dx - 2, baseY - SH*1.015, 4, 1.2);
-    ctx.fillStyle = `rgba(${35+dayMix*12},${28+dayMix*10},${45+dayMix*12},0.96)`;
-  }
-  // Cathedral central nave roof (between spires)
-  ctx.fillStyle = `rgba(${55+dayMix*15},${48+dayMix*12},${65+dayMix*15},0.93)`;
-  ctx.fillRect(W*0.15, baseY - SH*0.65, W*0.05, SH*0.13);
+  ctx.lineTo(0, baseY - SH*0.32);
+  ctx.quadraticCurveTo(W*0.10, baseY - SH*0.46, W*0.24, baseY - SH*0.30);
+  ctx.lineTo(W*0.24, baseY); ctx.closePath(); ctx.fill();
   ctx.restore();
 
-  // Charles Bridge with stone arches across the Vltava
+  // ── Prague Castle long wall on hilltop ──
+  ctx.save();
+  ctx.fillStyle = `rgba(${205+dayMix*20},${185+dayMix*15},${155+dayMix*10},0.94)`;
+  ctx.fillRect(W*0.02, baseY - SH*0.52, W*0.22, SH*0.22);
+  // Row of small windows along castle wall
+  ctx.fillStyle = `rgba(${60+dayMix*15},${48+dayMix*12},${40+dayMix*10},0.7)`;
+  for (let i = 0; i < 11; i++) ctx.fillRect(W*0.03 + i*W*0.020, baseY - SH*0.43, W*0.010, SH*0.040);
+  // Red-tile roofline (continuous slanted band)
+  ctx.fillStyle = `rgba(${180+dayMix*15},${85+dayMix*10},${55+dayMix*5},0.95)`;
+  ctx.beginPath();
+  ctx.moveTo(W*0.02, baseY - SH*0.52);
+  ctx.lineTo(W*0.02, baseY - SH*0.56);
+  ctx.lineTo(W*0.24, baseY - SH*0.56);
+  ctx.lineTo(W*0.24, baseY - SH*0.52);
+  ctx.closePath(); ctx.fill();
+  // Castle corner towers (round)
+  ctx.fillStyle = `rgba(${215+dayMix*15},${195+dayMix*12},${165+dayMix*8},0.95)`;
+  for (const fx of [0.04, 0.22]) {
+    const tx = W * fx;
+    ctx.fillRect(tx - 5, baseY - SH*0.60, 10, SH*0.10);
+    ctx.fillStyle = `rgba(${180+dayMix*15},${85+dayMix*10},${50+dayMix*5},0.96)`;
+    ctx.beginPath();
+    ctx.moveTo(tx - 7, baseY - SH*0.60);
+    ctx.lineTo(tx,     baseY - SH*0.72);
+    ctx.lineTo(tx + 7, baseY - SH*0.60);
+    ctx.closePath(); ctx.fill();
+    ctx.fillStyle = `rgba(${215+dayMix*15},${195+dayMix*12},${165+dayMix*8},0.95)`;
+  }
+  ctx.restore();
+
+  // ── St Vitus Cathedral — twin Gothic spires towering over castle (signature) ──
+  ctx.save();
+  const cathColor = `rgba(${40+dayMix*15},${32+dayMix*12},${50+dayMix*15},0.96)`;
+  ctx.fillStyle = cathColor;
+  // Central nave bulk between spires
+  ctx.fillRect(W*0.11, baseY - SH*0.72, W*0.08, SH*0.20);
+  // Twin spire towers
+  for (const dx of [W*0.11, W*0.17]) {
+    // Tower shaft (square Gothic)
+    ctx.fillRect(dx - 4, baseY - SH*0.84, 9, SH*0.32);
+    // Pinnacle base (slightly wider)
+    ctx.fillRect(dx - 6, baseY - SH*0.86, 13, 4);
+    // 4 small pinnacle spikes around base
+    for (const px of [-5, -1.5, 1.5, 5]) {
+      ctx.beginPath();
+      ctx.moveTo(dx + px - 1.2, baseY - SH*0.86);
+      ctx.lineTo(dx + px,       baseY - SH*0.92);
+      ctx.lineTo(dx + px + 1.2, baseY - SH*0.86);
+      ctx.closePath(); ctx.fill();
+    }
+    // Tall main spire
+    ctx.beginPath();
+    ctx.moveTo(dx - 5, baseY - SH*0.86);
+    ctx.lineTo(dx,     baseY - SH*1.08);
+    ctx.lineTo(dx + 5, baseY - SH*0.86);
+    ctx.closePath(); ctx.fill();
+    // Gold cross finial
+    ctx.fillStyle = 'rgba(230,190,90,0.96)';
+    ctx.fillRect(dx - 0.6, baseY - SH*1.12, 1.2, 5);
+    ctx.fillRect(dx - 2.5, baseY - SH*1.10, 5, 1.2);
+    ctx.fillStyle = cathColor;
+  }
+  // Rose window between/above nave
+  ctx.fillStyle = `rgba(${230+dayMix*15},${190+dayMix*10},${120+dayMix*5},0.85)`;
+  ctx.beginPath(); ctx.arc(W*0.14, baseY - SH*0.62, 3.5, 0, Math.PI*2); ctx.fill();
+  ctx.restore();
+
+  // ── Old Town buildings (mid distance, between castle and centre) ──
+  ctx.save();
+  const wall  = [225, 200, 165];
+  ctx.fillStyle = `rgba(${wall[0]+dayMix*15},${wall[1]+dayMix*10},${wall[2]+dayMix*8},0.88)`;
+  ctx.fillRect(W*0.26, baseY - SH*0.30, W*0.18, SH*0.30);
+  // Gabled rooftops
+  for (let i = 0; i < 5; i++) {
+    const cx = W*0.27 + i*W*0.034 + W*0.016;
+    const rh = 12 + (i % 2) * 6;
+    ctx.fillStyle = `rgba(${180+i*4},${88+dayMix*8},${58+dayMix*5},${0.92})`;
+    ctx.beginPath();
+    ctx.moveTo(cx - W*0.018, baseY - SH*0.30);
+    ctx.lineTo(cx,           baseY - SH*0.30 - rh);
+    ctx.lineTo(cx + W*0.018, baseY - SH*0.30);
+    ctx.closePath(); ctx.fill();
+    // Chimney
+    ctx.fillStyle = `rgba(100,70,55,0.9)`;
+    ctx.fillRect(cx - 1, baseY - SH*0.30 - rh - 6, 3, 6);
+  }
+  // Windows on wall
+  ctx.fillStyle = `rgba(${55+dayMix*15},${45+dayMix*12},${40+dayMix*10},0.7)`;
+  for (let r = 0; r < 3; r++) for (let c = 0; c < 5; c++)
+    ctx.fillRect(W*0.265 + c*W*0.034, baseY - SH*0.26 + r*SH*0.07, W*0.014, SH*0.030);
+  ctx.restore();
+
+  // ── Týn Church — twin black-gothic spires (CENTRAL signature) ──
+  ctx.save();
+  ctx.fillStyle = `rgba(${30+dayMix*12},${22+dayMix*10},${42+dayMix*12},0.97)`;
+  const tynX = W * 0.48;
+  // Church body between spires (peaked roof)
+  ctx.fillRect(tynX - 18, baseY - SH*0.50, 36, SH*0.22);
+  ctx.beginPath();
+  ctx.moveTo(tynX - 18, baseY - SH*0.50);
+  ctx.lineTo(tynX,       baseY - SH*0.62);
+  ctx.lineTo(tynX + 18,  baseY - SH*0.50);
+  ctx.closePath(); ctx.fill();
+  for (const dx of [-22, 22]) {
+    const tcx = tynX + dx;
+    // Tower base (taller, narrower)
+    ctx.fillRect(tcx - 8, baseY - SH*0.78, 16, SH*0.50);
+    // Crenellation/balcony band
+    ctx.fillRect(tcx - 11, baseY - SH*0.80, 22, 5);
+    // Tall black spire (sharp Gothic)
+    ctx.beginPath();
+    ctx.moveTo(tcx - 8, baseY - SH*0.80);
+    ctx.lineTo(tcx,     baseY - SH*1.05);
+    ctx.lineTo(tcx + 8, baseY - SH*0.80);
+    ctx.closePath(); ctx.fill();
+    // 4 small pinnacles around spire base
+    for (const px of [-6.5, -2, 2, 6.5]) {
+      ctx.beginPath();
+      ctx.moveTo(tcx + px - 1.4, baseY - SH*0.80);
+      ctx.lineTo(tcx + px,       baseY - SH*0.88);
+      ctx.lineTo(tcx + px + 1.4, baseY - SH*0.80);
+      ctx.closePath(); ctx.fill();
+    }
+    // Gold finial
+    ctx.fillStyle = 'rgba(230,185,90,0.96)';
+    ctx.fillRect(tcx - 0.8, baseY - SH*1.08, 1.6, 4);
+    ctx.fillStyle = `rgba(${30+dayMix*12},${22+dayMix*10},${42+dayMix*12},0.97)`;
+  }
+  ctx.restore();
+
+  // ── Powder Tower — black Gothic gate (right of Týn) ──
+  ctx.save();
+  ctx.fillStyle = `rgba(${42+dayMix*15},${32+dayMix*12},${36+dayMix*10},0.96)`;
+  const ptX = W * 0.58;
+  ctx.fillRect(ptX - 10, baseY - SH*0.62, 20, SH*0.62);
+  // Pointed arch gate opening
+  ctx.fillStyle = `rgba(${horiz[0]||220},${horiz[1]||180},${horiz[2]||150},0.85)`;
+  ctx.beginPath();
+  ctx.moveTo(ptX - 4, baseY);
+  ctx.lineTo(ptX - 4, baseY - 14);
+  ctx.quadraticCurveTo(ptX, baseY - 22, ptX + 4, baseY - 14);
+  ctx.lineTo(ptX + 4, baseY);
+  ctx.closePath(); ctx.fill();
+  // Crenellated top
+  ctx.fillStyle = `rgba(${42+dayMix*15},${32+dayMix*12},${36+dayMix*10},0.96)`;
+  for (let k = 0; k < 5; k++) ctx.fillRect(ptX - 10 + k*5, baseY - SH*0.66, 3, 6);
+  // Central pointed spire on top
+  ctx.beginPath();
+  ctx.moveTo(ptX - 6, baseY - SH*0.66);
+  ctx.lineTo(ptX,     baseY - SH*0.80);
+  ctx.lineTo(ptX + 6, baseY - SH*0.66);
+  ctx.closePath(); ctx.fill();
+  // Tiny windows
+  ctx.fillStyle = `rgba(${230+dayMix*10},${200+dayMix*8},${130+dayMix*5},0.55)`;
+  for (let r = 0; r < 3; r++) ctx.fillRect(ptX - 2, baseY - SH*0.55 + r*SH*0.13, 4, SH*0.05);
+  ctx.restore();
+
+  // ── Dancing House — curved twin towers (right of Powder Tower) ──
+  ctx.save();
+  const dhX = W * 0.70;
+  // Glass curving tower (Ginger)
+  ctx.fillStyle = `rgba(${175+dayMix*20},${175+dayMix*18},${185+dayMix*15},0.92)`;
+  ctx.beginPath();
+  ctx.moveTo(dhX - 10, baseY);
+  ctx.bezierCurveTo(dhX - 24, baseY - SH*0.20, dhX - 6, baseY - SH*0.30, dhX - 14, baseY - SH*0.48);
+  ctx.lineTo(dhX - 4, baseY - SH*0.48);
+  ctx.bezierCurveTo(dhX + 4, baseY - SH*0.30, dhX - 14, baseY - SH*0.20, dhX + 0, baseY);
+  ctx.closePath(); ctx.fill();
+  // Glass-pattern horizontal stripes
+  ctx.fillStyle = `rgba(${90+dayMix*15},${100+dayMix*12},${115+dayMix*10},0.55)`;
+  for (let r = 0; r < 8; r++) ctx.fillRect(dhX - 14, baseY - SH*0.06 - r*SH*0.055, 18, 1.2);
+  // Concrete partner tower (Fred) — straight, slightly taller
+  ctx.fillStyle = `rgba(${215+dayMix*15},${205+dayMix*12},${190+dayMix*10},0.94)`;
+  ctx.fillRect(dhX + 2, baseY - SH*0.55, 16, SH*0.55);
+  // Window grid
+  ctx.fillStyle = `rgba(${90+dayMix*15},${100+dayMix*12},${115+dayMix*10},0.65)`;
+  for (let r = 0; r < 7; r++) for (let c = 0; c < 3; c++)
+    ctx.fillRect(dhX + 4 + c*5, baseY - SH*0.50 + r*SH*0.07, 3, SH*0.030);
+  // Cupola crown on top
+  ctx.fillStyle = `rgba(${100+dayMix*12},${100+dayMix*10},${105+dayMix*8},0.92)`;
+  ctx.beginPath(); ctx.arc(dhX + 10, baseY - SH*0.55, 6, Math.PI, 0); ctx.fill();
+  ctx.fillRect(dhX + 9, baseY - SH*0.63, 2, 6);
+  ctx.restore();
+
+  // ── Žižkov TV Tower — very thin tall needle (far right, signature modern) ──
+  ctx.save();
+  const zzX = W * 0.88;
+  ctx.fillStyle = `rgba(${145+dayMix*20},${150+dayMix*18},${155+dayMix*15},0.93)`;
+  // Main shaft
+  ctx.fillRect(zzX - 2, baseY - SH*1.10, 4, SH*1.10);
+  // 3 observation pods at different heights (lozenges)
+  for (const [py, pw, ph] of [[0.55, 12, 7], [0.78, 10, 6], [0.92, 8, 5]]) {
+    ctx.fillStyle = `rgba(${175+dayMix*15},${175+dayMix*12},${180+dayMix*10},0.95)`;
+    ctx.beginPath();
+    ctx.ellipse(zzX, baseY - SH*py, pw, ph, 0, 0, Math.PI*2);
+    ctx.fill();
+  }
+  // Red blinking light at top
+  ctx.fillStyle = `rgba(220,80,80,${0.7 + 0.3*Math.sin(ts*3)})`;
+  ctx.fillRect(zzX - 1.2, baseY - SH*1.12, 2.4, 3);
+  ctx.restore();
+
+  // ── Charles Bridge across Vltava ──
   ctx.save();
   ctx.fillStyle = `rgba(${190+dayMix*15},${165+dayMix*10},${130+dayMix*5},0.92)`;
   const bridgeY = baseY + 4;
-  // Bridge deck
-  ctx.fillRect(W*0.18, bridgeY, W*0.64, 7);
-  // 5 stone arches under deck
+  ctx.fillRect(W*0.18, bridgeY, W*0.62, 6);
   ctx.fillStyle = `rgba(${140+dayMix*15},${118+dayMix*10},${90+dayMix*5},0.85)`;
   for (let i = 0; i < 5; i++) {
-    const ax = W*0.20 + i * (W*0.60 / 5) + W*0.06;
+    const ax = W*0.20 + i * (W*0.58 / 5) + W*0.058;
     ctx.beginPath();
-    ctx.arc(ax, bridgeY + 7, W*0.05, Math.PI, 0);
+    ctx.arc(ax, bridgeY + 6, W*0.045, Math.PI, 0);
     ctx.fill();
   }
-  // Two gate towers at ends of bridge
+  // Gate towers at ends with statues silhouette
   ctx.fillStyle = `rgba(${170+dayMix*15},${100+dayMix*10},${70+dayMix*5},0.94)`;
-  ctx.fillRect(W*0.16, bridgeY - 26, 9, 30);
-  ctx.fillRect(W*0.82, bridgeY - 30, 9, 34);
-  // Pointed tower roofs
-  ctx.beginPath(); ctx.moveTo(W*0.16, bridgeY - 26);
-  ctx.lineTo(W*0.16 + 4.5, bridgeY - 38); ctx.lineTo(W*0.16 + 9, bridgeY - 26);
+  ctx.fillRect(W*0.16, bridgeY - 22, 8, 26);
+  ctx.fillRect(W*0.80, bridgeY - 26, 8, 30);
+  ctx.beginPath(); ctx.moveTo(W*0.16, bridgeY - 22);
+  ctx.lineTo(W*0.16 + 4, bridgeY - 32); ctx.lineTo(W*0.16 + 8, bridgeY - 22);
   ctx.closePath(); ctx.fill();
-  ctx.beginPath(); ctx.moveTo(W*0.82, bridgeY - 30);
-  ctx.lineTo(W*0.82 + 4.5, bridgeY - 44); ctx.lineTo(W*0.82 + 9, bridgeY - 30);
+  ctx.beginPath(); ctx.moveTo(W*0.80, bridgeY - 26);
+  ctx.lineTo(W*0.80 + 4, bridgeY - 38); ctx.lineTo(W*0.80 + 8, bridgeY - 26);
   ctx.closePath(); ctx.fill();
   ctx.restore();
 
   _mnNightWindows(ctx, W, H, baseY, dayMix, night, ts, [
-    { x: W*0.05, y: baseY - SH*0.50, w: W*0.30, h: SH*0.50 }
+    { x: W*0.02, y: baseY - SH*0.50, w: W*0.22, h: SH*0.30 },
+    { x: W*0.70, y: baseY - SH*0.55, w: W*0.20, h: SH*0.50 },
+    { x: W*0.26, y: baseY - SH*0.26, w: W*0.18, h: SH*0.20 }
   ]);
 }
 
@@ -10283,95 +10378,160 @@ function _mnDrawCityJaipur(ctx, W, H, baseY, season, dayMix, night, ts, horiz) {
   for (let i = 0; i < 30; i++) ctx.fillRect(i * (W/30), baseY - SH*0.22, W/60, 6);
   ctx.restore();
 
-  // HAWA MAHAL — 5-tier pink honeycomb façade (centre, signature monument)
+  // ── HAWA MAHAL — pink honeycomb façade with rounded crown (signature) ──
+  // Reference: stepped 5-tier pyramid, dense semicircular jharokha windows,
+  // every tier crowned with row of small chhatri-domes, two flanking taller side towers.
   ctx.save();
-  const hmX = W * 0.50, hmY = baseY, hmW = W * 0.55, hmH = SH * 0.78;
-  const hmL = hmX - hmW/2, hmR = hmX + hmW/2;
-  // Tier 5 (bottom, widest) → Tier 1 (top, narrowest)
-  const tiers = [
-    { ny: 0.00, ph: 0.18, pw: 1.00 },   // bottom
-    { ny: 0.18, ph: 0.16, pw: 0.92 },
-    { ny: 0.34, ph: 0.16, pw: 0.84 },
-    { ny: 0.50, ph: 0.16, pw: 0.74 },
-    { ny: 0.66, ph: 0.16, pw: 0.62 },
+  const hmCx = W * 0.50, hmFootY = baseY - SH*0.04;
+  const hmW0 = W * 0.62;   // bottom tier width
+  const hmH0 = SH * 0.74;  // total height
+  const facadePink = `rgba(${230+dayMix*15},${118+dayMix*15},${110+dayMix*10},0.96)`;
+  const facadePinkShade = `rgba(${195+dayMix*12},${88+dayMix*10},${85+dayMix*8},0.92)`;
+  const winShade = `rgba(${118+dayMix*15},${50+dayMix*10},${55+dayMix*8},0.92)`;
+  const trimWhite = `rgba(${250+dayMix*5},${238+dayMix*5},${225+dayMix*3},0.95)`;
+
+  // ── Two flanking square side towers (slightly taller than central peak) ──
+  for (const sideSign of [-1, 1]) {
+    const stX = hmCx + sideSign * (hmW0/2 - W*0.025);
+    const stW = W * 0.06;
+    const stH = hmH0 * 0.82;
+    ctx.fillStyle = facadePinkShade;
+    ctx.fillRect(stX - stW/2, hmFootY - stH, stW, stH);
+    // White trim band at top
+    ctx.fillStyle = trimWhite;
+    ctx.fillRect(stX - stW/2 - 2, hmFootY - stH - 4, stW + 4, 4);
+    // Small rooftop pavilion (chhatri kiosk)
+    ctx.fillStyle = trimWhite;
+    ctx.fillRect(stX - 6, hmFootY - stH - 16, 1.6, 12);
+    ctx.fillRect(stX + 4.4, hmFootY - stH - 16, 1.6, 12);
+    ctx.beginPath(); ctx.arc(stX, hmFootY - stH - 16, 6, Math.PI, 0); ctx.fill();
+    ctx.fillRect(stX - 0.8, hmFootY - stH - 24, 1.6, 6);
+    // Windows down the side towers (small arched)
+    ctx.fillStyle = winShade;
+    for (let r = 0; r < 5; r++) {
+      const wy = hmFootY - stH + 8 + r * (stH/6);
+      ctx.beginPath();
+      ctx.arc(stX, wy, 4, Math.PI, 0);
+      ctx.fillRect(stX - 4, wy, 8, 6);
+      ctx.fill();
+    }
+  }
+
+  // ── 5 stepped tiers, rounded tops ──
+  // Tier 1 = base/widest. Tier 5 = top/narrowest.
+  // Each tier slightly narrower; tier top is curved (concave/scalloped) for honeycomb look.
+  const tierData = [
+    { wFrac: 1.00, hFrac: 0.20 },
+    { wFrac: 0.92, hFrac: 0.16 },
+    { wFrac: 0.82, hFrac: 0.15 },
+    { wFrac: 0.70, hFrac: 0.14 },
+    { wFrac: 0.54, hFrac: 0.13 },
   ];
-  ctx.fillStyle = `rgba(${235+dayMix*15},${130+dayMix*15},${135+dayMix*10},0.95)`;
-  for (const t of tiers) {
-    const tw = hmW * t.pw;
-    const tx = hmX - tw/2;
-    const ty = hmY - hmH + t.ny * hmH;
-    const th = t.ph * hmH;
+  let cumY = hmFootY;
+  const tierBounds = [];  // remember each tier's geometry for chhatris
+  for (let ti = 0; ti < tierData.length; ti++) {
+    const t = tierData[ti];
+    const tw = hmW0 * t.wFrac;
+    const th = hmH0 * t.hFrac;
+    const tx = hmCx - tw/2;
+    const ty = cumY - th;
+    // Main pink wall block
+    ctx.fillStyle = facadePink;
     ctx.fillRect(tx, ty, tw, th);
-    // Honeycomb arched windows (jharokhas) — 6-9 per tier
-    const wins = Math.max(6, Math.round(tw / 14));
+    // White trim band along bottom of each tier (signature Hawa Mahal trim)
+    ctx.fillStyle = trimWhite;
+    ctx.fillRect(tx, cumY - 3, tw, 3);
+    // Dense semicircular jharokha arched windows (1 row per tier)
+    const wins = Math.max(7, Math.floor(tw / 12));
+    const winSpacing = tw / wins;
+    const wr = Math.min(4.5, winSpacing * 0.32);
     for (let w = 0; w < wins; w++) {
-      const wx = tx + (w + 0.5) * (tw / wins);
-      const wy = ty + th * 0.55;
-      const wr = Math.min(5, tw / wins * 0.35);
-      ctx.fillStyle = `rgba(${130+dayMix*15},${60+dayMix*10},${65+dayMix*8},0.9)`;
+      const wx = tx + (w + 0.5) * winSpacing;
+      const wy = ty + th * 0.62;
+      // White arch trim (slightly bigger)
+      ctx.fillStyle = trimWhite;
+      ctx.beginPath();
+      ctx.arc(wx, wy, wr + 1.2, Math.PI, 0);
+      ctx.fillRect(wx - (wr+1.2), wy, (wr+1.2)*2, wr*1.4 + 1.5);
+      ctx.fill();
+      // Dark arched window opening (semicircle on top, small rectangle below)
+      ctx.fillStyle = winShade;
       ctx.beginPath();
       ctx.arc(wx, wy, wr, Math.PI, 0);
-      ctx.fillRect(wx - wr, wy, wr * 2, wr * 1.4);
+      ctx.fillRect(wx - wr, wy, wr * 2, wr * 1.2);
       ctx.fill();
-      ctx.fillStyle = `rgba(${235+dayMix*15},${130+dayMix*15},${135+dayMix*10},0.95)`;
     }
+    tierBounds.push({ tx, ty, tw, th });
+    cumY = ty;
   }
-  // Top chhatris (small domed pavilions) — 3 along top tier
-  for (let k = 0; k < 3; k++) {
-    const cx = hmL + hmW * 0.62 * 0.25 + k * (hmW * 0.62 * 0.25) + hmW * 0.19;
-    const cy = hmY - hmH + 0.66 * hmH;
-    ctx.fillStyle = `rgba(${245+dayMix*10},${230+dayMix*8},${220+dayMix*5},0.95)`;
-    // pillars
-    ctx.fillRect(cx - 5, cy - 14, 1.5, 14);
-    ctx.fillRect(cx + 3.5, cy - 14, 1.5, 14);
-    // dome
-    ctx.beginPath(); ctx.arc(cx, cy - 14, 5, Math.PI, 0); ctx.fill();
-    // finial
-    ctx.fillRect(cx - 0.6, cy - 22, 1.2, 4);
+
+  // ── Chhatris (small domed pavilions) along the TOP edge of EACH tier ──
+  // This is what gives Hawa Mahal its iconic crown profile — NOT pointy arrows.
+  for (let ti = 0; ti < tierBounds.length - 1; ti++) {
+    const tb = tierBounds[ti];
+    const nextTb = tierBounds[ti + 1];
+    // Chhatris flank the next-narrower tier on left and right shoulders
+    const leftEnd  = nextTb.tx;            // left edge of upper tier
+    const rightEnd = nextTb.tx + nextTb.tw; // right edge of upper tier
+    // Left shoulder chhatris
+    placeChhatriRow(ctx, tb.tx + 4, leftEnd - 4, tb.ty, trimWhite, facadePinkShade);
+    // Right shoulder chhatris
+    placeChhatriRow(ctx, rightEnd + 4, tb.tx + tb.tw - 4, tb.ty, trimWhite, facadePinkShade);
   }
-  // Big central chhatri
-  const ccx = hmX, ccy = hmY - hmH - 6;
-  ctx.fillStyle = `rgba(${245+dayMix*10},${230+dayMix*8},${220+dayMix*5},0.95)`;
-  ctx.fillRect(ccx - 8, ccy - 14, 1.8, 14);
-  ctx.fillRect(ccx + 6.2, ccy - 14, 1.8, 14);
-  ctx.beginPath(); ctx.arc(ccx, ccy - 14, 8, Math.PI, 0); ctx.fill();
-  ctx.fillRect(ccx - 0.8, ccy - 26, 1.6, 6);
+  // Top tier: crowning chhatris across full width
+  {
+    const tb = tierBounds[tierBounds.length - 1];
+    placeChhatriRow(ctx, tb.tx + 3, tb.tx + tb.tw - 3, tb.ty, trimWhite, facadePinkShade);
+    // Big central crowning chhatri (slightly taller)
+    const ccx = hmCx, ccy = tb.ty;
+    ctx.fillStyle = trimWhite;
+    ctx.fillRect(ccx - 8, ccy - 16, 1.8, 16);
+    ctx.fillRect(ccx + 6.2, ccy - 16, 1.8, 16);
+    ctx.beginPath(); ctx.arc(ccx, ccy - 16, 8, Math.PI, 0); ctx.fill();
+    // Finial
+    ctx.fillStyle = `rgba(220,170,80,0.95)`;
+    ctx.fillRect(ccx - 1, ccy - 26, 2, 6);
+    ctx.fillStyle = trimWhite;
+  }
   ctx.restore();
 
-  // Side buildings (low pink) — with chhatris and balconies
+  // ── Foreground low pink wall + small market arches ──
   ctx.save();
-  for (let side = 0; side < 2; side++) {
-    const startX = side === 0 ? 0.04 : 0.83;
-    for (let i = 0; i < 4; i++) {
-      const bx = W * (startX + i * 0.05);
-      const bh = SH * (0.32 - i * 0.03);
-      // Building body — pink sandstone
-      ctx.fillStyle = `rgba(${225+dayMix*15},${140+dayMix*10},${140+dayMix*8},0.92)`;
-      ctx.fillRect(bx, baseY - bh, W * 0.045, bh);
-      // Arched windows (jharokhas)
-      ctx.fillStyle = `rgba(${135+dayMix*15},${65+dayMix*10},${70+dayMix*8},0.78)`;
-      for (let r = 0; r < 3; r++) {
-        const wy = baseY - bh + SH*0.04 + r * SH*0.08;
-        if (wy < baseY - 4) {
-          ctx.beginPath();
-          ctx.arc(bx + W*0.022, wy, W*0.012, Math.PI, 0);
-          ctx.fillRect(bx + W*0.01, wy, W*0.024, 4);
-          ctx.fill();
-        }
-      }
-      // Small chhatri (domed roof pavilion) on top of every other building
-      if (i % 2 === 0) {
-        ctx.fillStyle = `rgba(${245+dayMix*10},${230+dayMix*8},${220+dayMix*5},0.95)`;
-        ctx.fillRect(bx + W*0.014, baseY - bh - 8, 1.2, 8);
-        ctx.fillRect(bx + W*0.030, baseY - bh - 8, 1.2, 8);
-        ctx.beginPath();
-        ctx.arc(bx + W*0.0225, baseY - bh - 8, 5, Math.PI, 0);
-        ctx.fill();
-        ctx.fillRect(bx + W*0.022, baseY - bh - 14, 1.4, 4);
-      }
-    }
+  ctx.fillStyle = `rgba(${215+dayMix*15},${110+dayMix*10},${100+dayMix*8},0.88)`;
+  ctx.fillRect(0, baseY - SH*0.09, W, SH*0.09);
+  // White trim band
+  ctx.fillStyle = `rgba(${250},${235},${220},0.85)`;
+  ctx.fillRect(0, baseY - SH*0.09 - 2, W, 2);
+  // Small arched alcoves along the foreground wall
+  const fgArches = 22;
+  for (let i = 0; i < fgArches; i++) {
+    const ax = (i + 0.5) * (W / fgArches);
+    ctx.fillStyle = `rgba(${130+dayMix*15},${55+dayMix*10},${55+dayMix*8},0.85)`;
+    ctx.beginPath();
+    ctx.arc(ax, baseY - SH*0.045, 4, Math.PI, 0);
+    ctx.fillRect(ax - 4, baseY - SH*0.045, 8, SH*0.045);
+    ctx.fill();
   }
   ctx.restore();
+}
+
+// Helper: place a row of small chhatris (domed pavilions) between x1..x2 at y=topY.
+function placeChhatriRow(ctx, x1, x2, topY, trimColor, shadeColor) {
+  const span = x2 - x1;
+  if (span < 10) return;
+  const n = Math.max(1, Math.floor(span / 12));
+  const step = span / n;
+  for (let i = 0; i < n; i++) {
+    const cx = x1 + (i + 0.5) * step;
+    // Pillars
+    ctx.fillStyle = trimColor;
+    ctx.fillRect(cx - 3.5, topY - 8, 1.2, 8);
+    ctx.fillRect(cx + 2.3, topY - 8, 1.2, 8);
+    // Dome
+    ctx.beginPath(); ctx.arc(cx, topY - 8, 3.5, Math.PI, 0); ctx.fill();
+    // Small finial
+    ctx.fillRect(cx - 0.5, topY - 13, 1, 3);
+  }
 }
 
 // ─── 6. RIO — Christ the Redeemer on Corcovado + Sugarloaf + ocean ───────
