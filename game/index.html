@@ -5804,7 +5804,7 @@
           <span style="font-size:11px;line-height:1;">◀</span>
         </button>
         <button class="icon-btn topbar-menu-btn lvl-nav-btn" id="btn-lvl-picker" title="All levels" aria-label="Open level picker" style="padding:0 7px;font-size:11px;letter-spacing:0.06em;font-weight:700;">
-          <span id="lvl-nav-current" style="font-size:10px;line-height:1;">LV 1</span>
+          <span id="lvl-nav-current" style="font-size:10px;line-height:1;">1 / 10</span>
         </button>
         <button class="icon-btn topbar-menu-btn lvl-nav-btn" id="btn-lvl-next" title="Next level" aria-label="Next level" style="padding:0 7px;font-size:12px;letter-spacing:0.06em;font-weight:700;">
           <span style="font-size:11px;line-height:1;">▶</span>
@@ -6912,7 +6912,35 @@ function playRibbit(patternName) {
   const p = RIBBIT_PATTERNS[patternName];
   if (!p) return;
   p.seq.forEach(([fm, dur, vol, delay]) => _ribbit(p.base * fm, dur, vol, delay));
+  // Mark when any ribbit/voice fires — idle timer uses this to avoid stepping on it
+  try { _lastVoiceAt = Date.now(); } catch(_e) {}
 }
+
+// ── Idle ribbit ────────────────────────────────────────
+// User wanted more frog presence — a light chirp every ~10–14s during play
+// when nothing else is firing. Skips if recent commentary or ribbit just played.
+let _lastVoiceAt = 0;
+let _idleRibbitTimer = null;
+const _IDLE_RIBBIT_PATTERNS = ['warm', 'fast', 'slow', 'deadpan', 'long'];
+function _scheduleIdleRibbit() {
+  if (_idleRibbitTimer) clearTimeout(_idleRibbitTimer);
+  // Random 10–14s window so it doesn't feel mechanical
+  const ms = 10000 + Math.random() * 4000;
+  _idleRibbitTimer = setTimeout(_idleRibbitTick, ms);
+}
+function _idleRibbitTick() {
+  _idleRibbitTimer = null;
+  if (!gameActive) return; // don't ribbit on menus / game-over screens
+  if (!soundOn || !commentaryOn) { _scheduleIdleRibbit(); return; }
+  // Only fire if it's been quiet for at least 8 seconds (avoid stepping on commentary)
+  const since = Date.now() - _lastVoiceAt;
+  if (since < 8000) { _scheduleIdleRibbit(); return; }
+  const pat = _IDLE_RIBBIT_PATTERNS[Math.floor(Math.random() * _IDLE_RIBBIT_PATTERNS.length)];
+  try { playRibbit(pat); } catch(_e) {}
+  _scheduleIdleRibbit();
+}
+function startIdleRibbit() { _lastVoiceAt = Date.now(); _scheduleIdleRibbit(); }
+function stopIdleRibbit() { if (_idleRibbitTimer) { clearTimeout(_idleRibbitTimer); _idleRibbitTimer = null; } }
 
 // ── Canvas ────────────────────────────────────────────────────────
 const gridCanvas=document.getElementById('grid-canvas');
@@ -7977,9 +8005,10 @@ function startCityPackGame(cityIdx) {
     // Init sky engine now that gridCanvas dimensions are set
     _skyInit(gridCanvas.width, gridCanvas.height);
     updateCityPackHUD();
-    // Per-level entry banner: "🇬🇧 LV 1 · LONDON — 6 LINES"
+    // Per-level entry banner — single consolidated banner, matches GF format.
+    // "🇬🇧 LEVEL 1 · LONDON — 8 LINES"
     setTimeout(() => showEventBanner(
-      (city.emoji||'') + ' LV ' + lvNum + ' · ' + city.name + ' — ' + cityPackLinesTarget + ' LINES!'
+      (city.emoji||'') + ' LEVEL ' + lvNum + ' · ' + city.name + ' — ' + cityPackLinesTarget + ' LINES!'
     ), 300);
   });
 }
@@ -8003,7 +8032,9 @@ function updateCityPackHUD() {
     newNameEl.addEventListener('touchend', _devSkip, { passive: false });
   }
   hud.querySelector('.cp-progress').textContent  = cityPackLinesCleared+' / '+cityPackLinesTarget+' lines';
-  hud.querySelector('.cp-level').textContent = 'City '+(cityPackCityIdx+1)+' / '+CITY_PACK_CITIES.length;
+  // 'City N / 10' redundant with topbar nav strip — hide.
+  const _cpLevelEl = hud.querySelector('.cp-level');
+  if (_cpLevelEl) _cpLevelEl.style.display = 'none';
   hud.style.display = 'flex';
   if (typeof updateLevelNavStrip === 'function') updateLevelNavStrip();
 }
@@ -9449,6 +9480,7 @@ function startGame(){
   } catch(_e) {}
   initGrid();score=0;linesCleared=0;level=1;combo=0;particles=[];gameActive=true;powerupActive=false;
   _prevScore = 0; _prevLevel = 1; // suppress ribbon on initial UI paint
+  if (typeof startIdleRibbit === 'function') startIdleRibbit();
   piecesPlaced=0;bonusEarnedThisGame=0;bonusQueue=[];hazardTimer=0;
   calcLayout();generateTray();updateUI();hideCombo();drawGrid();initPowerups();updateTierBadge();updateDiffIndicator();
   activePowerId = null;
@@ -9470,22 +9502,27 @@ function startGame(){
     }
   });
   // Welcome banner based on tier challenge.
+  // CRITICAL: Production launch path (TIER_GAME_MAP click handler) calls
+  // startGame() FIRST, then sets activeChallengeMode to the real value
+  // (because stopChallengeMode() inside startGame resets it to 'standard').
+  // So we defer BOTH the gate check AND the message lookup into the
+  // setTimeout so they run with the post-update value of activeChallengeMode
+  // and cityPackActive.
   // Skip for Golden Frog: its per-level city banner (e.g. "DUBAI — SPLIT")
-  // already fires from updateGoldenFrogHUD on init, and was being overwritten
-  // by the generic message on Lv 1 entry.
+  // already fires from updateGoldenFrogHUD on init, and was being overwritten.
   // Skip for Fog: same reason — fog mode shows its per-level banner from initChallengeMode.
-  // Skip for City Pack: its per-city banner fires from startCityPackGame; the
-  // generic Tadpole message would otherwise overwrite "🇬🇧 LV 1 · LONDON — 8 LINES".
-  const _isCityPack = (typeof cityPackActive !== 'undefined' && cityPackActive);
-  if (activeChallengeMode !== 'goldenfrog' && activeChallengeMode !== 'fog' && !_isCityPack) {
+  // Skip for City Pack: its per-city banner fires from startCityPackGame.
+  setTimeout(() => {
+    const _isCityPack = (typeof cityPackActive !== 'undefined' && cityPackActive);
+    if (activeChallengeMode === 'goldenfrog' || activeChallengeMode === 'fog' || _isCityPack) return;
     const msgs = {
       standard: '🥚 TADPOLE · EASY — CLEAR ROWS!',
       frenzy:   '🐸 TREE FROG · FRENZY — BEAT THE TIMER!',
       survival: '🌫️ FOG THE FROG · SURVIVAL — BEAT THE FOG!',
       colourrun:'🌟 GOLDEN FROG · COLOUR RUN — MATCH 4!'
     };
-    setTimeout(()=>showEventBanner(msgs[activeChallengeMode]||'🎮 GO!'), 500);
-  }
+    showEventBanner(msgs[activeChallengeMode] || '🎮 GO!');
+  }, 500);
 }
 // Diagnostic snapshot — captures exactly WHY game-over fired so the player
 // (and dev) can see the state instead of being surprised. Renders into the
@@ -9554,6 +9591,7 @@ function triggerGameOver(){
   } catch(_e) { /* defensive: never block game-over on a check failure */ }
   // Capture diagnostic BEFORE clearing state so we see the real reason
   _captureGameOverDiagnostic();
+  if (typeof stopIdleRibbit === 'function') stopIdleRibbit();
   stopChallengeMode();
   clearAdderFrogTimer();
   clearPurpleRescueTimer();
@@ -10457,7 +10495,7 @@ let beh = {
   lastFill:           0,   // current fill % (updated each placement)
   // Commentary throttle
   lastCommentaryAt:   0,   // Date.now() of last comment shown
-  commentaryCooldownMs: 18000, // never show two comments within 18s
+  commentaryCooldownMs: 9000, // never show two comments within 9s (was 18s — user wanted more frequent voice)
   // Cross-session (loaded from storage)
   totalGames:         0,
   totalWins:          0,   // games with score > bestScore at time
@@ -14245,7 +14283,8 @@ function initChallengeMode() {
       const seasonLabel = (cfg.season && seasonEmoji[cfg.season])
         ? (' • ' + seasonEmoji[cfg.season] + ' ' + cfg.season.toUpperCase())
         : '';
-      showEventBanner('✨ ' + (cfg.emoji||'') + ' ' + cfg.name.toUpperCase() + ' — ' + mechLabel + seasonLabel + '!');
+      // Format: "✨ 🇯🇵 LEVEL 4 · TOKYO — TIDE 🌸 SPRING!" — LEVEL prefix matches City Pack.
+      showEventBanner('✨ ' + (cfg.emoji||'') + ' LEVEL ' + cm_gfLevel + ' · ' + cfg.name.toUpperCase() + ' — ' + mechLabel + seasonLabel + '!');
     }
     // Initialize per-location day/night scene background
     if (typeof gridCanvas !== 'undefined' && gridCanvas && gridCanvas.width && cfg) {
@@ -14631,7 +14670,8 @@ function _gfActivateMechanic(lvl) {
   }
   else if (mech === 'gravity') {
     cm_gfGravityFlip = false;
-    showEventBanner('✨ VENICE — GRAVITY FLIPS EVERY 12s!');
+    // Delay banner so the LEVEL/city entry banner gets its moment first.
+    setTimeout(() => { if (activeChallengeMode === 'goldenfrog' && cm_gfLevel === 7) showEventBanner('✨ VENICE — GRAVITY FLIPS EVERY 12s!'); }, 1800);
     // Auto-flip every 12s so the mechanic is visible even before the first
     // line clear. Each flip animates the tiles falling to the new floor over
     // ~700ms (mirrors Maldives flight pattern: snapshot → commit → tween).
@@ -14648,11 +14688,11 @@ function _gfActivateMechanic(lvl) {
     // clearLines() (search for _gfStreetApplySlide). Here we just init dirs
     // and show the banner.
     if (typeof _gfStreetInitDirs === 'function') _gfStreetInitDirs();
-    showEventBanner('🚕 NEW YORK — ONE-WAY STREETS! LINE CLEARS SHIFT ROWS');
+    setTimeout(() => { if (activeChallengeMode === 'goldenfrog' && cm_gfLevel === 8) showEventBanner('🚕 NEW YORK — ONE-WAY STREETS! LINE CLEARS SHIFT ROWS'); }, 1800);
   }
   else if (mech === 'rotation') {
     cm_gfRotateAngle = 0;
-    showEventBanner('✨ BALI — BOARD ROTATES ON EACH CLEAR!');
+    setTimeout(() => { if (activeChallengeMode === 'goldenfrog' && cm_gfLevel === 9) showEventBanner('✨ BALI — BOARD ROTATES ON EACH CLEAR!'); }, 1800);
   }
   else if (mech === 'gauntlet') {
     // AMALFI — THE FULL GAUNTLET. All 7 mechanics run independently (no
@@ -14682,7 +14722,7 @@ function _gfActivateMechanic(lvl) {
       cm_gfMechActive = true;
       try { if (typeof generateTray === 'function') generateTray(); } catch(_e) {}
     }
-    showEventBanner('✨ AMALFI — THE GAUNTLET! 7 MECHANICS ACTIVE!');
+    setTimeout(() => { if (activeChallengeMode === 'goldenfrog' && cm_gfLevel === 10) showEventBanner('✨ AMALFI — THE GAUNTLET! 7 MECHANICS ACTIVE!'); }, 1800);
     // Intro sequence: fire each mechanic once with a 2s gap so the player sees
     // them before the chaos timers begin. Returns the total intro duration so
     // the chaos timers can be deferred until after the intro completes.
@@ -14882,7 +14922,7 @@ function _gfDemoPulse(lv) {
     if (mech === 'rotation') {
       showEventBanner('✨ BALI — BOARD ROTATES EACH LINE CLEAR');
     }
-  }, 800);
+  }, 1800); // bumped from 800 to 1800 so the LEVEL/city banner has time to be read first
 }
 
 // ════════════════════════════════════════════════════════════════
@@ -15223,8 +15263,13 @@ function _tokyoStartTide() {
     };
     _tokyoFloodRafId = requestAnimationFrame(animTick);
   }
-  // 20s grace period before the first rise so the player can settle in
-  showEventBanner('🌟 TOKYO — CALM BEFORE THE TIDE');
+  // 20s grace period before the first rise so the player can settle in.
+  // Delay the tide banner ~1.8s so the LEVEL/city entry banner gets its moment first.
+  setTimeout(() => {
+    if (activeChallengeMode === 'goldenfrog' && cm_gfLevel === 4) {
+      showEventBanner('🌟 TOKYO — CALM BEFORE THE TIDE');
+    }
+  }, 1800);
   _tokyoTideStepTimer = setTimeout(_tokyoTideAdvance, TOKYO_INITIAL_GRACE_MS);
 }
 
@@ -17404,9 +17449,9 @@ function updateLevelNavStrip() {
   const isDev = (typeof localStorage !== 'undefined' && localStorage.getItem('cd_dev_unlock') === '1');
   const unlocked = (typeof _cdProgress !== 'undefined') ? _cdProgress.getUnlocked(pack) : 1;
   const cap = isDev ? 10 : Math.min(10, unlocked);
-  // Update label
+  // Update label — "4 / 10" style (no 'LV' prefix)
   const lblEl = document.getElementById('lvl-nav-current');
-  if (lblEl) lblEl.textContent = 'LV ' + lv;
+  if (lblEl) lblEl.textContent = lv + ' / 10';
   // Enable/disable buttons
   const prevBtn = document.getElementById('btn-lvl-prev');
   const nextBtn = document.getElementById('btn-lvl-next');
