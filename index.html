@@ -2433,80 +2433,6 @@
       opacity: 1;
     }
 
-    /* Ribbit speech bubble — floating frog quip near top of game, very visible */
-    #ribbit-bubble {
-      position: fixed;
-      right: 12px;
-      top: 88px;            /* sits just under topbar, well above the grid */
-      max-width: 240px;
-      background: linear-gradient(135deg, #fff6c8, #ffd866);
-      color: #2a1500;
-      border: 3px solid #F5A623;
-      border-radius: 16px;
-      padding: 10px 14px 10px 44px;
-      font-family: var(--font-display, system-ui);
-      font-size: 14px;
-      font-weight: 800;
-      letter-spacing: 0.02em;
-      box-shadow: 0 6px 20px rgba(0,0,0,0.45), 0 0 0 2px rgba(0,0,0,0.25) inset, 0 0 16px rgba(245,166,35,0.45);
-      opacity: 0;
-      transform: translateY(-6px) scale(0.92);
-      transition: opacity 0.25s ease, transform 0.3s cubic-bezier(.22,1.6,.4,1);
-      pointer-events: none;
-      z-index: 9999;        /* above everything */
-      line-height: 1.25;
-    }
-    #ribbit-bubble.show {
-      opacity: 1;
-      transform: translateY(0) scale(1);
-    }
-    /* tail pointing UP-right toward the topbar (frog talks from the top) */
-    #ribbit-bubble::after {
-      content: '';
-      position: absolute;
-      right: 22px; top: -10px;
-      width: 0; height: 0;
-      border: 8px solid transparent;
-      border-bottom-color: #F5A623;
-      border-top: 0;
-    }
-    #ribbit-bubble::before {
-      content: '';
-      position: absolute;
-      right: 25px; top: -6px;
-      width: 0; height: 0;
-      border: 6px solid transparent;
-      border-bottom-color: #ffd866;
-      border-top: 0;
-    }
-    #ribbit-bubble .ribbit-emoji {
-      position: absolute;
-      left: 6px; top: 50%;
-      transform: translateY(-50%);
-      font-size: 22px;
-      filter: drop-shadow(0 1px 1px rgba(0,0,0,0.25));
-    }
-    @media (max-width: 640px) {
-      #ribbit-bubble { font-size: 13px; max-width: 200px; top: 84px; right: 8px; }
-    }
-
-    /* Season transition fader — covers screen briefly when changing levels */
-    #season-fader {
-      position: fixed;
-      inset: 0;
-      pointer-events: none;
-      opacity: 0;
-      z-index: 8500;
-      background: radial-gradient(circle at 50% 50%, rgba(255,250,235,0.95), rgba(255,235,200,0.85) 60%, rgba(120, 60, 30, 0.6));
-      transition: opacity 600ms ease-in-out;
-      mix-blend-mode: screen;
-    }
-    #season-fader.show { opacity: 1; }
-    #season-fader.spring { background: radial-gradient(circle at 50% 50%, rgba(255,235,245,0.95), rgba(255,180,210,0.7) 70%); }
-    #season-fader.summer { background: radial-gradient(circle at 50% 30%, rgba(255,250,200,0.98), rgba(255,200,90,0.7) 70%); }
-    #season-fader.autumn { background: radial-gradient(circle at 50% 50%, rgba(255,210,140,0.95), rgba(220,110,40,0.7) 70%); }
-    #season-fader.winter { background: radial-gradient(circle at 50% 30%, rgba(245,250,255,0.98), rgba(200,225,245,0.85) 70%); }
-
     /* Hazard warning flash */
     #hazard-overlay {
       position: absolute; inset: 0; z-index: 50;
@@ -5877,13 +5803,6 @@
 
 <div id="screen-game" class="screen hidden">
   <div id="event-banner"></div>
-  <!-- Season transition fader — fades in/out when switching seasons -->
-  <div id="season-fader" aria-hidden="true"></div>
-  <!-- Ribbit speech bubble — little frog chatters every 6-10s with funny lines -->
-  <div id="ribbit-bubble" aria-hidden="true">
-    <span class="ribbit-emoji">🐸</span>
-    <span class="ribbit-text"></span>
-  </div>
 
   <div class="game-topbar">
     <div class="topbar-brand" id="topbar-brand-logo" style="cursor:pointer;" title="Quit game">
@@ -6569,6 +6488,35 @@
     </div>
   </div>
 
+  <!-- TUTOR & HINTS group -->
+  <div class="settings-group">
+    <div class="settings-group-label">Tutor &amp; Hints</div>
+
+    <div class="settings-row">
+      <div style="flex:1;min-width:0;">
+        <div class="settings-row-label">🎓 Tutor Intros</div>
+        <div class="settings-row-sub">Frog explains each tier &amp; the first-game how-to-play</div>
+      </div>
+      <label class="ios-toggle">
+        <input type="checkbox" id="settings-tutor-toggle" onchange="toggleSettingsTutor()">
+        <div class="ios-toggle-track"></div>
+        <div class="ios-toggle-thumb"></div>
+      </label>
+    </div>
+
+    <div class="settings-row">
+      <div style="flex:1;min-width:0;">
+        <div class="settings-row-label">⚠️ Hazard Hints</div>
+        <div class="settings-row-sub">In-game tips for frost, heatwave, leaves &amp; blossom</div>
+      </div>
+      <label class="ios-toggle">
+        <input type="checkbox" id="settings-hazard-hints-toggle" onchange="toggleSettingsHazardHints()">
+        <div class="ios-toggle-track"></div>
+        <div class="ios-toggle-thumb"></div>
+      </label>
+    </div>
+  </div>
+
   <!-- FROGS group -->
   <div class="settings-group">
     <div class="settings-group-label">Frogs</div>
@@ -7006,7 +6954,10 @@ function playSFX(freq,dur,type='sine',vol=0.14,delay=0){
     o.start(audioCtx.currentTime+delay);o.stop(audioCtx.currentTime+delay+dur+0.01);
   });
 }
-function playPlace(){playSFX(200,0.04,'square',0.09);playSFX(300,0.06,'sine',0.07,0.04);}
+// Softer place click — user reported the per-tile noise was too noisy.
+// Pulled volumes down ~50% and dropped the click duration so it's a quick tick
+// rather than a clack.
+function playPlace(){playSFX(220,0.025,'sine',0.045);playSFX(310,0.04,'sine',0.035,0.02);}
 function playClear(n){[440,523,659,784].slice(0,n).forEach((f,i)=>playSFX(f,0.18,'sine',0.13,i*0.09));}
 function playCombo(n){playSFX(300+n*80,0.22,'sine',0.17);playSFX(420+n*100,0.18,'sine',0.13,0.12);}
 function playGameOver(){[220,165,110].forEach((f,i)=>playSFX(f,0.5,'sawtooth',0.11,i*0.35));}
@@ -7084,8 +7035,9 @@ let _idleRibbitTimer = null;
 const _IDLE_RIBBIT_PATTERNS = ['warm', 'fast', 'slow', 'deadpan', 'long'];
 function _scheduleIdleRibbit() {
   if (_idleRibbitTimer) clearTimeout(_idleRibbitTimer);
-  // Random 10–14s window so it doesn't feel mechanical
-  const ms = 10000 + Math.random() * 4000;
+  // User reported too many noises during play — spread the idle chirp out.
+  // Random 18–28s window so it feels like a presence, not a clock.
+  const ms = 18000 + Math.random() * 10000;
   _idleRibbitTimer = setTimeout(_idleRibbitTick, ms);
 }
 function _idleRibbitTick() {
@@ -7264,6 +7216,14 @@ let _mnSceneT = 0.62;        // day/night cycle phase (0..1, 0.5 = full night)
 let _mnSceneLastTS = 0;
 let _mnSeasonParticles = []; // for season particle FX
 const MN_SCENE_CYCLE_MS = 90 * 1000;
+
+// Smooth season cross-fade state. When the player advances to the next monument
+// level we lerp the sky / horizon palette from the PREVIOUS season to the
+// CURRENT season over MN_SEASON_LERP_MS so the change reads like dawn-to-dusk
+// rather than a hard cut.
+let _mnSeasonPrev = null;       // string key: 'spring' | 'summer' | 'autumn' | 'winter' (null = no prev, no lerp)
+let _mnSeasonLerpStart = 0;     // performance.now() at start of lerp (0 = inactive)
+const MN_SEASON_LERP_MS = 3500; // 3.5s smooth cross-fade (matches GoldenFrog day/night feel)
 
 // ── City Sky Animation Engine ──────────────────────────────────────────
 // Self-contained animated sky renderer for City Pack mode.
@@ -8221,6 +8181,10 @@ function revealCitySkyline(city) {
 function startCityPackGame(cityIdx) {
   cityPackActive = true;
   cityPackCityIdx = Math.min(cityIdx || 0, CITY_PACK_CITIES.length - 1);
+  // Tutor: tier intro (first time the player ever enters City Pack).
+  if (typeof showTutor === 'function' && typeof COMMENTARY !== 'undefined' && COMMENTARY.tierCityPack) {
+    showTutor('tier_citypack', COMMENTARY.tierCityPack[0], { color: 'purple', ribbit: 'warm', delayMs: 2400 });
+  }
   const city = CITY_PACK_CITIES[cityPackCityIdx];
   gridMask = buildCityMask(city.colHeights);
   const totalCells = city.colHeights.reduce((a,b)=>a+b,0);
@@ -8349,6 +8313,10 @@ function startMonumentsGame(levelIdx) {
   setTimeout(() => showEventBanner(
     lv.emoji + ' LEVEL ' + (monumentsLevelIdx+1) + ' · ' + lv.name + ' ' + seasonEmoji + ' — BUILD ' + lv.name + '!'
   ), 300);
+  // Tutor: tier intro (first time the player ever enters Monuments).
+  if (typeof showTutor === 'function') {
+    showTutor('tier_monuments', COMMENTARY.tierMonuments[0], { color: 'purple', ribbit: 'warm', delayMs: 2400 });
+  }
 }
 
 // ── Procedural background scene canvas (Golden-Frog style) ──────────────
@@ -8481,27 +8449,58 @@ function _mnDrawScene(ts) {
   // level reads as a different time of year at a glance (vs. subtle tint).
   // Spring: cherry-blossom pink-blue. Summer: vivid mediterranean blue.
   // Autumn: warm golden orange. Winter: cold steel-grey blue.
+  function _mnSeasonPalette(s) {
+    if (s === 'spring') return {
+      dayTop:    [168, 210, 240],   // pale azure
+      dayHoriz:  [255, 192, 220],   // soft cherry-blossom pink horizon
+      nightTop:  [ 30,  20,  50],   // soft purple night
+      nightHoriz:[ 90,  40,  90],   // pink-tinged night horizon
+    };
+    if (s === 'summer') return {
+      dayTop:    [ 72, 168, 248],   // vivid summer blue
+      dayHoriz:  [180, 230, 255],   // bright cyan-white horizon (hazy heat)
+      nightTop:  [  8,  18,  60],   // deep tropical-night blue
+      nightHoriz:[ 30,  60, 110],   // teal-blue night horizon
+    };
+    if (s === 'autumn') return {
+      dayTop:    [180, 158, 200],   // warm dusky lavender (tinted)
+      dayHoriz:  [255, 168,  92],   // strong golden-orange autumn horizon
+      nightTop:  [ 20,  10,  35],   // deep night
+      nightHoriz:[ 80,  40,  60],   // burnt-amber dusk horizon
+    };
+    /* winter */ return {
+      dayTop:    [120, 150, 180],   // overcast steel sky
+      dayHoriz:  [220, 232, 240],   // pale cold horizon (snow haze)
+      nightTop:  [ 14,  22,  50],   // deep frozen night
+      nightHoriz:[ 80, 110, 150],   // cool grey-blue night horizon (NO purple)
+    };
+  }
+  const _curPal = _mnSeasonPalette(season);
+  // Smooth season cross-fade. When the player just advanced from a previous
+  // season we blend the two palettes over MN_SEASON_LERP_MS so the change
+  // reads like dawn-rolling-over-the-bridge instead of a hard cut.
   let _sn_dayTop, _sn_dayHoriz, _sn_nightTop, _sn_nightHoriz;
-  if (season === 'spring') {
-    _sn_dayTop     = [168, 210, 240];  // pale azure
-    _sn_dayHoriz   = [255, 192, 220];  // soft cherry-blossom pink horizon
-    _sn_nightTop   = [ 30,  20,  50];  // soft purple night
-    _sn_nightHoriz = [ 90,  40,  90];  // pink-tinged night horizon
-  } else if (season === 'summer') {
-    _sn_dayTop     = [ 72, 168, 248];  // vivid summer blue
-    _sn_dayHoriz   = [180, 230, 255];  // bright cyan-white horizon (hazy heat)
-    _sn_nightTop   = [  8,  18,  60];  // deep tropical-night blue
-    _sn_nightHoriz = [ 30,  60, 110];  // teal-blue night horizon
-  } else if (season === 'autumn') {
-    _sn_dayTop     = [180, 158, 200];  // warm dusky lavender (tinted)
-    _sn_dayHoriz   = [255, 168,  92];  // strong golden-orange autumn horizon
-    _sn_nightTop   = [ 20,  10,  35];  // deep night
-    _sn_nightHoriz = [ 80,  40,  60];  // burnt-amber dusk horizon
-  } else { // winter
-    _sn_dayTop     = [120, 150, 180];  // overcast steel sky
-    _sn_dayHoriz   = [220, 232, 240];  // pale cold horizon (snow haze)
-    _sn_nightTop   = [ 14,  22,  50];  // deep frozen night
-    _sn_nightHoriz = [ 80, 110, 150];  // cool grey-blue night horizon (NO purple)
+  if (_mnSeasonPrev && _mnSeasonPrev !== season && _mnSeasonLerpStart > 0) {
+    const _elapsed = (typeof performance !== 'undefined' ? performance.now() : Date.now()) - _mnSeasonLerpStart;
+    const _u = Math.max(0, Math.min(1, _elapsed / MN_SEASON_LERP_MS));
+    // ease-in-out cubic so the middle of the transition has the most movement
+    const _e = _u < 0.5 ? 4*_u*_u*_u : 1 - Math.pow(-2*_u + 2, 3) / 2;
+    const _prevPal = _mnSeasonPalette(_mnSeasonPrev);
+    const _mix = (a, b) => [
+      Math.round(a[0] * (1-_e) + b[0] * _e),
+      Math.round(a[1] * (1-_e) + b[1] * _e),
+      Math.round(a[2] * (1-_e) + b[2] * _e),
+    ];
+    _sn_dayTop     = _mix(_prevPal.dayTop,     _curPal.dayTop);
+    _sn_dayHoriz   = _mix(_prevPal.dayHoriz,   _curPal.dayHoriz);
+    _sn_nightTop   = _mix(_prevPal.nightTop,   _curPal.nightTop);
+    _sn_nightHoriz = _mix(_prevPal.nightHoriz, _curPal.nightHoriz);
+    if (_u >= 1) { _mnSeasonPrev = null; _mnSeasonLerpStart = 0; }
+  } else {
+    _sn_dayTop     = _curPal.dayTop;
+    _sn_dayHoriz   = _curPal.dayHoriz;
+    _sn_nightTop   = _curPal.nightTop;
+    _sn_nightHoriz = _curPal.nightHoriz;
   }
   const sDay   = _sn_dayTop;
   const sDayH  = _sn_dayHoriz;
@@ -9321,7 +9320,7 @@ function _mnSpawnSeasonHazard() {
           froze = true;
         }
       }
-      if (froze && typeof showEventBanner === 'function') showEventBanner('❄️ FROST! Row ' + (r+1) + ' frozen');
+      if (froze && hazardHintsOn && typeof showFrogSpeech === 'function') showFrogSpeech('purple', _pick(COMMENTARY.frost), 'slow');
     }
     if (!froze) {
       // Fallback: freeze a random EMPTY zone row — ice on empty cells blocks
@@ -9341,7 +9340,7 @@ function _mnSpawnSeasonHazard() {
             _mnHazardSet(r, c, { type: 'ice', startedAt: now, expiresAt: now + lifetime });
           }
         }
-        if (typeof showEventBanner === 'function') showEventBanner('❄️ BLIZZARD! Row ' + (r+1) + ' iced over');
+        if (hazardHintsOn && typeof showFrogSpeech === 'function') showFrogSpeech('purple', _pick(COMMENTARY.frost), 'slow');
       }
     }
   } else if (lv.season === 'summer') {
@@ -9366,7 +9365,7 @@ function _mnSpawnSeasonHazard() {
         const [nr, nc] = neighbors[i];
         _mnHazardSet(nr, nc, { type: 'puddle', startedAt: now, expiresAt: now + lifetime });
       }
-      if (typeof showEventBanner === 'function') showEventBanner('☀️ HEATWAVE! Bricks melting');
+      if (hazardHintsOn && typeof showFrogSpeech === 'function') showFrogSpeech('red', _pick(COMMENTARY.heatwave), 'panic');
     } else {
       // Empty board fallback — spawn 2-3 puddles on random empty zone cells
       const placed = [];
@@ -9379,7 +9378,7 @@ function _mnSpawnSeasonHazard() {
           placed.push([r, c]);
         }
       }
-      if (placed.length && typeof showEventBanner === 'function') showEventBanner('☀️ HEATWAVE! Puddles forming');
+      if (placed.length && hazardHintsOn && typeof showFrogSpeech === 'function') showFrogSpeech('red', _pick(COMMENTARY.heatwave), 'panic');
     }
   } else if (lv.season === 'autumn') {
     // Drop 1-3 leaf piles on empty zone cells anywhere on the board.
@@ -9391,7 +9390,7 @@ function _mnSpawnSeasonHazard() {
       const [r, c] = cell;
       _mnHazardSet(r, c, { type: 'leaves', startedAt: now, expiresAt: now + lifetime });
     }
-    if (typeof showEventBanner === 'function') showEventBanner('🍂 LEAF PILE! Sweep them clear');
+    if (hazardHintsOn && typeof showFrogSpeech === 'function') showFrogSpeech('purple', _pick(COMMENTARY.leaves), 'warm');
   } else if (lv.season === 'spring') {
     // Friendly bonus: +50 pts, gentle petal burst.
     if (typeof score !== 'undefined') {
@@ -9399,7 +9398,7 @@ function _mnSpawnSeasonHazard() {
       if (typeof bestScore !== 'undefined' && score > bestScore) bestScore = score;
       if (typeof updateUI === 'function') updateUI();
     }
-    if (typeof showEventBanner === 'function') showEventBanner('🌸 BLOSSOM BURST! +50');
+    if (hazardHintsOn && typeof showFrogSpeech === 'function') showFrogSpeech('purple', _pick(COMMENTARY.blossom), 'fast');
   }
 }
 function _mnHazardSpawnTick() {
@@ -9829,22 +9828,28 @@ function stopMonumentsGame() {
 // Advance to the next monuments level (or wrap back to 0).
 function advanceMonumentsLevel() {
   const next = (monumentsLevelIdx + 1) % MONUMENTS_LEVELS.length;
-  const nextSeason = (MONUMENTS_LEVELS[next] && MONUMENTS_LEVELS[next].season) || '';
-  // Smooth season transition — fade in coloured veil keyed to next season,
-  // swap level under the veil, then fade back out (≈day→night feel).
-  const fader = document.getElementById('season-fader');
-  if (fader) {
-    fader.classList.remove('spring', 'summer', 'autumn', 'winter');
-    if (nextSeason) fader.classList.add(nextSeason);
-    fader.classList.add('show');
+  const curSeason  = (MONUMENTS_LEVELS[monumentsLevelIdx] && MONUMENTS_LEVELS[monumentsLevelIdx].season) || null;
+  const nextSeason = (MONUMENTS_LEVELS[next] && MONUMENTS_LEVELS[next].season) || null;
+  // Smooth GoldenFrog-style season cross-fade. We capture the OUTGOING
+  // season as `_mnSeasonPrev` and start a 3.5s lerp so the sky and horizon
+  // colours melt from one season into the next inside the active scene
+  // canvas (no full-screen veil, no hard cut). The level itself is swapped
+  // immediately so gameplay continues seamlessly.
+  if (curSeason && nextSeason && curSeason !== nextSeason) {
+    _mnSeasonPrev = curSeason;
+    _mnSeasonLerpStart = (typeof performance !== 'undefined' ? performance.now() : Date.now());
+  } else {
+    _mnSeasonPrev = null;
+    _mnSeasonLerpStart = 0;
   }
-  // Hold the veil for ~650ms (matches CSS transition), then swap level
-  setTimeout(() => {
-    stopMonumentsGame();
-    startMonumentsGame(next);
-    // Fade veil back out so the new season reveals smoothly
-    setTimeout(() => { if (fader) fader.classList.remove('show'); }, 80);
-  }, 650);
+  stopMonumentsGame();
+  startMonumentsGame(next);
+  // Re-arm the lerp AFTER startMonumentsGame (which resets _mnSceneT). The
+  // lerp state is read each draw frame, so just setting it again here is fine.
+  if (curSeason && nextSeason && curSeason !== nextSeason) {
+    _mnSeasonPrev = curSeason;
+    _mnSeasonLerpStart = (typeof performance !== 'undefined' ? performance.now() : Date.now());
+  }
 }
 
 // ── Grid helpers ──────────────────────────────────────────────────
@@ -11472,6 +11477,10 @@ function startGame(){
   initGrid();score=0;linesCleared=0;level=1;combo=0;particles=[];gameActive=true;powerupActive=false;
   _prevScore = 0; _prevLevel = 1; // suppress ribbon on initial UI paint
   if (typeof startIdleRibbit === 'function') startIdleRibbit();
+  // Tutor: first-ever how-to-play (3-step sequence). Fires once per player.
+  if (typeof showTutor === 'function' && typeof COMMENTARY !== 'undefined' && COMMENTARY.tutPlay) {
+    showTutor('howto_play', COMMENTARY.tutPlay, { color: 'purple', ribbit: 'warm', delayMs: 1800, stepMs: 4500 });
+  }
   piecesPlaced=0;bonusEarnedThisGame=0;bonusQueue=[];hazardTimer=0;
   calcLayout();generateTray();updateUI();hideCombo();drawGrid();initPowerups();updateTierBadge();updateDiffIndicator();
   activePowerId = null;
@@ -12697,9 +12706,89 @@ const COMMENTARY = {
     ['⏳ Still waiting on that row...', 'dry_1'],
     ['😐 Just saying. The grid isn\'t getting smaller.', 'dry_2'],
   ],
+  // Seasonal hazard tutor — frog explains what's happening.
+  frost: [
+    ['❄️ Brrr! Frost — that row is locked till it thaws.', 'haz_frost_0'],
+    ['🧊 Frozen bricks won\'t budge. Wait it out, then clear.', 'haz_frost_1'],
+  ],
+  heatwave: [
+    ['☀️ Heatwave! Bricks melting — place fast.', 'haz_melt_0'],
+    ['🔥 Ow, hot. Those puddles will fade in a sec.', 'haz_melt_1'],
+  ],
+  leaves: [
+    ['🍂 Leaves piling up. Sweep them with a clear.', 'haz_leaves_0'],
+    ['🍁 Leaves everywhere. Land a row to whoosh them away.', 'haz_leaves_1'],
+  ],
+  blossom: [
+    ['🌸 Spring blossom bonus! +50 points.', 'haz_blossom_0'],
+    ['🌺 Petals for the frog. +50 — you\'re welcome.', 'haz_blossom_1'],
+  ],
+  // Tier intros (one-shot when entering a tier for the first time this session).
+  tierMonuments: [
+    ['🏛️ Welcome to Monuments. Build the bridge across the seasons.', 'tier_monuments_0'],
+  ],
+  tierCityPack: [
+    ['🏙️ City Pack time. New skylines, new puzzles. Let\'s hop.', 'tier_citypack_0'],
+  ],
+  tierGoldenFrog: [
+    ['🐸 The Golden Frog tier. Ten cities, ten twists.', 'tier_goldenfrog_0'],
+  ],
+  // First-game how-to-play.
+  tutPlay: [
+    ['🐸 Hi! I\'m your frog guide. Drag a brick onto the board.', 'tut_play_0'],
+    ['📏 Fill a row or column to clear it. More clears, more points.', 'tut_play_1'],
+    ['⚠️ Run out of space and it\'s over. Plan ahead, hop smart.', 'tut_play_2'],
+  ],
+  tutDrag: [
+    ['👆 Drag a piece. Drop it where it fits.', 'tut_drag_0'],
+  ],
+  tutMatch: [
+    ['🎨 Match the brick colour to its zone for bonus points.', 'tut_match_0'],
+  ],
+  // Tactics tips.
+  tacRowClear: [
+    ['✅ Nice clear. Stack two rows for a combo bonus.', 'tac_rowclear_0'],
+  ],
+  tacCombo: [
+    ['⚡ Two clears in a row! Combo king.', 'tac_combo_0'],
+  ],
 };
 
 function _pick(arr) { return arr[Math.floor(Math.random() * arr.length)]; }
+
+// Tutor / how-to-play system. Gated by the "Tutor Intros" setting.
+// Each tutor key is shown at most once per session (tier intros) or until
+// the player has played their first game (how-to-play).
+const _tutorShown = Object.create(null);
+function _tutorAlreadyShown(key) {
+  if (_tutorShown[key]) return true;
+  // Tier intros + how-to-play also persist across sessions in localStorage so
+  // returning players don't get re-tutored every time they open the app.
+  try { if (localStorage.getItem('cd_tut_' + key) === '1') return true; } catch(_e) {}
+  return false;
+}
+function _tutorMarkShown(key) {
+  _tutorShown[key] = true;
+  try { localStorage.setItem('cd_tut_' + key, '1'); } catch(_e) {}
+}
+// Show a tutor line with a delay, gated by tutorOn + once-per-key.
+// `entries` may be a single COMMENTARY entry [text,audioKey] OR an array of
+// entries to play in sequence (with delayMs between).
+function showTutor(key, entries, opts) {
+  if (typeof tutorOn !== 'undefined' && !tutorOn) return;
+  if (_tutorAlreadyShown(key)) return;
+  _tutorMarkShown(key);
+  const arr = Array.isArray(entries) && Array.isArray(entries[0]) ? entries : [entries];
+  const color = (opts && opts.color) || 'purple';
+  const ribbit = (opts && opts.ribbit) || 'warm';
+  const startDelay = (opts && opts.delayMs) || 600;
+  const stepDelay  = (opts && opts.stepMs)  || 4200;
+  arr.forEach((entry, i) => {
+    setTimeout(() => {
+      if (typeof showFrogSpeech === 'function') showFrogSpeech(color, entry, ribbit);
+    }, startDelay + i * stepDelay);
+  });
+}
 
 // ── Frog Voice Audio Player ───────────────────────────────────────────
 // Audio files are hosted at /game/audio/<key>.mp3 on gh-pages
@@ -13226,91 +13315,6 @@ function showEventBanner(msg){
   el.classList.add('show');
   clearTimeout(bannerTimeout);
   bannerTimeout = setTimeout(()=>el.classList.remove('show'), 2200);
-}
-
-// ════════════════════════════════════════════════════════════════
-//  RIBBIT BANTER  — friendly frog quips every 8–15s during play
-// ════════════════════════════════════════════════════════════════
-const RIBBIT_LINES = [
-  'Ribbit?',
-  'Still awake?',
-  'You look tired, mate.',
-  'My pond, my rules.',
-  'Hop hop hop.',
-  'I see what you did there...',
-  'Need a coffee?',
-  'Smooth move.',
-  'You missed a spot.',
-  'Frog says: nice.',
-  'Croak croak.',
-  'Are you blinking?',
-  'Don\u2019t make me croak.',
-  'That was almost good.',
-  'Tiles wait for no frog.',
-  'I could do this with my eyes shut.',
-  'Stretch break, anyone?',
-  'Hmm.',
-  'Yummy bricks.',
-  'You\u2019re doing great. Sort of.',
-  'Brick by brick, my friend.',
-  'Ooh, fancy.',
-  'Is that... strategy?',
-  'A wild frog appears.',
-  'I bet I could beat you.',
-  'Don\u2019t freeze up now.',
-  'Snack time?',
-  'Just keep hopping.',
-];
-let _ribbitTimer = null;
-let _ribbitHideTimer = null;
-let _ribbitLastIdx = -1;
-function _ribbitPickLine() {
-  let idx = Math.floor(Math.random() * RIBBIT_LINES.length);
-  if (idx === _ribbitLastIdx) idx = (idx + 1) % RIBBIT_LINES.length;
-  _ribbitLastIdx = idx;
-  return RIBBIT_LINES[idx];
-}
-function showRibbit(text) {
-  const el = document.getElementById('ribbit-bubble');
-  if (!el) return;
-  const txt = el.querySelector('.ribbit-text');
-  if (txt) txt.textContent = text;
-  el.classList.add('show');
-  if (_ribbitHideTimer) clearTimeout(_ribbitHideTimer);
-  // Stay visible longer (4.5s) so the player can read it
-  _ribbitHideTimer = setTimeout(() => { el.classList.remove('show'); }, 4500);
-}
-function _ribbitTick() {
-  const screenGame = document.getElementById('screen-game');
-  const onGameScreen = screenGame && !screenGame.classList.contains('hidden');
-  const active = (typeof gameActive !== 'undefined') && gameActive;
-  const banner = document.getElementById('event-banner');
-  const bannerShowing = banner && banner.classList.contains('show');
-  if (onGameScreen && active && !bannerShowing) {
-    showRibbit(_ribbitPickLine());
-  }
-  // 6-10s cadence (was 8-15s) — user wanted to actually see these
-  const nextMs = 6000 + Math.random() * 4000;
-  clearTimeout(_ribbitTimer);
-  _ribbitTimer = setTimeout(_ribbitTick, nextMs);
-}
-function startRibbitBanter() {
-  if (_ribbitTimer) return;
-  // Fire first quip after 3-5s so the player meets the frog quickly
-  _ribbitTimer = setTimeout(_ribbitTick, 3000 + Math.random() * 2000);
-}
-function stopRibbitBanter() {
-  if (_ribbitTimer) { clearTimeout(_ribbitTimer); _ribbitTimer = null; }
-  if (_ribbitHideTimer) { clearTimeout(_ribbitHideTimer); _ribbitHideTimer = null; }
-  const el = document.getElementById('ribbit-bubble');
-  if (el) el.classList.remove('show');
-}
-if (typeof document !== 'undefined') {
-  if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', startRibbitBanter);
-  } else {
-    startRibbitBanter();
-  }
 }
 
 // ════════════════════════════════════════════════════════════════
@@ -16337,6 +16341,10 @@ function initChallengeMode() {
   if (activeChallengeMode === 'goldenfrog') {
     // Preserve cm_gfLevel if already set (dev skip bumps it). Only init from game level on first start.
     if (!cm_gfLevel || cm_gfLevel < 1) { cm_gfLevel = level || 1; cm_gfLinesCleared = 0; }
+    // Tutor: tier intro (first time the player ever enters Golden Frog).
+    if (typeof showTutor === 'function' && typeof COMMENTARY !== 'undefined' && COMMENTARY.tierGoldenFrog) {
+      showTutor('tier_goldenfrog', COMMENTARY.tierGoldenFrog[0], { color: 'purple', ribbit: 'warm', delayMs: 2400 });
+    }
     // Defensive cleanup of any leftover mechanic state from a prior level.
     // _gfStopAllMechanics may have already been called by the dev-skip path,
     // but we belt-and-brace here so re-entry from any path (resume button,
@@ -19981,6 +19989,8 @@ function spawnJumpingFrog(type, targetR, targetC) {
 const NOTIF_KEY = 'cd_notif';
 const HAPTICS_KEY = 'cd_haptics';
 const COMMENTARY_KEY = 'cd_commentary';
+const TUTOR_KEY = 'cd_tutor';            // tier/level intros + how-to-play
+const HAZARD_HINTS_KEY = 'cd_hazard_hints'; // in-game hazard hints (frost / heatwave / leaves / blossom)
 const THEME_KEY = 'cd_theme';
 const FROGS_KEY      = 'cd_frogs';       // legacy — keep for compat
 const RED_FROG_KEY   = 'cd_red_frog';
@@ -19988,6 +19998,8 @@ const PURPLE_FROG_KEY= 'cd_purple_frog';
 let notifsOn = localStorage.getItem(NOTIF_KEY) !== '0';
 let hapticsOn = localStorage.getItem(HAPTICS_KEY) !== '0';
 let commentaryOn = localStorage.getItem(COMMENTARY_KEY) !== '0'; // default ON
+let tutorOn = localStorage.getItem(TUTOR_KEY) !== '0';           // default ON — tier/level intros + first-game how-to-play
+let hazardHintsOn = localStorage.getItem(HAZARD_HINTS_KEY) !== '0'; // default ON — frog explains frost/heatwave/leaves/blossom
 let lightModeOn = false; // light mode removed
 localStorage.removeItem(THEME_KEY);
 // Migrate legacy cd_frogs to per-frog keys on first load
@@ -20029,6 +20041,8 @@ function _setToggle(id, on) {
 function updateSettingsToggles() {
   _setToggle('settings-sound-toggle',      soundOn);
   _setToggle('settings-commentary-toggle', commentaryOn);
+  _setToggle('settings-tutor-toggle',      tutorOn);
+  _setToggle('settings-hazard-hints-toggle', hazardHintsOn);
   _setToggle('settings-haptics-toggle',    hapticsOn);
   _setToggle('settings-notif-toggle',      notifsOn);
   _setToggle('settings-red-frog-toggle',   redFrogOn);
@@ -20126,6 +20140,21 @@ function toggleSettingsCommentary() {
     const banner = document.getElementById('event-banner');
     if (banner) banner.classList.remove('show');
     clearPurpleRescueTimer();
+  }
+  updateSettingsToggles();
+}
+function toggleSettingsTutor() {
+  tutorOn = !tutorOn;
+  localStorage.setItem(TUTOR_KEY, tutorOn ? '1' : '0');
+  updateSettingsToggles();
+}
+function toggleSettingsHazardHints() {
+  hazardHintsOn = !hazardHintsOn;
+  localStorage.setItem(HAZARD_HINTS_KEY, hazardHintsOn ? '1' : '0');
+  if (!hazardHintsOn) {
+    // Hide any currently showing banner immediately
+    const banner = document.getElementById('event-banner');
+    if (banner) banner.classList.remove('show');
   }
   updateSettingsToggles();
 }
