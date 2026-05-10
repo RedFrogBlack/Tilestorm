@@ -7394,16 +7394,30 @@ const MONUMENTS_LEVELS = [
 // city's first season lives. Order MUST match the MONUMENTS_LEVELS layout.
 // ═══════════════════════════════════════════════════════════════════════
 const MONUMENTS_CITIES = [
-  { city:'London',     emoji:'🇬🇧', monument:'TOWER BRIDGE',       startIdx: 0  },
-  { city:'Prague',     emoji:'🇨🇿', monument:'CHARLES BRIDGE',      startIdx: 4  },
-  { city:'Accra',      emoji:'🇬🇭', monument:'BLACK STAR GATE',     startIdx: 8  },
-  { city:'Cairo',      emoji:'🇪🇬', monument:'PYRAMIDS OF GIZA',    startIdx: 12 },
-  { city:'Beijing',    emoji:'🇨🇳', monument:'GREAT WALL',          startIdx: 16 },
-  { city:'Jaipur',     emoji:'🇮🇳', monument:'HAWA MAHAL',          startIdx: 20 },
-  { city:'Rio',        emoji:'🇧🇷', monument:'CHRIST THE REDEEMER', startIdx: 24 },
-  { city:'Reykjavík',  emoji:'🇮🇸', monument:'HALLGRÍMSKIRKJA',     startIdx: 28 },
-  { city:'Marrakech',  emoji:'🇲🇦', monument:'KOUTOUBIA MOSQUE',    startIdx: 32 },
-  { city:'Sydney',     emoji:'🇦🇺', monument:'OPERA HOUSE',         startIdx: 36 },
+  // skyId is matched against the scene engine. 'london' uses the detailed
+  // London art; everything else uses _mnDrawGenericSkyline() with the given
+  // colHeights silhouette + accent colour. groundType tints the ground band
+  // beneath the horizon (river/sand/snow/grass/ocean).
+  { city:'London',     emoji:'🇬🇧', monument:'TOWER BRIDGE',       startIdx: 0,  skyId:'london',    groundType:'river',
+    colHeights:[5,7,9,12,10,8,11,9,7,5], accent:[200,150,90] },
+  { city:'Prague',     emoji:'🇨🇿', monument:'CHARLES BRIDGE',      startIdx: 4,  skyId:'prague',    groundType:'river',
+    colHeights:[4,6,5,9,7,12,8,6,7,5], accent:[210,140,80], spires:true },
+  { city:'Accra',      emoji:'🇬🇭', monument:'BLACK STAR GATE',     startIdx: 8,  skyId:'accra',     groundType:'savannah',
+    colHeights:[3,4,5,8,11,9,7,5,4,3], accent:[245,200,80] },
+  { city:'Cairo',      emoji:'🇪🇬', monument:'PYRAMIDS OF GIZA',    startIdx: 12, skyId:'cairo',     groundType:'sand',
+    colHeights:[2,3,6,9,12,9,6,3,2,1], accent:[230,180,100], pyramids:true },
+  { city:'Beijing',    emoji:'🇨🇳', monument:'GREAT WALL',          startIdx: 16, skyId:'beijing',   groundType:'mountains',
+    colHeights:[6,4,8,5,7,5,9,5,7,5], accent:[210,80,80], pagodas:true },
+  { city:'Jaipur',     emoji:'🇮🇳', monument:'HAWA MAHAL',          startIdx: 20, skyId:'jaipur',     groundType:'sand',
+    colHeights:[4,6,5,7,9,7,5,6,4,5], accent:[220,120,140], domes:true },
+  { city:'Rio',        emoji:'🇧🇷', monument:'CHRIST THE REDEEMER', startIdx: 24, skyId:'rio',        groundType:'ocean',
+    colHeights:[3,5,7,4,12,8,5,7,4,6], accent:[110,200,170] },
+  { city:'Reykjavík',  emoji:'🇮🇸', monument:'HALLGRÍMSKIRKJA',     startIdx: 28, skyId:'reykjavik', groundType:'snow',
+    colHeights:[3,4,3,5,11,5,3,4,3,4], accent:[180,200,230] },
+  { city:'Marrakech',  emoji:'🇲🇦', monument:'KOUTOUBIA MOSQUE',    startIdx: 32, skyId:'marrakech', groundType:'sand',
+    colHeights:[4,5,4,7,11,7,4,5,4,5], accent:[220,140,90], domes:true },
+  { city:'Sydney',     emoji:'🇦🇺', monument:'OPERA HOUSE',         startIdx: 36, skyId:'sydney',     groundType:'harbour',
+    colHeights:[5,7,9,7,11,8,10,7,6,5], accent:[120,180,230] },
 ];
 // Convert a 1-based picker level (1..10) to the MONUMENTS_LEVELS start index.
 function _mnCityStartIdx(cityLv) {
@@ -7416,6 +7430,12 @@ function _mnLvIdxToCityLv(lvIdx) {
     if (lvIdx >= MONUMENTS_CITIES[i].startIdx) return i + 1;
   }
   return 1;
+}
+// Convenience: get the current city's metadata (skyId, colHeights, accent, …).
+function _mnCurrentCity() {
+  if (typeof monumentsLevelIdx === 'undefined') return MONUMENTS_CITIES[0];
+  const i = _mnLvIdxToCityLv(monumentsLevelIdx) - 1;
+  return MONUMENTS_CITIES[Math.max(0, Math.min(MONUMENTS_CITIES.length - 1, i))];
 }
 
 // Look up the per-level intro voice clip for a Monuments level. Maps the
@@ -8830,13 +8850,19 @@ function _mnDrawScene(ts) {
   }
   ctx.restore();
 
-  // ─── London skyline (Golden Frog pattern — buildings STRETCH UP into sky) ───
-  // Scene canvas is sized to the play board, so W and H are board pixels.
-  // Horizon at 70% of board, buildings extend UP from baseY into the upper
-  // 30%-50% of the board so they read as a TALL city skyline behind the bridge.
+  // ─── City skyline dispatch ───
+  // London uses the detailed bespoke art below. All other cities go through
+  // _mnDrawGenericSkyline() which renders their unique colHeights silhouette
+  // + city-specific accents (pyramids, domes, pagodas, spires, etc.) and
+  // ground band (sand / snow / river / ocean / mountains).
+  const _mnCityMeta = (typeof _mnCurrentCity === 'function') ? _mnCurrentCity() : { skyId:'london' };
+  const _isLondon = (_mnCityMeta && _mnCityMeta.skyId === 'london');
   const baseY = H * 0.70;
   const CX = (f) => f * W;
   const CW = (f) => f * W;
+  if (!_isLondon) {
+    _mnDrawGenericSkyline(ctx, W, H, baseY, _mnCityMeta, season, dayMix, night, ts, horiz);
+  } else {
   // SH = skyline silhouette HEIGHT. Tied to BOARD HEIGHT (not width) so the
   // tallest building (Shard at SH*1.0) reaches near the top of the sky.
   // Buildings now feel monumental, like the Golden Frog locations.
@@ -9034,6 +9060,7 @@ function _mnDrawScene(ts) {
     ctx.restore();
   }
 
+  } // end London-only skyline guard
   // ── Tower Bridge painted overlay — DISABLED per user request ──
   // The skyline already conveys London; the playable-cell silhouette
   // (yellow/red/brown brick zones) implies the bridge shape. Drawing the
@@ -9251,13 +9278,15 @@ function _mnDrawScene(ts) {
     ctx.restore();
   })();
 
-  // ── Thames river — narrow band JUST below play board, in front of skyline ──
-  // The river sits between the play-board bottom and the tray. Use a small
-  // fixed strip so it doesn't bleed into / below the tray.
+  // ── Thames river / waterfront band — only for cities with groundType:'river' ──
+  // (London / Prague). Cairo / Reykjavik etc. paint their own ground band
+  // inside _mnDrawGenericSkyline (sand / snow / harbour / etc.) so we skip this.
+  if (_isLondon || (_mnCityMeta && _mnCityMeta.groundType === 'river')) {
   ctx.save();
   const riverTop = baseY;
   const riverH   = Math.min(40, Math.max(18, H * 0.04));
   const riverBot = riverTop + riverH;
+  const _wfront = `rgba(${Math.round(8+dayMix*14)},${Math.round(8+dayMix*12)},${Math.round(20+dayMix*15)},0.92)`;
   const riverGrad = ctx.createLinearGradient(0, riverTop, 0, riverBot);
   // River reflects the sky horizon colours
   riverGrad.addColorStop(0, `rgba(${horiz[0]},${horiz[1]},${horiz[2]},0.92)`);
@@ -9279,7 +9308,7 @@ function _mnDrawScene(ts) {
   const bx = (_mnBoatX + 0.15) * W;
   const by = riverTop + riverH * 0.45;
   ctx.globalAlpha = 0.85;
-  ctx.fillStyle = front;
+  ctx.fillStyle = _wfront;
   ctx.beginPath();
   ctx.moveTo(bx - 14, by + 4); ctx.lineTo(bx - 10, by);
   ctx.lineTo(bx + 10, by); ctx.lineTo(bx + 14, by + 4);
@@ -9293,6 +9322,7 @@ function _mnDrawScene(ts) {
     ctx.beginPath(); ctx.arc(bx - 12, by - 1, 1.4, 0, Math.PI*2); ctx.fill();
   }
   ctx.restore();
+  } // end river guard
 
   // ── Seasonal particle overlay — monuments uses BOLDER seasonal particles ──
   // so each level reads as a clearly different season.
@@ -9528,6 +9558,183 @@ function _mnDrawScene(ts) {
       ctx.restore();
     }
   })();
+}
+
+
+// Generic per-city skyline renderer (Prague ... Sydney).
+// Draws a 10-column silhouette behind the play board + city-specific
+// landmarks (pyramids / pagodas / domes / spires) + a ground band tinted
+// to the city biome (sand / snow / harbour / mountains / river / savannah).
+function _mnDrawGenericSkyline(ctx, W, H, baseY, city, season, dayMix, night, ts, horiz) {
+  if (!city) return;
+  const SH = H * 0.55;
+  const accent = city.accent || [200, 150, 90];
+  const back   = `rgba(${Math.round(20+dayMix*30)},${Math.round(20+dayMix*30)},${Math.round(40+dayMix*20)},0.55)`;
+  const front  = `rgba(${Math.round(8+dayMix*14)},${Math.round(8+dayMix*12)},${Math.round(20+dayMix*15)},0.92)`;
+  const heights = city.colHeights || [5,7,9,7,11,8,10,7,6,5];
+  const maxH = Math.max.apply(null, heights);
+
+  // Ground band beneath horizon (city-specific biome)
+  ctx.save();
+  const gt = city.groundType || 'river';
+  const groundGrad = ctx.createLinearGradient(0, baseY, 0, H);
+  if (gt === 'sand') {
+    groundGrad.addColorStop(0, `rgba(${220 + dayMix*15},${180 + dayMix*10},${110 + dayMix*5},0.95)`);
+    groundGrad.addColorStop(1, `rgba(${150 + dayMix*15},${110 + dayMix*10},${70 + dayMix*5},0.98)`);
+  } else if (gt === 'snow') {
+    groundGrad.addColorStop(0, `rgba(${230 + dayMix*10},${235 + dayMix*10},${245 + dayMix*5},0.95)`);
+    groundGrad.addColorStop(1, `rgba(${170 + dayMix*15},${190 + dayMix*15},${215 + dayMix*10},0.98)`);
+  } else if (gt === 'ocean' || gt === 'harbour') {
+    groundGrad.addColorStop(0, `rgba(${40 + dayMix*40},${110 + dayMix*40},${160 + dayMix*30},0.95)`);
+    groundGrad.addColorStop(1, `rgba(${20 + dayMix*20},${60 + dayMix*30},${110 + dayMix*30},0.98)`);
+  } else if (gt === 'savannah') {
+    groundGrad.addColorStop(0, `rgba(${180 + dayMix*20},${150 + dayMix*15},${90 + dayMix*10},0.95)`);
+    groundGrad.addColorStop(1, `rgba(${110 + dayMix*15},${85 + dayMix*10},${50 + dayMix*5},0.98)`);
+  } else if (gt === 'mountains') {
+    groundGrad.addColorStop(0, `rgba(${110 + dayMix*20},${120 + dayMix*20},${130 + dayMix*15},0.95)`);
+    groundGrad.addColorStop(1, `rgba(${55 + dayMix*15},${65 + dayMix*15},${75 + dayMix*10},0.98)`);
+  } else {
+    groundGrad.addColorStop(0, `rgba(${horiz[0]},${horiz[1]},${horiz[2]},0.92)`);
+    groundGrad.addColorStop(1, `rgba(${Math.round(horiz[0]*0.35)},${Math.round(horiz[1]*0.35)},${Math.round(horiz[2]*0.45)},0.96)`);
+  }
+  ctx.fillStyle = groundGrad;
+  ctx.fillRect(0, baseY, W, H - baseY);
+  ctx.restore();
+
+  // BACK layer
+  ctx.save();
+  ctx.fillStyle = back;
+  const cols = heights.length;
+  const cellW = W / cols;
+  for (let i = 0; i < cols; i++) {
+    const h = (heights[i] * 0.55) / maxH * SH;
+    const x = i * cellW + cellW * 0.08;
+    const w = cellW * 0.84;
+    ctx.fillRect(x - cellW * 0.45, baseY - h, w * 1.1, h + 4);
+  }
+  ctx.restore();
+
+  // FRONT silhouette
+  ctx.save();
+  ctx.fillStyle = front;
+  for (let i = 0; i < cols; i++) {
+    const h = heights[i] / maxH * SH;
+    const x = i * cellW + cellW * 0.12;
+    const w = cellW * 0.76;
+    ctx.fillRect(x, baseY - h, w, h + 4);
+  }
+  ctx.restore();
+
+  // City-specific landmarks
+  if (city.pyramids) {
+    ctx.save();
+    ctx.fillStyle = front;
+    const pyramids = [
+      { fx: 0.22, fw: 0.22, fh: 0.48 },
+      { fx: 0.50, fw: 0.30, fh: 0.65 },
+      { fx: 0.78, fw: 0.18, fh: 0.38 },
+    ];
+    for (const p of pyramids) {
+      const px = p.fx * W, pw = p.fw * W, ph = p.fh * SH;
+      ctx.beginPath();
+      ctx.moveTo(px - pw/2, baseY);
+      ctx.lineTo(px, baseY - ph);
+      ctx.lineTo(px + pw/2, baseY);
+      ctx.closePath();
+      ctx.fill();
+      ctx.save();
+      ctx.fillStyle = `rgba(${accent[0]},${accent[1]},${accent[2]},${0.40 * dayMix})`;
+      ctx.beginPath();
+      ctx.moveTo(px, baseY - ph);
+      ctx.lineTo(px + pw/2, baseY);
+      ctx.lineTo(px, baseY);
+      ctx.closePath();
+      ctx.fill();
+      ctx.restore();
+    }
+    ctx.restore();
+  }
+
+  if (city.pagodas) {
+    ctx.save();
+    ctx.fillStyle = `rgba(${accent[0]},${accent[1]},${accent[2]},0.85)`;
+    for (let i = 0; i < cols; i++) {
+      if (heights[i] < 6) continue;
+      const h = heights[i] / maxH * SH;
+      const cx = i * cellW + cellW * 0.5;
+      const top = baseY - h;
+      for (let t = 0; t < 2; t++) {
+        const ry = top + 8 + t * 14;
+        const rw = cellW * (0.95 - t * 0.18);
+        ctx.beginPath();
+        ctx.moveTo(cx - rw/2, ry);
+        ctx.quadraticCurveTo(cx, ry - 8, cx + rw/2, ry);
+        ctx.lineTo(cx + rw*0.4, ry + 5);
+        ctx.lineTo(cx - rw*0.4, ry + 5);
+        ctx.closePath();
+        ctx.fill();
+      }
+    }
+    ctx.restore();
+  }
+
+  if (city.domes) {
+    ctx.save();
+    ctx.fillStyle = `rgba(${accent[0]},${accent[1]},${accent[2]},0.92)`;
+    for (let i = 0; i < cols; i++) {
+      if (heights[i] < 5) continue;
+      const h = heights[i] / maxH * SH;
+      const cx = i * cellW + cellW * 0.5;
+      const dy = baseY - h;
+      const dr = cellW * 0.32;
+      ctx.beginPath();
+      ctx.arc(cx, dy, dr, Math.PI, 0);
+      ctx.fill();
+      ctx.fillRect(cx - 1.2, dy - dr - 8, 2.4, 8);
+    }
+    ctx.restore();
+  }
+
+  if (city.spires) {
+    ctx.save();
+    ctx.fillStyle = front;
+    for (let i = 0; i < cols; i++) {
+      if (heights[i] < 6) continue;
+      const h = heights[i] / maxH * SH;
+      const cx = i * cellW + cellW * 0.5;
+      const top = baseY - h;
+      const sw = cellW * 0.65;
+      ctx.beginPath();
+      ctx.moveTo(cx - sw/2, top);
+      ctx.lineTo(cx, top - 18);
+      ctx.lineTo(cx + sw/2, top);
+      ctx.closePath();
+      ctx.fill();
+    }
+    ctx.restore();
+  }
+
+  // Window lights at night
+  if (night > 0.4) {
+    ctx.save();
+    ctx.fillStyle = `rgba(255, 220, 140, ${Math.min(0.9, (night - 0.3) * 1.4)})`;
+    for (let i = 0; i < cols; i++) {
+      const h = heights[i] / maxH * SH;
+      if (h < 30) continue;
+      const x0 = i * cellW + cellW * 0.18;
+      const x1 = i * cellW + cellW * 0.82;
+      const rows = Math.max(2, Math.floor(h / 18));
+      for (let r = 0; r < rows; r++) {
+        const y = baseY - h * 0.85 + r * (h * 0.65 / rows);
+        for (let xc = x0; xc < x1; xc += 6) {
+          if (((Math.floor(xc) * 7 + r * 11 + i) ^ Math.floor(ts / 1500)) % 4 === 0) {
+            ctx.fillRect(xc, y, 1.6, 2);
+          }
+        }
+      }
+    }
+    ctx.restore();
+  }
 }
 
 // ── Seasonal hazards (Monuments / London) ──────────────────────────────
@@ -10798,9 +11005,13 @@ function stopMonumentsGame() {
   _mnHideSceneCanvas();
   _monumentsHudHide();
   if (typeof _mnStopHazards === 'function') _mnStopHazards();
+  if (typeof _mnHazards !== 'undefined' && _mnHazards && _mnHazards.clear) _mnHazards.clear();
   _mnClearSeasonAutoAdvance();
   document.body.classList.remove('mn-active');
   if (typeof _skyReset === 'function') _skyReset();
+  // Stop any in-flight frog voice + cancel queued intro lines so the player
+  // doesn't hear stale narration after leaving the level.
+  if (typeof _frogVoiceStop === 'function') _frogVoiceStop();
 }
 
 // Advance to the next monuments level.
@@ -10865,6 +11076,9 @@ function advanceMonumentsLevel() {
       }
     } catch(_e) {}
     // Per-level intro for the new season — fires every time we swap in.
+    // Hard-stop any clip currently playing (e.g. previous season's intro
+    // that hadn't finished yet) so the frog speaks about the NEW season.
+    if (typeof _frogVoiceStop === 'function') _frogVoiceStop();
     if (typeof sayLevelIntro === 'function') {
       const _intro = _mnLevelIntroEntry(nextLv);
       if (_intro) sayLevelIntro(_intro, { color: 'purple', ribbit: 'warm', delayMs: 900 });
@@ -13949,6 +14163,15 @@ function _tutorMarkShown(key) {
 // should fire every time the player enters a level (e.g. Monuments
 // London · Autumn re-entered via DEV NEXT cycle). Honors tutorOn so users
 // who turn off tutor hints aren't pestered.
+//
+// All pending setTimeouts are tracked in `_pendingLevelIntroTimers` so we
+// can cancel them when the player jumps to a new level mid-intro (otherwise
+// the frog keeps talking about London while we're loading Prague).
+let _pendingLevelIntroTimers = [];
+function _cancelPendingLevelIntro() {
+  for (const id of _pendingLevelIntroTimers) clearTimeout(id);
+  _pendingLevelIntroTimers = [];
+}
 function sayLevelIntro(entries, opts) {
   if (typeof tutorOn !== 'undefined' && !tutorOn) return;
   const arr = Array.isArray(entries) && Array.isArray(entries[0]) ? entries : [entries];
@@ -13957,10 +14180,25 @@ function sayLevelIntro(entries, opts) {
   const startDelay = (opts && opts.delayMs) || 800;
   const stepDelay  = (opts && opts.stepMs)  || 4200;
   arr.forEach((entry, i) => {
-    setTimeout(() => {
+    const id = setTimeout(() => {
       if (typeof showFrogSpeech === 'function') showFrogSpeech(color, entry, ribbit);
     }, startDelay + i * stepDelay);
+    _pendingLevelIntroTimers.push(id);
   });
+}
+
+// Hard-stop the currently-playing frog voice clip and drop any queued
+// intro lines. Called when the player jumps to a new level so we don't
+// hear "Welcome to London" while Prague is loading.
+function _frogVoiceStop() {
+  _cancelPendingLevelIntro();
+  try {
+    if (_frogAudioNode && typeof _frogAudioNode.stop === 'function') {
+      _frogAudioNode.stop(0);
+    }
+  } catch(_e) {}
+  _frogAudioNode = null;
+  _frogVoicePlayingUntil = 0;
 }
 
 // Show a tutor line with a delay, gated by tutorOn + once-per-key.
@@ -17076,6 +17314,13 @@ function openLevelPicker(pack) {
       ensureAudio();
       if (typeof checkAccessBeforeStart === 'function' && !checkAccessBeforeStart()) return;
       if (typeof equipTier === 'function') equipTier('monuments');
+      // Full teardown of the previous Monuments session so the new city loads
+      // with a fresh board, no stale voice, no carry-over hazards/timers.
+      if (typeof _frogVoiceStop === 'function') _frogVoiceStop();
+      if (typeof monumentsActive !== 'undefined' && monumentsActive && typeof stopMonumentsGame === 'function') {
+        stopMonumentsGame();
+      }
+      if (typeof _mnHazardHintReset === 'function') _mnHazardHintReset();
       // lv is a city level (1..10). Start at that city's first season slot.
       const idx = (typeof _mnCityStartIdx === 'function') ? _mnCityStartIdx(lv) : 0;
       if (typeof startMonumentsGame === 'function') startMonumentsGame(idx);
@@ -20859,6 +21104,12 @@ function _jumpToLevel(pack, targetLv) {
   if (typeof _cdProgress !== 'undefined') _cdProgress.setLastLevel(pack, targetLv);
   if (pack === 'monuments') {
     if (typeof startMonumentsGame === 'function') {
+      // Full teardown: stop voice, hazards, scene loop — then start the new city fresh.
+      if (typeof _frogVoiceStop === 'function') _frogVoiceStop();
+      if (typeof monumentsActive !== 'undefined' && monumentsActive && typeof stopMonumentsGame === 'function') {
+        stopMonumentsGame();
+      }
+      if (typeof _mnHazardHintReset === 'function') _mnHazardHintReset();
       // targetLv is a CITY level (1..10). Launch that city's first season (autumn for London / season 0 for others).
       const idx = (typeof _mnCityStartIdx === 'function') ? _mnCityStartIdx(targetLv) : 0;
       startMonumentsGame(idx);
