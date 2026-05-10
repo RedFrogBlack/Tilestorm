@@ -12777,6 +12777,25 @@ const COMMENTARY = {
   tacCombo: [
     ['⚡ Two clears in a row! Combo king.', 'tac_combo_0'],
   ],
+  // Golden Frog per-city intros — one-shot per level (persists across sessions).
+  gfLv1Dubai:    [['🏙️ Dubai. The board splits — each side locks to one colour.', 'gf_lv1_dubai_0']],
+  gfLv2Ibiza:    [['🌴 Ibiza. Mirror mode — every piece you place is mirrored.', 'gf_lv2_ibiza_0']],
+  gfLv3Monaco:   [['🏎️ Monaco. Earthquakes shake the board — rows can slide.', 'gf_lv3_monaco_0']],
+  gfLv4Tokyo:    [['🏯 Tokyo. Tide rises from the bottom — clear fast.', 'gf_lv4_tokyo_0']],
+  gfLv5Paris:    [['🗼 Paris. Blackouts roll — stay sharp in the dark.', 'gf_lv5_paris_0']],
+  gfLv6Maldives: [['🌊 Maldives. Wind sweeps tiles sideways every 10s.', 'gf_lv6_maldives_0']],
+  gfLv7Venice:   [['🚤 Venice. Gravity flips every 12s — brace yourself.', 'gf_lv7_venice_0']],
+  gfLv8NewYork:  [['🌃 New York. One-way streets — clears shove rows sideways.', 'gf_lv8_newyork_0']],
+  gfLv9Bali:     [['🌺 Bali. The board rotates with every clear.', 'gf_lv9_bali_0']],
+  gfLv10Amalfi:  [['🌋 Amalfi. THE GAUNTLET — seven mechanics at once.', 'gf_lv10_amalfi_0']],
+  // Golden Frog mechanic in-game tips — fire ONCE per level on first hazard tick.
+  gfTipQuake:    [['🌍 Brace! Quake incoming — tiles will slide.', 'gf_tip_quake_0']],
+  gfTipTide:     [['🌊 Tide rising — clear bottom rows fast.', 'gf_tip_tide_0']],
+  gfTipBlackout: [['🔉 Lights out — place from memory.', 'gf_tip_blackout_0']],
+  gfTipConveyor: [['💨 Wind! Tiles drifting right.', 'gf_tip_conveyor_0']],
+  gfTipGravity:  [['⤵️ Flip incoming — floor and ceiling swap.', 'gf_tip_gravity_0']],
+  gfTipStreets:  [['🚕 One-way streets — line clears shove rows sideways.', 'gf_tip_streets_0']],
+  gfTipRotation: [['🔄 Board rotates on the next clear — reorient fast.', 'gf_tip_rotation_0']],
 };
 
 function _pick(arr) { return arr[Math.floor(Math.random() * arr.length)]; }
@@ -16748,10 +16767,48 @@ function _gfRecheckLinesAfterMutation() {
   } catch(_e) {}
 }
 
+// Golden Frog per-level intro (once per level, persisted via showTutor).
+// Routes a friendly explanation through the frog voice (matches Monuments).
+const _GF_LEVEL_TUTOR_KEYS = {
+  1: ['gf_lv1_dubai',    'gfLv1Dubai'],
+  2: ['gf_lv2_ibiza',    'gfLv2Ibiza'],
+  3: ['gf_lv3_monaco',   'gfLv3Monaco'],
+  4: ['gf_lv4_tokyo',    'gfLv4Tokyo'],
+  5: ['gf_lv5_paris',    'gfLv5Paris'],
+  6: ['gf_lv6_maldives', 'gfLv6Maldives'],
+  7: ['gf_lv7_venice',   'gfLv7Venice'],
+  8: ['gf_lv8_newyork',  'gfLv8NewYork'],
+  9: ['gf_lv9_bali',     'gfLv9Bali'],
+  10:['gf_lv10_amalfi',  'gfLv10Amalfi'],
+};
+// Once-only in-game tip when the mechanic FIRST fires this level. Uses the
+// monuments hazard-hint pattern: a Set of "level:mech" keys gated by hazardHintsOn.
+let _gfMechTipShown = Object.create(null);
+function _gfMechTipReset() { _gfMechTipShown = Object.create(null); }
+function _gfSayMechTipOnce(mechKey, commentaryKey, color, ribbit) {
+  if (typeof hazardHintsOn !== 'undefined' && !hazardHintsOn) return;
+  const k = (typeof cm_gfLevel !== 'undefined' ? cm_gfLevel : '?') + ':' + mechKey;
+  if (_gfMechTipShown[k]) return;
+  _gfMechTipShown[k] = true;
+  if (typeof showFrogSpeech !== 'function' || typeof COMMENTARY === 'undefined') return;
+  const pool = COMMENTARY[commentaryKey];
+  if (!pool) return;
+  showFrogSpeech(color || 'purple', _pick(pool), ribbit || 'warm');
+}
+
 function _gfActivateMechanic(lvl) {
   const cfg = GF_LOCATIONS_CFG[Math.min(lvl - 1, 9)];
   if (!cfg) return;
   const mech = cfg.mechanic;
+  // Reset per-level mechanic-tip memory whenever the player enters a new GF level.
+  if (typeof _gfMechTipReset === 'function') _gfMechTipReset();
+  // Frog per-level intro — once per level (persisted across sessions).
+  try {
+    const tk = _GF_LEVEL_TUTOR_KEYS[lvl];
+    if (tk && typeof showTutor === 'function' && typeof COMMENTARY !== 'undefined' && COMMENTARY[tk[1]]) {
+      showTutor(tk[0], COMMENTARY[tk[1]][0], { color: 'purple', ribbit: 'warm', delayMs: 2400 });
+    }
+  } catch(_e) {}
 
   if (mech === 'split') {
     cm_gfMechActive = true;
@@ -16776,6 +16833,8 @@ function _gfActivateMechanic(lvl) {
     showEventBanner('✨ IBIZA — MIRROR MODE! Every move is doubled!');
   }
   else if (mech === 'quake') {
+    // First-hazard tip — fires once per level
+    setTimeout(() => { if (gameActive && activeChallengeMode === 'goldenfrog') _gfSayMechTipOnce('quake', 'gfTipQuake', 'red', 'panic'); }, 5200);
     cm_gfMechTimer = setInterval(() => {
       if (!gameActive) return;
       _gfTriggerMonacoQuake();
@@ -16787,6 +16846,7 @@ function _gfActivateMechanic(lvl) {
     // then recedes to zero and cycles. The visual is a blue water overlay with an
     // animated wave on the surface so the player can clearly see the threat.
     _tokyoStartTide();
+    setTimeout(() => { if (gameActive && activeChallengeMode === 'goldenfrog') _gfSayMechTipOnce('tide', 'gfTipTide', 'red', 'panic'); }, 5200);
   }
   else if (mech === 'blackout') {
     // PARIS BLACKOUT — animated curtain (top→bot in, bot→top out) with vertical
@@ -16797,6 +16857,7 @@ function _gfActivateMechanic(lvl) {
       _parisStartBlackoutCycle();
     }, PARIS_CYCLE_MS);
     cm_gfGauntletTimers.push(cm_gfBlackoutTimer);
+    setTimeout(() => { if (gameActive && activeChallengeMode === 'goldenfrog') _gfSayMechTipOnce('blackout', 'gfTipBlackout', 'purple', 'slow'); }, 5200);
   }
   else if (mech === 'conveyor') {
     cm_gfConveyorTimer = setInterval(() => {
@@ -16809,6 +16870,7 @@ function _gfActivateMechanic(lvl) {
       // Banner is shown by _gfMaldivesStartFlight after grid commit so banner + animation start together
     }, 10000);
     cm_gfGauntletTimers.push(cm_gfConveyorTimer);
+    setTimeout(() => { if (gameActive && activeChallengeMode === 'goldenfrog') _gfSayMechTipOnce('conveyor', 'gfTipConveyor', 'purple', 'fast'); }, 5200);
   }
   else if (mech === 'gravity') {
     cm_gfGravityFlip = false;
@@ -16822,6 +16884,7 @@ function _gfActivateMechanic(lvl) {
       _gfVeniceStartFlip();
     }, 12000);
     cm_gfGauntletTimers.push(gt);
+    setTimeout(() => { if (gameActive && activeChallengeMode === 'goldenfrog') _gfSayMechTipOnce('gravity', 'gfTipGravity', 'red', 'panic'); }, 5200);
   }
   else if (mech === 'ghost') {
     // NEW YORK — ONE-WAY STREETS. Each row gets a fixed direction; every line
@@ -16831,10 +16894,12 @@ function _gfActivateMechanic(lvl) {
     // and show the banner.
     if (typeof _gfStreetInitDirs === 'function') _gfStreetInitDirs();
     setTimeout(() => { if (activeChallengeMode === 'goldenfrog' && cm_gfLevel === 8) showEventBanner('🚕 NEW YORK — ONE-WAY STREETS! LINE CLEARS SHIFT ROWS'); }, 1800);
+    setTimeout(() => { if (gameActive && activeChallengeMode === 'goldenfrog') _gfSayMechTipOnce('streets', 'gfTipStreets', 'purple', 'warm'); }, 5200);
   }
   else if (mech === 'rotation') {
     cm_gfRotateAngle = 0;
     setTimeout(() => { if (activeChallengeMode === 'goldenfrog' && cm_gfLevel === 9) showEventBanner('✨ BALI — BOARD ROTATES ON EACH CLEAR!'); }, 1800);
+    setTimeout(() => { if (gameActive && activeChallengeMode === 'goldenfrog') _gfSayMechTipOnce('rotation', 'gfTipRotation', 'purple', 'warm'); }, 5200);
   }
   else if (mech === 'gauntlet') {
     // AMALFI — THE FULL GAUNTLET. All 7 mechanics run independently (no
