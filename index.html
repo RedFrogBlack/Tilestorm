@@ -8396,17 +8396,17 @@ function _mnDrawScene(ts) {
   const sNightH= (typeof _gfApplySeasonTint === 'function') ? _gfApplySeasonTint(MN_LONDON_SKY.nightHoriz, season, true) : MN_LONDON_SKY.nightHoriz;
   const top   = sDay.map((d,i)  => Math.round(d * dayMix + sNight[i]  * night));
   const horiz = sDayH.map((d,i) => Math.round(d * dayMix + sNightH[i] * night));
-  // Sky fills the upper ~92% of the board (the bottom 8% is river / Thames).
-  // The gradient peaks WARM at the horizon line (just above the skyline) so
-  // the city silhouettes read against a glowing sunset/sunrise band.
-  const _hYsky = H * 0.92;
+  // Sky fills the upper ~70% of the board, ground/river fills the bottom 30%.
+  // Horizon at H*0.70 leaves the upper 70% for SKY + tall buildings that
+  // STRETCH UP into the sky (Golden Frog pattern).
+  const _hYsky = H * 0.70;
   const grad = ctx.createLinearGradient(0, 0, 0, _hYsky);
   grad.addColorStop(0,    `rgb(${top[0]},${top[1]},${top[2]})`);
-  grad.addColorStop(0.70, `rgb(${Math.round((top[0]*0.4+horiz[0]*0.6))},${Math.round((top[1]*0.4+horiz[1]*0.6))},${Math.round((top[2]*0.4+horiz[2]*0.6))})`);
+  grad.addColorStop(0.65, `rgb(${Math.round((top[0]*0.4+horiz[0]*0.6))},${Math.round((top[1]*0.4+horiz[1]*0.6))},${Math.round((top[2]*0.4+horiz[2]*0.6))})`);
   grad.addColorStop(1,    `rgb(${horiz[0]},${horiz[1]},${horiz[2]})`);
   ctx.fillStyle = grad;
   ctx.fillRect(0, 0, W, _hYsky);
-  // River band fills the bottom 8% with deep horizon-tinted water.
+  // Ground band below horizon — deep horizon-tinted water/embankment.
   const _gR = Math.round(horiz[0]*0.55), _gG = Math.round(horiz[1]*0.50), _gB = Math.round(horiz[2]*0.65);
   ctx.fillStyle = `rgb(${_gR},${_gG},${_gB})`;
   ctx.fillRect(0, _hYsky, W, H - _hYsky);
@@ -8414,7 +8414,7 @@ function _mnDrawScene(ts) {
   // Stars at night — above the horizon only
   if (night > 0.4) {
     ctx.save();
-    const _hYst = H * 0.92;
+    const _hYst = H * 0.70;
     for (const s of _mnStars) {
       const tw = 0.4 + 0.6 * Math.abs(Math.sin(ts*0.001*s.spd + s.off));
       ctx.globalAlpha = (s.base + tw*0.4) * Math.min(1, (night - 0.3) * 1.6);
@@ -8425,7 +8425,7 @@ function _mnDrawScene(ts) {
   }
 
   // Sun / moon arc — constrained to the SKY (above the play-board horizon)
-  const _hYsun = H * 0.92;
+  const _hYsun = H * 0.70;
   const sunY = _hYsun * (0.15 + 0.55 * (1 - Math.sin(t * Math.PI))); // higher when t near 0/1, lower (still above horizon) at noon
   // Better: arc that peaks near noon. Re-do clearly.
   const _sunBandTop = _hYsun * 0.10;
@@ -8458,7 +8458,7 @@ function _mnDrawScene(ts) {
 
   // Soft drifting clouds (4-5 across the sky) — above the horizon only
   ctx.save();
-  const _hYcl = H * 0.92;
+  const _hYcl = H * 0.70;
   ctx.globalAlpha = 0.28 + dayMix * 0.18;
   ctx.fillStyle = `rgba(255,255,255,0.85)`;
   for (let i = 0; i < 5; i++) {
@@ -8474,17 +8474,17 @@ function _mnDrawScene(ts) {
   }
   ctx.restore();
 
-  // ─── London skyline (back layer, soft / distant) ───
-  // Scene canvas is sized to the play board (same approach as Golden Frog),
-  // so W and H are the board's pixel dimensions. The skyline lays out
-  // naturally inside the board.
-  // baseY = where building bases sit (just above bottom of play board)
-  const baseY = H * 0.92 - 4;
-  // CX/CW operate on the FULL board width (W) since this canvas IS the board.
+  // ─── London skyline (Golden Frog pattern — buildings STRETCH UP into sky) ───
+  // Scene canvas is sized to the play board, so W and H are board pixels.
+  // Horizon at 70% of board, buildings extend UP from baseY into the upper
+  // 30%-50% of the board so they read as a TALL city skyline behind the bridge.
+  const baseY = H * 0.70;
   const CX = (f) => f * W;
   const CW = (f) => f * W;
-  // SH controls skyline silhouette HEIGHT. Scales with board width.
-  const SH = Math.min(120, Math.max(55, W * 0.18));
+  // SH = skyline silhouette HEIGHT. Tied to BOARD HEIGHT (not width) so the
+  // tallest building (Shard at SH*1.0) reaches near the top of the sky.
+  // Buildings now feel monumental, like the Golden Frog locations.
+  const SH = H * 0.55;
   const back  = `rgba(${Math.round(20+dayMix*30)},${Math.round(20+dayMix*30)},${Math.round(40+dayMix*20)},0.55)`;
   const front = `rgba(${Math.round(8+dayMix*14)},${Math.round(8+dayMix*12)},${Math.round(20+dayMix*15)},0.92)`;
   const edgeRgb = MN_LONDON_SKY.edgeColor;
@@ -8506,7 +8506,7 @@ function _mnDrawScene(ts) {
   ctx.save(); ctx.fillStyle = front;
 
   // ─ St Paul's Cathedral (left, iconic dome) ─
-  const spX = CX(0.13), spBase = baseY + 2, spH = SH * 0.18;
+  const spX = CX(0.13), spBase = baseY + 2, spH = SH * 0.45;
   // base building
   ctx.fillRect(spX - CW(0.05), spBase - spH*0.5, CW(0.10), spH*0.5 + 2);
   // dome
@@ -8528,7 +8528,7 @@ function _mnDrawScene(ts) {
   ctx.lineTo(spX + CW(0.048) + CW(0.012), spBase - spH*0.42); ctx.closePath(); ctx.fill();
 
   // ─ Big Ben / Elizabeth Tower (left-centre, gothic clock tower) ─
-  const bbX = CX(0.28), bbBase = baseY + 2, bbH = SH * 0.30;
+  const bbX = CX(0.28), bbBase = baseY + 2, bbH = SH * 0.75;
   // main shaft
   ctx.fillRect(bbX - CW(0.018), bbBase - bbH, CW(0.036), bbH);
   // clock face section (slight bulge)
@@ -8543,7 +8543,7 @@ function _mnDrawScene(ts) {
   ctx.fillRect(bbX - 1.4, bbBase - bbH - SH*0.05, 2.8, 2.8);
 
   // ─ Houses of Parliament block (centre, twin pinnacles) ─
-  const hpX = CX(0.36), hpW = CW(0.10), hpH = SH * 0.15;
+  const hpX = CX(0.36), hpW = CW(0.10), hpH = SH * 0.38;
   ctx.fillRect(hpX, bbBase - hpH, hpW, hpH + 2);
   // crenellated roofline
   for (let i = 0; i < 7; i++) ctx.fillRect(hpX + i*(hpW/7), bbBase - hpH - 3, hpW/14, 3);
@@ -8552,7 +8552,7 @@ function _mnDrawScene(ts) {
   ctx.fillRect(hpX + hpW - CW(0.01), bbBase - hpH - SH*0.04, CW(0.005), SH*0.04);
 
   // ─ London Eye (centre-right, slow rotating wheel) ─
-  const leX = CX(0.55), leY = baseY - SH * 0.18, leR = SH * 0.12;
+  const leX = CX(0.55), leY = baseY - SH * 0.40, leR = SH * 0.28;
   // support leg
   ctx.fillRect(leX - 1.5, baseY, 3, -SH*0.06);
   // wheel rim — outer ring
@@ -8581,7 +8581,7 @@ function _mnDrawScene(ts) {
   ctx.beginPath(); ctx.arc(leX, leY, 4, 0, Math.PI*2); ctx.fill();
 
   // ─ The Gherkin (30 St Mary Axe — lozenge dome) ─
-  const ghX = CX(0.71), ghBase = baseY + 2, ghH = SH * 0.22;
+  const ghX = CX(0.71), ghBase = baseY + 2, ghH = SH * 0.55;
   // wide bullet shape
   ctx.beginPath();
   ctx.moveTo(ghX - CW(0.025), ghBase);
@@ -8592,7 +8592,7 @@ function _mnDrawScene(ts) {
   ctx.fillRect(ghX - 1.2, ghBase - ghH - 6, 2.4, 6);
 
   // ─ The Shard (right, tapered glass spire) ─
-  const shX = CX(0.85), shBase = baseY + 2, shH = SH * 0.42;
+  const shX = CX(0.85), shBase = baseY + 2, shH = SH * 1.05;
   ctx.beginPath();
   ctx.moveTo(shX - CW(0.034), shBase);
   ctx.lineTo(shX - CW(0.005), shBase - shH);
