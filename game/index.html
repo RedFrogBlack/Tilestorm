@@ -8332,6 +8332,8 @@ function startMonumentsGame(levelIdx) {
   if (typeof showTutor === 'function') {
     showTutor('tier_monuments', COMMENTARY.tierMonuments[0], { color: 'purple', ribbit: 'warm', delayMs: 2400 });
   }
+  // Arm 20s auto-advance so all four seasons cycle automatically.
+  if (typeof _mnArmSeasonAutoAdvance === 'function') _mnArmSeasonAutoAdvance();
 }
 
 // ── Procedural background scene canvas (Golden-Frog style) ──────────────
@@ -10511,6 +10513,26 @@ function _monumentsHudUpdate() {
   if (lv) lv.textContent = (monumentsLevelIdx+1);
 }
 
+// Auto-advance timer: each season caps out at MN_SEASON_MAX_MS so the player
+// always sees all four seasons cycle through within a reasonable test window.
+// User explicitly requested "max 20 sec each" so they're not stuck on spring.
+const MN_SEASON_MAX_MS = 20000;
+let _mnSeasonAutoTimer = null;
+function _mnArmSeasonAutoAdvance() {
+  clearTimeout(_mnSeasonAutoTimer);
+  _mnSeasonAutoTimer = setTimeout(() => {
+    if (typeof monumentsActive !== 'undefined' && monumentsActive &&
+        typeof gameActive !== 'undefined' && gameActive &&
+        typeof advanceMonumentsLevel === 'function') {
+      advanceMonumentsLevel();
+    }
+  }, MN_SEASON_MAX_MS);
+}
+function _mnClearSeasonAutoAdvance() {
+  clearTimeout(_mnSeasonAutoTimer);
+  _mnSeasonAutoTimer = null;
+}
+
 function stopMonumentsGame() {
   monumentsActive = false;
   cityPackActive = false;
@@ -10519,6 +10541,7 @@ function stopMonumentsGame() {
   _mnHideSceneCanvas();
   _monumentsHudHide();
   if (typeof _mnStopHazards === 'function') _mnStopHazards();
+  _mnClearSeasonAutoAdvance();
   document.body.classList.remove('mn-active');
   if (typeof _skyReset === 'function') _skyReset();
 }
@@ -10573,6 +10596,8 @@ function advanceMonumentsLevel() {
         showEventBanner(seasonEmoji + ' ' + seasonName + ' — keep building!');
       }
     } catch(_e) {}
+    // Re-arm the 20s auto-advance for this fresh season.
+    if (typeof _mnArmSeasonAutoAdvance === 'function') _mnArmSeasonAutoAdvance();
     return;
   }
 
@@ -21652,6 +21677,9 @@ function updateHomeSubtitles() {
         const total = MONUMENTS_LEVELS.length;
         const cur = monumentsLevelIdx || 0;
         const next = (cur + 1) % total;
+        // Cancel the auto-advance timer — user is manually advancing; avoid
+        // a double-advance race.
+        if (typeof _mnClearSeasonAutoAdvance === 'function') _mnClearSeasonAutoAdvance();
         // Use the proper in-place advance (handles same-monument season cross-fade,
         // resets hazards, keeps board / score / bricks intact).
         if (typeof advanceMonumentsLevel === 'function') {
