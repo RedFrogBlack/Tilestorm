@@ -2433,51 +2433,51 @@
       opacity: 1;
     }
 
-    /* Ribbit speech bubble — small floating frog quip, bottom-right of screen */
+    /* Ribbit speech bubble — floating frog quip near top of game, very visible */
     #ribbit-bubble {
       position: fixed;
-      right: 16px;
-      bottom: 18%;
-      max-width: 220px;
-      background: linear-gradient(135deg, #fffaeb, #fff3cf);
+      right: 12px;
+      top: 88px;            /* sits just under topbar, well above the grid */
+      max-width: 240px;
+      background: linear-gradient(135deg, #fff6c8, #ffd866);
       color: #2a1500;
-      border: 2px solid #F5A623;
-      border-radius: 14px;
-      padding: 8px 12px 8px 38px;
+      border: 3px solid #F5A623;
+      border-radius: 16px;
+      padding: 10px 14px 10px 44px;
       font-family: var(--font-display, system-ui);
-      font-size: 13px;
-      font-weight: 700;
+      font-size: 14px;
+      font-weight: 800;
       letter-spacing: 0.02em;
-      box-shadow: 0 4px 14px rgba(0,0,0,0.35), 0 0 0 2px rgba(0,0,0,0.25) inset;
+      box-shadow: 0 6px 20px rgba(0,0,0,0.45), 0 0 0 2px rgba(0,0,0,0.25) inset, 0 0 16px rgba(245,166,35,0.45);
       opacity: 0;
-      transform: translateY(8px) scale(0.92);
+      transform: translateY(-6px) scale(0.92);
       transition: opacity 0.25s ease, transform 0.3s cubic-bezier(.22,1.6,.4,1);
       pointer-events: none;
-      z-index: 95;
+      z-index: 9999;        /* above everything */
       line-height: 1.25;
     }
     #ribbit-bubble.show {
       opacity: 1;
       transform: translateY(0) scale(1);
     }
-    /* tail pointing down-right toward an imaginary frog */
+    /* tail pointing UP-right toward the topbar (frog talks from the top) */
     #ribbit-bubble::after {
       content: '';
       position: absolute;
-      right: 24px; bottom: -10px;
+      right: 22px; top: -10px;
       width: 0; height: 0;
       border: 8px solid transparent;
-      border-top-color: #F5A623;
-      border-bottom: 0;
+      border-bottom-color: #F5A623;
+      border-top: 0;
     }
     #ribbit-bubble::before {
       content: '';
       position: absolute;
-      right: 26px; bottom: -7px;
+      right: 25px; top: -6px;
       width: 0; height: 0;
       border: 6px solid transparent;
-      border-top-color: #fff3cf;
-      border-bottom: 0;
+      border-bottom-color: #ffd866;
+      border-top: 0;
     }
     #ribbit-bubble .ribbit-emoji {
       position: absolute;
@@ -2487,8 +2487,25 @@
       filter: drop-shadow(0 1px 1px rgba(0,0,0,0.25));
     }
     @media (max-width: 640px) {
-      #ribbit-bubble { font-size: 12px; max-width: 180px; bottom: 22%; right: 10px; }
+      #ribbit-bubble { font-size: 13px; max-width: 200px; top: 84px; right: 8px; }
     }
+
+    /* Season transition fader — covers screen briefly when changing levels */
+    #season-fader {
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      opacity: 0;
+      z-index: 8500;
+      background: radial-gradient(circle at 50% 50%, rgba(255,250,235,0.95), rgba(255,235,200,0.85) 60%, rgba(120, 60, 30, 0.6));
+      transition: opacity 600ms ease-in-out;
+      mix-blend-mode: screen;
+    }
+    #season-fader.show { opacity: 1; }
+    #season-fader.spring { background: radial-gradient(circle at 50% 50%, rgba(255,235,245,0.95), rgba(255,180,210,0.7) 70%); }
+    #season-fader.summer { background: radial-gradient(circle at 50% 30%, rgba(255,250,200,0.98), rgba(255,200,90,0.7) 70%); }
+    #season-fader.autumn { background: radial-gradient(circle at 50% 50%, rgba(255,210,140,0.95), rgba(220,110,40,0.7) 70%); }
+    #season-fader.winter { background: radial-gradient(circle at 50% 30%, rgba(245,250,255,0.98), rgba(200,225,245,0.85) 70%); }
 
     /* Hazard warning flash */
     #hazard-overlay {
@@ -5860,7 +5877,9 @@
 
 <div id="screen-game" class="screen hidden">
   <div id="event-banner"></div>
-  <!-- Ribbit speech bubble — little frog chatters every 8-15s with funny lines -->
+  <!-- Season transition fader — fades in/out when switching seasons -->
+  <div id="season-fader" aria-hidden="true"></div>
+  <!-- Ribbit speech bubble — little frog chatters every 6-10s with funny lines -->
   <div id="ribbit-bubble" aria-hidden="true">
     <span class="ribbit-emoji">🐸</span>
     <span class="ribbit-text"></span>
@@ -9099,6 +9118,113 @@ function _mnDrawScene(ts) {
         ctx.fill();
       }
       ctx.restore();
+      // BIG GLOWING SUN — unmistakable summer marker, top-right
+      ctx.save();
+      const sunX = W * 0.78, sunY = H * 0.18, sunR = Math.min(W, H) * 0.09;
+      const sunGlow = ctx.createRadialGradient(sunX, sunY, 0, sunX, sunY, sunR * 2.4);
+      sunGlow.addColorStop(0, 'rgba(255,235,120,0.95)');
+      sunGlow.addColorStop(0.4, 'rgba(255,200,90,0.55)');
+      sunGlow.addColorStop(1, 'rgba(255,200,90,0)');
+      ctx.fillStyle = sunGlow;
+      ctx.fillRect(sunX - sunR*2.4, sunY - sunR*2.4, sunR*4.8, sunR*4.8);
+      ctx.fillStyle = 'rgba(255,250,200,0.98)';
+      ctx.beginPath(); ctx.arc(sunX, sunY, sunR, 0, Math.PI*2); ctx.fill();
+      ctx.restore();
+      // GREEN FOLIAGE strip on top of bridge zone (lush summer growth)
+      ctx.save();
+      ctx.globalAlpha = 0.55;
+      const greens = ['#3fa84a','#52c25b','#2f8a3a','#65d870'];
+      for (let i = 0; i < 22; i++) {
+        const fx = (i / 22) * W + Math.sin(i * 1.7) * 8;
+        const fy = H * (0.34 + Math.sin(i * 0.9) * 0.02);
+        ctx.fillStyle = greens[i % greens.length];
+        ctx.beginPath();
+        ctx.ellipse(fx, fy, 11, 6, Math.sin(i)*0.4, 0, Math.PI*2);
+        ctx.fill();
+      }
+      ctx.restore();
+    }
+    // Winter extras: thick snow piled on top of bridge silhouette + frosty ground tint
+    if (season === 'winter') {
+      ctx.save();
+      // Cool blue overlay across whole scene (heavy snow look)
+      ctx.globalAlpha = 0.18;
+      ctx.fillStyle = 'rgba(220,235,250,1)';
+      ctx.fillRect(0, 0, W, H);
+      // Thick snow line at bridge deck level (rows 7-8 area)
+      ctx.globalAlpha = 0.85;
+      ctx.fillStyle = 'rgba(252,254,255,0.95)';
+      const snowY = H * 0.78;
+      ctx.beginPath();
+      ctx.moveTo(0, snowY);
+      for (let x = 0; x <= W; x += 24) {
+        const wob = Math.sin(x * 0.05) * 4 + Math.sin(x * 0.13 + 2) * 3;
+        ctx.lineTo(x, snowY - 6 + wob);
+      }
+      ctx.lineTo(W, H); ctx.lineTo(0, H); ctx.closePath();
+      ctx.fill();
+      // Snow caps along top edge (sky)
+      for (let i = 0; i < 6; i++) {
+        const cx = W * (0.05 + i * 0.17), cy = H * 0.05;
+        ctx.beginPath();
+        ctx.ellipse(cx, cy, 18, 6, 0, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      ctx.restore();
+    }
+    // Spring extras: drifting branches with pink blossoms across upper area
+    if (season === 'spring') {
+      ctx.save();
+      // Soft pink wash across sky
+      ctx.globalAlpha = 0.10;
+      ctx.fillStyle = 'rgba(255,200,225,1)';
+      ctx.fillRect(0, 0, W, H);
+      // Two blossom branches arching in from sides
+      const drawBranch = (x0, y0, dir) => {
+        ctx.strokeStyle = 'rgba(80,40,20,0.85)';
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        ctx.moveTo(x0, y0);
+        ctx.bezierCurveTo(x0 + dir * 40, y0 - 10, x0 + dir * 90, y0 + 6, x0 + dir * 130, y0 + 22);
+        ctx.stroke();
+        // blossoms
+        for (let i = 0; i < 6; i++) {
+          const t = (i + 1) / 7;
+          const bx = x0 + dir * 130 * t + Math.sin(i + _mnSceneT * 4) * 3;
+          const by = y0 + 18 * t + Math.cos(i * 1.3) * 6 - 4;
+          ctx.fillStyle = (i % 2 === 0) ? 'rgba(255,170,205,0.95)' : 'rgba(255,225,235,0.95)';
+          ctx.beginPath(); ctx.arc(bx, by, 6, 0, Math.PI * 2); ctx.fill();
+          ctx.fillStyle = 'rgba(255,235,150,0.95)';
+          ctx.beginPath(); ctx.arc(bx, by, 1.6, 0, Math.PI * 2); ctx.fill();
+        }
+      };
+      drawBranch(0, H * 0.12, 1);
+      drawBranch(W, H * 0.20, -1);
+      ctx.restore();
+    }
+    // Autumn extras: golden warm wash + fallen leaves piled at bottom
+    if (season === 'autumn') {
+      ctx.save();
+      // Warm orange wash across whole scene
+      ctx.globalAlpha = 0.14;
+      ctx.fillStyle = 'rgba(255,150,60,1)';
+      ctx.fillRect(0, 0, W, H);
+      // Pile of fallen leaves along bottom edge
+      const leafCols = ['#cc4818','#e07820','#b44030','#e8a020','#9a3818'];
+      for (let i = 0; i < 28; i++) {
+        const lx = (i / 28) * W + Math.sin(i * 2.3) * 14;
+        const ly = H - 6 - Math.abs(Math.sin(i * 1.4)) * 8;
+        ctx.fillStyle = leafCols[i % leafCols.length];
+        ctx.globalAlpha = 0.85;
+        ctx.save();
+        ctx.translate(lx, ly);
+        ctx.rotate(Math.sin(i) * 0.6);
+        ctx.beginPath();
+        ctx.ellipse(0, 0, 9, 4.5, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+      }
+      ctx.restore();
     }
   })();
 }
@@ -9115,8 +9241,8 @@ function _mnDrawScene(ts) {
 let _mnHazards = new Map();
 let _mnHazardSpawnTimer = null;
 const _MN_HAZARD_INTERVALS = {
-  winter: 15000,
-  summer: 18000,
+  winter: 12000,
+  summer: 14000,
   autumn: 12000,
   spring: 20000,
 };
@@ -9173,8 +9299,11 @@ function _mnSpawnSeasonHazard() {
   if (!lv) return;
   const now = performance.now();
   if (lv.season === 'winter') {
-    // Freeze a row that has at least one filled brick. Pick a row with bricks,
-    // then put ice on every filled cell in that row.
+    // Freeze a row. Prefer rows with bricks (so ice locks them in place),
+    // but if the board is empty we still freeze a random EMPTY zone row so
+    // the player visibly sees frost — and can\'t place new bricks there
+    // until it thaws.
+    const lifetime = 12000;
     const rowsWithBricks = [];
     for (let r = 0; r < ROWS; r++) {
       let any = false;
@@ -9183,24 +9312,46 @@ function _mnSpawnSeasonHazard() {
       }
       if (any) rowsWithBricks.push(r);
     }
+    let froze = false;
     if (rowsWithBricks.length) {
       const r = rowsWithBricks[Math.floor(Math.random() * rowsWithBricks.length)];
-      const lifetime = 12000;
       for (let c = 0; c < COLS; c++) {
         if (grid[r][c] !== 0 && _mnZoneMap[r][c] > 0 && !_mnHazardAt(r, c)) {
           _mnHazardSet(r, c, { type: 'ice', startedAt: now, expiresAt: now + lifetime });
+          froze = true;
         }
       }
-      if (typeof showEventBanner === 'function') showEventBanner('❄️ FROST! Row ' + (r+1) + ' frozen');
+      if (froze && typeof showEventBanner === 'function') showEventBanner('❄️ FROST! Row ' + (r+1) + ' frozen');
+    }
+    if (!froze) {
+      // Fallback: freeze a random EMPTY zone row — ice on empty cells blocks
+      // placement until it thaws. Player still gets the visible "freeze".
+      const emptyRows = [];
+      for (let r = 0; r < ROWS; r++) {
+        let cnt = 0;
+        for (let c = 0; c < COLS; c++) {
+          if (_mnZoneMap && _mnZoneMap[r] && _mnZoneMap[r][c] > 0 && grid[r][c] === 0 && !_mnHazardAt(r, c)) cnt++;
+        }
+        if (cnt >= 2) emptyRows.push(r);
+      }
+      if (emptyRows.length) {
+        const r = emptyRows[Math.floor(Math.random() * emptyRows.length)];
+        for (let c = 0; c < COLS; c++) {
+          if (_mnZoneMap[r][c] > 0 && grid[r][c] === 0 && !_mnHazardAt(r, c)) {
+            _mnHazardSet(r, c, { type: 'ice', startedAt: now, expiresAt: now + lifetime });
+          }
+        }
+        if (typeof showEventBanner === 'function') showEventBanner('❄️ BLIZZARD! Row ' + (r+1) + ' iced over');
+      }
     }
   } else if (lv.season === 'summer') {
-    // Melt 1 random filled cell + 2 surrounding empty cells become puddle.
+    // Melt 1 filled cell + adjacent splash. If nothing filled yet, spawn a
+    // puddle on a random EMPTY zone cell so the heatwave is still visible.
+    const lifetime = 10000;
     const filled = _mnPickRandomFilledZoneCell();
     if (filled) {
       const [r, c] = filled;
-      const lifetime = 10000;
       _mnHazardSet(r, c, { type: 'puddle', startedAt: now, expiresAt: now + lifetime });
-      // Splash 2-3 adjacent empty cells
       const neighbors = [];
       for (let dr = -1; dr <= 1; dr++) for (let dc = -1; dc <= 1; dc++) {
         if (!dr && !dc) continue;
@@ -9210,13 +9361,25 @@ function _mnSpawnSeasonHazard() {
           neighbors.push([nr, nc]);
         }
       }
-      // Shuffle & take up to 2
       neighbors.sort(() => Math.random() - 0.5);
       for (let i = 0; i < Math.min(2, neighbors.length); i++) {
         const [nr, nc] = neighbors[i];
         _mnHazardSet(nr, nc, { type: 'puddle', startedAt: now, expiresAt: now + lifetime });
       }
       if (typeof showEventBanner === 'function') showEventBanner('☀️ HEATWAVE! Bricks melting');
+    } else {
+      // Empty board fallback — spawn 2-3 puddles on random empty zone cells
+      const placed = [];
+      for (let i = 0; i < 3; i++) {
+        const cell = _mnPickRandomEmptyZoneCell();
+        if (!cell) break;
+        const [r, c] = cell;
+        if (!_mnHazardAt(r, c)) {
+          _mnHazardSet(r, c, { type: 'puddle', startedAt: now, expiresAt: now + lifetime });
+          placed.push([r, c]);
+        }
+      }
+      if (placed.length && typeof showEventBanner === 'function') showEventBanner('☀️ HEATWAVE! Puddles forming');
     }
   } else if (lv.season === 'autumn') {
     // Drop 1-3 leaf piles on empty zone cells anywhere on the board.
@@ -9252,9 +9415,9 @@ function _mnStartHazards() {
   _mnHazards = new Map();
   clearTimeout(_mnHazardSpawnTimer);
   const lv = MONUMENTS_LEVELS[monumentsLevelIdx];
-  const base = (lv && _MN_HAZARD_INTERVALS[lv.season]) || 15000;
-  // First hazard appears after ~8s so the player has time to settle in
-  _mnHazardSpawnTimer = setTimeout(_mnHazardSpawnTick, 8000);
+  const base = (lv && _MN_HAZARD_INTERVALS[lv.season]) || 12000;
+  // First hazard appears after ~5s — player should see something happen quickly
+  _mnHazardSpawnTimer = setTimeout(_mnHazardSpawnTick, 5000);
 }
 function _mnStopHazards() {
   clearTimeout(_mnHazardSpawnTimer);
@@ -9666,8 +9829,22 @@ function stopMonumentsGame() {
 // Advance to the next monuments level (or wrap back to 0).
 function advanceMonumentsLevel() {
   const next = (monumentsLevelIdx + 1) % MONUMENTS_LEVELS.length;
-  stopMonumentsGame();
-  setTimeout(() => startMonumentsGame(next), 400);
+  const nextSeason = (MONUMENTS_LEVELS[next] && MONUMENTS_LEVELS[next].season) || '';
+  // Smooth season transition — fade in coloured veil keyed to next season,
+  // swap level under the veil, then fade back out (≈day→night feel).
+  const fader = document.getElementById('season-fader');
+  if (fader) {
+    fader.classList.remove('spring', 'summer', 'autumn', 'winter');
+    if (nextSeason) fader.classList.add(nextSeason);
+    fader.classList.add('show');
+  }
+  // Hold the veil for ~650ms (matches CSS transition), then swap level
+  setTimeout(() => {
+    stopMonumentsGame();
+    startMonumentsGame(next);
+    // Fade veil back out so the new season reveals smoothly
+    setTimeout(() => { if (fader) fader.classList.remove('show'); }, 80);
+  }, 650);
 }
 
 // ── Grid helpers ──────────────────────────────────────────────────
@@ -13100,7 +13277,8 @@ function showRibbit(text) {
   if (txt) txt.textContent = text;
   el.classList.add('show');
   if (_ribbitHideTimer) clearTimeout(_ribbitHideTimer);
-  _ribbitHideTimer = setTimeout(() => { el.classList.remove('show'); }, 3200);
+  // Stay visible longer (4.5s) so the player can read it
+  _ribbitHideTimer = setTimeout(() => { el.classList.remove('show'); }, 4500);
 }
 function _ribbitTick() {
   const screenGame = document.getElementById('screen-game');
@@ -13111,13 +13289,15 @@ function _ribbitTick() {
   if (onGameScreen && active && !bannerShowing) {
     showRibbit(_ribbitPickLine());
   }
-  const nextMs = 8000 + Math.random() * 7000;
+  // 6-10s cadence (was 8-15s) — user wanted to actually see these
+  const nextMs = 6000 + Math.random() * 4000;
   clearTimeout(_ribbitTimer);
   _ribbitTimer = setTimeout(_ribbitTick, nextMs);
 }
 function startRibbitBanter() {
   if (_ribbitTimer) return;
-  _ribbitTimer = setTimeout(_ribbitTick, 6000 + Math.random() * 4000);
+  // Fire first quip after 3-5s so the player meets the frog quickly
+  _ribbitTimer = setTimeout(_ribbitTick, 3000 + Math.random() * 2000);
 }
 function stopRibbitBanter() {
   if (_ribbitTimer) { clearTimeout(_ribbitTimer); _ribbitTimer = null; }
@@ -17715,10 +17895,10 @@ function _gfSceneIsNight(t){return t<0.22||t>0.78;}
 //   particle  — extra weather particle layered on top of the existing one
 //   particleCount — how many of the seasonal particle to draw
 const GF_SEASON_PALETTES = {
-  spring: { tintMul:[1.00, 1.05, 1.00], nightMul:[1.05, 1.00, 1.05], particle:'pollen',     particleCount:24, label:'SPRING'  },
-  summer: { tintMul:[1.05, 1.00, 0.95], nightMul:[1.00, 1.00, 1.05], particle:null,         particleCount:0,  label:'SUMMER'  },
-  autumn: { tintMul:[1.10, 0.92, 0.78], nightMul:[1.05, 0.95, 0.90], particle:'leaves',     particleCount:18, label:'AUTUMN'  },
-  winter: { tintMul:[0.92, 0.96, 1.10], nightMul:[0.92, 0.96, 1.10], particle:'snowflakes', particleCount:60, label:'WINTER'  },
+  spring: { tintMul:[1.00, 1.05, 1.00], nightMul:[1.05, 1.00, 1.05], particle:'pollen',     particleCount:60,  label:'SPRING'  },
+  summer: { tintMul:[1.05, 1.00, 0.95], nightMul:[1.00, 1.00, 1.05], particle:'fireflies',  particleCount:35,  label:'SUMMER'  },
+  autumn: { tintMul:[1.10, 0.92, 0.78], nightMul:[1.05, 0.95, 0.90], particle:'leaves',     particleCount:55,  label:'AUTUMN'  },
+  winter: { tintMul:[0.92, 0.96, 1.10], nightMul:[0.92, 0.96, 1.10], particle:'snowflakes', particleCount:140, label:'WINTER'  },
 };
 function _gfApplySeasonTint(rgb, season, isNight) {
   const pal = GF_SEASON_PALETTES[season];
@@ -17788,6 +17968,16 @@ function _gfSeasonDrawParticles(ctx, W, H, season, dt) {
       ctx.globalAlpha = 0.55 + Math.sin(p.ph + p.fy*5)*0.3;
       ctx.fillStyle = 'rgba(220,235,140,0.85)';
       ctx.beginPath(); ctx.arc(x, y, p.sz*0.7, 0, Math.PI*2); ctx.fill();
+    } else if (pal.particle === 'fireflies') {
+      // Summer: warm glowing orbs that pulse and drift sideways (heat haze)
+      const pulse = 0.5 + 0.5 * Math.sin(p.ph + (Date.now() / 280));
+      ctx.globalAlpha = 0.35 + pulse * 0.5;
+      ctx.fillStyle = 'rgba(255,230,120,0.95)';
+      ctx.beginPath(); ctx.arc(x, y, p.sz * (1.0 + pulse * 0.5), 0, Math.PI*2); ctx.fill();
+      // soft outer halo
+      ctx.globalAlpha = 0.18 * pulse;
+      ctx.fillStyle = 'rgba(255,200,80,0.9)';
+      ctx.beginPath(); ctx.arc(x, y, p.sz * 2.4, 0, Math.PI*2); ctx.fill();
     }
   }
   ctx.restore();
