@@ -2433,6 +2433,63 @@
       opacity: 1;
     }
 
+    /* Ribbit speech bubble — small floating frog quip, bottom-right of screen */
+    #ribbit-bubble {
+      position: fixed;
+      right: 16px;
+      bottom: 18%;
+      max-width: 220px;
+      background: linear-gradient(135deg, #fffaeb, #fff3cf);
+      color: #2a1500;
+      border: 2px solid #F5A623;
+      border-radius: 14px;
+      padding: 8px 12px 8px 38px;
+      font-family: var(--font-display, system-ui);
+      font-size: 13px;
+      font-weight: 700;
+      letter-spacing: 0.02em;
+      box-shadow: 0 4px 14px rgba(0,0,0,0.35), 0 0 0 2px rgba(0,0,0,0.25) inset;
+      opacity: 0;
+      transform: translateY(8px) scale(0.92);
+      transition: opacity 0.25s ease, transform 0.3s cubic-bezier(.22,1.6,.4,1);
+      pointer-events: none;
+      z-index: 95;
+      line-height: 1.25;
+    }
+    #ribbit-bubble.show {
+      opacity: 1;
+      transform: translateY(0) scale(1);
+    }
+    /* tail pointing down-right toward an imaginary frog */
+    #ribbit-bubble::after {
+      content: '';
+      position: absolute;
+      right: 24px; bottom: -10px;
+      width: 0; height: 0;
+      border: 8px solid transparent;
+      border-top-color: #F5A623;
+      border-bottom: 0;
+    }
+    #ribbit-bubble::before {
+      content: '';
+      position: absolute;
+      right: 26px; bottom: -7px;
+      width: 0; height: 0;
+      border: 6px solid transparent;
+      border-top-color: #fff3cf;
+      border-bottom: 0;
+    }
+    #ribbit-bubble .ribbit-emoji {
+      position: absolute;
+      left: 6px; top: 50%;
+      transform: translateY(-50%);
+      font-size: 22px;
+      filter: drop-shadow(0 1px 1px rgba(0,0,0,0.25));
+    }
+    @media (max-width: 640px) {
+      #ribbit-bubble { font-size: 12px; max-width: 180px; bottom: 22%; right: 10px; }
+    }
+
     /* Hazard warning flash */
     #hazard-overlay {
       position: absolute; inset: 0; z-index: 50;
@@ -5803,6 +5860,11 @@
 
 <div id="screen-game" class="screen hidden">
   <div id="event-banner"></div>
+  <!-- Ribbit speech bubble — little frog chatters every 8-15s with funny lines -->
+  <div id="ribbit-bubble" aria-hidden="true">
+    <span class="ribbit-emoji">🐸</span>
+    <span class="ribbit-text"></span>
+  </div>
 
   <div class="game-topbar">
     <div class="topbar-brand" id="topbar-brand-logo" style="cursor:pointer;" title="Quit game">
@@ -8249,6 +8311,8 @@ function startMonumentsGame(levelIdx) {
   // particle type (snow / pollen / leaves / etc.). Without this, switching
   // from autumn (leaves) to spring (blossoms) would keep showing stale leaves.
   _gfSeasonParticles = [];
+  // Kick off seasonal hazards (frost/heatwave/leaves/blossom) for this level
+  if (typeof _mnStartHazards === 'function') _mnStartHazards();
   _mnInitSceneCanvas();
 
   document.body.classList.add('mn-active');
@@ -9039,6 +9103,268 @@ function _mnDrawScene(ts) {
   })();
 }
 
+// ── Seasonal hazards (Monuments / London) ──────────────────────────────
+// Each Tower Bridge level has its own seasonal hazard that periodically
+// disrupts the play board:
+//   winter ❄  ice freezes a random row → bricks on it can\'t be cleared
+//   summer ☀  puddle melts a cluster of cells → blocks new placements
+//   autumn 🍂  leaf piles fall on empty cells → block placements
+//   spring 🌸  cherry-blossom bonus burst → +50 pts (no penalty)
+// Hazards live in _mnHazards keyed by "r,c". Each entry tracks type,
+// startedAt, expiresAt, plus any per-hazard metadata.
+let _mnHazards = new Map();
+let _mnHazardSpawnTimer = null;
+const _MN_HAZARD_INTERVALS = {
+  winter: 15000,
+  summer: 18000,
+  autumn: 12000,
+  spring: 20000,
+};
+function _mnHazardKey(r, c) { return r + ',' + c; }
+function _mnHazardAt(r, c) {
+  const k = _mnHazardKey(r, c);
+  return _mnHazards.has(k) ? _mnHazards.get(k) : null;
+}
+function _mnHazardClear(r, c) { _mnHazards.delete(_mnHazardKey(r, c)); }
+function _mnHazardSet(r, c, hz) { _mnHazards.set(_mnHazardKey(r, c), hz); }
+// Returns true if a hazard at (r,c) blocks NEW placement (puddle, leaves, flood).
+// Ice doesn\'t block placement — it only blocks row clears.
+function _mnHazardBlocksPlacement(r, c) {
+  const hz = _mnHazardAt(r, c);
+  if (!hz) return false;
+  return hz.type === 'puddle' || hz.type === 'leaves' || hz.type === 'flood';
+}
+// Returns true if any cell on row r has an ice hazard (blocks row clear).
+function _mnRowHasIce(r) {
+  for (let c = 0; c < COLS; c++) {
+    const hz = _mnHazardAt(r, c);
+    if (hz && hz.type === 'ice') return true;
+  }
+  return false;
+}
+function _mnPickRandomEmptyZoneCell() {
+  if (!_mnZoneMap) return null;
+  const candidates = [];
+  for (let r = 0; r < ROWS; r++) {
+    for (let c = 0; c < COLS; c++) {
+      if (_mnZoneMap[r][c] > 0 && grid[r][c] === 0 && !_mnHazardAt(r, c)) {
+        candidates.push([r, c]);
+      }
+    }
+  }
+  if (!candidates.length) return null;
+  return candidates[Math.floor(Math.random() * candidates.length)];
+}
+function _mnPickRandomFilledZoneCell() {
+  const candidates = [];
+  for (let r = 0; r < ROWS; r++) {
+    for (let c = 0; c < COLS; c++) {
+      if (_mnZoneMap && _mnZoneMap[r][c] > 0 && grid[r][c] !== 0 && !_mnHazardAt(r, c)) {
+        candidates.push([r, c]);
+      }
+    }
+  }
+  if (!candidates.length) return null;
+  return candidates[Math.floor(Math.random() * candidates.length)];
+}
+function _mnSpawnSeasonHazard() {
+  if (!monumentsActive || typeof gameActive === 'undefined' || !gameActive) return;
+  const lv = MONUMENTS_LEVELS[monumentsLevelIdx];
+  if (!lv) return;
+  const now = performance.now();
+  if (lv.season === 'winter') {
+    // Freeze a row that has at least one filled brick. Pick a row with bricks,
+    // then put ice on every filled cell in that row.
+    const rowsWithBricks = [];
+    for (let r = 0; r < ROWS; r++) {
+      let any = false;
+      for (let c = 0; c < COLS; c++) {
+        if (grid[r][c] !== 0 && _mnZoneMap && _mnZoneMap[r][c] > 0 && !_mnHazardAt(r, c)) { any = true; break; }
+      }
+      if (any) rowsWithBricks.push(r);
+    }
+    if (rowsWithBricks.length) {
+      const r = rowsWithBricks[Math.floor(Math.random() * rowsWithBricks.length)];
+      const lifetime = 12000;
+      for (let c = 0; c < COLS; c++) {
+        if (grid[r][c] !== 0 && _mnZoneMap[r][c] > 0 && !_mnHazardAt(r, c)) {
+          _mnHazardSet(r, c, { type: 'ice', startedAt: now, expiresAt: now + lifetime });
+        }
+      }
+      if (typeof showEventBanner === 'function') showEventBanner('❄️ FROST! Row ' + (r+1) + ' frozen');
+    }
+  } else if (lv.season === 'summer') {
+    // Melt 1 random filled cell + 2 surrounding empty cells become puddle.
+    const filled = _mnPickRandomFilledZoneCell();
+    if (filled) {
+      const [r, c] = filled;
+      const lifetime = 10000;
+      _mnHazardSet(r, c, { type: 'puddle', startedAt: now, expiresAt: now + lifetime });
+      // Splash 2-3 adjacent empty cells
+      const neighbors = [];
+      for (let dr = -1; dr <= 1; dr++) for (let dc = -1; dc <= 1; dc++) {
+        if (!dr && !dc) continue;
+        const nr = r + dr, nc = c + dc;
+        if (nr<0||nr>=ROWS||nc<0||nc>=COLS) continue;
+        if (_mnZoneMap[nr][nc] > 0 && grid[nr][nc] === 0 && !_mnHazardAt(nr, nc)) {
+          neighbors.push([nr, nc]);
+        }
+      }
+      // Shuffle & take up to 2
+      neighbors.sort(() => Math.random() - 0.5);
+      for (let i = 0; i < Math.min(2, neighbors.length); i++) {
+        const [nr, nc] = neighbors[i];
+        _mnHazardSet(nr, nc, { type: 'puddle', startedAt: now, expiresAt: now + lifetime });
+      }
+      if (typeof showEventBanner === 'function') showEventBanner('☀️ HEATWAVE! Bricks melting');
+    }
+  } else if (lv.season === 'autumn') {
+    // Drop 1-3 leaf piles on empty zone cells anywhere on the board.
+    const count = 1 + Math.floor(Math.random() * 2); // 1-2 piles
+    const lifetime = 15000;
+    for (let i = 0; i < count; i++) {
+      const cell = _mnPickRandomEmptyZoneCell();
+      if (!cell) break;
+      const [r, c] = cell;
+      _mnHazardSet(r, c, { type: 'leaves', startedAt: now, expiresAt: now + lifetime });
+    }
+    if (typeof showEventBanner === 'function') showEventBanner('🍂 LEAF PILE! Sweep them clear');
+  } else if (lv.season === 'spring') {
+    // Friendly bonus: +50 pts, gentle petal burst.
+    if (typeof score !== 'undefined') {
+      score += 50;
+      if (typeof bestScore !== 'undefined' && score > bestScore) bestScore = score;
+      if (typeof updateUI === 'function') updateUI();
+    }
+    if (typeof showEventBanner === 'function') showEventBanner('🌸 BLOSSOM BURST! +50');
+  }
+}
+function _mnHazardSpawnTick() {
+  _mnSpawnSeasonHazard();
+  // Reschedule using this season\'s interval (with ±20% jitter)
+  const lv = MONUMENTS_LEVELS[monumentsLevelIdx];
+  const base = (lv && _MN_HAZARD_INTERVALS[lv.season]) || 15000;
+  const next = base * (0.8 + Math.random() * 0.4);
+  clearTimeout(_mnHazardSpawnTimer);
+  _mnHazardSpawnTimer = setTimeout(_mnHazardSpawnTick, next);
+}
+function _mnStartHazards() {
+  _mnHazards = new Map();
+  clearTimeout(_mnHazardSpawnTimer);
+  const lv = MONUMENTS_LEVELS[monumentsLevelIdx];
+  const base = (lv && _MN_HAZARD_INTERVALS[lv.season]) || 15000;
+  // First hazard appears after ~8s so the player has time to settle in
+  _mnHazardSpawnTimer = setTimeout(_mnHazardSpawnTick, 8000);
+}
+function _mnStopHazards() {
+  clearTimeout(_mnHazardSpawnTimer);
+  _mnHazardSpawnTimer = null;
+  _mnHazards = new Map();
+}
+// Expire hazards on each draw tick (cheap, called from drawGrid via _mnDrawHazards).
+function _mnExpireHazards() {
+  if (!_mnHazards.size) return;
+  const now = performance.now();
+  for (const [k, hz] of _mnHazards.entries()) {
+    if (now >= hz.expiresAt) _mnHazards.delete(k);
+  }
+}
+// Draw all active hazards on top of the grid canvas (uses main ctx, not scene).
+function _mnDrawHazards() {
+  if (!monumentsActive || !_mnHazards.size) return;
+  _mnExpireHazards();
+  const now = performance.now();
+  for (const [k, hz] of _mnHazards.entries()) {
+    const [rs, cs] = k.split(',');
+    const r = +rs, c = +cs;
+    const x = c * CELL, y = r * CELL;
+    const life = (hz.expiresAt - hz.startedAt);
+    const remain = Math.max(0, hz.expiresAt - now) / life; // 1 → 0
+    const fade = Math.min(1, remain * 2); // fade out in last 50% of life
+    ctx.save();
+    if (hz.type === 'ice') {
+      // Light blue-white ice block with frost glints
+      ctx.globalAlpha = 0.78 * fade;
+      const ig = ctx.createLinearGradient(x, y, x, y + CELL);
+      ig.addColorStop(0, '#e8f7ff');
+      ig.addColorStop(0.5, '#b6e0ff');
+      ig.addColorStop(1, '#7cc4ec');
+      ctx.fillStyle = ig;
+      ctx.beginPath(); ctx.roundRect(x + 2, y + 2, CELL - 4, CELL - 4, 4); ctx.fill();
+      // crack lines
+      ctx.strokeStyle = 'rgba(255,255,255,0.85)';
+      ctx.lineWidth = 1.2;
+      ctx.beginPath();
+      ctx.moveTo(x + CELL*0.20, y + CELL*0.30);
+      ctx.lineTo(x + CELL*0.55, y + CELL*0.50);
+      ctx.lineTo(x + CELL*0.40, y + CELL*0.80);
+      ctx.moveTo(x + CELL*0.65, y + CELL*0.25);
+      ctx.lineTo(x + CELL*0.75, y + CELL*0.55);
+      ctx.stroke();
+      // sparkle
+      const sp = Math.abs(Math.sin(now*0.003 + r*0.7 + c*0.5));
+      ctx.fillStyle = 'rgba(255,255,255,' + (0.4 + sp*0.5) + ')';
+      ctx.beginPath(); ctx.arc(x + CELL*0.30, y + CELL*0.30, 1.5, 0, Math.PI*2); ctx.fill();
+      ctx.beginPath(); ctx.arc(x + CELL*0.70, y + CELL*0.70, 1.2, 0, Math.PI*2); ctx.fill();
+    } else if (hz.type === 'puddle') {
+      // Orange-red wobbly puddle (melted brick)
+      ctx.globalAlpha = 0.82 * fade;
+      const pg = ctx.createRadialGradient(x + CELL/2, y + CELL*0.65, 2, x + CELL/2, y + CELL*0.65, CELL*0.55);
+      pg.addColorStop(0, '#ffb14a');
+      pg.addColorStop(0.6, '#e0651d');
+      pg.addColorStop(1, 'rgba(120,40,10,0)');
+      ctx.fillStyle = pg;
+      const wob = Math.sin(now*0.004 + r + c)*1.5;
+      ctx.beginPath();
+      ctx.ellipse(x + CELL/2, y + CELL*0.65 + wob, CELL*0.42, CELL*0.30, 0, 0, Math.PI*2);
+      ctx.fill();
+      // a drip
+      ctx.fillStyle = 'rgba(224, 101, 29, ' + (0.7 * fade) + ')';
+      ctx.beginPath();
+      ctx.arc(x + CELL*0.7, y + CELL*0.25 + ((now*0.05 + r*7) % CELL*0.6), 1.8, 0, Math.PI*2);
+      ctx.fill();
+      // highlight
+      ctx.fillStyle = 'rgba(255,235,180,' + (0.7 * fade) + ')';
+      ctx.beginPath();
+      ctx.ellipse(x + CELL*0.4, y + CELL*0.55, CELL*0.15, CELL*0.06, 0, 0, Math.PI*2);
+      ctx.fill();
+    } else if (hz.type === 'leaves') {
+      // Pile of autumn leaves
+      ctx.globalAlpha = 0.92 * fade;
+      const leaves = [
+        ['#d4571c', x + CELL*0.30, y + CELL*0.55, CELL*0.18],
+        ['#e8a72a', x + CELL*0.60, y + CELL*0.42, CELL*0.16],
+        ['#b13a16', x + CELL*0.50, y + CELL*0.65, CELL*0.18],
+        ['#f3c14a', x + CELL*0.42, y + CELL*0.35, CELL*0.14],
+        ['#9c2a10', x + CELL*0.70, y + CELL*0.65, CELL*0.16],
+      ];
+      const sway = Math.sin(now*0.002 + r*0.5 + c*0.3) * 1.2;
+      for (const [col, cx, cy, sz] of leaves) {
+        ctx.save();
+        ctx.translate(cx + sway, cy);
+        ctx.rotate(((cx + cy) % 6) - 3);
+        ctx.fillStyle = col;
+        ctx.beginPath();
+        ctx.ellipse(0, 0, sz, sz * 0.6, 0, 0, Math.PI * 2);
+        ctx.fill();
+        // vein
+        ctx.strokeStyle = 'rgba(60,30,10,0.6)';
+        ctx.lineWidth = 0.7;
+        ctx.beginPath(); ctx.moveTo(-sz*0.8, 0); ctx.lineTo(sz*0.8, 0); ctx.stroke();
+        ctx.restore();
+      }
+      // a little stem / twig
+      ctx.strokeStyle = 'rgba(80,40,15,0.7)';
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.moveTo(x + CELL*0.25, y + CELL*0.70);
+      ctx.lineTo(x + CELL*0.65, y + CELL*0.50);
+      ctx.stroke();
+    }
+    ctx.restore();
+  }
+}
+
 // ── Brick tray generator ───────────────────────────────────────────────
 // Generate a tray of 3 small/medium pieces, each painted with one of the
 // three monument zone colours (orange / red / brown). Mix the colours so
@@ -9126,6 +9452,8 @@ function _mnGenerateBrickTray() {
         const nr = r + dr, nc = c + dc;
         const z = _mnZoneMap[nr] ? _mnZoneMap[nr][nc] : 0;
         if (!z) return false; // sky/water cell — not part of the bridge
+        // Block placement on puddle / leaf-pile / flood hazards
+        if (typeof _mnHazardBlocksPlacement === 'function' && _mnHazardBlocksPlacement(nr, nc)) return false;
       }
     }
     return true;
@@ -9330,6 +9658,7 @@ function stopMonumentsGame() {
   _mnStopSceneLoop();
   _mnHideSceneCanvas();
   _monumentsHudHide();
+  if (typeof _mnStopHazards === 'function') _mnStopHazards();
   document.body.classList.remove('mn-active');
   if (typeof _skyReset === 'function') _skyReset();
 }
@@ -9366,6 +9695,8 @@ function findCompletedLines(){
   // checked separately in _mnCheckWin so completion still works.
   if (typeof monumentsActive !== 'undefined' && monumentsActive && _mnZoneMap) {
     for (let r = 0; r < ROWS; r++) {
+      // Frozen (icy) rows are locked from clearing in winter
+      if (typeof _mnRowHasIce === 'function' && _mnRowHasIce(r)) continue;
       const bridgeCols = [];
       for (let c = 0; c < COLS; c++) {
         if (_mnZoneMap[r] && _mnZoneMap[r][c]) bridgeCols.push(c);
@@ -10439,6 +10770,10 @@ function drawGrid(){
         ctx.beginPath();ctx.roundRect(pc*CELL+PAD,pr*CELL+PAD,CELL-PAD*2,CELL-PAD*2,5);ctx.fill();ctx.restore();
       }
     }
+  }
+  // Seasonal hazards overlay (winter ice, summer puddles, autumn leaves)
+  if (typeof monumentsActive !== 'undefined' && monumentsActive && typeof _mnDrawHazards === 'function') {
+    _mnDrawHazards();
   }
   drawMascot();
 }
@@ -12714,6 +13049,88 @@ function showEventBanner(msg){
   el.classList.add('show');
   clearTimeout(bannerTimeout);
   bannerTimeout = setTimeout(()=>el.classList.remove('show'), 2200);
+}
+
+// ════════════════════════════════════════════════════════════════
+//  RIBBIT BANTER  — friendly frog quips every 8–15s during play
+// ════════════════════════════════════════════════════════════════
+const RIBBIT_LINES = [
+  'Ribbit?',
+  'Still awake?',
+  'You look tired, mate.',
+  'My pond, my rules.',
+  'Hop hop hop.',
+  'I see what you did there...',
+  'Need a coffee?',
+  'Smooth move.',
+  'You missed a spot.',
+  'Frog says: nice.',
+  'Croak croak.',
+  'Are you blinking?',
+  'Don\u2019t make me croak.',
+  'That was almost good.',
+  'Tiles wait for no frog.',
+  'I could do this with my eyes shut.',
+  'Stretch break, anyone?',
+  'Hmm.',
+  'Yummy bricks.',
+  'You\u2019re doing great. Sort of.',
+  'Brick by brick, my friend.',
+  'Ooh, fancy.',
+  'Is that... strategy?',
+  'A wild frog appears.',
+  'I bet I could beat you.',
+  'Don\u2019t freeze up now.',
+  'Snack time?',
+  'Just keep hopping.',
+];
+let _ribbitTimer = null;
+let _ribbitHideTimer = null;
+let _ribbitLastIdx = -1;
+function _ribbitPickLine() {
+  let idx = Math.floor(Math.random() * RIBBIT_LINES.length);
+  if (idx === _ribbitLastIdx) idx = (idx + 1) % RIBBIT_LINES.length;
+  _ribbitLastIdx = idx;
+  return RIBBIT_LINES[idx];
+}
+function showRibbit(text) {
+  const el = document.getElementById('ribbit-bubble');
+  if (!el) return;
+  const txt = el.querySelector('.ribbit-text');
+  if (txt) txt.textContent = text;
+  el.classList.add('show');
+  if (_ribbitHideTimer) clearTimeout(_ribbitHideTimer);
+  _ribbitHideTimer = setTimeout(() => { el.classList.remove('show'); }, 3200);
+}
+function _ribbitTick() {
+  const screenGame = document.getElementById('screen-game');
+  const onGameScreen = screenGame && !screenGame.classList.contains('hidden');
+  const active = (typeof gameActive !== 'undefined') && gameActive;
+  const banner = document.getElementById('event-banner');
+  const bannerShowing = banner && banner.classList.contains('show');
+  if (onGameScreen && active && !bannerShowing) {
+    showRibbit(_ribbitPickLine());
+  }
+  const nextMs = 8000 + Math.random() * 7000;
+  clearTimeout(_ribbitTimer);
+  _ribbitTimer = setTimeout(_ribbitTick, nextMs);
+}
+function startRibbitBanter() {
+  if (_ribbitTimer) return;
+  _ribbitTimer = setTimeout(_ribbitTick, 6000 + Math.random() * 4000);
+}
+function stopRibbitBanter() {
+  if (_ribbitTimer) { clearTimeout(_ribbitTimer); _ribbitTimer = null; }
+  if (_ribbitHideTimer) { clearTimeout(_ribbitHideTimer); _ribbitHideTimer = null; }
+  const el = document.getElementById('ribbit-bubble');
+  if (el) el.classList.remove('show');
+}
+if (typeof document !== 'undefined') {
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', startRibbitBanter);
+  } else {
+    startRibbitBanter();
+  }
 }
 
 // ════════════════════════════════════════════════════════════════
