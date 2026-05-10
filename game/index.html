@@ -17242,6 +17242,20 @@ function updateHomeStreakChip() {
 // ──────────────────────────────────────────────────────────────────
 function openLevelPicker(pack) {
   if (CD_LEVEL_PACKS.indexOf(pack) < 0) return;
+  // Monuments: NEVER open the picker. Drop the player straight into LV1 (or
+  // their saved city) and let them skip via the in-game prev/next buttons.
+  if (pack === 'monuments') {
+    if (typeof _frogVoiceStop === 'function') _frogVoiceStop();
+    if (typeof monumentsActive !== 'undefined' && monumentsActive && typeof stopMonumentsGame === 'function') {
+      stopMonumentsGame();
+    }
+    const resumeLv = (typeof _cdProgress !== 'undefined' && _cdProgress.getResumeLevel) ? _cdProgress.getResumeLevel('monuments') : 1;
+    const idx = (typeof _mnCityStartIdx === 'function') ? _mnCityStartIdx(resumeLv) : 0;
+    if (typeof equipTier === 'function') equipTier('monuments');
+    if (typeof ensureAudio === 'function') ensureAudio();
+    if (typeof startMonumentsGame === 'function') startMonumentsGame(idx);
+    return;
+  }
   let picker = document.getElementById('cd-level-picker');
   if (!picker) {
     picker = document.createElement('div');
