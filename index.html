@@ -4545,6 +4545,17 @@
     opacity: 0.45;
     animation: gtcCity 12s ease-in-out infinite;
   }
+  .game-tier-card .gtc-anim-bg.monuments {
+    background:
+      linear-gradient(180deg, rgba(245,166,35,0.28) 0%, rgba(255,107,107,0.10) 55%, transparent 80%),
+      linear-gradient(to top, rgba(220,80,80,0.55) 0, rgba(220,80,80,0.55) 14px, transparent 14px),
+      linear-gradient(to top, transparent calc(100% - 22px), rgba(245,166,35,0.45) calc(100% - 22px), rgba(245,166,35,0.45) calc(100% - 8px), transparent calc(100% - 8px));
+    background-size: 100% 100%, 26px 100%, 42px 100%;
+    background-position: center, 0 100%, 16px 100%;
+    background-repeat: no-repeat, repeat-x, repeat-x;
+    opacity: 0.50;
+    animation: gtcCity 14s ease-in-out infinite;
+  }
   @keyframes gtcRipple { 0%,100% { transform: scale(1); opacity: 0.45; } 50% { transform: scale(1.07); opacity: 0.7; } }
   @keyframes gtcFrenzy { 0%,100% { opacity: 0.40; } 50% { opacity: 0.80; } }
   @keyframes gtcFog { 0% { background-position: 0% 50%, 100% 50%; } 50% { background-position: 50% 30%, 50% 70%; } 100% { background-position: 0% 50%, 100% 50%; } }
@@ -5731,6 +5742,20 @@
         <button class="gtc-play-btn" id="gtc-play-citypack" aria-label="Play City Pack mode" hidden>▶ PLAY</button>
       </div>
 
+      <!-- CITY MONUMENTS (NEW) -->
+      <div class="game-tier-card" data-tier="monuments" id="gtc-monuments" style="--tc:#F5A623">
+        <div class="gtc-anim-bg monuments" aria-hidden="true"></div>
+        <div class="gtc-left">
+          <div class="gtc-emoji">🏛️</div>
+          <div class="gtc-info">
+            <div class="gtc-name">CITY MONUMENTS <span style="font-size:9px;background:#F5A623;color:#1B0E0A;padding:2px 6px;border-radius:8px;margin-left:6px;font-weight:800;letter-spacing:0.04em;">NEW</span></div>
+            <div class="gtc-sub">Build landmarks brick by brick · Multi-colour matching</div>
+          </div>
+        </div>
+        <div class="gtc-right" id="gtc-right-monuments"></div>
+        <button class="gtc-play-btn" id="gtc-play-monuments" aria-label="Play City Monuments mode" hidden>▶ PLAY</button>
+      </div>
+
     </div>
 
     <!-- ⚡ Magic Powers carousel -->
@@ -5847,6 +5872,125 @@
     display:none; align-items:center; justify-content:space-between;
     flex-shrink:0;
   }
+
+  /* ═════ CITY MONUMENTS — warm sunset bg + candy HUD ═════ */
+  #monuments-bg {
+    position: fixed; inset: 0;
+    z-index: 0; pointer-events: none;
+    overflow: hidden;
+    display: none;
+  }
+  #monuments-bg .mn-sky {
+    position: absolute; inset: 0;
+    background: linear-gradient(180deg,
+      #FFD480 0%,        /* warm gold high sky */
+      #FFB36B 35%,       /* peachy orange */
+      #FF8E64 70%,       /* coral */
+      #FFAA70 100%);     /* horizon haze */
+  }
+  #monuments-bg .mn-sun {
+    position: absolute;
+    width: 110px; height: 110px;
+    right: 14%; top: 22%;
+    border-radius: 50%;
+    background: radial-gradient(circle, #FFF0B0 0%, #FFD060 60%, rgba(255,200,80,0) 100%);
+    box-shadow: 0 0 80px 30px rgba(255,220,140,0.55);
+    animation: mnSunPulse 6s ease-in-out infinite;
+  }
+  @keyframes mnSunPulse { 0%,100% { transform: scale(1); opacity: 0.95; } 50% { transform: scale(1.06); opacity: 1; } }
+  #monuments-bg .mn-cloud {
+    position: absolute;
+    height: 36px;
+    background: rgba(255,235,210,0.55);
+    border-radius: 30px;
+    box-shadow: 18px 0 0 -2px rgba(255,235,210,0.55), -22px 4px 0 -3px rgba(255,235,210,0.55), 30px 6px 0 -4px rgba(255,235,210,0.55);
+    filter: blur(0.5px);
+  }
+  #monuments-bg .mn-cloud1 { width: 90px; top: 14%; left: -120px; animation: mnDrift 70s linear infinite; }
+  #monuments-bg .mn-cloud2 { width: 70px; top: 28%; left: -200px; animation: mnDrift 95s linear infinite 12s; opacity: 0.8; }
+  @keyframes mnDrift { from { transform: translateX(0); } to { transform: translateX(120vw); } }
+
+  /* Distant skyline silhouette (London) drawn as layered shapes */
+  #monuments-bg .mn-skyline {
+    position: absolute; left: 0; right: 0;
+    bottom: 14%;
+    height: 18%;
+    background:
+      /* Shard (triangle) */
+      linear-gradient(135deg, transparent 49.5%, rgba(180,60,50,0.78) 50%, transparent 50.5%) 8% 100%/40px 100% no-repeat,
+      /* Gherkin (oval-ish) */
+      radial-gradient(ellipse 22px 65px at 22% 95%, rgba(160,55,45,0.78) 60%, transparent 62%),
+      /* Dome */
+      radial-gradient(ellipse 28px 22px at 38% 88%, rgba(170,60,48,0.80) 60%, transparent 62%),
+      /* Big Ben distant */
+      linear-gradient(180deg, transparent 0, transparent 50%, rgba(170,60,48,0.78) 50%) 48% 100%/14px 70% no-repeat,
+      /* Generic blocks */
+      linear-gradient(180deg, transparent 0, transparent 60%, rgba(150,50,40,0.78) 60%) 0 100%/100% 100%;
+    background-repeat: no-repeat, no-repeat, no-repeat, no-repeat, repeat-x;
+  }
+
+  /* Road band */
+  #monuments-bg .mn-road {
+    position: absolute; left: 0; right: 0;
+    bottom: 10%;
+    height: 4%;
+    background: linear-gradient(180deg, rgba(50,30,30,0.55), rgba(30,18,18,0.75));
+    border-top: 1px solid rgba(255,200,150,0.25);
+    border-bottom: 1px solid rgba(255,200,150,0.25);
+  }
+
+  /* Animated vehicles */
+  #monuments-bg .mn-bus, #monuments-bg .mn-taxi {
+    position: absolute;
+    bottom: 11.2%;
+    font-size: 32px;
+    line-height: 1;
+    filter: drop-shadow(0 2px 4px rgba(0,0,0,0.4));
+    will-change: transform;
+  }
+  #monuments-bg .mn-bus  { left: -60px; animation: mnDriveR 22s linear infinite; }
+  #monuments-bg .mn-taxi { left: 100vw; animation: mnDriveL 18s linear infinite 6s; transform: scaleX(-1); }
+  @keyframes mnDriveR { from { transform: translateX(0); } to { transform: translateX(110vw); } }
+  @keyframes mnDriveL { from { transform: translateX(0) scaleX(-1); } to { transform: translateX(-110vw) scaleX(-1); } }
+
+  /* When monuments-bg is visible, soften the dark game background so warm sky shows through */
+  body.mn-active #screen-game { background: transparent !important; }
+  body.mn-active .game-topbar { background: rgba(40, 18, 14, 0.55) !important; backdrop-filter: blur(8px); }
+  body.mn-active #grid-canvas-wrap { background: transparent !important; }
+  body.mn-active #grid-canvas { background: rgba(20,8,6,0.20) !important; border-radius: 14px; box-shadow: 0 8px 28px rgba(0,0,0,0.35), inset 0 0 0 2px rgba(255,200,140,0.18); }
+
+  /* Candy-pill HUD overlay (only shown for City Monuments) */
+  #monuments-hud {
+    position: fixed;
+    top: 56px; left: 50%; transform: translateX(-50%);
+    display: none; gap: 10px;
+    z-index: 30;
+    pointer-events: none;
+  }
+  #monuments-hud .mn-pill {
+    display: flex; flex-direction: column; align-items: center;
+    padding: 6px 14px;
+    background: linear-gradient(180deg, #FFF6E0, #FFD787);
+    border: 2px solid #B86A1F;
+    border-radius: 18px;
+    box-shadow: 0 3px 0 #8C4A12, 0 6px 14px rgba(0,0,0,0.35);
+    font-family: var(--font-display, sans-serif);
+    min-width: 60px;
+  }
+  #monuments-hud .mn-label {
+    font-size: 9px; letter-spacing: 0.10em;
+    color: #8C4A12; font-weight: 800;
+  }
+  #monuments-hud .mn-val {
+    font-size: 16px; font-weight: 900;
+    color: #5A2D08; letter-spacing: 0.04em;
+    margin-top: 1px;
+  }
+  #monuments-hud .mn-pill-score { background: linear-gradient(180deg, #FFEAB0, #FFC04A); }
+  #monuments-hud .mn-pill-goal  { background: linear-gradient(180deg, #FFD7C0, #FF8E5A); border-color: #B83A1F; }
+  #monuments-hud .mn-pill-goal .mn-label, #monuments-hud .mn-pill-goal .mn-val { color: #5A1808; }
+  #monuments-hud .mn-pill-level { background: linear-gradient(180deg, #FFE8E8, #FF8080); border-color: #A82020; }
+  #monuments-hud .mn-pill-level .mn-label, #monuments-hud .mn-pill-level .mn-val { color: #5A0808; }
 </style>
 <div id="city-reveal-overlay">
   <div id="city-reveal-name" style="font-family:var(--font-display);font-size:clamp(2rem,8vw,3.5rem);color:#fff;letter-spacing:0.12em;text-align:center;margin-bottom:10px;"></div>
@@ -6573,6 +6717,23 @@ const TIERS = [
     isCityPack: true,
     // com.redfrogblackart.croakdown.citypack
   },
+  {
+    id: 'monuments', name: 'CITY MONUMENTS', emoji: '🏛️', color: '#F5A623',
+    price: 2.99, annual: true,
+    desc: 'Build iconic monuments brick by brick · NEW.',
+    tagline: 'Fill landmark outlines with matching coloured bricks',
+    perks: [
+      'Build Big Ben, Eiffel Tower, Empire State and more — brick by brick',
+      'Multi-coloured bricks: match the colour to the right monument',
+      'Animated cityscapes with cars, trams, day/night and seasons',
+      'Premium polished UI · Warm sunset palette',
+    ],
+    gridTheme: { bg:'#1B0E0A', corner:'#F5A623' },
+    tileStyle: 'classic',
+    bonusMultiplier: 1.8,
+    isMonuments: true,
+    // com.redfrogblackart.croakdown.monuments
+  },
 ];
 
 const TILE_PALETTES = {
@@ -7035,6 +7196,41 @@ let cityPackCityIdx = 0;
 let cityPackLinesTarget = 0;
 let cityPackLinesCleared = 0;
 let gridMask = null;
+
+// ── City Monuments state (Phase 1: London prototype) ─────────────────
+let monumentsActive = false;
+let monumentsLevelIdx = 0;
+let monumentsLinesTarget = 0;
+let monumentsLinesCleared = 0;
+
+// Per-level monument config. Each monument is a column range with a target
+// colour and a column-height profile that defines its silhouette.
+// colHeights array length = COLS (10). Zero = empty column (gap).
+const MONUMENTS_LEVELS = [
+  {
+    id: 'london',
+    name: 'LONDON',
+    emoji: '🇬🇧',
+    season: 'summer',
+    timeOfDay: 'sunset',
+    // Sky palette: warm golden-hour, no purple/blue (per user feedback)
+    sky: {
+      top:    [255, 188, 110], // peachy orange
+      mid:    [255, 142, 100], // coral
+      horiz:  [255, 210, 130], // golden
+      sun:    [255, 235, 160],
+      cloud:  [255, 230, 200],
+    },
+    // 3 monuments side by side: Big Ben (red, narrow & tall), Town Hall (orange, wide), Clock Tower (teal, narrow & short)
+    // Column index    0  1  2  3  4  5  6  7  8  9
+    colHeights:      [0, 0, 13, 13, 0, 9, 9, 9, 0, 0],
+    monuments: [
+      { name: 'BIG BEN',     cols: [2,3], colour: '#E03A3A', emoji: '🕰️' },
+      { name: 'TOWN HALL',   cols: [5,6,7], colour: '#F5A623', emoji: '🏛️' },
+    ],
+    skylineCities: ['shard','gherkin','dome','wheel'],
+  },
+];
 
 // ── City Sky Animation Engine ──────────────────────────────────────────
 // Self-contained animated sky renderer for City Pack mode.
@@ -8052,6 +8248,108 @@ function advanceCityPackLevel() {
   setTimeout(() => startCityPackGame(nextIdx), 1600);
 }
 
+// ══════════════════════════════════════════════════════════════
+//  CITY MONUMENTS — Phase 1 prototype (London only)
+//  Reuses City Pack engine (mask + line clearing) but injects a custom
+//  warm-sunset background, animated bus + taxi, candy-pill HUD, and
+//  monument-coloured target pieces.
+// ══════════════════════════════════════════════════════════════
+function startMonumentsGame(levelIdx) {
+  monumentsActive = true;
+  monumentsLevelIdx = Math.min(levelIdx || 0, MONUMENTS_LEVELS.length - 1);
+  const lv = MONUMENTS_LEVELS[monumentsLevelIdx];
+  // Reuse City Pack masking engine — monuments are columns with heights.
+  cityPackActive = true;  // piggy-back on existing isMasked()/clearLines logic
+  cityPackCityIdx = 0;    // unused for monuments but keeps state safe
+  gridMask = buildCityMask(lv.colHeights);
+  const totalCells = lv.colHeights.reduce((a,b)=>a+b,0);
+  monumentsLinesTarget = Math.max(6, Math.round(totalCells / 6));
+  monumentsLinesCleared = 0;
+  // Pipe to City Pack counters so existing line-clear hook increments them.
+  cityPackLinesTarget  = monumentsLinesTarget;
+  cityPackLinesCleared = 0;
+  _skyReset();
+  _monumentsBgInit();
+  document.body.classList.add('mn-active');
+  startGame();
+  gridMask = buildCityMask(lv.colHeights);
+  for (let r=0;r<ROWS;r++) for (let c=0;c<COLS;c++) if(isMasked(r,c)) grid[r][c]=0;
+  if (typeof _skyInit === 'function') _skyInit(gridCanvas.width, gridCanvas.height);
+  _monumentsHudShow();
+  setTimeout(() => showEventBanner(
+    lv.emoji + ' LEVEL ' + (monumentsLevelIdx+1) + ' · ' + lv.name + ' — ' + monumentsLinesTarget + ' LINES!'
+  ), 300);
+}
+
+function _monumentsBgInit() {
+  // Inject (or refresh) the warm-sunset background layer + animated vehicles
+  // behind the play canvas. Uses CSS only — no canvas redraw needed.
+  let bg = document.getElementById('monuments-bg');
+  if (!bg) {
+    bg = document.createElement('div');
+    bg.id = 'monuments-bg';
+    bg.innerHTML =
+      '<div class="mn-sky"></div>' +
+      '<div class="mn-sun"></div>' +
+      '<div class="mn-cloud mn-cloud1"></div>' +
+      '<div class="mn-cloud mn-cloud2"></div>' +
+      '<div class="mn-skyline"></div>' +
+      '<div class="mn-road"></div>' +
+      '<div class="mn-bus">🚌</div>' +
+      '<div class="mn-taxi">🚕</div>';
+    // Insert into the game screen so it sits behind the grid container
+    const gameScreen = document.getElementById('screen-game');
+    if (gameScreen) gameScreen.insertBefore(bg, gameScreen.firstChild);
+  }
+  bg.style.display = 'block';
+}
+
+function _monumentsBgHide() {
+  const bg = document.getElementById('monuments-bg');
+  if (bg) bg.style.display = 'none';
+}
+
+function _monumentsHudShow() {
+  let hud = document.getElementById('monuments-hud');
+  if (!hud) {
+    hud = document.createElement('div');
+    hud.id = 'monuments-hud';
+    hud.innerHTML =
+      '<div class="mn-pill mn-pill-score"><span class="mn-label">SCORE</span><span class="mn-val" id="mn-score">0</span></div>' +
+      '<div class="mn-pill mn-pill-goal"><span class="mn-label">GOAL</span><span class="mn-val" id="mn-goal">0/0</span></div>' +
+      '<div class="mn-pill mn-pill-level"><span class="mn-label">LEVEL</span><span class="mn-val" id="mn-level">1</span></div>';
+    const gameScreen = document.getElementById('screen-game');
+    if (gameScreen) gameScreen.appendChild(hud);
+  }
+  hud.style.display = 'flex';
+  _monumentsHudUpdate();
+}
+
+function _monumentsHudHide() {
+  const hud = document.getElementById('monuments-hud');
+  if (hud) hud.style.display = 'none';
+}
+
+function _monumentsHudUpdate() {
+  if (!monumentsActive) return;
+  const sc = document.getElementById('mn-score');
+  const go = document.getElementById('mn-goal');
+  const lv = document.getElementById('mn-level');
+  if (sc && typeof score !== 'undefined') sc.textContent = score|0;
+  if (go) go.textContent = monumentsLinesCleared + ' / ' + monumentsLinesTarget;
+  if (lv) lv.textContent = (monumentsLevelIdx+1);
+}
+
+function stopMonumentsGame() {
+  monumentsActive = false;
+  cityPackActive = false;
+  gridMask = null;
+  _monumentsBgHide();
+  _monumentsHudHide();
+  document.body.classList.remove('mn-active');
+  if (typeof _skyReset === 'function') _skyReset();
+}
+
 // ── Grid helpers ──────────────────────────────────────────────────
 function initGrid(){grid=Array.from({length:ROWS},()=>new Array(COLS).fill(0));}
 function canPlace(shape,r,c){return shape.every(([dr,dc])=>{const nr=r+dr,nc=c+dc;return nr>=0&&nr<ROWS&&nc>=0&&nc<COLS&&!isMasked(nr,nc)&&grid[nr][nc]===0;});}
@@ -8106,12 +8404,28 @@ function clearLines({completedRows,completedCols,completedHalfRows}){
   if(cityPackActive){
     const _cpLineCount = completedRows.length+completedCols.length+halfCount;
     cityPackLinesCleared += _cpLineCount;
-    if (_cpLineCount > 0 && typeof _cdProgress !== 'undefined') {
-      _cdProgress.addLines('citypack', _cpLineCount);
-      _cdProgress.noteActivity('citypack');
+    // Monuments mode piggybacks on cityPackActive but uses its own counters/HUD/advance.
+    if (typeof monumentsActive !== 'undefined' && monumentsActive) {
+      monumentsLinesCleared += _cpLineCount;
+      if (_cpLineCount > 0 && typeof _cdProgress !== 'undefined') {
+        _cdProgress.addLines('monuments', _cpLineCount);
+        _cdProgress.noteActivity('monuments');
+      }
+      _monumentsHudUpdate();
+      if (monumentsLinesCleared >= monumentsLinesTarget) {
+        setTimeout(() => {
+          showEventBanner('🏆 ' + MONUMENTS_LEVELS[monumentsLevelIdx].name + ' COMPLETE!');
+          setTimeout(() => { stopMonumentsGame(); triggerGameOver(); }, 1500);
+        }, 700);
+      }
+    } else {
+      if (_cpLineCount > 0 && typeof _cdProgress !== 'undefined') {
+        _cdProgress.addLines('citypack', _cpLineCount);
+        _cdProgress.noteActivity('citypack');
+      }
+      updateCityPackHUD();
+      if(cityPackLinesCleared>=cityPackLinesTarget)setTimeout(advanceCityPackLevel,700);
     }
-    updateCityPackHUD();
-    if(cityPackLinesCleared>=cityPackLinesTarget)setTimeout(advanceCityPackLevel,700);
   }
   // Golden Frog: count cleared lines toward the 50-line per-location gate.
   if (activeChallengeMode === 'goldenfrog' && !cm_gfLevelGateActive) {
@@ -9957,6 +10271,10 @@ function buildShopUI(){
     if (tier.isCityPack) {
       btnHtml = owned
         ? `<button class="shop-card-btn city-play" onclick="closeShop();startCityPackGame(0);">▶ PLAY</button>`
+        : `<button class="shop-card-btn" data-buy="${idx}">UNLOCK</button>`;
+    } else if (tier.isMonuments) {
+      btnHtml = owned
+        ? `<button class="shop-card-btn city-play" onclick="closeShop();startMonumentsGame(0);">▶ PLAY</button>`
         : `<button class="shop-card-btn" data-buy="${idx}">UNLOCK</button>`;
     } else {
       btnHtml = owned
@@ -13577,7 +13895,7 @@ function openSoloSetup() {
 }
 
 // Wire up game card play buttons
-['tadpole','treefrog','poisondart','goldenfrog','citypack'].forEach(tid => {
+['tadpole','treefrog','poisondart','goldenfrog','citypack','monuments'].forEach(tid => {
   const playBtn = document.getElementById('gtc-play-' + tid);
   if (!playBtn) return;
   playBtn.addEventListener('click', (e) => {
@@ -13596,6 +13914,15 @@ function openSoloSetup() {
       // PLAY button always starts City Pack fresh at city 1; RESUME button jumps to last city.
       if (typeof _cdProgress !== 'undefined') _cdProgress.setLastLevel('citypack', 1);
       startCityPackGame(0);
+      return;
+    }
+    // City Monuments — new pack with custom renderer (Phase 1: London only).
+    if (tid === 'monuments') {
+      equipTier(tid);
+      ensureAudio();
+      if (!checkAccessBeforeStart()) return;
+      if (typeof _cdProgress !== 'undefined') _cdProgress.setLastLevel('monuments', 1);
+      startMonumentsGame(0);
       return;
     }
     // Equip tier and set difficulty+challenge then start
