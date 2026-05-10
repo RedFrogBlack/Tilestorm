@@ -9330,7 +9330,7 @@ function _mnHazardSet(r, c, hz) { _mnHazards.set(_mnHazardKey(r, c), hz); }
 function _mnHazardBlocksPlacement(r, c) {
   const hz = _mnHazardAt(r, c);
   if (!hz) return false;
-  return hz.type === 'puddle' || hz.type === 'leaves' || hz.type === 'flood';
+  return hz.type === 'puddle' || hz.type === 'leaves' || hz.type === 'flood' || hz.type === 'blossom';
 }
 // Returns true if any cell on row r has an ice hazard (blocks row clear).
 function _mnRowHasIce(r) {
@@ -9442,7 +9442,8 @@ function _mnSpawnSeasonHazard() {
   } else if (lv.season === 'summer') {
     // Melt 1 filled cell + adjacent splash. If nothing filled yet, spawn a
     // puddle on a random EMPTY zone cell so the heatwave is still visible.
-    const lifetime = 10000;
+    // Lifetime ~12s: 1.2s shimmer + 1.4s melt + 1.6s scorch + ~6s locked + 1.8s cool.
+    const lifetime = 12000;
     const filled = _mnPickRandomFilledZoneCell();
     if (filled) {
       const [r, c] = filled;
@@ -9478,8 +9479,9 @@ function _mnSpawnSeasonHazard() {
     }
   } else if (lv.season === 'autumn') {
     // Drop 1-3 leaf piles on empty zone cells anywhere on the board.
+    // Lifetime ~12s: 1.5s falling + 1.5s piling + 1s settling + ~6.2s locked + 1.8s sweep.
     const count = 1 + Math.floor(Math.random() * 2); // 1-2 piles
-    const lifetime = 15000;
+    const lifetime = 12000;
     for (let i = 0; i < count; i++) {
       const cell = _mnPickRandomEmptyZoneCell();
       if (!cell) break;
@@ -9488,13 +9490,28 @@ function _mnSpawnSeasonHazard() {
     }
     _mnSayHazardOnce('autumn', 'purple', COMMENTARY.leaves, 'warm');
   } else if (lv.season === 'spring') {
-    // Friendly bonus: +50 pts, gentle petal burst.
-    if (typeof score !== 'undefined') {
-      score += 50;
+    // Finite blossom event — drop 2-3 petal piles on EMPTY zone cells.
+    // They block placement for ~6s, then wind blows them away.
+    // Lifetime ~6s: 1.5s drifting in + 1.3s landing + 1.7s holding + 1.5s blowing.
+    const lifetime = 6000;
+    const count = 2 + Math.floor(Math.random() * 2); // 2-3 piles
+    const placed = [];
+    for (let i = 0; i < count; i++) {
+      const cell = _mnPickRandomEmptyZoneCell();
+      if (!cell) break;
+      const [r, c] = cell;
+      if (!_mnHazardAt(r, c)) {
+        _mnHazardSet(r, c, { type: 'blossom', startedAt: now, expiresAt: now + lifetime });
+        placed.push([r, c]);
+      }
+    }
+    // Friendly bonus: small +25 pts so spring still feels rewarding.
+    if (placed.length && typeof score !== 'undefined') {
+      score += 25;
       if (typeof bestScore !== 'undefined' && score > bestScore) bestScore = score;
       if (typeof updateUI === 'function') updateUI();
     }
-    _mnSayHazardOnce('spring', 'purple', COMMENTARY.blossom, 'fast');
+    if (placed.length) _mnSayHazardOnce('spring', 'purple', COMMENTARY.blossom, 'fast');
   }
 }
 function _mnHazardSpawnTick() {
@@ -9758,87 +9775,451 @@ function _mnDrawHazards() {
         ctx.restore();
       }
     } else if (hz.type === 'puddle') {
-      // HEATWAVE / MELT: glowing molten cell with rising heat shimmer + flame icon.
-      ctx.globalAlpha = fade;
-      // hot-orange glow halo
-      ctx.save();
-      ctx.shadowColor = 'rgba(255,140,40,0.95)';
-      ctx.shadowBlur = 16;
-      ctx.fillStyle = 'rgba(255,90,20,0.45)';
-      ctx.beginPath(); ctx.roundRect(x + 1, y + 1, CELL - 2, CELL - 2, 5); ctx.fill();
-      ctx.restore();
-      // molten base fill
-      const pg = ctx.createRadialGradient(x + CELL/2, y + CELL*0.55, 2, x + CELL/2, y + CELL*0.55, CELL*0.7);
-      pg.addColorStop(0, '#fff1a0');
-      pg.addColorStop(0.35, '#ffb14a');
-      pg.addColorStop(0.75, '#d8431a');
-      pg.addColorStop(1, '#8a1f08');
-      ctx.fillStyle = pg;
-      ctx.beginPath(); ctx.roundRect(x + 1, y + 1, CELL - 2, CELL - 2, 5); ctx.fill();
-      // wobbly molten surface line
-      ctx.strokeStyle = 'rgba(255,230,150,0.95)';
-      ctx.lineWidth = 2;
-      const wob = Math.sin(now*0.004 + r + c)*2;
-      ctx.beginPath();
-      ctx.ellipse(x + CELL/2, y + CELL*0.62 + wob, CELL*0.40, CELL*0.10, 0, 0, Math.PI*2);
-      ctx.stroke();
-      // bright flame icon
-      ctx.fillStyle = 'rgba(255,255,255,0.95)';
-      ctx.font = 'bold ' + Math.floor(CELL*0.38) + 'px sans-serif';
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'middle';
-      ctx.fillText('🔥', x + CELL*0.5, y + CELL*0.42);
-    } else if (hz.type === 'leaves') {
-      // LEAVES: full-cell autumn pile with a thick warm-brown rim and crisp leaf icon.
-      ctx.globalAlpha = fade;
-      // warm halo behind the cell
-      ctx.save();
-      ctx.shadowColor = 'rgba(212,87,28,0.85)';
-      ctx.shadowBlur = 12;
-      ctx.fillStyle = 'rgba(170,60,18,0.45)';
-      ctx.beginPath(); ctx.roundRect(x + 1, y + 1, CELL - 2, CELL - 2, 5); ctx.fill();
-      ctx.restore();
-      // warm-brown base wash so the leaf pile reads even at small sizes
-      const lg = ctx.createLinearGradient(x, y, x, y + CELL);
-      lg.addColorStop(0, '#7a3a14');
-      lg.addColorStop(1, '#4a1f08');
-      ctx.fillStyle = lg;
-      ctx.beginPath(); ctx.roundRect(x + 1, y + 1, CELL - 2, CELL - 2, 5); ctx.fill();
-      // crisp orange rim
-      ctx.strokeStyle = '#e8a72a';
-      ctx.lineWidth = 2;
-      ctx.beginPath(); ctx.roundRect(x + 1.5, y + 1.5, CELL - 3, CELL - 3, 5); ctx.stroke();
-      // chunkier, brighter leaf cluster filling the cell
-      const leaves = [
-        ['#ff7a2a', x + CELL*0.28, y + CELL*0.55, CELL*0.26],
-        ['#ffc04a', x + CELL*0.62, y + CELL*0.38, CELL*0.24],
-        ['#d4391a', x + CELL*0.52, y + CELL*0.72, CELL*0.26],
-        ['#ffa83a', x + CELL*0.74, y + CELL*0.68, CELL*0.20],
-        ['#ffd96a', x + CELL*0.40, y + CELL*0.32, CELL*0.18],
-      ];
-      const sway = Math.sin(now*0.002 + r*0.5 + c*0.3) * 1.5;
-      for (const [col, cx, cy, sz] of leaves) {
+      // ═══════════════════════════════════════════════════════════════════
+      // SUMMER HEAT/MELT — Full journey animation
+      // Player sees: heat shimmer rises → brick visibly melts (sags) →
+      //              becomes molten scorch pool → cools to ash and clears.
+      // ═══════════════════════════════════════════════════════════════════
+      const elapsed = now - hz.startedAt;
+      const timeLeft = hz.expiresAt - now;
+      // Phases (ms):
+      //   0.0 – 1.2s  SHIMMER — heat waves rise from cell, faint glow
+      //   1.2 – 2.6s  MELTING — cell visibly sags/drips down, hot orange grows
+      //   2.6 – 4.2s  SCORCH  — fully molten pool, flames, embers float up
+      //   middle    LOCKED  — stays scorched/molten (placement blocked)
+      //   last 1.8s COOLING — fades to dark ash then clears
+      const SHIMMER_END = 1200;
+      const MELT_END    = 2600;
+      const SCORCH_END  = 4200;
+      const COOL_DUR    = 1800;
+      let phase, phaseT;
+      if (timeLeft <= COOL_DUR) { phase = 'cooling'; phaseT = 1 - (timeLeft / COOL_DUR); }
+      else if (elapsed < SHIMMER_END) { phase = 'shimmer'; phaseT = elapsed / SHIMMER_END; }
+      else if (elapsed < MELT_END) { phase = 'melting'; phaseT = (elapsed - SHIMMER_END) / (MELT_END - SHIMMER_END); }
+      else if (elapsed < SCORCH_END) { phase = 'scorch'; phaseT = (elapsed - MELT_END) / (SCORCH_END - MELT_END); }
+      else { phase = 'locked'; phaseT = 1; }
+      const phaseAlpha = (phase === 'cooling') ? (1 - phaseT * 0.85) : 1;
+      ctx.globalAlpha = phaseAlpha;
+
+      // PHASE 1 SHIMMER — heat waves rising from cell
+      if (phase === 'shimmer') {
         ctx.save();
-        ctx.translate(cx + sway, cy);
-        ctx.rotate(((cx + cy) % 6) - 3);
-        ctx.fillStyle = col;
-        ctx.strokeStyle = 'rgba(80,30,10,0.85)';
-        ctx.lineWidth = 1.2;
-        ctx.beginPath();
-        ctx.ellipse(0, 0, sz, sz * 0.62, 0, 0, Math.PI * 2);
-        ctx.fill(); ctx.stroke();
-        // vein
-        ctx.strokeStyle = 'rgba(60,25,5,0.85)';
-        ctx.lineWidth = 1.0;
-        ctx.beginPath(); ctx.moveTo(-sz*0.8, 0); ctx.lineTo(sz*0.8, 0); ctx.stroke();
+        ctx.globalAlpha = phaseAlpha * 0.5 * phaseT;
+        // faint orange floor glow
+        const sg = ctx.createRadialGradient(x + CELL/2, y + CELL, 2, x + CELL/2, y + CELL, CELL*0.7);
+        sg.addColorStop(0, 'rgba(255,180,60,0.7)');
+        sg.addColorStop(1, 'rgba(255,180,60,0)');
+        ctx.fillStyle = sg;
+        ctx.fillRect(x, y, CELL, CELL);
+        ctx.restore();
+        // 3 rising wavy heat lines
+        ctx.save();
+        ctx.globalAlpha = phaseAlpha * 0.7;
+        ctx.strokeStyle = 'rgba(255,210,140,0.85)';
+        ctx.lineWidth = 1.5;
+        for (let i = 0; i < 3; i++) {
+          const seed = (r * 3 + c * 5 + i * 7);
+          const cycle = (((elapsed + seed * 130) % 1100) / 1100);
+          const hx = x + CELL * (0.25 + i * 0.25);
+          const baseY = y + CELL * 0.95;
+          const topY  = y - CELL * 0.2;
+          const hy = baseY + (topY - baseY) * cycle;
+          ctx.beginPath();
+          ctx.moveTo(hx, hy);
+          ctx.bezierCurveTo(hx + 6, hy - 8, hx - 6, hy - 14, hx, hy - 20);
+          ctx.bezierCurveTo(hx + 5, hy - 28, hx - 5, hy - 34, hx, hy - 40);
+          ctx.stroke();
+        }
         ctx.restore();
       }
-      // crisp leaf emoji for instant icon read
-      ctx.fillStyle = 'rgba(255,255,255,0.95)';
-      ctx.font = 'bold ' + Math.floor(CELL*0.34) + 'px sans-serif';
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'middle';
-      ctx.fillText('🍂', x + CELL*0.78, y + CELL*0.22);
+
+      // PHASE 2 MELTING — brick sags/drips downward, heat builds
+      if (phase === 'melting' || phase === 'scorch' || phase === 'locked' || phase === 'cooling') {
+        // meltAmt: 0 at start of melt, 1 at full scorch
+        let meltAmt;
+        if (phase === 'melting') meltAmt = phaseT * 0.5;
+        else if (phase === 'scorch') meltAmt = 0.5 + phaseT * 0.5;
+        else meltAmt = 1;
+        // bottom-up molten fill that grows up the cell
+        ctx.save();
+        ctx.globalAlpha = phaseAlpha;
+        const moltenH = CELL * (0.35 + meltAmt * 0.65);
+        const moltenY = y + CELL - moltenH;
+        const pg = ctx.createLinearGradient(x, moltenY, x, y + CELL);
+        pg.addColorStop(0, 'rgba(255,241,160,0.95)');
+        pg.addColorStop(0.35, 'rgba(255,177,74,0.95)');
+        pg.addColorStop(0.75, 'rgba(216,67,26,0.95)');
+        pg.addColorStop(1, 'rgba(138,31,8,0.98)');
+        ctx.fillStyle = pg;
+        // wavy/dripping top edge — the molten surface bubbles
+        ctx.beginPath();
+        ctx.moveTo(x + 1, moltenY);
+        for (let px = 1; px <= CELL - 1; px += 4) {
+          const py = moltenY + Math.sin((px + c * 4) * 0.35 + now * 0.005) * 3 + Math.sin((px) * 0.18 + now * 0.003) * 2;
+          ctx.lineTo(x + px, py);
+        }
+        ctx.lineTo(x + CELL - 1, y + CELL - 1);
+        ctx.lineTo(x + 1, y + CELL - 1);
+        ctx.closePath();
+        ctx.fill();
+        ctx.restore();
+        // drips falling out of the bottom edge
+        if (phase === 'melting' || phase === 'scorch') {
+          ctx.save();
+          ctx.globalAlpha = phaseAlpha * 0.85;
+          ctx.fillStyle = 'rgba(255,150,40,0.9)';
+          for (let i = 0; i < 3; i++) {
+            const seed = (r * 11 + c * 17 + i * 23);
+            const dropCycle = (((now + seed * 50) % 800) / 800);
+            const dx = x + CELL * (0.2 + ((seed * 0.13) % 1) * 0.6);
+            const dy = y + CELL - 2 + dropCycle * CELL * 0.3;
+            const dsz = Math.max(2, CELL * 0.055);
+            ctx.beginPath();
+            ctx.moveTo(dx, dy - dsz);
+            ctx.bezierCurveTo(dx + dsz, dy - dsz*0.3, dx + dsz, dy + dsz, dx, dy + dsz);
+            ctx.bezierCurveTo(dx - dsz, dy + dsz, dx - dsz, dy - dsz*0.3, dx, dy - dsz);
+            ctx.fill();
+          }
+          ctx.restore();
+        }
+      }
+
+      // PHASE 3 SCORCH / LOCKED — fully molten pool, flame icon, glow halo
+      if (phase === 'scorch' || phase === 'locked' || phase === 'cooling') {
+        // hot-orange halo
+        ctx.save();
+        ctx.shadowColor = 'rgba(255,140,40,0.95)';
+        ctx.shadowBlur = 14;
+        ctx.globalAlpha = phaseAlpha * 0.55;
+        ctx.fillStyle = 'rgba(255,90,20,0.45)';
+        ctx.beginPath(); ctx.roundRect(x + 1, y + 1, CELL - 2, CELL - 2, 5); ctx.fill();
+        ctx.restore();
+        // wobbly inner molten surface line
+        ctx.save();
+        ctx.globalAlpha = phaseAlpha;
+        ctx.strokeStyle = 'rgba(255,230,150,0.95)';
+        ctx.lineWidth = 2;
+        const wob = Math.sin(now*0.004 + r + c) * 2;
+        ctx.beginPath();
+        ctx.ellipse(x + CELL/2, y + CELL*0.62 + wob, CELL*0.40, CELL*0.10, 0, 0, Math.PI*2);
+        ctx.stroke();
+        ctx.restore();
+        // floating embers rising out
+        ctx.save();
+        ctx.globalAlpha = phaseAlpha;
+        for (let i = 0; i < 4; i++) {
+          const seed = (r * 13 + c * 19 + i * 29);
+          const cycle = (((now + seed * 80) % 1200) / 1200);
+          const ex = x + CELL * (0.2 + ((seed * 0.17) % 1) * 0.6) + Math.sin(cycle * 4 + seed) * 3;
+          const ey = y + CELL - cycle * CELL * 1.3;
+          const eA = Math.min(1, (1 - cycle) * 2);
+          ctx.globalAlpha = phaseAlpha * eA * 0.9;
+          ctx.fillStyle = 'rgba(255,200,80,0.95)';
+          ctx.beginPath(); ctx.arc(ex, ey, Math.max(1.4, CELL * 0.045), 0, Math.PI * 2); ctx.fill();
+        }
+        ctx.restore();
+        // bright flame icon for instant read
+        ctx.save();
+        ctx.globalAlpha = phaseAlpha;
+        ctx.fillStyle = 'rgba(255,255,255,0.95)';
+        ctx.font = 'bold ' + Math.floor(CELL*0.38) + 'px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText('🔥', x + CELL*0.5, y + CELL*0.42);
+        ctx.restore();
+      }
+
+      // PHASE 4 COOLING — darken to ash overlay, fade out
+      if (phase === 'cooling') {
+        ctx.save();
+        ctx.globalAlpha = phaseT * 0.7;
+        const cg = ctx.createLinearGradient(x, y, x, y + CELL);
+        cg.addColorStop(0, 'rgba(50,30,20,0.8)');
+        cg.addColorStop(1, 'rgba(20,10,5,0.9)');
+        ctx.fillStyle = cg;
+        ctx.beginPath(); ctx.roundRect(x + 1, y + 1, CELL - 2, CELL - 2, 5); ctx.fill();
+        ctx.restore();
+      }
+    } else if (hz.type === 'leaves') {
+      // ═══════════════════════════════════════════════════════════════════
+      // AUTUMN LEAVES — Full journey animation
+      // Player sees: leaves drift down from top → pile up on cell →
+      //              full pile blocking placement → wind blows them off.
+      // ═══════════════════════════════════════════════════════════════════
+      const elapsed = now - hz.startedAt;
+      const timeLeft = hz.expiresAt - now;
+      const FALL_END  = 1500;
+      const PILE_END  = 3000;
+      const SETTLE_END= 4000;
+      const SWEEP_DUR = 1800;
+      let phase, phaseT;
+      if (timeLeft <= SWEEP_DUR) { phase = 'sweep'; phaseT = 1 - (timeLeft / SWEEP_DUR); }
+      else if (elapsed < FALL_END) { phase = 'falling'; phaseT = elapsed / FALL_END; }
+      else if (elapsed < PILE_END) { phase = 'piling'; phaseT = (elapsed - FALL_END) / (PILE_END - FALL_END); }
+      else if (elapsed < SETTLE_END) { phase = 'settling'; phaseT = (elapsed - PILE_END) / (SETTLE_END - PILE_END); }
+      else { phase = 'locked'; phaseT = 1; }
+      const phaseAlpha = (phase === 'sweep') ? (1 - phaseT) : 1;
+      ctx.globalAlpha = phaseAlpha;
+
+      // PHASE 1 FALLING — leaves drift in from above
+      if (phase === 'falling' || phase === 'piling') {
+        ctx.save();
+        ctx.globalAlpha = phaseAlpha;
+        const colours = ['#ff7a2a','#ffc04a','#d4391a','#ffa83a','#ffd96a'];
+        const fallCount = 4;
+        for (let i = 0; i < fallCount; i++) {
+          const seed = (r * 9 + c * 13 + i * 31);
+          const cycle = (((elapsed + seed * 110) % 1300) / 1300);
+          const targetY = y + CELL * (0.3 + ((seed * 0.13) % 1) * 0.55);
+          const startY  = y - CELL * 1.4;
+          const fy = startY + (targetY - startY) * cycle;
+          const fxBase = x + CELL * (0.15 + ((seed * 0.21) % 1) * 0.7);
+          const fx = fxBase + Math.sin(cycle * Math.PI * 3 + seed) * 8; // big sway
+          const sz = CELL * (0.13 + ((seed * 0.07) % 1) * 0.05);
+          const rot = cycle * Math.PI * 2 + seed;
+          const fa = Math.min(1, (1 - cycle) * 2.5);
+          ctx.save();
+          ctx.globalAlpha = phaseAlpha * fa;
+          ctx.translate(fx, fy);
+          ctx.rotate(rot);
+          ctx.fillStyle = colours[i % colours.length];
+          ctx.strokeStyle = 'rgba(80,30,10,0.85)';
+          ctx.lineWidth = 1.0;
+          ctx.beginPath();
+          ctx.ellipse(0, 0, sz, sz * 0.6, 0, 0, Math.PI * 2);
+          ctx.fill(); ctx.stroke();
+          // vein
+          ctx.strokeStyle = 'rgba(60,25,5,0.85)';
+          ctx.beginPath(); ctx.moveTo(-sz*0.85, 0); ctx.lineTo(sz*0.85, 0); ctx.stroke();
+          ctx.restore();
+        }
+        ctx.restore();
+      }
+
+      // PHASE 2 PILING — leaves accumulate from bottom up
+      if (phase === 'piling' || phase === 'settling' || phase === 'locked' || phase === 'sweep') {
+        let pileFrac;
+        if (phase === 'piling') pileFrac = phaseT * 0.7;
+        else if (phase === 'settling') pileFrac = 0.7 + phaseT * 0.3;
+        else pileFrac = 1;
+        // Backdrop — amber gradient grows from bottom
+        ctx.save();
+        ctx.globalAlpha = phaseAlpha;
+        const pileH = CELL * pileFrac;
+        const pileY = y + CELL - pileH;
+        const lg = ctx.createLinearGradient(x, pileY, x, y + CELL);
+        lg.addColorStop(0, 'rgba(255,140,60,0.85)');
+        lg.addColorStop(1, 'rgba(122,58,20,0.95)');
+        ctx.fillStyle = lg;
+        ctx.beginPath();
+        ctx.moveTo(x + 1, pileY + Math.sin(now * 0.001 + c) * 2);
+        for (let px = 1; px <= CELL - 1; px += 4) {
+          const py = pileY + Math.sin((px + c * 5) * 0.3 + now * 0.001) * 3;
+          ctx.lineTo(x + px, py);
+        }
+        ctx.lineTo(x + CELL - 1, y + CELL - 1);
+        ctx.lineTo(x + 1, y + CELL - 1);
+        ctx.closePath();
+        ctx.fill();
+        ctx.restore();
+      }
+
+      // PHASE 3 SETTLING + LOCKED — leaf cluster visible on top of pile
+      if (phase === 'settling' || phase === 'locked' || phase === 'sweep') {
+        let visAmt;
+        if (phase === 'settling') visAmt = phaseT;
+        else visAmt = 1;
+        ctx.save();
+        ctx.globalAlpha = phaseAlpha * visAmt;
+        // warm halo
+        ctx.shadowColor = 'rgba(212,87,28,0.85)';
+        ctx.shadowBlur = 12;
+        ctx.fillStyle = 'rgba(170,60,18,0.35)';
+        ctx.beginPath(); ctx.roundRect(x + 1, y + 1, CELL - 2, CELL - 2, 5); ctx.fill();
+        ctx.restore();
+        // orange rim
+        ctx.save();
+        ctx.globalAlpha = phaseAlpha * visAmt;
+        ctx.strokeStyle = '#e8a72a';
+        ctx.lineWidth = 2;
+        ctx.beginPath(); ctx.roundRect(x + 1.5, y + 1.5, CELL - 3, CELL - 3, 5); ctx.stroke();
+        ctx.restore();
+        // crisp leaf cluster on top
+        const leaves = [
+          ['#ff7a2a', x + CELL*0.28, y + CELL*0.55, CELL*0.22],
+          ['#ffc04a', x + CELL*0.62, y + CELL*0.38, CELL*0.20],
+          ['#d4391a', x + CELL*0.52, y + CELL*0.72, CELL*0.22],
+          ['#ffa83a', x + CELL*0.74, y + CELL*0.65, CELL*0.18],
+          ['#ffd96a', x + CELL*0.38, y + CELL*0.30, CELL*0.16],
+        ];
+        const sway = Math.sin(now*0.002 + r*0.5 + c*0.3) * 1.5;
+        ctx.save();
+        ctx.globalAlpha = phaseAlpha * visAmt;
+        for (const [col, cx2, cy2, sz] of leaves) {
+          ctx.save();
+          ctx.translate(cx2 + sway, cy2);
+          ctx.rotate(((cx2 + cy2) % 6) - 3);
+          ctx.fillStyle = col;
+          ctx.strokeStyle = 'rgba(80,30,10,0.85)';
+          ctx.lineWidth = 1.2;
+          ctx.beginPath();
+          ctx.ellipse(0, 0, sz, sz * 0.6, 0, 0, Math.PI * 2);
+          ctx.fill(); ctx.stroke();
+          ctx.strokeStyle = 'rgba(60,25,5,0.85)';
+          ctx.lineWidth = 1.0;
+          ctx.beginPath(); ctx.moveTo(-sz*0.8, 0); ctx.lineTo(sz*0.8, 0); ctx.stroke();
+          ctx.restore();
+        }
+        ctx.restore();
+      }
+
+      // PHASE 4 SWEEP — wind blows leaves off to the right, scattering away
+      if (phase === 'sweep') {
+        ctx.save();
+        ctx.globalAlpha = (1 - phaseT) * 1;
+        // remnants flying off to the right and fading
+        const flyDist = CELL * 2.2 * phaseT;
+        const colours = ['#ff7a2a','#ffc04a','#d4391a','#ffa83a','#ffd96a'];
+        for (let i = 0; i < 5; i++) {
+          const seed = (r * 7 + c * 13 + i * 19);
+          const sx2 = x + CELL * (0.3 + ((seed * 0.13) % 1) * 0.4) + flyDist;
+          const sy2 = y + CELL * (0.4 + ((seed * 0.17) % 1) * 0.3) + Math.sin(phaseT * 6 + seed) * 8;
+          const sz = CELL * (0.13 + ((seed * 0.05) % 1) * 0.04);
+          const rot = phaseT * 6 + seed;
+          ctx.save();
+          ctx.translate(sx2, sy2);
+          ctx.rotate(rot);
+          ctx.fillStyle = colours[i % colours.length];
+          ctx.beginPath();
+          ctx.ellipse(0, 0, sz, sz * 0.6, 0, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.restore();
+        }
+        ctx.restore();
+      }
+    } else if (hz.type === 'blossom') {
+      // ═══════════════════════════════════════════════════════════════════
+      // SPRING BLOSSOM — Full journey animation (FINITE event, ~6s total)
+      // Player sees: cherry blossoms drift down from top → settle on cell →
+      //              pile of petals (blocks placement briefly) → wind whisks them away.
+      // Blossoms grant +50 pts at settle.
+      // ═══════════════════════════════════════════════════════════════════
+      const elapsed = now - hz.startedAt;
+      const timeLeft = hz.expiresAt - now;
+      const DRIFT_END = 1500;
+      const LAND_END  = 2800;
+      const HOLD_END  = 4500;
+      const BLOW_DUR  = 1500;
+      let phase, phaseT;
+      if (timeLeft <= BLOW_DUR) { phase = 'blowing'; phaseT = 1 - (timeLeft / BLOW_DUR); }
+      else if (elapsed < DRIFT_END) { phase = 'drifting'; phaseT = elapsed / DRIFT_END; }
+      else if (elapsed < LAND_END) { phase = 'landing'; phaseT = (elapsed - DRIFT_END) / (LAND_END - DRIFT_END); }
+      else if (elapsed < HOLD_END) { phase = 'holding'; phaseT = (elapsed - LAND_END) / (HOLD_END - LAND_END); }
+      else { phase = 'locked'; phaseT = 1; }
+      const phaseAlpha = (phase === 'blowing') ? (1 - phaseT) : 1;
+      ctx.globalAlpha = phaseAlpha;
+
+      const petalCols = ['#ffafd0','#ffd0e0','#fff0f5','#ff95c2'];
+      const drawPetal = (px, py, sz, col, rot) => {
+        ctx.save();
+        ctx.translate(px, py);
+        ctx.rotate(rot);
+        ctx.fillStyle = col;
+        // simple 5-petal flower
+        for (let k = 0; k < 5; k++) {
+          const a = (k / 5) * Math.PI * 2;
+          const cxp = Math.cos(a) * sz * 0.55;
+          const cyp = Math.sin(a) * sz * 0.55;
+          ctx.beginPath();
+          ctx.ellipse(cxp, cyp, sz * 0.45, sz * 0.65, a + Math.PI/2, 0, Math.PI * 2);
+          ctx.fill();
+        }
+        // golden center
+        ctx.fillStyle = '#ffd76a';
+        ctx.beginPath(); ctx.arc(0, 0, sz * 0.25, 0, Math.PI * 2); ctx.fill();
+        ctx.restore();
+      };
+
+      // PHASE 1 DRIFTING — petals fall from above the cell, swaying
+      if (phase === 'drifting' || phase === 'landing') {
+        const driftCount = 5;
+        ctx.save();
+        ctx.globalAlpha = phaseAlpha;
+        for (let i = 0; i < driftCount; i++) {
+          const seed = (r * 7 + c * 11 + i * 17);
+          const cycle = (((elapsed + seed * 120) % 1400) / 1400);
+          const targetY = y + CELL * (0.3 + ((seed * 0.11) % 1) * 0.5);
+          const startY  = y - CELL * 1.4;
+          const fy = startY + (targetY - startY) * cycle;
+          const fxBase = x + CELL * (0.15 + ((seed * 0.19) % 1) * 0.7);
+          const fx = fxBase + Math.sin(cycle * Math.PI * 4 + seed) * 6;
+          const sz = CELL * (0.11 + ((seed * 0.07) % 1) * 0.04);
+          const rot = cycle * Math.PI * 2 + seed;
+          const fa = Math.min(1, (1 - cycle) * 2.5);
+          ctx.globalAlpha = phaseAlpha * fa;
+          drawPetal(fx, fy, sz, petalCols[i % petalCols.length], rot);
+        }
+        ctx.restore();
+      }
+
+      // PHASE 2/3 LANDED PILE — soft pink puff with blossoms on top
+      if (phase === 'landing' || phase === 'holding' || phase === 'locked' || phase === 'blowing') {
+        let visAmt;
+        if (phase === 'landing') visAmt = phaseT;
+        else visAmt = 1;
+        ctx.save();
+        ctx.globalAlpha = phaseAlpha * visAmt;
+        // pink halo
+        ctx.shadowColor = 'rgba(255,150,200,0.95)';
+        ctx.shadowBlur = 12;
+        ctx.fillStyle = 'rgba(255,180,215,0.55)';
+        ctx.beginPath(); ctx.roundRect(x + 1, y + 1, CELL - 2, CELL - 2, 7); ctx.fill();
+        ctx.restore();
+        // soft pink gradient pile
+        ctx.save();
+        ctx.globalAlpha = phaseAlpha * visAmt;
+        const pg = ctx.createLinearGradient(x, y, x, y + CELL);
+        pg.addColorStop(0, 'rgba(255,230,240,0.95)');
+        pg.addColorStop(1, 'rgba(255,170,205,0.9)');
+        ctx.fillStyle = pg;
+        ctx.beginPath(); ctx.roundRect(x + 2, y + 2, CELL - 4, CELL - 4, 7); ctx.fill();
+        // pink rim
+        ctx.strokeStyle = '#ff7aaf';
+        ctx.lineWidth = 2;
+        ctx.beginPath(); ctx.roundRect(x + 2.5, y + 2.5, CELL - 5, CELL - 5, 7); ctx.stroke();
+        ctx.restore();
+        // 4-5 blossoms clustered on top
+        const blossoms = [
+          [x + CELL*0.32, y + CELL*0.40, CELL*0.16, petalCols[0]],
+          [x + CELL*0.62, y + CELL*0.32, CELL*0.14, petalCols[1]],
+          [x + CELL*0.50, y + CELL*0.62, CELL*0.17, petalCols[3]],
+          [x + CELL*0.72, y + CELL*0.68, CELL*0.13, petalCols[2]],
+          [x + CELL*0.28, y + CELL*0.74, CELL*0.12, petalCols[1]],
+        ];
+        ctx.save();
+        ctx.globalAlpha = phaseAlpha * visAmt;
+        const sway = Math.sin(now*0.002 + r*0.5 + c*0.3) * 1.2;
+        for (const [bx, by, bsz, col] of blossoms) {
+          drawPetal(bx + sway, by, bsz, col, ((bx+by)%6)-3);
+        }
+        ctx.restore();
+      }
+
+      // PHASE 4 BLOWING AWAY — wind whisks petals off to the right
+      if (phase === 'blowing') {
+        ctx.save();
+        ctx.globalAlpha = (1 - phaseT);
+        const flyDist = CELL * 2.5 * phaseT;
+        for (let i = 0; i < 6; i++) {
+          const seed = (r * 5 + c * 9 + i * 17);
+          const sx2 = x + CELL * (0.3 + ((seed * 0.13) % 1) * 0.4) + flyDist;
+          const sy2 = y + CELL * (0.4 + ((seed * 0.17) % 1) * 0.3) + Math.sin(phaseT * 5 + seed) * 10;
+          const sz = CELL * (0.11 + ((seed * 0.05) % 1) * 0.04);
+          const rot = phaseT * 7 + seed;
+          drawPetal(sx2, sy2, sz, petalCols[i % petalCols.length], rot);
+        }
+        ctx.restore();
+      }
     }
     ctx.restore();
   }
@@ -18404,7 +18785,7 @@ function _gfSceneIsNight(t){return t<0.22||t>0.78;}
 //   particle  — extra weather particle layered on top of the existing one
 //   particleCount — how many of the seasonal particle to draw
 const GF_SEASON_PALETTES = {
-  spring: { tintMul:[1.00, 1.05, 1.00], nightMul:[1.05, 1.00, 1.05], particle:'pollen',     particleCount:60,  label:'SPRING'  },
+  spring: { tintMul:[1.00, 1.05, 1.00], nightMul:[1.05, 1.00, 1.05], particle:'pollen',     particleCount:14,  label:'SPRING'  },
   summer: { tintMul:[1.05, 1.00, 0.95], nightMul:[1.00, 1.00, 1.05], particle:'fireflies',  particleCount:35,  label:'SUMMER'  },
   autumn: { tintMul:[1.10, 0.92, 0.78], nightMul:[1.05, 0.95, 0.90], particle:'leaves',     particleCount:55,  label:'AUTUMN'  },
   winter: { tintMul:[0.92, 0.96, 1.10], nightMul:[0.92, 0.96, 1.10], particle:'snowflakes', particleCount:140, label:'WINTER'  },
