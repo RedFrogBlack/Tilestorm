@@ -9736,19 +9736,66 @@ function _mnDrawCityPrague(ctx, W, H, baseY, season, dayMix, night, ts, horiz) {
   }
   ctx.restore();
 
-  // Prague Castle silhouette to the left (low broad complex)
+  // Prague Castle complex on the hill to the left — multi-tier silhouette
   ctx.save();
-  ctx.fillStyle = `rgba(${60+dayMix*15},${50+dayMix*12},${65+dayMix*15},0.88)`;
-  ctx.fillRect(W*0.05, baseY - SH*0.50, W*0.30, SH*0.50);
-  // St Vitus Cathedral twin spires inside castle
-  for (const dx of [W*0.12, W*0.20]) {
-    ctx.fillRect(dx - 3, baseY - SH*0.75, 6, SH*0.25);
+  // Castle hill (mound under castle)
+  ctx.fillStyle = `rgba(${75+dayMix*20},${85+dayMix*18},${70+dayMix*15},0.75)`;
+  ctx.beginPath();
+  ctx.moveTo(0, baseY);
+  ctx.lineTo(0, baseY - SH*0.30);
+  ctx.quadraticCurveTo(W*0.18, baseY - SH*0.45, W*0.36, baseY - SH*0.32);
+  ctx.lineTo(W*0.36, baseY); ctx.closePath(); ctx.fill();
+  // Castle main wall (long ridge of buildings on top of hill)
+  ctx.fillStyle = `rgba(${95+dayMix*18},${82+dayMix*15},${80+dayMix*15},0.93)`;
+  ctx.fillRect(W*0.03, baseY - SH*0.55, W*0.34, SH*0.25);
+  // Crenellated upper edge
+  for (let i = 0; i < 18; i++) ctx.fillRect(W*0.03 + i*(W*0.34/18), baseY - SH*0.57, W*0.34/36, 4);
+  // Red-tile rooftops on top of castle wall
+  ctx.fillStyle = `rgba(${175+dayMix*15},${85+dayMix*10},${55+dayMix*5},0.92)`;
+  for (let i = 0; i < 6; i++) {
+    const rx = W*0.05 + i * W*0.055;
     ctx.beginPath();
-    ctx.moveTo(dx - 3, baseY - SH*0.75);
-    ctx.lineTo(dx,     baseY - SH*0.88);
-    ctx.lineTo(dx + 3, baseY - SH*0.75);
+    ctx.moveTo(rx, baseY - SH*0.55);
+    ctx.lineTo(rx + W*0.025, baseY - SH*0.62);
+    ctx.lineTo(rx + W*0.05, baseY - SH*0.55);
     ctx.closePath(); ctx.fill();
   }
+  // Castle towers (3 round bastions)
+  ctx.fillStyle = `rgba(${110+dayMix*18},${95+dayMix*15},${90+dayMix*15},0.95)`;
+  for (const fx of [0.08, 0.22, 0.33]) {
+    const tx = W * fx;
+    ctx.fillRect(tx - 5, baseY - SH*0.65, 10, SH*0.10);
+    // Conical red roof
+    ctx.fillStyle = `rgba(${180+dayMix*15},${85+dayMix*10},${50+dayMix*5},0.95)`;
+    ctx.beginPath();
+    ctx.moveTo(tx - 6, baseY - SH*0.65);
+    ctx.lineTo(tx, baseY - SH*0.75);
+    ctx.lineTo(tx + 6, baseY - SH*0.65);
+    ctx.closePath(); ctx.fill();
+    ctx.fillStyle = `rgba(${110+dayMix*18},${95+dayMix*15},${90+dayMix*15},0.95)`;
+  }
+  // St Vitus Cathedral — twin black-Gothic spires towering over castle (signature)
+  ctx.fillStyle = `rgba(${35+dayMix*12},${28+dayMix*10},${45+dayMix*12},0.96)`;
+  for (const dx of [W*0.15, W*0.20]) {
+    // Tower shaft
+    ctx.fillRect(dx - 4, baseY - SH*0.78, 8, SH*0.23);
+    // Pinnacle base
+    ctx.fillRect(dx - 6, baseY - SH*0.80, 12, 4);
+    // Tall spire
+    ctx.beginPath();
+    ctx.moveTo(dx - 5, baseY - SH*0.80);
+    ctx.lineTo(dx,     baseY - SH*1.00);
+    ctx.lineTo(dx + 5, baseY - SH*0.80);
+    ctx.closePath(); ctx.fill();
+    // Gold cross finial
+    ctx.fillStyle = 'rgba(220,180,90,0.95)';
+    ctx.fillRect(dx - 0.6, baseY - SH*1.03, 1.2, 4);
+    ctx.fillRect(dx - 2, baseY - SH*1.015, 4, 1.2);
+    ctx.fillStyle = `rgba(${35+dayMix*12},${28+dayMix*10},${45+dayMix*12},0.96)`;
+  }
+  // Cathedral central nave roof (between spires)
+  ctx.fillStyle = `rgba(${55+dayMix*15},${48+dayMix*12},${65+dayMix*15},0.93)`;
+  ctx.fillRect(W*0.15, baseY - SH*0.65, W*0.05, SH*0.13);
   ctx.restore();
 
   // Charles Bridge with stone arches across the Vltava
@@ -9882,9 +9929,31 @@ function _mnDrawCityCairo(ctx, W, H, baseY, season, dayMix, night, ts, horiz) {
   const SH = H * 0.55;
   _mnDrawGroundBand(ctx, W, H, baseY, 'sand', dayMix, horiz);
 
-  // Distant dune ridges
+  // Distant Cairo city skyline silhouette (modern Cairo — minarets + low blocks)
   ctx.save();
-  ctx.fillStyle = `rgba(${200+dayMix*15},${165+dayMix*10},${100+dayMix*5},0.6)`;
+  ctx.fillStyle = `rgba(${175+dayMix*20},${145+dayMix*15},${95+dayMix*10},0.55)`;
+  ctx.fillRect(0, baseY - SH*0.18, W, SH*0.18);
+  // Cluster of low buildings
+  ctx.fillStyle = `rgba(${155+dayMix*20},${125+dayMix*15},${80+dayMix*10},0.7)`;
+  const distBlocks = [
+    [0.02,0.04,0.10],[0.07,0.05,0.14],[0.13,0.06,0.18],[0.20,0.04,0.12],
+    [0.62,0.05,0.16],[0.68,0.06,0.20],[0.75,0.04,0.13],[0.81,0.05,0.17],[0.87,0.04,0.11],[0.92,0.06,0.18]
+  ];
+  for (const [fx, fw, fh] of distBlocks) {
+    ctx.fillRect(fx*W, baseY - fh*SH, fw*W, fh*SH);
+  }
+  // Cairo minarets (slender pencil towers — city of a thousand minarets)
+  ctx.fillStyle = `rgba(${135+dayMix*20},${110+dayMix*15},${75+dayMix*10},0.85)`;
+  const minarets = [0.09, 0.18, 0.70, 0.83, 0.91];
+  for (const fx of minarets) {
+    const mx = fx * W;
+    ctx.fillRect(mx - 1.5, baseY - SH*0.32, 3, SH*0.32);
+    // Top dome + spire
+    ctx.beginPath(); ctx.arc(mx, baseY - SH*0.32, 3, Math.PI, 0); ctx.fill();
+    ctx.fillRect(mx - 0.4, baseY - SH*0.38, 0.8, 4);
+  }
+  // Distant dune ridges in front of city
+  ctx.fillStyle = `rgba(${200+dayMix*15},${165+dayMix*10},${100+dayMix*5},0.7)`;
   ctx.beginPath();
   ctx.moveTo(0, baseY);
   for (let x = 0; x <= W; x += 16) ctx.lineTo(x, baseY - SH*0.08 - Math.sin(x*0.012)*8);
@@ -9929,22 +9998,47 @@ function _mnDrawCityCairo(ctx, W, H, baseY, season, dayMix, night, ts, horiz) {
   }
   ctx.restore();
 
-  // Sphinx in front of pyramids (low silhouette)
+  // Sphinx in front of pyramids — BIGGER, more iconic
   ctx.save();
-  ctx.fillStyle = `rgba(${200+dayMix*15},${160+dayMix*10},${85+dayMix*5},0.95)`;
-  const sphX = W * 0.32, sphY = baseY - SH * 0.10;
-  // Body (reclining)
+  // Sandstone base/body color
+  ctx.fillStyle = `rgba(${215+dayMix*15},${170+dayMix*12},${100+dayMix*8},0.97)`;
+  const sphX = W * 0.30, sphY = baseY - SH * 0.05;
+  const sphScale = SH * 0.02;
+  // Reclining body (longer)
   ctx.beginPath();
-  ctx.ellipse(sphX + 14, sphY + 4, 18, 7, 0, 0, Math.PI*2);
+  ctx.ellipse(sphX + sphScale*8, sphY + sphScale*2, sphScale*14, sphScale*4, 0, 0, Math.PI*2);
   ctx.fill();
-  // Head/headdress (trapezoidal)
+  // Front paws extending forward
+  ctx.fillRect(sphX + sphScale*16, sphY, sphScale*8, sphScale*4);
+  // Chest rising up
   ctx.beginPath();
-  ctx.moveTo(sphX - 5, sphY - 8);
-  ctx.lineTo(sphX + 4, sphY - 14);
-  ctx.lineTo(sphX + 8, sphY - 8);
-  ctx.lineTo(sphX + 6, sphY + 2);
-  ctx.lineTo(sphX - 7, sphY + 2);
+  ctx.moveTo(sphX + sphScale*5, sphY + sphScale*2);
+  ctx.lineTo(sphX + sphScale*3, sphY - sphScale*6);
+  ctx.lineTo(sphX - sphScale*1, sphY - sphScale*9);
+  ctx.lineTo(sphX - sphScale*2, sphY + sphScale*2);
   ctx.closePath(); ctx.fill();
+  // Nemes headdress (pharaoh's striped head cloth)
+  ctx.fillStyle = `rgba(${195+dayMix*15},${155+dayMix*12},${85+dayMix*8},0.97)`;
+  ctx.beginPath();
+  ctx.moveTo(sphX - sphScale*4, sphY - sphScale*8);
+  ctx.lineTo(sphX + sphScale*1, sphY - sphScale*16);
+  ctx.lineTo(sphX + sphScale*4, sphY - sphScale*14);
+  ctx.lineTo(sphX + sphScale*5, sphY - sphScale*6);
+  ctx.lineTo(sphX + sphScale*2, sphY - sphScale*4);
+  ctx.closePath(); ctx.fill();
+  // Headdress stripes
+  ctx.strokeStyle = `rgba(${145+dayMix*15},${110+dayMix*10},${65+dayMix*5},0.7)`;
+  ctx.lineWidth = 1;
+  for (let s = 0; s < 3; s++) {
+    const sy = sphY - sphScale*(14 - s*3);
+    ctx.beginPath();
+    ctx.moveTo(sphX - sphScale*3 + s*sphScale, sy);
+    ctx.lineTo(sphX + sphScale*4 - s*0.3*sphScale, sy + sphScale*0.5);
+    ctx.stroke();
+  }
+  // Face shadow
+  ctx.fillStyle = `rgba(${140+dayMix*15},${100+dayMix*10},${60+dayMix*5},0.45)`;
+  ctx.fillRect(sphX + sphScale*1, sphY - sphScale*9, sphScale*2.5, sphScale*4);
   ctx.restore();
 
   // Palm trees flanking
@@ -9996,53 +10090,120 @@ function _mnDrawCityBeijing(ctx, W, H, baseY, season, dayMix, night, ts, horiz) 
   ctx.lineTo(W, baseY); ctx.closePath(); ctx.fill();
   ctx.restore();
 
-  // Great Wall — winds along the near ridge with crenellations + 3 watchtowers
+  // GREAT WALL — broad stone wall on the near ridge, with thick body + crenellations + watchtowers
   ctx.save();
-  // Wall path along the ridge
-  ctx.strokeStyle = `rgba(${180+dayMix*15},${165+dayMix*10},${140+dayMix*5},0.95)`;
-  ctx.lineWidth = 8;
-  ctx.lineJoin = 'round';
-  ctx.beginPath();
+  // Wall path along the near-ridge crest (slightly above the ridgeline so it's visible)
   const wallPts = [
-    [0, baseY - SH*0.10],
-    [W*0.10, baseY - SH*0.25],
-    [W*0.22, baseY - SH*0.18],
-    [W*0.35, baseY - SH*0.35],
-    [W*0.50, baseY - SH*0.58],
-    [W*0.65, baseY - SH*0.42],
-    [W*0.78, baseY - SH*0.30],
-    [W*0.92, baseY - SH*0.23],
-    [W, baseY - SH*0.13],
+    [0,        baseY - SH*0.15],
+    [W*0.10,   baseY - SH*0.31],
+    [W*0.22,   baseY - SH*0.24],
+    [W*0.35,   baseY - SH*0.42],
+    [W*0.50,   baseY - SH*0.66],
+    [W*0.65,   baseY - SH*0.50],
+    [W*0.78,   baseY - SH*0.36],
+    [W*0.92,   baseY - SH*0.28],
+    [W,        baseY - SH*0.18],
   ];
+  // Wall body — thick sandstone band (filled polygon under the wall top, ~14px tall)
+  ctx.fillStyle = `rgba(${195+dayMix*15},${175+dayMix*10},${135+dayMix*5},0.96)`;
+  ctx.beginPath();
   ctx.moveTo(wallPts[0][0], wallPts[0][1]);
   for (let i = 1; i < wallPts.length; i++) ctx.lineTo(wallPts[i][0], wallPts[i][1]);
-  ctx.stroke();
-  // Crenellations on top of wall (small squares)
-  ctx.fillStyle = `rgba(${200+dayMix*15},${185+dayMix*10},${155+dayMix*5},0.95)`;
+  for (let i = wallPts.length - 1; i >= 0; i--) ctx.lineTo(wallPts[i][0], wallPts[i][1] + 14);
+  ctx.closePath(); ctx.fill();
+  // Dark shadow band at base of wall
+  ctx.fillStyle = `rgba(${135+dayMix*15},${110+dayMix*10},${75+dayMix*5},0.75)`;
+  ctx.beginPath();
+  ctx.moveTo(wallPts[0][0], wallPts[0][1] + 11);
+  for (let i = 1; i < wallPts.length; i++) ctx.lineTo(wallPts[i][0], wallPts[i][1] + 11);
+  for (let i = wallPts.length - 1; i >= 0; i--) ctx.lineTo(wallPts[i][0], wallPts[i][1] + 14);
+  ctx.closePath(); ctx.fill();
+  // Crenellations along the top edge
+  ctx.fillStyle = `rgba(${220+dayMix*15},${200+dayMix*10},${165+dayMix*5},0.97)`;
   for (let i = 0; i < wallPts.length - 1; i++) {
     const [x0, y0] = wallPts[i], [x1, y1] = wallPts[i+1];
-    const steps = 8;
+    const steps = 10;
     for (let s = 0; s < steps; s++) {
       const u = s / steps;
       const cx = x0 + (x1 - x0) * u, cy = y0 + (y1 - y0) * u;
-      ctx.fillRect(cx - 2, cy - 8, 3, 4);
+      ctx.fillRect(cx - 2, cy - 5, 3, 5);
     }
   }
   // Three watchtowers at peaks
-  ctx.fillStyle = `rgba(${160+dayMix*15},${130+dayMix*10},${95+dayMix*5},0.95)`;
-  const towers = [[W*0.22, baseY - SH*0.18], [W*0.50, baseY - SH*0.58], [W*0.78, baseY - SH*0.30]];
+  const towers = [[W*0.22, baseY - SH*0.24], [W*0.50, baseY - SH*0.66], [W*0.78, baseY - SH*0.36]];
   for (const [tx, ty] of towers) {
-    // Square base
-    ctx.fillRect(tx - 12, ty - 28, 24, 28);
-    // Crenellated top
-    for (let k = 0; k < 4; k++) ctx.fillRect(tx - 12 + k*7, ty - 32, 4, 4);
-    // Red roof (signature Chinese imperial)
-    ctx.fillStyle = `rgba(${190+dayMix*20},${50+dayMix*20},${50+dayMix*15},0.96)`;
+    // Square stone base
+    ctx.fillStyle = `rgba(${175+dayMix*15},${140+dayMix*10},${100+dayMix*5},0.96)`;
+    ctx.fillRect(tx - 14, ty - 32, 28, 32);
+    // Window slots
+    ctx.fillStyle = `rgba(${60+dayMix*15},${45+dayMix*10},${30+dayMix*5},0.8)`;
+    ctx.fillRect(tx - 10, ty - 22, 4, 8);
+    ctx.fillRect(tx + 6, ty - 22, 4, 8);
+    ctx.fillRect(tx - 2, ty - 22, 4, 8);
+    // Sandstone shaft top section
+    ctx.fillStyle = `rgba(${195+dayMix*15},${165+dayMix*10},${120+dayMix*5},0.96)`;
+    ctx.fillRect(tx - 16, ty - 36, 32, 6);
+    // Pagoda-style upturned eave roof (red imperial)
+    ctx.fillStyle = `rgba(${200+dayMix*20},${60+dayMix*20},${55+dayMix*15},0.97)`;
     ctx.beginPath();
-    ctx.moveTo(tx - 16, ty - 28);
-    ctx.quadraticCurveTo(tx, ty - 38, tx + 16, ty - 28);
+    ctx.moveTo(tx - 20, ty - 36);
+    ctx.quadraticCurveTo(tx - 14, ty - 46, tx, ty - 46);
+    ctx.quadraticCurveTo(tx + 14, ty - 46, tx + 20, ty - 36);
+    ctx.lineTo(tx + 16, ty - 36); ctx.lineTo(tx - 16, ty - 36);
     ctx.closePath(); ctx.fill();
-    ctx.fillStyle = `rgba(${160+dayMix*15},${130+dayMix*10},${95+dayMix*5},0.95)`;
+    // Roof ridge highlight
+    ctx.strokeStyle = `rgba(${240+dayMix*10},${180+dayMix*10},${80+dayMix*5},0.7)`;
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(tx - 18, ty - 38);
+    ctx.quadraticCurveTo(tx, ty - 47, tx + 18, ty - 38);
+    ctx.stroke();
+    // Gold finial on top
+    ctx.fillStyle = 'rgba(220,180,90,0.95)';
+    ctx.fillRect(tx - 0.8, ty - 52, 1.6, 6);
+  }
+  ctx.restore();
+
+  // FORBIDDEN CITY rooftops in the foreground (red tiered roofs on stone walls)
+  ctx.save();
+  // Stone podium wall across bottom
+  ctx.fillStyle = `rgba(${165+dayMix*15},${130+dayMix*10},${90+dayMix*5},0.92)`;
+  ctx.fillRect(0, baseY - SH*0.12, W*0.55, SH*0.12);
+  ctx.fillRect(W*0.62, baseY - SH*0.10, W*0.38, SH*0.10);
+  // Red curved-eave roofs (3 tiered halls)
+  const halls = [
+    { fx: 0.20, fw: 0.18, fh: 0.20 },
+    { fx: 0.42, fw: 0.14, fh: 0.16 },
+    { fx: 0.78, fw: 0.16, fh: 0.18 },
+  ];
+  for (const h of halls) {
+    const hx = h.fx * W, hw = h.fw * W, hh = h.fh * SH;
+    const hy = baseY - SH*0.12;
+    // Building body
+    ctx.fillStyle = `rgba(${200+dayMix*15},${85+dayMix*10},${60+dayMix*8},0.9)`;
+    ctx.fillRect(hx - hw/2, hy - hh*0.5, hw, hh*0.5);
+    // Red upturned-eave roof
+    ctx.fillStyle = `rgba(${190+dayMix*20},${55+dayMix*20},${55+dayMix*15},0.97)`;
+    ctx.beginPath();
+    ctx.moveTo(hx - hw/2 - 6, hy - hh*0.5);
+    ctx.quadraticCurveTo(hx - hw/2 - 4, hy - hh*0.55, hx - hw/2 + 4, hy - hh*0.5 - 4);
+    ctx.lineTo(hx, hy - hh);
+    ctx.lineTo(hx + hw/2 - 4, hy - hh*0.5 - 4);
+    ctx.quadraticCurveTo(hx + hw/2 + 4, hy - hh*0.55, hx + hw/2 + 6, hy - hh*0.5);
+    ctx.closePath(); ctx.fill();
+    // Roof ridge highlight (gold)
+    ctx.strokeStyle = `rgba(${245+dayMix*10},${190+dayMix*10},${85+dayMix*5},0.8)`;
+    ctx.lineWidth = 1.2;
+    ctx.beginPath();
+    ctx.moveTo(hx - hw/2 - 6, hy - hh*0.5);
+    ctx.quadraticCurveTo(hx, hy - hh - 2, hx + hw/2 + 6, hy - hh*0.5);
+    ctx.stroke();
+    // Columns (dark vertical)
+    ctx.fillStyle = `rgba(${120+dayMix*15},${50+dayMix*8},${45+dayMix*5},0.75)`;
+    for (let c = 0; c < 5; c++) {
+      const cx = hx - hw/2 + 4 + c * (hw - 8) / 4;
+      ctx.fillRect(cx, hy - hh*0.5 + 2, 1.4, hh*0.5 - 2);
+    }
   }
   ctx.restore();
 
@@ -10078,13 +10239,40 @@ function _mnDrawCityJaipur(ctx, W, H, baseY, season, dayMix, night, ts, horiz) {
   const SH = H * 0.55;
   _mnDrawGroundBand(ctx, W, H, baseY, 'sand', dayMix, horiz);
 
-  // Distant Aravalli hills
+  // Distant Aravalli hills (taller, more dramatic)
   ctx.save();
-  ctx.fillStyle = `rgba(${140+dayMix*20},${110+dayMix*15},${100+dayMix*10},0.55)`;
+  ctx.fillStyle = `rgba(${145+dayMix*20},${115+dayMix*15},${100+dayMix*10},0.62)`;
   ctx.beginPath();
   ctx.moveTo(0, baseY);
-  for (let x = 0; x <= W; x += 24) ctx.lineTo(x, baseY - SH*0.12 - Math.sin(x*0.014)*8 - Math.sin(x*0.005)*6);
+  for (let x = 0; x <= W; x += 18) ctx.lineTo(x, baseY - SH*0.22 - Math.sin(x*0.012)*14 - Math.sin(x*0.005)*8);
   ctx.lineTo(W, baseY); ctx.closePath(); ctx.fill();
+  // AMBER FORT silhouette on left hill (signature Jaipur landmark on a hilltop)
+  ctx.fillStyle = `rgba(${175+dayMix*20},${130+dayMix*15},${90+dayMix*10},0.85)`;
+  // Fort base on the highest hill
+  const afX = W * 0.18, afY = baseY - SH*0.30;
+  ctx.fillRect(afX - W*0.08, afY, W*0.16, SH*0.15);
+  // Crenellated wall extending down the hillside
+  ctx.fillRect(afX - W*0.13, afY + SH*0.05, W*0.05, SH*0.04);
+  ctx.fillRect(afX + W*0.08, afY + SH*0.06, W*0.04, SH*0.03);
+  // Fort towers (corner bastions)
+  for (const dx of [-W*0.07, W*0.07]) {
+    ctx.fillRect(afX + dx - 4, afY - 6, 8, SH*0.18);
+    // Dome on top
+    ctx.beginPath();
+    ctx.arc(afX + dx, afY - 6, 5, Math.PI, 0);
+    ctx.fill();
+    ctx.fillRect(afX + dx - 0.5, afY - 14, 1, 4);
+  }
+  // Crenellations along main wall top
+  for (let k = 0; k < 12; k++) {
+    ctx.fillRect(afX - W*0.08 + k * W*0.016, afY - 3, W*0.005, 4);
+  }
+  // Central palace dome (Diwan-i-Aam style)
+  ctx.fillStyle = `rgba(${195+dayMix*15},${150+dayMix*12},${100+dayMix*8},0.92)`;
+  ctx.beginPath();
+  ctx.arc(afX, afY - 4, 8, Math.PI, 0);
+  ctx.fill();
+  ctx.fillRect(afX - 0.8, afY - 16, 1.6, 4);
   ctx.restore();
 
   // City wall in distance (Pink City rampart)
@@ -10150,18 +10338,38 @@ function _mnDrawCityJaipur(ctx, W, H, baseY, season, dayMix, night, ts, horiz) {
   ctx.fillRect(ccx - 0.8, ccy - 26, 1.6, 6);
   ctx.restore();
 
-  // Side buildings (low pink)
+  // Side buildings (low pink) — with chhatris and balconies
   ctx.save();
-  ctx.fillStyle = `rgba(${225+dayMix*15},${140+dayMix*10},${140+dayMix*8},0.90)`;
-  for (let i = 0; i < 3; i++) {
-    const bx = W * (0.05 + i * 0.05);
-    const bh = SH * (0.30 - i * 0.04);
-    ctx.fillRect(bx, baseY - bh, W * 0.04, bh);
-  }
-  for (let i = 0; i < 3; i++) {
-    const bx = W * (0.85 + i * 0.05);
-    const bh = SH * (0.30 - i * 0.04);
-    ctx.fillRect(bx, baseY - bh, W * 0.04, bh);
+  for (let side = 0; side < 2; side++) {
+    const startX = side === 0 ? 0.04 : 0.83;
+    for (let i = 0; i < 4; i++) {
+      const bx = W * (startX + i * 0.05);
+      const bh = SH * (0.32 - i * 0.03);
+      // Building body — pink sandstone
+      ctx.fillStyle = `rgba(${225+dayMix*15},${140+dayMix*10},${140+dayMix*8},0.92)`;
+      ctx.fillRect(bx, baseY - bh, W * 0.045, bh);
+      // Arched windows (jharokhas)
+      ctx.fillStyle = `rgba(${135+dayMix*15},${65+dayMix*10},${70+dayMix*8},0.78)`;
+      for (let r = 0; r < 3; r++) {
+        const wy = baseY - bh + SH*0.04 + r * SH*0.08;
+        if (wy < baseY - 4) {
+          ctx.beginPath();
+          ctx.arc(bx + W*0.022, wy, W*0.012, Math.PI, 0);
+          ctx.fillRect(bx + W*0.01, wy, W*0.024, 4);
+          ctx.fill();
+        }
+      }
+      // Small chhatri (domed roof pavilion) on top of every other building
+      if (i % 2 === 0) {
+        ctx.fillStyle = `rgba(${245+dayMix*10},${230+dayMix*8},${220+dayMix*5},0.95)`;
+        ctx.fillRect(bx + W*0.014, baseY - bh - 8, 1.2, 8);
+        ctx.fillRect(bx + W*0.030, baseY - bh - 8, 1.2, 8);
+        ctx.beginPath();
+        ctx.arc(bx + W*0.0225, baseY - bh - 8, 5, Math.PI, 0);
+        ctx.fill();
+        ctx.fillRect(bx + W*0.022, baseY - bh - 14, 1.4, 4);
+      }
+    }
   }
   ctx.restore();
 }
@@ -10232,6 +10440,67 @@ function _mnDrawCityRio(ctx, W, H, baseY, season, dayMix, night, ts, horiz) {
   ctx.quadraticCurveTo(slX - W*0.10, slBase - SH*0.55, slX, slBase - SH*0.55);
   ctx.quadraticCurveTo(slX + W*0.10, slBase - SH*0.55, slX + W*0.10, slBase);
   ctx.closePath(); ctx.fill();
+  // Cable car line from Sugarloaf to smaller hill
+  ctx.strokeStyle = `rgba(40,40,40,0.55)`;
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(slX - W*0.05, slBase - SH*0.50);
+  ctx.lineTo(slX - W*0.20, slBase - SH*0.20);
+  ctx.stroke();
+  ctx.restore();
+
+  // COPACABANA / IPANEMA apartment skyline along the beach — dense white-ish high-rises
+  ctx.save();
+  // Beach — pale sand band right above the ocean
+  ctx.fillStyle = `rgba(${235+dayMix*15},${210+dayMix*10},${165+dayMix*5},0.92)`;
+  ctx.fillRect(0, baseY - 5, W, 5);
+  // Row of varied apartment blocks across the shore
+  const apts = [
+    [0.02,0.05,0.18],[0.07,0.04,0.22],[0.11,0.05,0.16],[0.16,0.04,0.20],[0.20,0.03,0.14],
+    [0.24,0.05,0.24],[0.29,0.04,0.18],[0.33,0.05,0.21],[0.38,0.03,0.15],[0.41,0.04,0.19],
+    [0.55,0.05,0.20],[0.60,0.04,0.16],[0.64,0.05,0.24],[0.69,0.03,0.17],[0.72,0.04,0.21],
+    [0.94,0.04,0.15],[0.98,0.02,0.10]
+  ];
+  for (const [fx, fw, fh] of apts) {
+    const ax = fx*W, aw = fw*W, ah = fh*SH;
+    // Building body — cream/white
+    ctx.fillStyle = `rgba(${230+dayMix*15},${215+dayMix*10},${190+dayMix*8},0.92)`;
+    ctx.fillRect(ax, baseY - 5 - ah, aw, ah);
+    // Window grid
+    ctx.fillStyle = `rgba(${110+dayMix*30},${130+dayMix*30},${150+dayMix*25},0.55)`;
+    const cols = Math.max(2, Math.floor(aw / 4));
+    const rows = Math.max(3, Math.floor(ah / 5));
+    for (let r = 0; r < rows; r++) {
+      for (let c = 0; c < cols; c++) {
+        if (((r * 7 + c * 3) % 5) !== 0) {
+          ctx.fillRect(ax + 1 + c * (aw/cols), baseY - 5 - ah + 1.5 + r * (ah/rows), Math.max(1, aw/cols - 1), Math.max(1, ah/rows - 1));
+        }
+      }
+    }
+    // Roof line shadow
+    ctx.fillStyle = `rgba(${170+dayMix*15},${155+dayMix*10},${135+dayMix*5},0.6)`;
+    ctx.fillRect(ax, baseY - 5 - ah, aw, 1.5);
+  }
+  // Palm trees on the beach
+  ctx.strokeStyle = `rgba(${45+dayMix*15},${30+dayMix*10},${20+dayMix*5},0.95)`;
+  ctx.lineWidth = 2;
+  for (const fx of [0.18, 0.30, 0.50, 0.92]) {
+    const px = fx * W, py = baseY;
+    ctx.beginPath();
+    ctx.moveTo(px, py); ctx.quadraticCurveTo(px - 2, py - SH*0.10, px - 1, py - SH*0.18);
+    ctx.stroke();
+    ctx.strokeStyle = `rgba(${55+dayMix*40},${135+dayMix*40},${55+dayMix*20},0.95)`;
+    for (let f = 0; f < 5; f++) {
+      const ang = -Math.PI/2 + (f - 2) * 0.55;
+      ctx.beginPath();
+      ctx.moveTo(px - 1, py - SH*0.18);
+      ctx.quadraticCurveTo(px - 1 + Math.cos(ang)*7, py - SH*0.18 + Math.sin(ang)*6,
+                            px - 1 + Math.cos(ang)*13, py - SH*0.18 + Math.sin(ang)*12);
+      ctx.lineWidth = 1.8;
+      ctx.stroke();
+    }
+    ctx.strokeStyle = `rgba(${45+dayMix*15},${30+dayMix*10},${20+dayMix*5},0.95)`;
+  }
   ctx.restore();
 
   // Copacabana waves (bottom) — wave shimmer
@@ -10255,9 +10524,30 @@ function _mnDrawCityReykjavik(ctx, W, H, baseY, season, dayMix, night, ts, horiz
   const SH = H * 0.55;
   _mnDrawGroundBand(ctx, W, H, baseY, 'snow', dayMix, horiz);
 
-  // Distant snow-capped mountains
+  // Distant snow-capped mountains — darker fjord backdrop for contrast
   ctx.save();
-  ctx.fillStyle = `rgba(${180+dayMix*20},${190+dayMix*15},${210+dayMix*10},0.75)`;
+  // FAR range — pale blue-grey
+  ctx.fillStyle = `rgba(${150+dayMix*25},${165+dayMix*20},${190+dayMix*15},0.80)`;
+  ctx.beginPath();
+  ctx.moveTo(0, baseY);
+  const farPks = [[0,0.18],[0.18,0.42],[0.35,0.32],[0.55,0.50],[0.75,0.38],[0.92,0.46],[1.0,0.30]];
+  for (const [fx, fh] of farPks) ctx.lineTo(fx*W, baseY - fh*SH);
+  ctx.lineTo(W, baseY); ctx.closePath(); ctx.fill();
+  // Snow caps on far peaks
+  ctx.fillStyle = `rgba(${250+dayMix*5},${252+dayMix*3},${255},0.92)`;
+  for (let i = 1; i < farPks.length - 1; i++) {
+    const [fx, fh] = farPks[i];
+    if (fh > 0.32) {
+      const px = fx * W, py = baseY - fh * SH;
+      ctx.beginPath();
+      ctx.moveTo(px - 22, py + 14);
+      ctx.lineTo(px, py);
+      ctx.lineTo(px + 22, py + 14);
+      ctx.closePath(); ctx.fill();
+    }
+  }
+  // NEAR range — darker stronger silhouette
+  ctx.fillStyle = `rgba(${85+dayMix*30},${100+dayMix*25},${125+dayMix*20},0.92)`;
   ctx.beginPath();
   ctx.moveTo(0, baseY);
   const peaks = [[0,0.12],[0.15,0.32],[0.30,0.20],[0.45,0.40],[0.60,0.28],[0.78,0.36],[0.92,0.22],[1.0,0.15]];
@@ -10354,26 +10644,47 @@ function _mnDrawCityMarrakech(ctx, W, H, baseY, season, dayMix, night, ts, horiz
   const SH = H * 0.55;
   _mnDrawGroundBand(ctx, W, H, baseY, 'sand', dayMix, horiz);
 
-  // Distant Atlas mountains
+  // ATLAS MOUNTAINS — dramatic snow-capped range (signature backdrop)
   ctx.save();
-  ctx.fillStyle = `rgba(${130+dayMix*25},${100+dayMix*20},${85+dayMix*15},0.6)`;
+  // Far range — pale dusty pink-purple haze
+  ctx.fillStyle = `rgba(${175+dayMix*20},${140+dayMix*15},${130+dayMix*10},0.65)`;
   ctx.beginPath();
   ctx.moveTo(0, baseY);
-  const pks = [[0,0.10],[0.18,0.28],[0.34,0.18],[0.52,0.38],[0.68,0.22],[0.85,0.32],[1.0,0.18]];
+  const farAtlas = [[0,0.18],[0.20,0.36],[0.42,0.28],[0.60,0.42],[0.80,0.30],[1.0,0.22]];
+  for (const [fx, fh] of farAtlas) ctx.lineTo(fx*W, baseY - fh*SH);
+  ctx.lineTo(W, baseY); ctx.closePath(); ctx.fill();
+  // NEAR Atlas range — deep red-brown silhouette, taller jagged peaks
+  ctx.fillStyle = `rgba(${120+dayMix*25},${85+dayMix*20},${70+dayMix*15},0.92)`;
+  ctx.beginPath();
+  ctx.moveTo(0, baseY);
+  const pks = [[0,0.18],[0.10,0.32],[0.20,0.40],[0.30,0.28],[0.40,0.50],[0.52,0.62],[0.62,0.45],[0.72,0.55],[0.82,0.38],[0.92,0.46],[1.0,0.30]];
   for (const [fx, fh] of pks) ctx.lineTo(fx*W, baseY - fh*SH);
   ctx.lineTo(W, baseY); ctx.closePath(); ctx.fill();
-  // Snow on Atlas (winter visible)
-  ctx.fillStyle = `rgba(${240+dayMix*10},${245+dayMix*8},${250},0.65)`;
+  // Snow caps on Atlas peaks (always-present — Atlas is snowy most of the year)
+  ctx.fillStyle = `rgba(${245+dayMix*10},${248+dayMix*7},${252},0.92)`;
   for (let i = 1; i < pks.length - 1; i++) {
     const [fx, fh] = pks[i];
-    if (fh > 0.25) {
+    if (fh > 0.35) {
       const px = fx * W, py = baseY - fh * SH;
       ctx.beginPath();
-      ctx.moveTo(px - 14, py + 10);
+      ctx.moveTo(px - 18, py + 14);
+      ctx.lineTo(px - 6, py + 4);
       ctx.lineTo(px, py);
-      ctx.lineTo(px + 14, py + 10);
+      ctx.lineTo(px + 6, py + 4);
+      ctx.lineTo(px + 18, py + 14);
       ctx.closePath(); ctx.fill();
     }
+  }
+  // Ridge shadow lines (dark vertical streaks for rocky texture)
+  ctx.strokeStyle = `rgba(${75+dayMix*20},${50+dayMix*15},${40+dayMix*10},0.45)`;
+  ctx.lineWidth = 1;
+  for (let i = 1; i < pks.length - 1; i++) {
+    const [fx, fh] = pks[i];
+    const px = fx * W, py = baseY - fh * SH;
+    ctx.beginPath();
+    ctx.moveTo(px, py + 4);
+    ctx.lineTo(px + 3, baseY - SH*0.10);
+    ctx.stroke();
   }
   ctx.restore();
 
@@ -10451,24 +10762,76 @@ function _mnDrawCitySydney(ctx, W, H, baseY, season, dayMix, night, ts, horiz) {
   const SH = H * 0.55;
   _mnDrawGroundBand(ctx, W, H, baseY, 'harbour', dayMix, horiz);
 
-  // Distant city CBD skyline (right side, modern towers)
+  // Distant city CBD skyline (right side, modern towers with varied silhouettes)
   ctx.save();
-  ctx.fillStyle = `rgba(${50+dayMix*30},${60+dayMix*30},${75+dayMix*25},0.85)`;
-  const cbdBuildings = [
-    { fx: 0.62, fw: 0.04, fh: 0.30 },
-    { fx: 0.67, fw: 0.05, fh: 0.42 },
-    { fx: 0.73, fw: 0.04, fh: 0.35 },
-    { fx: 0.78, fw: 0.05, fh: 0.55 },  // Centrepoint Tower area (tallest)
-    { fx: 0.84, fw: 0.04, fh: 0.40 },
-    { fx: 0.89, fw: 0.05, fh: 0.32 },
-    { fx: 0.95, fw: 0.04, fh: 0.28 },
-  ];
-  for (const b of cbdBuildings) ctx.fillRect(b.fx * W, baseY - b.fh * SH, b.fw * W, b.fh * SH);
-  // Centrepoint Tower needle (signature)
-  ctx.fillRect(W*0.80, baseY - SH*0.78, 3, SH*0.23);
+  // Three layers for depth
+  // FAR layer — pale haze
+  ctx.fillStyle = `rgba(${110+dayMix*30},${120+dayMix*30},${145+dayMix*25},0.55)`;
+  const farTowers = [[0.60,0.04,0.25],[0.65,0.05,0.32],[0.72,0.04,0.28],[0.79,0.04,0.38],[0.86,0.05,0.30],[0.93,0.04,0.24]];
+  for (const [fx, fw, fh] of farTowers) ctx.fillRect(fx*W, baseY - fh*SH, fw*W, fh*SH);
+  // NEAR layer — darker, taller, with varied tops (cylindrical, sloped, flat, stepped)
+  ctx.fillStyle = `rgba(${55+dayMix*25},${65+dayMix*25},${85+dayMix*20},0.92)`;
+  // Tower 1 — wide flat-top mid-rise
+  ctx.fillRect(W*0.58, baseY - SH*0.34, W*0.05, SH*0.34);
+  // Tower 2 — stepped-top high-rise
+  ctx.fillRect(W*0.64, baseY - SH*0.48, W*0.05, SH*0.48);
+  ctx.fillRect(W*0.64 + W*0.01, baseY - SH*0.55, W*0.03, SH*0.07);
+  // Tower 3 — sloped roof (chevron)
+  ctx.fillRect(W*0.70, baseY - SH*0.42, W*0.05, SH*0.42);
   ctx.beginPath();
-  ctx.arc(W*0.8 + 1.5, baseY - SH*0.79, 5, 0, Math.PI*2);
+  ctx.moveTo(W*0.70, baseY - SH*0.42);
+  ctx.lineTo(W*0.7 + W*0.025, baseY - SH*0.48);
+  ctx.lineTo(W*0.75, baseY - SH*0.42);
+  ctx.closePath(); ctx.fill();
+  // Tower 4 — GOVERNOR PHILLIP / DEUTSCHE BANK PLACE crown spire tower
+  ctx.fillRect(W*0.76, baseY - SH*0.62, W*0.06, SH*0.62);
+  // 4 spires on crown
+  for (let k = 0; k < 4; k++) {
+    ctx.fillRect(W*0.765 + k * W*0.015, baseY - SH*0.70, 1.5, SH*0.08);
+  }
+  // CENTREPOINT / Sydney Tower (tallest, signature) — cylindrical needle with bulb
+  // Base shaft
+  ctx.fillRect(W*0.84, baseY - SH*0.55, W*0.025, SH*0.55);
+  // Concrete column up
+  ctx.fillRect(W*0.847, baseY - SH*0.85, W*0.012, SH*0.30);
+  // Golden turret (signature)
+  ctx.fillStyle = `rgba(${220+dayMix*15},${175+dayMix*12},${85+dayMix*8},0.95)`;
+  ctx.beginPath();
+  ctx.ellipse(W*0.853, baseY - SH*0.85, 7, 5, 0, 0, Math.PI*2);
   ctx.fill();
+  // Antenna spire on top
+  ctx.fillStyle = `rgba(${55+dayMix*25},${65+dayMix*25},${85+dayMix*20},0.92)`;
+  ctx.fillRect(W*0.851, baseY - SH*0.98, 2, SH*0.10);
+  // Tower 6 — modern with diagonal facade
+  ctx.fillRect(W*0.88, baseY - SH*0.40, W*0.05, SH*0.40);
+  ctx.beginPath();
+  ctx.moveTo(W*0.88, baseY - SH*0.40);
+  ctx.lineTo(W*0.93, baseY - SH*0.46);
+  ctx.lineTo(W*0.93, baseY - SH*0.40);
+  ctx.closePath(); ctx.fill();
+  // Tower 7 — short modern
+  ctx.fillRect(W*0.94, baseY - SH*0.32, W*0.05, SH*0.32);
+  // Window grids on all near towers — night-on warm dots
+  ctx.fillStyle = `rgba(${180+dayMix*40},${200+dayMix*30},${220+dayMix*20},0.45)`;
+  const towerWindowZones = [
+    [W*0.58, baseY - SH*0.34, W*0.05, SH*0.34],
+    [W*0.64, baseY - SH*0.48, W*0.05, SH*0.48],
+    [W*0.70, baseY - SH*0.42, W*0.05, SH*0.42],
+    [W*0.76, baseY - SH*0.62, W*0.06, SH*0.62],
+    [W*0.88, baseY - SH*0.40, W*0.05, SH*0.40],
+    [W*0.94, baseY - SH*0.32, W*0.05, SH*0.32],
+  ];
+  for (const [tx, ty, tw, th] of towerWindowZones) {
+    const cols = Math.max(2, Math.floor(tw / 4));
+    const rows = Math.max(4, Math.floor(th / 6));
+    for (let r = 0; r < rows; r++) {
+      for (let c = 0; c < cols; c++) {
+        if (((r * 5 + c * 3) % 4) !== 0) {
+          ctx.fillRect(tx + 1.5 + c * (tw/cols), ty + 2 + r * (th/rows), Math.max(1, tw/cols - 1.5), Math.max(1, th/rows - 2));
+        }
+      }
+    }
+  }
   ctx.restore();
 
   // HARBOUR BRIDGE — iconic steel arch (centre-left)
