@@ -18785,7 +18785,7 @@ function _gfSceneIsNight(t){return t<0.22||t>0.78;}
 //   particle  — extra weather particle layered on top of the existing one
 //   particleCount — how many of the seasonal particle to draw
 const GF_SEASON_PALETTES = {
-  spring: { tintMul:[1.00, 1.05, 1.00], nightMul:[1.05, 1.00, 1.05], particle:'pollen',     particleCount:14,  label:'SPRING'  },
+  spring: { tintMul:[1.00, 1.05, 1.00], nightMul:[1.05, 1.00, 1.05], particle:null,        particleCount:0,   label:'SPRING'  },
   summer: { tintMul:[1.05, 1.00, 0.95], nightMul:[1.00, 1.00, 1.05], particle:'fireflies',  particleCount:35,  label:'SUMMER'  },
   autumn: { tintMul:[1.10, 0.92, 0.78], nightMul:[1.05, 0.95, 0.90], particle:'leaves',     particleCount:55,  label:'AUTUMN'  },
   winter: { tintMul:[0.92, 0.96, 1.10], nightMul:[0.92, 0.96, 1.10], particle:'snowflakes', particleCount:140, label:'WINTER'  },
