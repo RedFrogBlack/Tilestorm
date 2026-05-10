@@ -5873,91 +5873,51 @@
     flex-shrink:0;
   }
 
-  /* ═════ CITY MONUMENTS — warm sunset bg + candy HUD ═════ */
+  /* ═════ CITY MONUMENTS — painted scene bg + animated traffic + candy HUD ═════ */
   #monuments-bg {
     position: fixed; inset: 0;
     z-index: 0; pointer-events: none;
     overflow: hidden;
     display: none;
+    background: #F4A35A; /* fallback warm tone before image loads */
   }
-  #monuments-bg .mn-sky {
+  #monuments-bg .mn-scene {
     position: absolute; inset: 0;
-    background: linear-gradient(180deg,
-      #FFD480 0%,        /* warm gold high sky */
-      #FFB36B 35%,       /* peachy orange */
-      #FF8E64 70%,       /* coral */
-      #FFAA70 100%);     /* horizon haze */
+    background-image: url('assets/monuments/london.png');
+    background-size: cover;
+    background-position: center top;
+    background-repeat: no-repeat;
   }
-  #monuments-bg .mn-sun {
+  /* Subtle warm tint over the scene to anchor with the play board */
+  #monuments-bg .mn-tint {
+    position: absolute; inset: 0;
+    background: linear-gradient(180deg, rgba(255,180,90,0) 0%, rgba(255,180,90,0) 55%, rgba(40,18,12,0.18) 100%);
+  }
+  /* Animated extra traffic — sliding small vehicles across the plaza road area.
+     The painted scene already has a parked bus + taxi; these moving sprites
+     travel along the lower road strip to keep the scene alive. */
+  #monuments-bg .mn-traffic {
     position: absolute;
-    width: 110px; height: 110px;
-    right: 14%; top: 22%;
-    border-radius: 50%;
-    background: radial-gradient(circle, #FFF0B0 0%, #FFD060 60%, rgba(255,200,80,0) 100%);
-    box-shadow: 0 0 80px 30px rgba(255,220,140,0.55);
-    animation: mnSunPulse 6s ease-in-out infinite;
-  }
-  @keyframes mnSunPulse { 0%,100% { transform: scale(1); opacity: 0.95; } 50% { transform: scale(1.06); opacity: 1; } }
-  #monuments-bg .mn-cloud {
-    position: absolute;
-    height: 36px;
-    background: rgba(255,235,210,0.55);
-    border-radius: 30px;
-    box-shadow: 18px 0 0 -2px rgba(255,235,210,0.55), -22px 4px 0 -3px rgba(255,235,210,0.55), 30px 6px 0 -4px rgba(255,235,210,0.55);
-    filter: blur(0.5px);
-  }
-  #monuments-bg .mn-cloud1 { width: 90px; top: 14%; left: -120px; animation: mnDrift 70s linear infinite; }
-  #monuments-bg .mn-cloud2 { width: 70px; top: 28%; left: -200px; animation: mnDrift 95s linear infinite 12s; opacity: 0.8; }
-  @keyframes mnDrift { from { transform: translateX(0); } to { transform: translateX(120vw); } }
-
-  /* Distant skyline silhouette (London) drawn as layered shapes */
-  #monuments-bg .mn-skyline {
-    position: absolute; left: 0; right: 0;
-    bottom: 14%;
-    height: 18%;
-    background:
-      /* Shard (triangle) */
-      linear-gradient(135deg, transparent 49.5%, rgba(180,60,50,0.78) 50%, transparent 50.5%) 8% 100%/40px 100% no-repeat,
-      /* Gherkin (oval-ish) */
-      radial-gradient(ellipse 22px 65px at 22% 95%, rgba(160,55,45,0.78) 60%, transparent 62%),
-      /* Dome */
-      radial-gradient(ellipse 28px 22px at 38% 88%, rgba(170,60,48,0.80) 60%, transparent 62%),
-      /* Big Ben distant */
-      linear-gradient(180deg, transparent 0, transparent 50%, rgba(170,60,48,0.78) 50%) 48% 100%/14px 70% no-repeat,
-      /* Generic blocks */
-      linear-gradient(180deg, transparent 0, transparent 60%, rgba(150,50,40,0.78) 60%) 0 100%/100% 100%;
-    background-repeat: no-repeat, no-repeat, no-repeat, no-repeat, repeat-x;
-  }
-
-  /* Road band */
-  #monuments-bg .mn-road {
-    position: absolute; left: 0; right: 0;
-    bottom: 10%;
-    height: 4%;
-    background: linear-gradient(180deg, rgba(50,30,30,0.55), rgba(30,18,18,0.75));
-    border-top: 1px solid rgba(255,200,150,0.25);
-    border-bottom: 1px solid rgba(255,200,150,0.25);
-  }
-
-  /* Animated vehicles */
-  #monuments-bg .mn-bus, #monuments-bg .mn-taxi {
-    position: absolute;
-    bottom: 11.2%;
-    font-size: 32px;
+    /* Position over the road area in the painting (~ 60% down) */
+    top: 58%;
+    font-size: 22px;
     line-height: 1;
-    filter: drop-shadow(0 2px 4px rgba(0,0,0,0.4));
+    filter: drop-shadow(0 2px 3px rgba(0,0,0,0.45));
     will-change: transform;
+    white-space: nowrap;
   }
-  #monuments-bg .mn-bus  { left: -60px; animation: mnDriveR 22s linear infinite; }
-  #monuments-bg .mn-taxi { left: 100vw; animation: mnDriveL 18s linear infinite 6s; transform: scaleX(-1); }
-  @keyframes mnDriveR { from { transform: translateX(0); } to { transform: translateX(110vw); } }
-  @keyframes mnDriveL { from { transform: translateX(0) scaleX(-1); } to { transform: translateX(-110vw) scaleX(-1); } }
+  #monuments-bg .mn-traffic-r1 { left: -80px; animation: mnDriveR 26s linear infinite; }
+  #monuments-bg .mn-traffic-r2 { left: -140px; top: 60%; animation: mnDriveR 38s linear infinite 11s; font-size: 18px; opacity: 0.92; }
+  #monuments-bg .mn-traffic-l1 { right: -80px; top: 62%; animation: mnDriveL 30s linear infinite 4s; }
+  @keyframes mnDriveR { from { transform: translateX(0); } to { transform: translateX(120vw); } }
+  @keyframes mnDriveL { from { transform: translateX(0); } to { transform: translateX(-120vw); } }
 
   /* When monuments-bg is visible, soften the dark game background so warm sky shows through */
   body.mn-active #screen-game { background: transparent !important; }
   body.mn-active .game-topbar { background: rgba(40, 18, 14, 0.55) !important; backdrop-filter: blur(8px); }
   body.mn-active #grid-canvas-wrap { background: transparent !important; }
-  body.mn-active #grid-canvas { background: rgba(20,8,6,0.20) !important; border-radius: 14px; box-shadow: 0 8px 28px rgba(0,0,0,0.35), inset 0 0 0 2px rgba(255,200,140,0.18); }
+  body.mn-active #grid-canvas { background: transparent !important; border-radius: 14px; box-shadow: 0 8px 28px rgba(0,0,0,0.35), inset 0 0 0 2px rgba(255,210,150,0.35); }
+  body.mn-active #grid-canvas-wrap { padding: 0 8px; background: transparent !important; }
 
   /* Candy-pill HUD overlay (only shown for City Monuments) */
   #monuments-hud {
@@ -7373,6 +7333,12 @@ function _skyMakeParticle(weather) {
 
 function _skyDraw(timestamp) {
   if (!_skyInitialized || !_skyCtx || !gridMask) return;
+  // City Monuments uses the painted CSS background scene instead of the
+  // canvas sky+buildings. Clear the sky canvas and skip drawing.
+  if (typeof monumentsActive !== 'undefined' && monumentsActive) {
+    try { _skyCtx.clearRect(0,0,_skyCanvas.width,_skyCanvas.height); } catch(e){}
+    return;
+  }
   const dt = _skyLastTS ? timestamp - _skyLastTS : 16;
   _skyLastTS = timestamp;
   _skyT = (_skyT + dt/SKY_CYCLE_MS) % 1;
@@ -8289,14 +8255,11 @@ function _monumentsBgInit() {
     bg = document.createElement('div');
     bg.id = 'monuments-bg';
     bg.innerHTML =
-      '<div class="mn-sky"></div>' +
-      '<div class="mn-sun"></div>' +
-      '<div class="mn-cloud mn-cloud1"></div>' +
-      '<div class="mn-cloud mn-cloud2"></div>' +
-      '<div class="mn-skyline"></div>' +
-      '<div class="mn-road"></div>' +
-      '<div class="mn-bus">🚌</div>' +
-      '<div class="mn-taxi">🚕</div>';
+      '<div class="mn-scene"></div>' +
+      '<div class="mn-tint"></div>' +
+      '<div class="mn-traffic mn-traffic-r1">🚌</div>' +
+      '<div class="mn-traffic mn-traffic-r2">🚗</div>' +
+      '<div class="mn-traffic mn-traffic-l1">🚕</div>';
     // Insert into the game screen so it sits behind the grid container
     const gameScreen = document.getElementById('screen-game');
     if (gameScreen) gameScreen.insertBefore(bg, gameScreen.firstChild);
@@ -8602,25 +8565,37 @@ function drawGrid(){
 
   ctx.clearRect(0,0,W,H);
 
-  // Rich background with slight radial glow from centre
-  ctx.fillStyle=theme.bg;
-  ctx.beginPath();ctx.roundRect(0,0,W,H,10);ctx.fill();
+  // City Monuments: keep canvas fully transparent so painted CSS scene shows through.
+  // Skip dark theme bg, radial glow, zebra lines.
+  const _isMonuments = (typeof monumentsActive !== 'undefined' && monumentsActive);
 
-  // Centre glow — uses tier accent colour, very subtle
-  const tierColor=tier.color||'#CC1212';
-  const rgb=tierColor.replace('#','').match(/../g).map(x=>parseInt(x,16));
-  const grd=ctx.createRadialGradient(W/2,H/2,0,W/2,H/2,Math.max(W,H)*0.65);
-  grd.addColorStop(0,`rgba(${rgb[0]},${rgb[1]},${rgb[2]},0.04)`);
-  grd.addColorStop(1,'rgba(0,0,0,0)');
-  ctx.save();ctx.beginPath();ctx.roundRect(0,0,W,H,10);ctx.clip();
-  ctx.fillStyle=grd;ctx.fill();
+  if (!_isMonuments) {
+    // Rich background with slight radial glow from centre
+    ctx.fillStyle=theme.bg;
+    ctx.beginPath();ctx.roundRect(0,0,W,H,10);ctx.fill();
 
-  // Diagonal zebra lines — RFBA brand texture
-  for(let x=0;x<W+H;x+=24){
-    ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x-H,H);
-    ctx.strokeStyle='rgba(255,255,255,0.016)';ctx.lineWidth=1;ctx.stroke();
+    // Centre glow — uses tier accent colour, very subtle
+    const tierColor=tier.color||'#CC1212';
+    const rgb=tierColor.replace('#','').match(/../g).map(x=>parseInt(x,16));
+    const grd=ctx.createRadialGradient(W/2,H/2,0,W/2,H/2,Math.max(W,H)*0.65);
+    grd.addColorStop(0,`rgba(${rgb[0]},${rgb[1]},${rgb[2]},0.04)`);
+    grd.addColorStop(1,'rgba(0,0,0,0)');
+    ctx.save();ctx.beginPath();ctx.roundRect(0,0,W,H,10);ctx.clip();
+    ctx.fillStyle=grd;ctx.fill();
+
+    // Diagonal zebra lines — RFBA brand texture
+    for(let x=0;x<W+H;x+=24){
+      ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x-H,H);
+      ctx.strokeStyle='rgba(255,255,255,0.016)';ctx.lineWidth=1;ctx.stroke();
+    }
+    ctx.restore();
+  } else {
+    // For monuments: very faint cream tint just so the play area is identifiable
+    ctx.save();
+    ctx.fillStyle = 'rgba(20,10,6,0.18)';
+    ctx.beginPath(); ctx.roundRect(0,0,W,H,10); ctx.fill();
+    ctx.restore();
   }
-  ctx.restore();
 
   if(isGold)drawStarfield();
 
