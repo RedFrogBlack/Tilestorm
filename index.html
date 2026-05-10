@@ -9186,34 +9186,92 @@ function _mnDrawScene(ts) {
       }
       ctx.restore();
     }
-    // Spring extras: drifting branches with pink blossoms across upper area
+    // Spring extras: BIG cherry-blossom branches with chunky 5-petal blossoms
     if (season === 'spring') {
       ctx.save();
-      // Soft pink wash across sky
-      ctx.globalAlpha = 0.10;
-      ctx.fillStyle = 'rgba(255,200,225,1)';
+      // Stronger pink wash across sky
+      ctx.globalAlpha = 0.22;
+      const skyGrad = ctx.createLinearGradient(0, 0, 0, H * 0.5);
+      skyGrad.addColorStop(0, 'rgba(255,200,225,1)');
+      skyGrad.addColorStop(1, 'rgba(255,225,235,0)');
+      ctx.fillStyle = skyGrad;
       ctx.fillRect(0, 0, W, H);
-      // Two blossom branches arching in from sides
-      const drawBranch = (x0, y0, dir) => {
-        ctx.strokeStyle = 'rgba(80,40,20,0.85)';
-        ctx.lineWidth = 3;
-        ctx.beginPath();
-        ctx.moveTo(x0, y0);
-        ctx.bezierCurveTo(x0 + dir * 40, y0 - 10, x0 + dir * 90, y0 + 6, x0 + dir * 130, y0 + 22);
-        ctx.stroke();
-        // blossoms
-        for (let i = 0; i < 6; i++) {
-          const t = (i + 1) / 7;
-          const bx = x0 + dir * 130 * t + Math.sin(i + _mnSceneT * 4) * 3;
-          const by = y0 + 18 * t + Math.cos(i * 1.3) * 6 - 4;
-          ctx.fillStyle = (i % 2 === 0) ? 'rgba(255,170,205,0.95)' : 'rgba(255,225,235,0.95)';
-          ctx.beginPath(); ctx.arc(bx, by, 6, 0, Math.PI * 2); ctx.fill();
-          ctx.fillStyle = 'rgba(255,235,150,0.95)';
-          ctx.beginPath(); ctx.arc(bx, by, 1.6, 0, Math.PI * 2); ctx.fill();
+      ctx.globalAlpha = 1;
+      // Helper: draw a chunky 5-petal cherry blossom
+      const drawBlossom = (bx, by, sz, light) => {
+        // soft pink halo behind
+        ctx.save();
+        ctx.shadowBlur = 6;
+        ctx.shadowColor = 'rgba(255,150,200,0.9)';
+        // 5 oval petals
+        for (let k = 0; k < 5; k++) {
+          const ang = (k / 5) * Math.PI * 2 - Math.PI / 2;
+          const px = bx + Math.cos(ang) * sz * 0.65;
+          const py = by + Math.sin(ang) * sz * 0.65;
+          ctx.fillStyle = light ? 'rgba(255,225,235,0.98)' : 'rgba(255,165,200,0.98)';
+          ctx.beginPath();
+          ctx.ellipse(px, py, sz * 0.55, sz * 0.78, ang + Math.PI/2, 0, Math.PI * 2);
+          ctx.fill();
+        }
+        ctx.restore();
+        // white petal highlight
+        for (let k = 0; k < 5; k++) {
+          const ang = (k / 5) * Math.PI * 2 - Math.PI / 2;
+          const px = bx + Math.cos(ang) * sz * 0.65;
+          const py = by + Math.sin(ang) * sz * 0.5;
+          ctx.fillStyle = 'rgba(255,255,255,0.55)';
+          ctx.beginPath();
+          ctx.ellipse(px, py, sz * 0.18, sz * 0.28, 0, 0, Math.PI * 2);
+          ctx.fill();
+        }
+        // golden center with stamens
+        ctx.fillStyle = 'rgba(255,210,90,1)';
+        ctx.beginPath(); ctx.arc(bx, by, sz * 0.28, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = 'rgba(220,60,100,0.85)';
+        for (let k = 0; k < 6; k++) {
+          const ang = (k / 6) * Math.PI * 2;
+          ctx.beginPath();
+          ctx.arc(bx + Math.cos(ang) * sz * 0.18, by + Math.sin(ang) * sz * 0.18, sz * 0.07, 0, Math.PI * 2);
+          ctx.fill();
         }
       };
-      drawBranch(0, H * 0.12, 1);
-      drawBranch(W, H * 0.20, -1);
+      // Big arching branches with many blossoms
+      const drawBranch = (x0, y0, dir, bigScale) => {
+        // thicker dark branch with bark texture
+        ctx.strokeStyle = 'rgba(70,35,15,0.95)';
+        ctx.lineWidth = 5 * bigScale;
+        ctx.lineCap = 'round';
+        ctx.beginPath();
+        ctx.moveTo(x0, y0);
+        ctx.bezierCurveTo(x0 + dir * 60 * bigScale, y0 - 20 * bigScale, x0 + dir * 140 * bigScale, y0 + 10 * bigScale, x0 + dir * 220 * bigScale, y0 + 40 * bigScale);
+        ctx.stroke();
+        // bark highlight
+        ctx.strokeStyle = 'rgba(130,80,40,0.7)';
+        ctx.lineWidth = 2 * bigScale;
+        ctx.stroke();
+        // sub-twig
+        ctx.strokeStyle = 'rgba(70,35,15,0.85)';
+        ctx.lineWidth = 2.5 * bigScale;
+        ctx.beginPath();
+        ctx.moveTo(x0 + dir * 80 * bigScale, y0 + 6 * bigScale);
+        ctx.lineTo(x0 + dir * 100 * bigScale, y0 - 30 * bigScale);
+        ctx.stroke();
+        // 9 chunky blossoms along + on sub-twig
+        for (let i = 0; i < 9; i++) {
+          const t = (i + 0.5) / 9;
+          const bx = x0 + dir * 220 * bigScale * t + Math.sin(i + _mnSceneT * 2) * 4;
+          const by = y0 + 40 * bigScale * t + Math.cos(i * 1.3) * 12 - 8;
+          const sz = (12 + Math.sin(i * 1.7) * 3) * bigScale;
+          drawBlossom(bx, by, sz, i % 2 === 0);
+        }
+        // extra blossom cluster on sub-twig tip
+        drawBlossom(x0 + dir * 100 * bigScale, y0 - 30 * bigScale, 14 * bigScale, false);
+        drawBlossom(x0 + dir * 95 * bigScale, y0 - 18 * bigScale, 11 * bigScale, true);
+      };
+      drawBranch(0, H * 0.10, 1, 1.0);
+      drawBranch(W, H * 0.16, -1, 1.0);
+      // Third smaller branch lower down for fullness
+      drawBranch(0, H * 0.32, 1, 0.7);
       ctx.restore();
     }
     // Autumn extras: golden warm wash + fallen leaves piled at bottom
@@ -9339,7 +9397,8 @@ function _mnSpawnSeasonHazard() {
     // but if the board is empty we still freeze a random EMPTY zone row so
     // the player visibly sees frost — and can\'t place new bricks there
     // until it thaws.
-    const lifetime = 12000;
+    // Lifetime ~16s: 1.5s snow fall + 1.5s pile + 1.5s freeze + ~9.5s locked + 2s thaw.
+    const lifetime = 16000;
     const rowsWithBricks = [];
     for (let r = 0; r < ROWS; r++) {
       let any = false;
@@ -9482,50 +9541,222 @@ function _mnDrawHazards() {
     const fade = Math.min(1, remain * 2); // fade out in last 50% of life
     ctx.save();
     if (hz.type === 'ice') {
-      // FROST: full-cell icy block, opaque, with a strong cyan glow border and
-      // chunky crack pattern so the player instantly reads "frozen".
-      ctx.globalAlpha = fade;
-      // glow halo behind the cell
-      ctx.save();
-      ctx.shadowColor = 'rgba(120,210,255,0.95)';
-      ctx.shadowBlur = 14;
-      ctx.fillStyle = 'rgba(120,210,255,0.55)';
-      ctx.beginPath(); ctx.roundRect(x + 1, y + 1, CELL - 2, CELL - 2, 5); ctx.fill();
-      ctx.restore();
-      // main ice slab — fully opaque so it overwrites the underlying brick look
-      const ig = ctx.createLinearGradient(x, y, x, y + CELL);
-      ig.addColorStop(0, '#f4fbff');
-      ig.addColorStop(0.45, '#9fd8ff');
-      ig.addColorStop(1, '#3d9ad8');
-      ctx.fillStyle = ig;
-      ctx.beginPath(); ctx.roundRect(x + 1, y + 1, CELL - 2, CELL - 2, 5); ctx.fill();
-      // bold cyan border
-      ctx.strokeStyle = '#00b8ff';
-      ctx.lineWidth = 2.5;
-      ctx.beginPath(); ctx.roundRect(x + 1.5, y + 1.5, CELL - 3, CELL - 3, 5); ctx.stroke();
-      // thicker crack pattern in dark blue
-      ctx.strokeStyle = 'rgba(20,70,140,0.85)';
-      ctx.lineWidth = 2;
-      ctx.beginPath();
-      ctx.moveTo(x + CELL*0.15, y + CELL*0.25);
-      ctx.lineTo(x + CELL*0.50, y + CELL*0.48);
-      ctx.lineTo(x + CELL*0.35, y + CELL*0.85);
-      ctx.moveTo(x + CELL*0.50, y + CELL*0.48);
-      ctx.lineTo(x + CELL*0.80, y + CELL*0.30);
-      ctx.moveTo(x + CELL*0.50, y + CELL*0.48);
-      ctx.lineTo(x + CELL*0.75, y + CELL*0.78);
-      ctx.stroke();
-      // bright highlight glints
-      const sp = Math.abs(Math.sin(now*0.003 + r*0.7 + c*0.5));
-      ctx.fillStyle = 'rgba(255,255,255,' + (0.7 + sp*0.3) + ')';
-      ctx.beginPath(); ctx.arc(x + CELL*0.28, y + CELL*0.28, 2.4, 0, Math.PI*2); ctx.fill();
-      ctx.beginPath(); ctx.arc(x + CELL*0.72, y + CELL*0.68, 2.0, 0, Math.PI*2); ctx.fill();
-      // tiny snowflake glyph in the corner for unambiguous icon read
-      ctx.fillStyle = 'rgba(255,255,255,0.95)';
-      ctx.font = 'bold ' + Math.floor(CELL*0.32) + 'px sans-serif';
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'middle';
-      ctx.fillText('❄', x + CELL*0.78, y + CELL*0.25);
+      // ═══════════════════════════════════════════════════════════════════
+      // WINTER ICE HAZARD — Full journey animation (4.5s build, hold, thaw).
+      // Players SEE snow fall in, pile up, freeze into crystals, then thaw.
+      // ═══════════════════════════════════════════════════════════════════
+      // Phase math — derived from elapsed time since hazard spawned.
+      const elapsed = now - hz.startedAt;
+      const totalLife = hz.expiresAt - hz.startedAt;
+      const timeLeft = hz.expiresAt - now;
+      // PHASE DURATIONS (ms):
+      //   0.0  – 1.5s   FALLING — snowflakes drop in, light frost edges
+      //   1.5  – 3.0s   PILING  — snow blanket builds up from bottom
+      //   3.0  – 4.5s   FREEZING — snow turns to solid ice + crystal frost spreads
+      //   4.5s – (life-2.0s)   LOCKED — fully frozen, gentle sparkle hold
+      //   last 2.0s of life    THAWING — ice melts into droplets, fades away
+      const FALL_END    = 1500;
+      const PILE_END    = 3000;
+      const FREEZE_END  = 4500;
+      const THAW_DUR    = 2000;
+      let phase, phaseT; // phase name + 0..1 progress within phase
+      if (timeLeft <= THAW_DUR) {
+        phase = 'thawing';
+        phaseT = 1 - (timeLeft / THAW_DUR); // 0 just entered, 1 fully melted
+      } else if (elapsed < FALL_END) {
+        phase = 'falling';
+        phaseT = elapsed / FALL_END;
+      } else if (elapsed < PILE_END) {
+        phase = 'piling';
+        phaseT = (elapsed - FALL_END) / (PILE_END - FALL_END);
+      } else if (elapsed < FREEZE_END) {
+        phase = 'freezing';
+        phaseT = (elapsed - PILE_END) / (FREEZE_END - PILE_END);
+      } else {
+        phase = 'locked';
+        phaseT = 1;
+      }
+      // Overall opacity multiplier — fade in during fall, fade out during thaw
+      const phaseAlpha = (phase === 'thawing') ? (1 - phaseT) : 1;
+      ctx.globalAlpha = phaseAlpha;
+
+      // ── PHASE 1: FALLING — snowflakes drop in from above the cell ─────
+      // Always draw falling flakes during falling + piling phases.
+      if (phase === 'falling' || phase === 'piling') {
+        // Light dusting on the cell so the player sees something is happening
+        const dustA = (phase === 'falling') ? phaseT * 0.4 : 0.4;
+        ctx.save();
+        ctx.globalAlpha = phaseAlpha * dustA;
+        const dg = ctx.createLinearGradient(x, y, x, y + CELL);
+        dg.addColorStop(0, 'rgba(240,250,255,0.85)');
+        dg.addColorStop(1, 'rgba(220,240,255,0.25)');
+        ctx.fillStyle = dg;
+        ctx.beginPath(); ctx.roundRect(x + 1, y + 1, CELL - 2, CELL - 2, 5); ctx.fill();
+        ctx.restore();
+        // Falling flakes — deterministic per-cell positions so they're stable
+        const flakeCount = 5;
+        ctx.save();
+        ctx.globalAlpha = phaseAlpha;
+        ctx.fillStyle = '#ffffff';
+        ctx.shadowColor = 'rgba(150,200,240,0.9)';
+        ctx.shadowBlur = 3;
+        for (let i = 0; i < flakeCount; i++) {
+          // each flake has its own animation cycle, looping every 900ms
+          const seed = (r * 7 + c * 13 + i * 53);
+          const cycle = (((elapsed + seed * 90) % 900) / 900); // 0..1
+          // start above the cell, end at random Y inside the cell
+          const targetY = y + CELL * (0.25 + ((seed * 0.137) % 1) * 0.6);
+          const startY  = y - CELL * 1.2;
+          const fy = startY + (targetY - startY) * cycle;
+          const fxBase = x + CELL * (0.15 + ((seed * 0.231) % 1) * 0.7);
+          const fx = fxBase + Math.sin(cycle * Math.PI * 2 + seed) * 4;
+          const fSz = Math.max(2.0, CELL * (0.06 + ((seed * 0.07) % 1) * 0.04));
+          // fade out as flake reaches its target so it "settles"
+          const fa = Math.min(1, (1 - cycle) * 2.5);
+          ctx.globalAlpha = phaseAlpha * fa;
+          // simple star: dot + 4 short arms
+          ctx.beginPath(); ctx.arc(fx, fy, fSz * 0.45, 0, Math.PI * 2); ctx.fill();
+          ctx.strokeStyle = '#ffffff'; ctx.lineWidth = Math.max(1.0, fSz * 0.3);
+          ctx.beginPath();
+          ctx.moveTo(fx - fSz, fy); ctx.lineTo(fx + fSz, fy);
+          ctx.moveTo(fx, fy - fSz); ctx.lineTo(fx, fy + fSz);
+          ctx.stroke();
+        }
+        ctx.restore();
+      }
+
+      // ── PHASE 2: PILING — snow blanket grows from bottom upward ───────
+      if (phase === 'piling' || phase === 'freezing' || phase === 'locked' || phase === 'thawing') {
+        // pile height = 0 at start of piling, full cell by end of freezing
+        let pileFrac;
+        if (phase === 'piling') pileFrac = phaseT * 0.7;            // 0 → 0.7
+        else if (phase === 'freezing') pileFrac = 0.7 + phaseT * 0.3; // 0.7 → 1.0
+        else pileFrac = 1;
+        ctx.save();
+        ctx.globalAlpha = phaseAlpha;
+        // soft snow gradient — bright top, slightly bluer bottom
+        const pileH = CELL * pileFrac;
+        const pileY = y + CELL - pileH;
+        const sg = ctx.createLinearGradient(x, pileY, x, pileY + pileH);
+        sg.addColorStop(0, 'rgba(248,253,255,0.95)');
+        sg.addColorStop(1, 'rgba(190,225,250,0.9)');
+        ctx.fillStyle = sg;
+        // wavy top edge so the snow pile reads as soft & natural
+        ctx.beginPath();
+        ctx.moveTo(x + 1, pileY + Math.sin(now * 0.001 + c) * 1.5);
+        for (let px = 1; px <= CELL - 1; px += 4) {
+          const py = pileY + Math.sin((px + c * 7) * 0.25 + now * 0.001) * 2;
+          ctx.lineTo(x + px, py);
+        }
+        ctx.lineTo(x + CELL - 1, y + CELL - 1);
+        ctx.lineTo(x + 1, y + CELL - 1);
+        ctx.closePath();
+        ctx.fill();
+        ctx.restore();
+      }
+
+      // ── PHASE 3-4: FREEZING + LOCKED — frost spreads, ice crystals form ─
+      if (phase === 'freezing' || phase === 'locked' || phase === 'thawing') {
+        // frostSpread: 0 at start of freezing, 1 by locked — controls how far
+        // the crystalline pattern + border extends out from center.
+        let frostSpread;
+        if (phase === 'freezing') frostSpread = phaseT;
+        else frostSpread = 1;
+        // outer cyan glow — only at lock-in or beyond
+        ctx.save();
+        ctx.globalAlpha = phaseAlpha * frostSpread;
+        ctx.shadowColor = 'rgba(120,210,255,0.95)';
+        ctx.shadowBlur = 14;
+        ctx.fillStyle = 'rgba(120,210,255,0.45)';
+        ctx.beginPath(); ctx.roundRect(x + 1, y + 1, CELL - 2, CELL - 2, 5); ctx.fill();
+        ctx.restore();
+        // overlay icy gradient that fades in as we freeze
+        ctx.save();
+        ctx.globalAlpha = phaseAlpha * frostSpread * 0.9;
+        const ig = ctx.createLinearGradient(x, y, x, y + CELL);
+        ig.addColorStop(0, '#f4fbff');
+        ig.addColorStop(0.45, '#a8dcff');
+        ig.addColorStop(1, '#4ea8d8');
+        ctx.fillStyle = ig;
+        ctx.beginPath(); ctx.roundRect(x + 1, y + 1, CELL - 2, CELL - 2, 5); ctx.fill();
+        ctx.restore();
+        // bold cyan border (animated in)
+        ctx.save();
+        ctx.globalAlpha = phaseAlpha * frostSpread;
+        ctx.strokeStyle = '#00b8ff';
+        ctx.lineWidth = 2.5;
+        ctx.beginPath(); ctx.roundRect(x + 1.5, y + 1.5, CELL - 3, CELL - 3, 5); ctx.stroke();
+        ctx.restore();
+        // Crystal/frost lines — grow OUT from cell center as freezing progresses.
+        // 6 main crystal spokes + 6 small branches. The full crystal forms by lock-in.
+        const sx = x + CELL * 0.50;
+        const sy = y + CELL * 0.50;
+        const sR = CELL * 0.36 * frostSpread;     // spoke length grows in
+        const sBr = CELL * 0.11 * frostSpread;
+        const sBrOff = sR * 0.55;
+        ctx.save();
+        ctx.globalAlpha = phaseAlpha;
+        ctx.shadowColor = 'rgba(20,60,120,0.75)';
+        ctx.shadowBlur = 4;
+        ctx.strokeStyle = '#ffffff';
+        ctx.lineWidth = Math.max(2.2, CELL * 0.06);
+        ctx.lineCap = 'round';
+        for (let k = 0; k < 6; k++) {
+          const ang = (Math.PI / 3) * k;
+          const ex = sx + Math.cos(ang) * sR;
+          const ey = sy + Math.sin(ang) * sR;
+          ctx.beginPath(); ctx.moveTo(sx, sy); ctx.lineTo(ex, ey); ctx.stroke();
+          if (sBrOff > 1 && sBr > 1) {
+            const bx = sx + Math.cos(ang) * sBrOff;
+            const by = sy + Math.sin(ang) * sBrOff;
+            const a1 = ang + Math.PI/3;
+            const a2 = ang - Math.PI/3;
+            ctx.beginPath();
+            ctx.moveTo(bx, by);
+            ctx.lineTo(bx + Math.cos(a1) * sBr, by + Math.sin(a1) * sBr);
+            ctx.moveTo(bx, by);
+            ctx.lineTo(bx + Math.cos(a2) * sBr, by + Math.sin(a2) * sBr);
+            ctx.stroke();
+          }
+        }
+        // center dot — appears at full lock-in
+        ctx.fillStyle = '#ffffff';
+        ctx.beginPath();
+        ctx.arc(sx, sy, Math.max(1.6, CELL * 0.055 * frostSpread), 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+        // sparkle twinkles — only when fully locked
+        if (phase === 'locked' || phase === 'thawing') {
+          const sp = Math.abs(Math.sin(now * 0.003 + r * 0.7 + c * 0.5));
+          ctx.save();
+          ctx.globalAlpha = phaseAlpha * (0.7 + sp * 0.3);
+          ctx.fillStyle = '#ffffff';
+          ctx.beginPath(); ctx.arc(x + CELL*0.18, y + CELL*0.22, Math.max(1.6, CELL*0.045), 0, Math.PI*2); ctx.fill();
+          ctx.beginPath(); ctx.arc(x + CELL*0.82, y + CELL*0.78, Math.max(1.4, CELL*0.035), 0, Math.PI*2); ctx.fill();
+          ctx.restore();
+        }
+      }
+
+      // ── PHASE 5: THAWING — droplets fall from cell, ice fades ─────────
+      if (phase === 'thawing') {
+        ctx.save();
+        ctx.globalAlpha = phaseT * 0.9; // ramp up as thaw progresses
+        ctx.fillStyle = 'rgba(100,180,230,0.85)';
+        for (let i = 0; i < 4; i++) {
+          const seed = (r * 5 + c * 11 + i * 17);
+          const dropCycle = (((now + seed * 70) % 700) / 700);
+          const dx = x + CELL * (0.2 + ((seed * 0.19) % 1) * 0.6);
+          const dy = y + CELL * 0.5 + dropCycle * CELL * 0.7;
+          const dsz = Math.max(2, CELL * 0.06);
+          // tear-drop shape — small ellipse with pointed top
+          ctx.beginPath();
+          ctx.moveTo(dx, dy - dsz);
+          ctx.bezierCurveTo(dx + dsz, dy - dsz*0.3, dx + dsz, dy + dsz, dx, dy + dsz);
+          ctx.bezierCurveTo(dx - dsz, dy + dsz, dx - dsz, dy - dsz*0.3, dx, dy - dsz);
+          ctx.fill();
+        }
+        ctx.restore();
+      }
     } else if (hz.type === 'puddle') {
       // HEATWAVE / MELT: glowing molten cell with rising heat shimmer + flame icon.
       ctx.globalAlpha = fade;
