@@ -6838,7 +6838,7 @@ let ownedTiers = loadOwnedTiers();
 // In-scope dev hook so dev mode can mutate the let-scoped ownedTiers
 window.__devUnlockAllTiers = function(){
   try {
-    const ALL = ['tadpole','treefrog','poisondart','goldenfrog','citypack','duopack','spark','surge','storm'];
+    const ALL = ['tadpole','treefrog','poisondart','goldenfrog','citypack','monuments','duopack','spark','surge','storm'];
     ownedTiers = Array.from(new Set([...(ownedTiers||[]), ...ALL]));
     try { localStorage.setItem('ts_owned_tiers', JSON.stringify(ownedTiers)); } catch(_){}
     if (typeof updateHomeSubtitles === 'function') updateHomeSubtitles();
@@ -17033,7 +17033,7 @@ function buildSoloSetupCards() {
   const trialChip = document.getElementById('solo-trial-chip');
   if (trialChip) trialChip.classList.toggle('is-visible', !!userOnTrial);
 
-  ['tadpole','treefrog','poisondart','goldenfrog','citypack'].forEach(tid => {
+  ['tadpole','treefrog','poisondart','goldenfrog','citypack','monuments'].forEach(tid => {
     const card = document.getElementById('gtc-' + tid);
     const right = document.getElementById('gtc-right-' + tid);
     if (!card || !right) return;
@@ -17100,7 +17100,8 @@ function showPackUnlockedBanner(tid) {
     treefrog: 'TREE FROG UNLOCKED',
     poisondart: 'FOG THE FROG UNLOCKED',
     goldenfrog: 'GOLDEN FROG UNLOCKED',
-    citypack: 'CITY PACK UNLOCKED'
+    citypack: 'CITY PACK UNLOCKED',
+    monuments: 'CITY MONUMENTS UNLOCKED'
   };
   txt.textContent = NAMES[tid] || 'PACK UNLOCKED';
   banner.classList.add('is-visible');
@@ -21088,8 +21089,8 @@ function updateLevelNavStrip() {
   const lv = _getActiveLevelNum(pack);
   const isDev = (typeof localStorage !== 'undefined' && localStorage.getItem('cd_dev_unlock') === '1');
   const unlocked = (typeof _cdProgress !== 'undefined') ? _cdProgress.getUnlocked(pack) : 1;
-  // Same gating logic as Golden Frog: only unlocked levels accessible; dev unlocks all.
-  const cap = isDev ? 10 : Math.min(10, unlocked);
+  // Monuments: all 10 cities always accessible (testing build). Other packs gated.
+  const cap = (pack === 'monuments' || isDev) ? 10 : Math.min(10, unlocked);
   // Update label — "4 / 10" style (no 'LV' prefix)
   const lblEl = document.getElementById('lvl-nav-current');
   if (lblEl) lblEl.textContent = lv + ' / 10';
@@ -21114,8 +21115,8 @@ function _jumpToLevel(pack, targetLv) {
   if (!pack) return;
   const isDev = (typeof localStorage !== 'undefined' && localStorage.getItem('cd_dev_unlock') === '1');
   const unlocked = (typeof _cdProgress !== 'undefined') ? _cdProgress.getUnlocked(pack) : 1;
-  // Same gating logic as Golden Frog: only unlocked levels accessible; dev unlocks all.
-  const cap = isDev ? 10 : Math.min(10, unlocked);
+  // Monuments: all 10 cities always accessible (testing build). Other packs gated.
+  const cap = (pack === 'monuments' || isDev) ? 10 : Math.min(10, unlocked);
   if (targetLv < 1 || targetLv > cap) return;
   if (typeof _cdProgress !== 'undefined') _cdProgress.setLastLevel(pack, targetLv);
   if (pack === 'monuments') {
