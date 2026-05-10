@@ -13232,7 +13232,7 @@ function buildShopUI(){
         : `<button class="shop-card-btn" data-buy="${idx}">UNLOCK</button>`;
     } else if (tier.isMonuments) {
       btnHtml = owned
-        ? `<button class="shop-card-btn city-play" onclick="closeShop();openLevelPicker('monuments');">▶ PLAY</button>`
+        ? `<button class="shop-card-btn city-play" onclick="closeShop();startMonumentsGame(0);">▶ PLAY</button>`
         : `<button class="shop-card-btn" data-buy="${idx}">UNLOCK</button>`;
     } else {
       btnHtml = owned
@@ -17132,13 +17132,14 @@ function openSoloSetup() {
       startCityPackGame(0);
       return;
     }
-    // City Monuments — 10 cities, each with its own 4-season cycle. Open the
-    // city picker so the player can choose a city (LV1 = London, LV2 = Prague, …).
+    // City Monuments — jump straight into Level 1 (London). Player can skip
+    // between cities using the in-game prev/next buttons in the top bar.
     if (tid === 'monuments') {
       equipTier(tid);
       ensureAudio();
       if (!checkAccessBeforeStart()) return;
-      if (typeof openLevelPicker === 'function') openLevelPicker('monuments');
+      if (typeof _cdProgress !== 'undefined') _cdProgress.setLastLevel('monuments', 1);
+      startMonumentsGame(0);
       return;
     }
     // Equip tier and set difficulty+challenge then start
