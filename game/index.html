@@ -7031,6 +7031,8 @@ function playRibbit(patternName) {
 // User wanted more frog presence — a light chirp every ~10–14s during play
 // when nothing else is firing. Skips if recent commentary or ribbit just played.
 let _lastVoiceAt = 0;
+let _lastPlaceAt = 0;
+let _idleProdsThisGame = 0;
 let _idleRibbitTimer = null;
 const _IDLE_RIBBIT_PATTERNS = ['warm', 'fast', 'slow', 'deadpan', 'long'];
 function _scheduleIdleRibbit() {
@@ -7047,11 +7049,24 @@ function _idleRibbitTick() {
   // Only fire if it's been quiet for at least 8 seconds (avoid stepping on commentary)
   const since = Date.now() - _lastVoiceAt;
   if (since < 8000) { _scheduleIdleRibbit(); return; }
+  // Idle prod: if the player hasn't placed a piece in ~20s AND we haven't pestered
+  // too many times this game, drop a banter line instead of a plain ribbit.
+  try {
+    const sincePlace = Date.now() - (_lastPlaceAt || 0);
+    if (sincePlace > 20000 && _idleProdsThisGame < 3 &&
+        typeof COMMENTARY !== 'undefined' && Array.isArray(COMMENTARY.idle) &&
+        typeof showFrogSpeech === 'function' && typeof _pick === 'function') {
+      _idleProdsThisGame++;
+      showFrogSpeech('purple', _pick(COMMENTARY.idle), 'slow');
+      _scheduleIdleRibbit();
+      return;
+    }
+  } catch(_e) {}
   const pat = _IDLE_RIBBIT_PATTERNS[Math.floor(Math.random() * _IDLE_RIBBIT_PATTERNS.length)];
   try { playRibbit(pat); } catch(_e) {}
   _scheduleIdleRibbit();
 }
-function startIdleRibbit() { _lastVoiceAt = Date.now(); _scheduleIdleRibbit(); }
+function startIdleRibbit() { _lastVoiceAt = Date.now(); _lastPlaceAt = Date.now(); _idleProdsThisGame = 0; _scheduleIdleRibbit(); }
 function stopIdleRibbit() { if (_idleRibbitTimer) { clearTimeout(_idleRibbitTimer); _idleRibbitTimer = null; } }
 
 // ── Canvas ────────────────────────────────────────────────────────
@@ -11127,6 +11142,7 @@ function endDrag(cx,cy){
     const specialType = trayPieces[dragPieceIdx]?.special || null;
     const _placedShape=[...dragShape];const _placedCell={...hoverCell};const _placedIdx=dragPieceIdx;const _wasSpeedPiece=(_placedIdx===speedPieceSlot);
     placeShape(dragShape,hoverCell.r,hoverCell.c,dragColor);
+    try { _lastPlaceAt = Date.now(); } catch(_e) {}
     trayUsed[dragPieceIdx]=true;
     document.querySelector(`.tray-piece[data-idx="${dragPieceIdx}"]`)?.classList.add('used');
     playPlace();spawnPlaceParticles(dragShape,hoverCell.r,hoverCell.c,dragColor);
@@ -11266,6 +11282,13 @@ gridCanvas.addEventListener('mousemove',e=>{if(!powerupActive)return;const rect=
 function flashLevel(){const fl=document.getElementById('level-flash');fl.classList.add('show');setTimeout(()=>fl.classList.remove('show'),280);}
 function showLevelUp(newLevel) {
   document.getElementById('levelup-number').textContent = newLevel;
+  // Cheer on level up — small celebratory line from the frog.
+  try {
+    if (typeof showFrogSpeech === 'function' && typeof COMMENTARY !== 'undefined' &&
+        Array.isArray(COMMENTARY.cheer) && typeof _pick === 'function') {
+      showFrogSpeech('purple', _pick(COMMENTARY.cheer), 'fast');
+    }
+  } catch(_e) {}
   const changes = document.getElementById('levelup-changes');
   const items = [];
   items.push('Score multiplier: ×' + getDiff().scoreMultiplier.toFixed(1));
@@ -11505,6 +11528,11 @@ function startGame(){
   // Tutor: first-ever how-to-play (3-step sequence). Fires once per player.
   if (typeof showTutor === 'function' && typeof COMMENTARY !== 'undefined' && COMMENTARY.tutPlay) {
     showTutor('howto_play', COMMENTARY.tutPlay, { color: 'purple', ribbit: 'warm', delayMs: 1800, stepMs: 4500 });
+  } else if (typeof showFrogSpeech === 'function' && typeof COMMENTARY !== 'undefined' &&
+             Array.isArray(COMMENTARY.greet) && typeof _pick === 'function' && Math.random() < 0.6) {
+    // Greet: small chance to fire a greeting at game start (skipped when the
+    // 3-step how-to tutor is running so we don't trample the intro).
+    setTimeout(() => { try { showFrogSpeech('purple', _pick(COMMENTARY.greet), 'warm'); } catch(_e) {} }, 1200);
   }
   piecesPlaced=0;bonusEarnedThisGame=0;bonusQueue=[];hazardTimer=0;
   calcLayout();generateTray();updateUI();hideCombo();drawGrid();initPowerups();updateTierBadge();updateDiffIndicator();
@@ -12687,12 +12715,18 @@ const COMMENTARY = {
     ['🏆 Smooth. Very smooth.', 'dom_3'],
     ['💪 Alright, keep going — don\'t let it go to your head.', 'dom_4'],
     ['🔥 Someone\'s in the zone!', 'dom_5'],
+    ['😏 Showing off now, are we?', 'dom_6'],
+    ['🥱 Easy. Too easy.', 'dom_7'],
+    ['🐸 You\'re making me look bad.', 'dom_8'],
   ],
   combo: [
     ['⚡ Double clear! Now we\'re talking!', 'combo_0'],
     ['🎯 Back to back — clean!', 'combo_1'],
     ['🐸 Combo king!', 'combo_2'],
     ['💥 Did you just... yeah you did.', 'combo_3'],
+    ['🔥 Two in a row! Now we\'re talking.', 'combo_4'],
+    ['🌟 Hot streak alert.', 'combo_5'],
+    ['😎 Did you mean to do that? Either way, nice.', 'combo_6'],
   ],
   struggling: [
     ['😬 Hey... u good?', 'str_0'],
@@ -12700,6 +12734,9 @@ const COMMENTARY = {
     ['😅 It\'s getting cosy in there...', 'str_2'],
     ['🟡 Focus — one row at a time!', 'str_3'],
     ['🐸 You got this. Probably.', 'str_4'],
+    ['🧘 You\'re overthinking. Just place it.', 'str_5'],
+    ['📖 Maybe the tutorial wasn\'t a bad idea.', 'str_6'],
+    ['😮‍💨 Slow it down. Breathe. Reset.', 'str_7'],
   ],
   danger: [
     ['🚨 Oof. That board is looking full...', 'dng_0'],
@@ -12707,29 +12744,63 @@ const COMMENTARY = {
     ['🆘 HELLO?? Anyone home??', 'dng_2'],
     ['🐸 This is fine. This is completely fine.', 'dng_3'],
     ['💀 Ok I\'m not worried. You should be.', 'dng_4'],
+    ['😅 Oof. This is fine. Totally fine.', 'dng_5'],
+    ['🙀 I would panic if I had hands.', 'dng_6'],
+    ['💣 That board is one piece from disaster.', 'dng_7'],
   ],
   clunky: [
     ['🤔 Hmm. Maybe try clearing a row?', 'clk_0'],
     ['🐸 You\'re placing a lot... but not clearing much.', 'clk_1'],
     ['👀 A little focus goes a long way, just saying.', 'clk_2'],
     ['🧩 Try filling a full row — you\'ll feel better.', 'clk_3'],
+    ['🧱 Lots of stacking. Not much clearing.', 'clk_4'],
+    ['📏 Try a row. A whole row. It\'s nice.', 'clk_5'],
+    ['🏰 You\'re building a fortress. Of mess.', 'clk_6'],
   ],
   recovery: [
     ['😌 There we go! That\'s more like it.', 'rec_0'],
     ['🐸 Comeback mode ACTIVATED.', 'rec_1'],
     ['💚 See? You had it in you.', 'rec_2'],
     ['✅ Breathe. You\'re back in it.', 'rec_3'],
+    ['🍳 There we go. Cooking now.', 'rec_4'],
+    ['🙌 Clutch save. I knew you had it.', 'rec_5'],
+    ['🫡 From the brink. Respect.', 'rec_6'],
   ],
   purpleRescue: [
     ['💜 Purple frog to the rescue~', 'pur_0'],
     ['🟣 I got you. This time.', 'pur_1'],
     ['💜 Don\'t say I never do anything for you.', 'pur_2'],
     ['🫧 Poof. Breathe now.', 'pur_3'],
+    ['✨ Purple frog magic. You owe me.', 'pur_4'],
+    ['🧹 Tidied up for you. Don\'t waste it.', 'pur_5'],
   ],
   dry: [
     ['🐸 Been a while since a clear...', 'dry_0'],
     ['⏳ Still waiting on that row...', 'dry_1'],
     ['😐 Just saying. The grid isn\'t getting smaller.', 'dry_2'],
+    ['🛋️ Still no clears. The grid is getting cosy.', 'dry_3'],
+    ['❓ Are we ever clearing a row again?', 'dry_4'],
+  ],
+  // Idle prods — fires when player hasn't placed in a while.
+  idle: [
+    ['👋 Hey. You still there?', 'idle_0'],
+    ['💤 Not much going on. Did the screen freeze?', 'idle_1'],
+    ['🐸 Hello? Anyone home?', 'idle_2'],
+    ['🪷 You alright? I\'m just sitting here.', 'idle_3'],
+    ['📣 Don\'t make me croak louder.', 'idle_4'],
+    ['🥺 Place a piece. Any piece. Please.', 'idle_5'],
+  ],
+  // Greetings — fires at game start.
+  greet: [
+    ['🐸 Alright. Let\'s hop to it.', 'greet_0'],
+    ['🎬 Fresh board. Make it count.', 'greet_1'],
+    ['💪 Show me what you\'ve got.', 'greet_2'],
+  ],
+  // Cheers — fires on level complete / high score.
+  cheer: [
+    ['🎉 That\'s what I\'m talking about!', 'cheer_0'],
+    ['🐸 Croak yeah!', 'cheer_1'],
+    ['🍳 Now we\'re cooking with lily pads.', 'cheer_2'],
   ],
   // Seasonal hazard tutor — frog explains what's happening.
   frost: [
