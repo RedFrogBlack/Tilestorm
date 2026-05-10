@@ -9482,83 +9482,132 @@ function _mnDrawHazards() {
     const fade = Math.min(1, remain * 2); // fade out in last 50% of life
     ctx.save();
     if (hz.type === 'ice') {
-      // Light blue-white ice block with frost glints
-      ctx.globalAlpha = 0.78 * fade;
+      // FROST: full-cell icy block, opaque, with a strong cyan glow border and
+      // chunky crack pattern so the player instantly reads "frozen".
+      ctx.globalAlpha = fade;
+      // glow halo behind the cell
+      ctx.save();
+      ctx.shadowColor = 'rgba(120,210,255,0.95)';
+      ctx.shadowBlur = 14;
+      ctx.fillStyle = 'rgba(120,210,255,0.55)';
+      ctx.beginPath(); ctx.roundRect(x + 1, y + 1, CELL - 2, CELL - 2, 5); ctx.fill();
+      ctx.restore();
+      // main ice slab — fully opaque so it overwrites the underlying brick look
       const ig = ctx.createLinearGradient(x, y, x, y + CELL);
-      ig.addColorStop(0, '#e8f7ff');
-      ig.addColorStop(0.5, '#b6e0ff');
-      ig.addColorStop(1, '#7cc4ec');
+      ig.addColorStop(0, '#f4fbff');
+      ig.addColorStop(0.45, '#9fd8ff');
+      ig.addColorStop(1, '#3d9ad8');
       ctx.fillStyle = ig;
-      ctx.beginPath(); ctx.roundRect(x + 2, y + 2, CELL - 4, CELL - 4, 4); ctx.fill();
-      // crack lines
-      ctx.strokeStyle = 'rgba(255,255,255,0.85)';
-      ctx.lineWidth = 1.2;
+      ctx.beginPath(); ctx.roundRect(x + 1, y + 1, CELL - 2, CELL - 2, 5); ctx.fill();
+      // bold cyan border
+      ctx.strokeStyle = '#00b8ff';
+      ctx.lineWidth = 2.5;
+      ctx.beginPath(); ctx.roundRect(x + 1.5, y + 1.5, CELL - 3, CELL - 3, 5); ctx.stroke();
+      // thicker crack pattern in dark blue
+      ctx.strokeStyle = 'rgba(20,70,140,0.85)';
+      ctx.lineWidth = 2;
       ctx.beginPath();
-      ctx.moveTo(x + CELL*0.20, y + CELL*0.30);
-      ctx.lineTo(x + CELL*0.55, y + CELL*0.50);
-      ctx.lineTo(x + CELL*0.40, y + CELL*0.80);
-      ctx.moveTo(x + CELL*0.65, y + CELL*0.25);
-      ctx.lineTo(x + CELL*0.75, y + CELL*0.55);
+      ctx.moveTo(x + CELL*0.15, y + CELL*0.25);
+      ctx.lineTo(x + CELL*0.50, y + CELL*0.48);
+      ctx.lineTo(x + CELL*0.35, y + CELL*0.85);
+      ctx.moveTo(x + CELL*0.50, y + CELL*0.48);
+      ctx.lineTo(x + CELL*0.80, y + CELL*0.30);
+      ctx.moveTo(x + CELL*0.50, y + CELL*0.48);
+      ctx.lineTo(x + CELL*0.75, y + CELL*0.78);
       ctx.stroke();
-      // sparkle
+      // bright highlight glints
       const sp = Math.abs(Math.sin(now*0.003 + r*0.7 + c*0.5));
-      ctx.fillStyle = 'rgba(255,255,255,' + (0.4 + sp*0.5) + ')';
-      ctx.beginPath(); ctx.arc(x + CELL*0.30, y + CELL*0.30, 1.5, 0, Math.PI*2); ctx.fill();
-      ctx.beginPath(); ctx.arc(x + CELL*0.70, y + CELL*0.70, 1.2, 0, Math.PI*2); ctx.fill();
+      ctx.fillStyle = 'rgba(255,255,255,' + (0.7 + sp*0.3) + ')';
+      ctx.beginPath(); ctx.arc(x + CELL*0.28, y + CELL*0.28, 2.4, 0, Math.PI*2); ctx.fill();
+      ctx.beginPath(); ctx.arc(x + CELL*0.72, y + CELL*0.68, 2.0, 0, Math.PI*2); ctx.fill();
+      // tiny snowflake glyph in the corner for unambiguous icon read
+      ctx.fillStyle = 'rgba(255,255,255,0.95)';
+      ctx.font = 'bold ' + Math.floor(CELL*0.32) + 'px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText('❄', x + CELL*0.78, y + CELL*0.25);
     } else if (hz.type === 'puddle') {
-      // Orange-red wobbly puddle (melted brick)
-      ctx.globalAlpha = 0.82 * fade;
-      const pg = ctx.createRadialGradient(x + CELL/2, y + CELL*0.65, 2, x + CELL/2, y + CELL*0.65, CELL*0.55);
-      pg.addColorStop(0, '#ffb14a');
-      pg.addColorStop(0.6, '#e0651d');
-      pg.addColorStop(1, 'rgba(120,40,10,0)');
+      // HEATWAVE / MELT: glowing molten cell with rising heat shimmer + flame icon.
+      ctx.globalAlpha = fade;
+      // hot-orange glow halo
+      ctx.save();
+      ctx.shadowColor = 'rgba(255,140,40,0.95)';
+      ctx.shadowBlur = 16;
+      ctx.fillStyle = 'rgba(255,90,20,0.45)';
+      ctx.beginPath(); ctx.roundRect(x + 1, y + 1, CELL - 2, CELL - 2, 5); ctx.fill();
+      ctx.restore();
+      // molten base fill
+      const pg = ctx.createRadialGradient(x + CELL/2, y + CELL*0.55, 2, x + CELL/2, y + CELL*0.55, CELL*0.7);
+      pg.addColorStop(0, '#fff1a0');
+      pg.addColorStop(0.35, '#ffb14a');
+      pg.addColorStop(0.75, '#d8431a');
+      pg.addColorStop(1, '#8a1f08');
       ctx.fillStyle = pg;
-      const wob = Math.sin(now*0.004 + r + c)*1.5;
+      ctx.beginPath(); ctx.roundRect(x + 1, y + 1, CELL - 2, CELL - 2, 5); ctx.fill();
+      // wobbly molten surface line
+      ctx.strokeStyle = 'rgba(255,230,150,0.95)';
+      ctx.lineWidth = 2;
+      const wob = Math.sin(now*0.004 + r + c)*2;
       ctx.beginPath();
-      ctx.ellipse(x + CELL/2, y + CELL*0.65 + wob, CELL*0.42, CELL*0.30, 0, 0, Math.PI*2);
-      ctx.fill();
-      // a drip
-      ctx.fillStyle = 'rgba(224, 101, 29, ' + (0.7 * fade) + ')';
-      ctx.beginPath();
-      ctx.arc(x + CELL*0.7, y + CELL*0.25 + ((now*0.05 + r*7) % CELL*0.6), 1.8, 0, Math.PI*2);
-      ctx.fill();
-      // highlight
-      ctx.fillStyle = 'rgba(255,235,180,' + (0.7 * fade) + ')';
-      ctx.beginPath();
-      ctx.ellipse(x + CELL*0.4, y + CELL*0.55, CELL*0.15, CELL*0.06, 0, 0, Math.PI*2);
-      ctx.fill();
+      ctx.ellipse(x + CELL/2, y + CELL*0.62 + wob, CELL*0.40, CELL*0.10, 0, 0, Math.PI*2);
+      ctx.stroke();
+      // bright flame icon
+      ctx.fillStyle = 'rgba(255,255,255,0.95)';
+      ctx.font = 'bold ' + Math.floor(CELL*0.38) + 'px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText('🔥', x + CELL*0.5, y + CELL*0.42);
     } else if (hz.type === 'leaves') {
-      // Pile of autumn leaves
-      ctx.globalAlpha = 0.92 * fade;
+      // LEAVES: full-cell autumn pile with a thick warm-brown rim and crisp leaf icon.
+      ctx.globalAlpha = fade;
+      // warm halo behind the cell
+      ctx.save();
+      ctx.shadowColor = 'rgba(212,87,28,0.85)';
+      ctx.shadowBlur = 12;
+      ctx.fillStyle = 'rgba(170,60,18,0.45)';
+      ctx.beginPath(); ctx.roundRect(x + 1, y + 1, CELL - 2, CELL - 2, 5); ctx.fill();
+      ctx.restore();
+      // warm-brown base wash so the leaf pile reads even at small sizes
+      const lg = ctx.createLinearGradient(x, y, x, y + CELL);
+      lg.addColorStop(0, '#7a3a14');
+      lg.addColorStop(1, '#4a1f08');
+      ctx.fillStyle = lg;
+      ctx.beginPath(); ctx.roundRect(x + 1, y + 1, CELL - 2, CELL - 2, 5); ctx.fill();
+      // crisp orange rim
+      ctx.strokeStyle = '#e8a72a';
+      ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.roundRect(x + 1.5, y + 1.5, CELL - 3, CELL - 3, 5); ctx.stroke();
+      // chunkier, brighter leaf cluster filling the cell
       const leaves = [
-        ['#d4571c', x + CELL*0.30, y + CELL*0.55, CELL*0.18],
-        ['#e8a72a', x + CELL*0.60, y + CELL*0.42, CELL*0.16],
-        ['#b13a16', x + CELL*0.50, y + CELL*0.65, CELL*0.18],
-        ['#f3c14a', x + CELL*0.42, y + CELL*0.35, CELL*0.14],
-        ['#9c2a10', x + CELL*0.70, y + CELL*0.65, CELL*0.16],
+        ['#ff7a2a', x + CELL*0.28, y + CELL*0.55, CELL*0.26],
+        ['#ffc04a', x + CELL*0.62, y + CELL*0.38, CELL*0.24],
+        ['#d4391a', x + CELL*0.52, y + CELL*0.72, CELL*0.26],
+        ['#ffa83a', x + CELL*0.74, y + CELL*0.68, CELL*0.20],
+        ['#ffd96a', x + CELL*0.40, y + CELL*0.32, CELL*0.18],
       ];
-      const sway = Math.sin(now*0.002 + r*0.5 + c*0.3) * 1.2;
+      const sway = Math.sin(now*0.002 + r*0.5 + c*0.3) * 1.5;
       for (const [col, cx, cy, sz] of leaves) {
         ctx.save();
         ctx.translate(cx + sway, cy);
         ctx.rotate(((cx + cy) % 6) - 3);
         ctx.fillStyle = col;
+        ctx.strokeStyle = 'rgba(80,30,10,0.85)';
+        ctx.lineWidth = 1.2;
         ctx.beginPath();
-        ctx.ellipse(0, 0, sz, sz * 0.6, 0, 0, Math.PI * 2);
-        ctx.fill();
+        ctx.ellipse(0, 0, sz, sz * 0.62, 0, 0, Math.PI * 2);
+        ctx.fill(); ctx.stroke();
         // vein
-        ctx.strokeStyle = 'rgba(60,30,10,0.6)';
-        ctx.lineWidth = 0.7;
+        ctx.strokeStyle = 'rgba(60,25,5,0.85)';
+        ctx.lineWidth = 1.0;
         ctx.beginPath(); ctx.moveTo(-sz*0.8, 0); ctx.lineTo(sz*0.8, 0); ctx.stroke();
         ctx.restore();
       }
-      // a little stem / twig
-      ctx.strokeStyle = 'rgba(80,40,15,0.7)';
-      ctx.lineWidth = 1.5;
-      ctx.beginPath();
-      ctx.moveTo(x + CELL*0.25, y + CELL*0.70);
-      ctx.lineTo(x + CELL*0.65, y + CELL*0.50);
-      ctx.stroke();
+      // crisp leaf emoji for instant icon read
+      ctx.fillStyle = 'rgba(255,255,255,0.95)';
+      ctx.font = 'bold ' + Math.floor(CELL*0.34) + 'px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText('🍂', x + CELL*0.78, y + CELL*0.22);
     }
     ctx.restore();
   }
@@ -9862,16 +9911,60 @@ function stopMonumentsGame() {
   if (typeof _skyReset === 'function') _skyReset();
 }
 
-// Advance to the next monuments level (or wrap back to 0).
+// Advance to the next monuments level.
+//
+// When the NEXT level uses the SAME monument silhouette (same id / zoneMap)
+// as the current one — e.g. London Tower Bridge cycling through autumn →
+// spring → summer → winter — we do an IN-PLACE season swap: keep the grid,
+// the placed bricks, the score, and the current scene canvas, and only
+// cross-fade the season palette + reset season-specific hazards. The player
+// keeps building the same bridge while the world around them shifts season.
+//
+// When the next level is a DIFFERENT monument, we fall back to the original
+// stop+start flow (since the silhouette must be replaced).
 function advanceMonumentsLevel() {
   const next = (monumentsLevelIdx + 1) % MONUMENTS_LEVELS.length;
-  const curSeason  = (MONUMENTS_LEVELS[monumentsLevelIdx] && MONUMENTS_LEVELS[monumentsLevelIdx].season) || null;
-  const nextSeason = (MONUMENTS_LEVELS[next] && MONUMENTS_LEVELS[next].season) || null;
-  // Smooth GoldenFrog-style season cross-fade. We capture the OUTGOING
-  // season as `_mnSeasonPrev` and start a 3.5s lerp so the sky and horizon
-  // colours melt from one season into the next inside the active scene
-  // canvas (no full-screen veil, no hard cut). The level itself is swapped
-  // immediately so gameplay continues seamlessly.
+  const curLv  = MONUMENTS_LEVELS[monumentsLevelIdx];
+  const nextLv = MONUMENTS_LEVELS[next];
+  const curSeason  = (curLv && curLv.season) || null;
+  const nextSeason = (nextLv && nextLv.season) || null;
+  const sameMonument = !!(curLv && nextLv && curLv.id === nextLv.id && curLv.zoneMap === nextLv.zoneMap);
+
+  // ── Same monument: in-place season swap (no board clear, no re-screen) ──
+  if (sameMonument) {
+    monumentsLevelIdx = next;
+    // Arm the season cross-fade so the sky + horizon + particles lerp smoothly.
+    if (curSeason && nextSeason && curSeason !== nextSeason) {
+      _mnSeasonPrev = curSeason;
+      _mnSeasonLerpStart = (typeof performance !== 'undefined' ? performance.now() : Date.now());
+    } else {
+      _mnSeasonPrev = null;
+      _mnSeasonLerpStart = 0;
+    }
+    // Reset season-specific hazards (frost/puddle/leaves) so we don't carry
+    // last season's icy rows into spring, and so the new season's hazards
+    // start spawning on their own cadence.
+    if (typeof _mnStopHazards === 'function') _mnStopHazards();
+    // Clear any active hazard cells from the previous season.
+    if (typeof _mnHazards !== 'undefined' && _mnHazards && _mnHazards.clear) _mnHazards.clear();
+    // Reset particle pool so old leaves / snow / petals don't bleed into the new season.
+    _gfSeasonParticles = [];
+    // Reset per-level hazard-hint memory so the new season's first hint speaks once.
+    if (typeof _mnHazardHintReset === 'function') _mnHazardHintReset();
+    // Kick off fresh seasonal hazards for the new season.
+    if (typeof _mnStartHazards === 'function') _mnStartHazards();
+    // Announce the new season with a soft banner — NO full-screen overlay, NO board reset.
+    try {
+      const seasonEmoji = { spring:'🌸', summer:'☀️', autumn:'🍂', winter:'❄️' }[nextSeason] || '';
+      const seasonName  = (nextSeason || '').toUpperCase();
+      if (typeof showEventBanner === 'function') {
+        showEventBanner(seasonEmoji + ' ' + seasonName + ' — keep building!');
+      }
+    } catch(_e) {}
+    return;
+  }
+
+  // ── Different monument: original stop+restart flow (rare — wrap-around) ──
   if (curSeason && nextSeason && curSeason !== nextSeason) {
     _mnSeasonPrev = curSeason;
     _mnSeasonLerpStart = (typeof performance !== 'undefined' ? performance.now() : Date.now());
@@ -9880,12 +9973,8 @@ function advanceMonumentsLevel() {
     _mnSeasonLerpStart = 0;
   }
   stopMonumentsGame();
-  // Reset per-level hazard-hint memory so the new level's first frost/leaves/heatwave/blossom
-  // is explained ONCE (not every tick).
   if (typeof _mnHazardHintReset === 'function') _mnHazardHintReset();
   startMonumentsGame(next);
-  // Re-arm the lerp AFTER startMonumentsGame (which resets _mnSceneT). The
-  // lerp state is read each draw frame, so just setting it again here is fine.
   if (curSeason && nextSeason && curSeason !== nextSeason) {
     _mnSeasonPrev = curSeason;
     _mnSeasonLerpStart = (typeof performance !== 'undefined' ? performance.now() : Date.now());
