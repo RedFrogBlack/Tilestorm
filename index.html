@@ -7146,20 +7146,22 @@ const MN_BRICK_HEX = {
 };
 
 // Tower Bridge silhouette on a 10×10 grid (row 0 = top of grid).
-// Stretched edge-to-edge so the bridge spans the full board.
-// 1=orange top (spires), 2=red middle (towers + walkway), 3=brown bottom (deck + piers).
+// Two iconic Victorian towers connected by an upper walkway, with a central
+// gap above the roadway where the bascules raise. Suspension cables fan out
+// from the towers to shore-side anchors.
+// 1=orange top (spire roofs), 2=red middle (tower bodies + walkway), 3=brown bottom (deck/piers).
 const MN_TOWER_BRIDGE_ZONES = [
   // c: 0  1  2  3  4  5  6  7  8  9
-     [ 0, 1, 1, 0, 0, 0, 0, 1, 1, 0 ], // r0 spire tips
-     [ 1, 1, 1, 1, 0, 0, 1, 1, 1, 1 ], // r1 spires
-     [ 1, 1, 1, 1, 0, 0, 1, 1, 1, 1 ], // r2 tower roofs
-     [ 1, 1, 1, 1, 1, 1, 1, 1, 1, 1 ], // r3 upper walkway (orange band)
-     [ 2, 2, 2, 2, 2, 2, 2, 2, 2, 2 ], // r4 walkway / mid (red band)
-     [ 2, 2, 2, 2, 0, 0, 2, 2, 2, 2 ], // r5 mid towers (red)
-     [ 2, 2, 2, 2, 0, 0, 2, 2, 2, 2 ], // r6 mid towers (red)
-     [ 2, 2, 2, 2, 0, 0, 2, 2, 2, 2 ], // r7 lower towers (red)
-     [ 3, 3, 3, 3, 3, 3, 3, 3, 3, 3 ], // r8 bridge deck (brown — full span)
-     [ 3, 3, 3, 3, 3, 3, 3, 3, 3, 3 ], // r9 piers / waterline (brown — full span)
+     [ 0, 0, 1, 1, 0, 0, 1, 1, 0, 0 ], // r0  spire tips (peaked roofs)
+     [ 0, 1, 1, 1, 0, 0, 1, 1, 1, 0 ], // r1  spire shoulders
+     [ 0, 1, 1, 1, 0, 0, 1, 1, 1, 0 ], // r2  tower turret roofs
+     [ 0, 2, 2, 2, 1, 1, 2, 2, 2, 0 ], // r3  upper walkway between towers (orange band)
+     [ 0, 2, 2, 2, 2, 2, 2, 2, 2, 0 ], // r4  walkway lower band + tower bodies
+     [ 1, 2, 2, 2, 0, 0, 2, 2, 2, 1 ], // r5  cable anchors on shores + tower bodies
+     [ 2, 2, 2, 2, 0, 0, 2, 2, 2, 2 ], // r6  tower bodies w/ open river-gap
+     [ 2, 2, 2, 2, 0, 0, 2, 2, 2, 2 ], // r7  tower bodies w/ open river-gap
+     [ 3, 3, 3, 3, 3, 3, 3, 3, 3, 3 ], // r8  roadway deck (brown — full span, bascules closed)
+     [ 3, 3, 3, 3, 3, 3, 3, 3, 3, 3 ], // r9  piers / waterline (brown — full span)
 ];
 
 const MONUMENTS_LEVELS = [
@@ -7176,6 +7178,7 @@ const MONUMENTS_LEVELS = [
 // Live state for the active level
 let _mnZoneMap = null;       // current 10×10 zone map
 let _mnZoneCellCount = 0;    // total fillable cells (for win detection)
+let _mnCellsBuilt = 0;       // cumulative bridge cells filled — NOT decreased by row clears (so win progress sticks)
 let _mnSceneT = 0.62;        // day/night cycle phase (0..1, 0.5 = full night)
 let _mnSceneLastTS = 0;
 let _mnSeasonParticles = []; // for season particle FX
@@ -8233,15 +8236,19 @@ function startMonumentsGame(levelIdx) {
   }
   gridMask = maskArr;
 
-  monumentsLinesTarget = _mnZoneCellCount; // win = fill every silhouette cell
+  monumentsLinesTarget = _mnZoneCellCount; // win = fill every silhouette cell (cumulatively)
   monumentsLinesCleared = 0;
+  _mnCellsBuilt = 0;
   cityPackLinesTarget  = monumentsLinesTarget;
   cityPackLinesCleared = 0;
 
   // Reset procedural scene engine
   _mnSceneT = 0.62; // start late afternoon
   _mnSceneLastTS = 0;
-  _mnSeasonParticles = [];
+  // Reset seasonal particle pool so the new level re-inits with that season's
+  // particle type (snow / pollen / leaves / etc.). Without this, switching
+  // from autumn (leaves) to spring (blossoms) would keep showing stale leaves.
+  _gfSeasonParticles = [];
   _mnInitSceneCanvas();
 
   document.body.classList.add('mn-active');
@@ -8387,14 +8394,36 @@ function _mnDrawScene(ts) {
   const night = (typeof _skyNight === 'function') ? _skyNight(t) : ((Math.cos(t*Math.PI*2)+1)/2);
   const dayMix = 1 - night;
 
-  // Sky gradient with seasonal tint applied to base colours.
-  // The horizon tint is anchored to the play-board bottom so the upper
-  // (visible) part of the sky stays cool/blue and the warm horizon glow
-  // only appears at the actual horizon line behind the bridge.
-  const sDay   = (typeof _gfApplySeasonTint === 'function') ? _gfApplySeasonTint(MN_LONDON_SKY.dayTop, season, false)    : MN_LONDON_SKY.dayTop;
-  const sNight = (typeof _gfApplySeasonTint === 'function') ? _gfApplySeasonTint(MN_LONDON_SKY.nightTop, season, true)   : MN_LONDON_SKY.nightTop;
-  const sDayH  = (typeof _gfApplySeasonTint === 'function') ? _gfApplySeasonTint(MN_LONDON_SKY.dayHoriz, season, false)  : MN_LONDON_SKY.dayHoriz;
-  const sNightH= (typeof _gfApplySeasonTint === 'function') ? _gfApplySeasonTint(MN_LONDON_SKY.nightHoriz, season, true) : MN_LONDON_SKY.nightHoriz;
+  // Sky gradient — per-season DISTINCT base colours so each Tower Bridge
+  // level reads as a different time of year at a glance (vs. subtle tint).
+  // Spring: cherry-blossom pink-blue. Summer: vivid mediterranean blue.
+  // Autumn: warm golden orange. Winter: cold steel-grey blue.
+  let _sn_dayTop, _sn_dayHoriz, _sn_nightTop, _sn_nightHoriz;
+  if (season === 'spring') {
+    _sn_dayTop     = [168, 210, 240];  // pale azure
+    _sn_dayHoriz   = [255, 192, 220];  // soft cherry-blossom pink horizon
+    _sn_nightTop   = [ 30,  20,  50];  // soft purple night
+    _sn_nightHoriz = [ 90,  40,  90];  // pink-tinged night horizon
+  } else if (season === 'summer') {
+    _sn_dayTop     = [ 72, 168, 248];  // vivid summer blue
+    _sn_dayHoriz   = [180, 230, 255];  // bright cyan-white horizon (hazy heat)
+    _sn_nightTop   = [  8,  18,  60];  // deep tropical-night blue
+    _sn_nightHoriz = [ 30,  60, 110];  // teal-blue night horizon
+  } else if (season === 'autumn') {
+    _sn_dayTop     = [180, 158, 200];  // warm dusky lavender (tinted)
+    _sn_dayHoriz   = [255, 168,  92];  // strong golden-orange autumn horizon
+    _sn_nightTop   = [ 20,  10,  35];  // deep night
+    _sn_nightHoriz = [ 80,  40,  60];  // burnt-amber dusk horizon
+  } else { // winter
+    _sn_dayTop     = [120, 150, 180];  // overcast steel sky
+    _sn_dayHoriz   = [220, 232, 240];  // pale cold horizon (snow haze)
+    _sn_nightTop   = [ 14,  22,  50];  // deep frozen night
+    _sn_nightHoriz = [ 80, 110, 150];  // cool grey-blue night horizon (NO purple)
+  }
+  const sDay   = _sn_dayTop;
+  const sDayH  = _sn_dayHoriz;
+  const sNight = _sn_nightTop;
+  const sNightH= _sn_nightHoriz;
   const top   = sDay.map((d,i)  => Math.round(d * dayMix + sNight[i]  * night));
   const horiz = sDayH.map((d,i) => Math.round(d * dayMix + sNightH[i] * night));
   // Sky fills the upper ~70% of the board, ground/river fills the bottom 30%.
@@ -8679,6 +8708,226 @@ function _mnDrawScene(ts) {
     ctx.restore();
   }
 
+  // ── Tower Bridge — semi-transparent painted bridge IN FRONT of the
+  // London skyline, aligned to the playable cell grid (zone map columns).
+  // Translucent (~55% alpha) so the iconic skyline still shows through.
+  // Cell grid: 10 cols × 10 rows. Tower-1 cols 1–3 (width 3), gap cols 4–5,
+  // tower-2 cols 6–8, deck rows 8–9, towers occupy rows 0–7. The cell grid
+  // is drawn over the top 92% of the board (the bottom is the tray) so we
+  // align the bridge to that vertical band as well.
+  (function _mnDrawTowerBridge(){
+    const cellW = W / 10;
+    // Match grid drawing area: roughly top 92% of board… we'll target the
+    // visible play-board area. The cells live above the tray; here W/H is
+    // the offscreen scene-canvas size which matches the grid canvas, so
+    // 10 cells fill the full H. Each cell = H/10.
+    const cellH = H / 10;
+    // Bridge color palette — Gothic Victorian: pale stone with blue accents.
+    // Use season-aware mild shifts so seasons feel coherent with the sky.
+    let stoneRGB, accentRGB;
+    if (season === 'winter') {
+      stoneRGB = [225, 230, 238]; accentRGB = [120, 160, 200];
+    } else if (season === 'spring') {
+      stoneRGB = [240, 232, 232]; accentRGB = [200, 130, 170];
+    } else if (season === 'summer') {
+      stoneRGB = [248, 242, 222]; accentRGB = [ 80, 130, 200];
+    } else { // autumn
+      stoneRGB = [240, 222, 198]; accentRGB = [200, 110,  60];
+    }
+    const stone   = `rgba(${stoneRGB[0]},${stoneRGB[1]},${stoneRGB[2]},0.62)`;
+    const stoneEd = `rgba(${stoneRGB[0]},${stoneRGB[1]},${stoneRGB[2]},0.85)`;
+    const accent  = `rgba(${accentRGB[0]},${accentRGB[1]},${accentRGB[2]},0.78)`;
+    const trim    = `rgba(${Math.round(stoneRGB[0]*0.55)},${Math.round(stoneRGB[1]*0.55)},${Math.round(stoneRGB[2]*0.6)},0.7)`;
+
+    ctx.save();
+
+    // ── DECK / ROADWAY (rows 8–9, full span) ──
+    const deckTop = 8 * cellH;
+    const deckBot = 10 * cellH;
+    const deckGrad = ctx.createLinearGradient(0, deckTop, 0, deckBot);
+    deckGrad.addColorStop(0, accent);
+    deckGrad.addColorStop(1, trim);
+    ctx.fillStyle = deckGrad;
+    ctx.fillRect(0, deckTop, W, deckBot - deckTop);
+    // road edge highlight
+    ctx.fillStyle = stoneEd;
+    ctx.fillRect(0, deckTop, W, 2);
+    ctx.fillRect(0, deckTop + cellH - 1, W, 1);
+
+    // pier column dividers along deck
+    ctx.fillStyle = trim;
+    for (let c = 1; c < 10; c++) {
+      ctx.fillRect(c * cellW - 1, deckTop, 2, deckBot - deckTop);
+    }
+
+    // ── TOWER 1 (left, cols 1–3, rows 0–7) ──
+    const t1L = 1 * cellW, t1R = 4 * cellW;
+    const t1Top = 0;       // spire tips at top
+    const t1Bot = 8 * cellH;
+    // body (rows 3–7)
+    ctx.fillStyle = stone;
+    ctx.fillRect(t1L + cellW*0.20, 3*cellH, (t1R - t1L) - cellW*0.40, 5*cellH);
+    // body trim line at base
+    ctx.fillStyle = trim;
+    ctx.fillRect(t1L + cellW*0.20, 8*cellH - 4, (t1R - t1L) - cellW*0.40, 4);
+    // turret block (rows 1–2, slightly narrower)
+    ctx.fillStyle = stoneEd;
+    ctx.fillRect(t1L + cellW*0.30, 1*cellH, (t1R - t1L) - cellW*0.60, 2*cellH);
+    // four corner spires (small pointed turrets at the four corners of tower-top)
+    const t1Cx = (t1L + t1R) / 2;
+    const sp_w = cellW * 0.22;
+    const sp_h = cellH * 1.0;
+    ctx.fillStyle = accent;
+    // left spire
+    ctx.beginPath();
+    ctx.moveTo(t1L + cellW*0.30, 1*cellH);
+    ctx.lineTo(t1L + cellW*0.30 + sp_w*0.5, 1*cellH - sp_h);
+    ctx.lineTo(t1L + cellW*0.30 + sp_w, 1*cellH);
+    ctx.closePath(); ctx.fill();
+    // right spire
+    ctx.beginPath();
+    ctx.moveTo(t1R - cellW*0.30 - sp_w, 1*cellH);
+    ctx.lineTo(t1R - cellW*0.30 - sp_w*0.5, 1*cellH - sp_h);
+    ctx.lineTo(t1R - cellW*0.30, 1*cellH);
+    ctx.closePath(); ctx.fill();
+    // central tall spire/roof
+    ctx.fillStyle = accent;
+    ctx.beginPath();
+    ctx.moveTo(t1L + cellW*0.30, 1*cellH);
+    ctx.lineTo(t1Cx, -cellH*0.2);
+    ctx.lineTo(t1R - cellW*0.30, 1*cellH);
+    ctx.closePath(); ctx.fill();
+    // flag pole on central spire
+    ctx.fillStyle = stoneEd;
+    ctx.fillRect(t1Cx - 1, -cellH*0.4, 2, cellH*0.4);
+    // window slits on body (decorative)
+    ctx.fillStyle = `rgba(40,30,60,0.55)`;
+    for (let r = 0; r < 4; r++) {
+      ctx.fillRect(t1Cx - cellW*0.06, (3.6 + r) * cellH, cellW*0.12, cellH*0.25);
+    }
+
+    // ── TOWER 2 (right, cols 6–8, rows 0–7) — mirror of tower 1 ──
+    const t2L = 6 * cellW, t2R = 9 * cellW;
+    ctx.fillStyle = stone;
+    ctx.fillRect(t2L + cellW*0.20, 3*cellH, (t2R - t2L) - cellW*0.40, 5*cellH);
+    ctx.fillStyle = trim;
+    ctx.fillRect(t2L + cellW*0.20, 8*cellH - 4, (t2R - t2L) - cellW*0.40, 4);
+    ctx.fillStyle = stoneEd;
+    ctx.fillRect(t2L + cellW*0.30, 1*cellH, (t2R - t2L) - cellW*0.60, 2*cellH);
+    const t2Cx = (t2L + t2R) / 2;
+    ctx.fillStyle = accent;
+    ctx.beginPath();
+    ctx.moveTo(t2L + cellW*0.30, 1*cellH);
+    ctx.lineTo(t2L + cellW*0.30 + sp_w*0.5, 1*cellH - sp_h);
+    ctx.lineTo(t2L + cellW*0.30 + sp_w, 1*cellH);
+    ctx.closePath(); ctx.fill();
+    ctx.beginPath();
+    ctx.moveTo(t2R - cellW*0.30 - sp_w, 1*cellH);
+    ctx.lineTo(t2R - cellW*0.30 - sp_w*0.5, 1*cellH - sp_h);
+    ctx.lineTo(t2R - cellW*0.30, 1*cellH);
+    ctx.closePath(); ctx.fill();
+    ctx.beginPath();
+    ctx.moveTo(t2L + cellW*0.30, 1*cellH);
+    ctx.lineTo(t2Cx, -cellH*0.2);
+    ctx.lineTo(t2R - cellW*0.30, 1*cellH);
+    ctx.closePath(); ctx.fill();
+    ctx.fillStyle = stoneEd;
+    ctx.fillRect(t2Cx - 1, -cellH*0.4, 2, cellH*0.4);
+    ctx.fillStyle = `rgba(40,30,60,0.55)`;
+    for (let r = 0; r < 4; r++) {
+      ctx.fillRect(t2Cx - cellW*0.06, (3.6 + r) * cellH, cellW*0.12, cellH*0.25);
+    }
+
+    // ── UPPER WALKWAY (between towers, rows 3–4, spanning gap cols 4–5) ──
+    // The walkway connects the two turret tops across the river gap.
+    const wkL = t1R - cellW*0.20;
+    const wkR = t2L + cellW*0.20;
+    ctx.fillStyle = accent;
+    ctx.fillRect(wkL, 3*cellH, wkR - wkL, cellH*0.45);
+    ctx.fillStyle = stone;
+    ctx.fillRect(wkL, 3*cellH + cellH*0.45, wkR - wkL, cellH*0.55);
+    ctx.fillStyle = trim;
+    ctx.fillRect(wkL, 4*cellH - 2, wkR - wkL, 2);
+    // walkway windows
+    ctx.fillStyle = `rgba(255,220,140,${0.45 + dayMix*0.3})`;
+    for (let i = 0; i < 4; i++) {
+      ctx.fillRect(wkL + (i+0.4) * (wkR-wkL)/5, 3*cellH + cellH*0.55, (wkR-wkL)*0.12, cellH*0.30);
+    }
+
+    // ── SUSPENSION CABLES (from tower turret tops down to deck shore-anchors) ──
+    // Cables curve from top of each tower (~y = 1.2*cellH) down to anchor
+    // points at deck level on the SHORE side (col 0 / col 9).
+    ctx.strokeStyle = trim;
+    ctx.lineWidth = 2.2;
+    ctx.globalAlpha = 0.9;
+    // Left tower: anchor on left shore (col 0, deck level) + curve down to deck
+    ctx.beginPath();
+    ctx.moveTo(0, 8*cellH);
+    ctx.bezierCurveTo(0.5*cellW, 6*cellH, 1.2*cellW, 2.5*cellH, t1Cx, 1.2*cellH);
+    ctx.stroke();
+    // Inner cable: from left tower top across river gap to right tower top
+    ctx.beginPath();
+    ctx.moveTo(t1Cx, 1.2*cellH);
+    ctx.bezierCurveTo(t1Cx + cellW*1.0, 4.0*cellH, t2Cx - cellW*1.0, 4.0*cellH, t2Cx, 1.2*cellH);
+    ctx.stroke();
+    // Right tower: anchor on right shore + curve down to deck
+    ctx.beginPath();
+    ctx.moveTo(W, 8*cellH);
+    ctx.bezierCurveTo(W - 0.5*cellW, 6*cellH, W - 1.2*cellW, 2.5*cellH, t2Cx, 1.2*cellH);
+    ctx.stroke();
+    ctx.globalAlpha = 1;
+
+    // ── VERTICAL SUSPENDER RODS dropping from cables down to the deck ──
+    ctx.strokeStyle = trim;
+    ctx.lineWidth = 1;
+    ctx.globalAlpha = 0.7;
+    // Left side
+    for (let i = 1; i <= 6; i++) {
+      const fx = i / 7; // 0..1 along left span
+      const x = fx * t1L;
+      // Approximate cable Y by sampling Bezier at fx
+      const u = fx;
+      // Bezier from (0, 8H) -> (0.5W, 6H) ctrl -> (1.2W, 2.5H) -> (t1Cx, 1.2H)
+      // Simpler: linear interp from deck up to (t1Cx, 1.2H), close enough visually
+      const cy = 8*cellH * (1 - u) + 1.2*cellH * u;
+      // but bow it up a bit
+      const bowed = cy - Math.sin(u*Math.PI) * cellH * 1.5;
+      ctx.beginPath();
+      ctx.moveTo(x, bowed);
+      ctx.lineTo(x, 8*cellH);
+      ctx.stroke();
+    }
+    // Right side mirror
+    for (let i = 1; i <= 6; i++) {
+      const fx = i / 7;
+      const x = W - fx * (W - t2R);
+      const u = fx;
+      const cy = 8*cellH * (1 - u) + 1.2*cellH * u;
+      const bowed = cy - Math.sin(u*Math.PI) * cellH * 1.5;
+      ctx.beginPath();
+      ctx.moveTo(x, bowed);
+      ctx.lineTo(x, 8*cellH);
+      ctx.stroke();
+    }
+    ctx.globalAlpha = 1;
+
+    // ── Tower windows lit at night ──
+    if (dayMix < 0.55) {
+      ctx.fillStyle = `rgba(255, 220, 140, ${0.85 - dayMix*0.4})`;
+      for (const cx of [t1Cx, t2Cx]) {
+        for (let r = 0; r < 5; r++) {
+          for (let cc = -1; cc <= 1; cc++) {
+            if (((r * 7 + cc * 3 + Math.floor(_mnSceneT * 90)) % 5) < 3) {
+              ctx.fillRect(cx + cc * cellW * 0.18 - 1, (3.5 + r * 0.85) * cellH, 2, 2);
+            }
+          }
+        }
+      }
+    }
+
+    ctx.restore();
+  })();
+
   // ── Thames river — narrow band JUST below play board, in front of skyline ──
   // The river sits between the play-board bottom and the tray. Use a small
   // fixed strip so it doesn't bleed into / below the tray.
@@ -8722,14 +8971,75 @@ function _mnDrawScene(ts) {
   }
   ctx.restore();
 
-  // ── Seasonal particle overlay (snow / leaves / pollen) ──
-  if (typeof _gfSeasonDrawParticles === 'function') {
-    // Lazy-init the seasonal particle pool (shares _gfSeasonParticles)
+  // ── Seasonal particle overlay — monuments uses BOLDER seasonal particles ──
+  // so each level reads as a clearly different season.
+  // - spring  → pink cherry-blossom petals (instead of subtle pollen)
+  // - summer  → bright sun-rays / heat shimmer
+  // - autumn  → orange/red falling leaves (denser than default)
+  // - winter  → snow (kept from default)
+  (function _mnDrawSeasonParticles() {
     if (typeof _gfSeasonInitParticles === 'function' && _gfSeasonParticles && _gfSeasonParticles.length === 0) {
       _gfSeasonInitParticles(season);
     }
-    _gfSeasonDrawParticles(ctx, W, H, season, dt);
-  }
+    // Always step the existing particles (pollen/leaves/snow) so they animate
+    if (typeof _gfSeasonDrawParticles === 'function' && season !== 'spring') {
+      _gfSeasonDrawParticles(ctx, W, H, season, dt);
+    }
+    // Custom spring overlay: pink/white cherry-blossom petals drifting down.
+    if (season === 'spring' && _gfSeasonParticles && _gfSeasonParticles.length) {
+      ctx.save();
+      const palette = ['rgba(255,180,210,0.9)','rgba(255,210,225,0.85)','rgba(255,235,240,0.85)','rgba(245,160,200,0.9)'];
+      for (const p of _gfSeasonParticles) {
+        p.fx += p.vx * dt;
+        p.fy += p.vy * dt * 1.3; // a touch faster than pollen
+        p.rot += p.vr;
+        if (p.fy > 1.05) { p.fy = -0.05; p.fx = Math.random(); }
+        if (p.fx > 1.05) p.fx = -0.05;
+        if (p.fx < -0.05) p.fx = 1.05;
+        const x = p.fx * W, y = p.fy * H;
+        const sway = Math.sin(p.ph + p.fy * 7) * 6;
+        const colIdx = Math.floor((p.ph * 11) % palette.length + palette.length) % palette.length;
+        ctx.save();
+        ctx.translate(x + sway, y);
+        ctx.rotate(p.rot + Math.sin(p.ph + p.fy * 5) * 0.5);
+        ctx.fillStyle = palette[colIdx];
+        // 5-petal blossom shape: tiny circles around centre
+        for (let k = 0; k < 5; k++) {
+          const ang = (k / 5) * Math.PI * 2;
+          const px = Math.cos(ang) * p.sz * 1.2;
+          const py = Math.sin(ang) * p.sz * 1.2;
+          ctx.beginPath();
+          ctx.arc(px, py, p.sz * 1.1, 0, Math.PI * 2);
+          ctx.fill();
+        }
+        // bright centre
+        ctx.fillStyle = 'rgba(255,235,150,0.9)';
+        ctx.beginPath(); ctx.arc(0, 0, p.sz * 0.55, 0, Math.PI * 2); ctx.fill();
+        ctx.restore();
+      }
+      ctx.restore();
+    }
+    // Summer extras: warm sun-ray shimmer streaks across the upper sky
+    if (season === 'summer') {
+      ctx.save();
+      ctx.globalAlpha = 0.18 + dayMix * 0.12;
+      const rayGrad = ctx.createLinearGradient(W*0.6, 0, W*0.4, H*0.5);
+      rayGrad.addColorStop(0, 'rgba(255,240,180,0.6)');
+      rayGrad.addColorStop(1, 'rgba(255,240,180,0)');
+      ctx.fillStyle = rayGrad;
+      for (let r = 0; r < 4; r++) {
+        const cx = W * (0.3 + r * 0.18 + Math.sin(_mnSceneT * 2 + r) * 0.02);
+        ctx.beginPath();
+        ctx.moveTo(cx - 4, 0);
+        ctx.lineTo(cx + 4, 0);
+        ctx.lineTo(cx + 60, H * 0.55);
+        ctx.lineTo(cx - 60, H * 0.55);
+        ctx.closePath();
+        ctx.fill();
+      }
+      ctx.restore();
+    }
+  })();
 }
 
 // ── Brick tray generator ───────────────────────────────────────────────
@@ -8758,18 +9068,43 @@ function _mnGenerateBrickTray() {
     if ((n -= remaining[92]) < 0) return 92;
     return 93;
   }
-  // Use small/medium pieces only — bricks should look like bricks, not big slabs.
-  // Reuse engine PIECES but bias towards single tiles + dominoes + L-trios.
+  // Mix of brick shapes — small fillers AND complex multi-cell pieces so the
+  // game has real puzzle depth. Custom shapes are board-friendly orientations
+  // tuned for a 10×10 silhouette.
+  const _mnBrickShapes = [
+    // singles + 2-cell fillers (15% — useful for tight gaps)
+    [[0,0]],
+    [[0,0],[0,1]],
+    [[0,0],[1,0]],
+    // 3-cell
+    [[0,0],[0,1],[0,2]],            // I-3 horizontal
+    [[0,0],[1,0],[2,0]],            // I-3 vertical
+    [[0,0],[0,1],[1,0]],            // L-corner NW
+    [[0,0],[0,1],[1,1]],            // L-corner NE
+    [[0,0],[1,0],[1,1]],            // L-corner SE
+    [[0,1],[1,0],[1,1]],            // L-corner SW
+    // 4-cell tetrominoes
+    [[0,0],[0,1],[0,2],[0,3]],      // I-4 horizontal
+    [[0,0],[1,0],[2,0],[3,0]],      // I-4 vertical
+    [[0,0],[0,1],[1,0],[1,1]],      // square 2×2
+    [[0,0],[0,1],[0,2],[1,1]],      // T (point down)
+    [[0,1],[1,0],[1,1],[1,2]],      // T (point up)
+    [[0,0],[1,0],[2,0],[2,1]],      // L (J-shape)
+    [[0,1],[1,1],[2,0],[2,1]],      // J (mirror L)
+    [[0,0],[1,0],[1,1],[2,1]],      // S
+    [[0,1],[1,0],[1,1],[2,0]],      // Z
+    // 5-cell complex
+    [[0,0],[1,0],[1,1],[1,2],[2,2]],// stairs SE
+    [[0,2],[1,0],[1,1],[1,2],[2,0]],// stairs SW
+    [[0,0],[0,1],[0,2],[1,1],[2,1]],// big T
+  ];
   function pickShape() {
-    if (typeof randomPieceDiff === 'function') {
-      // 50% single tile, 30% small, rest random
-      const r = Math.random();
-      if (r < 0.45) return [[0,0]];                       // single brick
-      if (r < 0.75) return [[0,0],[0,1]];                  // 2-wide horizontal
-      if (r < 0.88) return [[0,0],[1,0]];                  // 2-tall vertical
-      return randomPieceDiff();
-    }
-    return [[0,0]];
+    const r = Math.random();
+    // 15% small filler, 25% 3-cell, 45% tetromino, 15% complex 5-cell
+    if (r < 0.15) return _mnBrickShapes[Math.floor(Math.random() * 3)];
+    if (r < 0.40) return _mnBrickShapes[3 + Math.floor(Math.random() * 6)];
+    if (r < 0.85) return _mnBrickShapes[9 + Math.floor(Math.random() * 9)];
+    return _mnBrickShapes[18 + Math.floor(Math.random() * 3)];
   }
   trayPieces = [
     { shape: pickShape(), color: pickColour() },
@@ -8881,18 +9216,18 @@ function _mnDrawBrickTile(r, c, code, alpha = 1) {
   ctx.restore();
 }
 
-// ── Win check based on filled silhouette cells (overrides line-clear win) ─
+// ── Win check based on CUMULATIVE bridge cells built (row clears don't undo) ─
 // Called after every placement.
 function _mnCheckWin() {
   if (!monumentsActive || !_mnZoneMap) return;
-  let filled = 0;
-  for (let r = 0; r < ROWS; r++) for (let c = 0; c < COLS; c++) {
-    if (_mnZoneMap[r] && _mnZoneMap[r][c] && grid[r][c] !== 0) filled++;
-  }
-  monumentsLinesCleared = filled;
-  cityPackLinesCleared  = filled;
+  // Show progress as cumulative cells built, capped at the target so the HUD
+  // can never read "105 / 64". Row clears do NOT subtract from this counter —
+  // they're a bonus mechanic, not a setback for win progress.
+  const progress = Math.min(_mnCellsBuilt, _mnZoneCellCount);
+  monumentsLinesCleared = progress;
+  cityPackLinesCleared  = progress;
   if (typeof _monumentsHudUpdate === 'function') _monumentsHudUpdate();
-  if (filled >= _mnZoneCellCount && _mnZoneCellCount > 0) {
+  if (_mnCellsBuilt >= _mnZoneCellCount && _mnZoneCellCount > 0) {
     setTimeout(() => {
       const lvName = MONUMENTS_LEVELS[monumentsLevelIdx].name;
       if (typeof showEventBanner === 'function') showEventBanner('🏆 ' + lvName + ' COMPLETE!');
@@ -8932,6 +9267,10 @@ function _mnCheckWin() {
             total++;
             if (color === need) matched++;
           }
+          // Cumulative goal counter: every bridge cell newly filled by this
+          // placement counts towards completing the silhouette. Row clears
+          // can later remove tiles, but they don't subtract from this total.
+          _mnCellsBuilt += total;
           if (matched > 0 && typeof score !== 'undefined') {
             let bonus = matched * 20;
             if (matched === total && total > 1) bonus += 30; // whole-piece bonus
