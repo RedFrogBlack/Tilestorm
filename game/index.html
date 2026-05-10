@@ -5881,36 +5881,44 @@
     display: none;
     background: #F4A35A; /* fallback warm tone before image loads */
   }
+  /* Day + Night scene layers — night fades in over day via opacity */
   #monuments-bg .mn-scene {
     position: absolute; inset: 0;
-    background-image: url('assets/monuments/london.png');
     background-size: cover;
     background-position: center top;
     background-repeat: no-repeat;
+    transition: opacity 1.2s ease;
   }
+  #monuments-bg .mn-scene-day   { z-index: 1; opacity: 1; }
+  #monuments-bg .mn-scene-night { z-index: 2; opacity: 0; } /* JS animates 0→1→0 */
+
   /* Subtle warm tint over the scene to anchor with the play board */
   #monuments-bg .mn-tint {
     position: absolute; inset: 0;
+    z-index: 3;
     background: linear-gradient(180deg, rgba(255,180,90,0) 0%, rgba(255,180,90,0) 55%, rgba(40,18,12,0.18) 100%);
   }
-  /* Animated extra traffic — sliding small vehicles across the plaza road area.
-     The painted scene already has a parked bus + taxi; these moving sprites
-     travel along the lower road strip to keep the scene alive. */
+  /* Animated busy traffic — multiple sliding vehicles across the plaza road area. */
   #monuments-bg .mn-traffic {
     position: absolute;
-    /* Position over the road area in the painting (~ 60% down) */
-    top: 58%;
+    z-index: 4;
     font-size: 22px;
     line-height: 1;
     filter: drop-shadow(0 2px 3px rgba(0,0,0,0.45));
     will-change: transform;
     white-space: nowrap;
   }
-  #monuments-bg .mn-traffic-r1 { left: -80px; animation: mnDriveR 26s linear infinite; }
-  #monuments-bg .mn-traffic-r2 { left: -140px; top: 60%; animation: mnDriveR 38s linear infinite 11s; font-size: 18px; opacity: 0.92; }
-  #monuments-bg .mn-traffic-l1 { right: -80px; top: 62%; animation: mnDriveL 30s linear infinite 4s; }
-  @keyframes mnDriveR { from { transform: translateX(0); } to { transform: translateX(120vw); } }
-  @keyframes mnDriveL { from { transform: translateX(0); } to { transform: translateX(-120vw); } }
+  /* Lower road strip — closer to viewer, larger sprites */
+  #monuments-bg .mn-traffic-r1 { left: -80px;  top: 56%; font-size: 24px; animation: mnDriveR 26s linear infinite; }
+  #monuments-bg .mn-traffic-r2 { left: -140px; top: 58%; font-size: 19px; opacity: 0.95; animation: mnDriveR 38s linear infinite 11s; }
+  #monuments-bg .mn-traffic-l1 { right: -80px; top: 60%; font-size: 22px; animation: mnDriveL 30s linear infinite 4s; }
+  #monuments-bg .mn-traffic-l2 { right: -120px; top: 57%; font-size: 18px; opacity: 0.9; animation: mnDriveL 44s linear infinite 17s; }
+  /* Distant tube/train sliding past in the back — smaller and slower */
+  #monuments-bg .mn-traffic-train { left: -180px; top: 38%; font-size: 16px; opacity: 0.55; animation: mnDriveR 60s linear infinite 25s; }
+  /* Small motorbike scooter weaving through */
+  #monuments-bg .mn-traffic-bike { left: -60px; top: 61%; font-size: 16px; animation: mnDriveR 18s linear infinite 9s; }
+  @keyframes mnDriveR { from { transform: translateX(0); } to { transform: translateX(140vw); } }
+  @keyframes mnDriveL { from { transform: translateX(0); } to { transform: translateX(-140vw); } }
 
   /* When monuments-bg is visible, soften the dark game background so warm sky shows through */
   body.mn-active #screen-game { background: transparent !important; }
@@ -7166,29 +7174,44 @@ let monumentsLinesCleared = 0;
 // Per-level monument config. Each monument is a column range with a target
 // colour and a column-height profile that defines its silhouette.
 // colHeights array length = COLS (10). Zero = empty column (gap).
+// Each Monuments level = 1 city + 1 fixed season. Day/night cycles inside the level.
+// Phase 1 ships 4 London levels (one per season) so all 4 day/night PNGs are exercised.
 const MONUMENTS_LEVELS = [
   {
-    id: 'london',
-    name: 'LONDON',
-    emoji: '🇬🇧',
-    season: 'summer',
-    timeOfDay: 'sunset',
-    // Sky palette: warm golden-hour, no purple/blue (per user feedback)
-    sky: {
-      top:    [255, 188, 110], // peachy orange
-      mid:    [255, 142, 100], // coral
-      horiz:  [255, 210, 130], // golden
-      sun:    [255, 235, 160],
-      cloud:  [255, 230, 200],
-    },
-    // 3 monuments side by side: Big Ben (red, narrow & tall), Town Hall (orange, wide), Clock Tower (teal, narrow & short)
-    // Column index    0  1  2  3  4  5  6  7  8  9
-    colHeights:      [0, 0, 13, 13, 0, 9, 9, 9, 0, 0],
+    id: 'london', name: 'LONDON', emoji: '🇬🇧',
+    season: 'autumn', sceneCity: 'london',
+    colHeights: [0, 0, 13, 13, 0, 9, 9, 9, 0, 0],
     monuments: [
-      { name: 'BIG BEN',     cols: [2,3], colour: '#E03A3A', emoji: '🕰️' },
-      { name: 'TOWN HALL',   cols: [5,6,7], colour: '#F5A623', emoji: '🏛️' },
+      { name: 'BIG BEN',   cols: [2,3],   colour: '#E03A3A' },
+      { name: 'TOWN HALL', cols: [5,6,7], colour: '#F5A623' },
     ],
-    skylineCities: ['shard','gherkin','dome','wheel'],
+  },
+  {
+    id: 'london', name: 'LONDON', emoji: '🇬🇧',
+    season: 'spring', sceneCity: 'london',
+    colHeights: [0, 0, 13, 13, 0, 9, 9, 9, 0, 0],
+    monuments: [
+      { name: 'BIG BEN',   cols: [2,3],   colour: '#E03A3A' },
+      { name: 'TOWN HALL', cols: [5,6,7], colour: '#F5A623' },
+    ],
+  },
+  {
+    id: 'london', name: 'LONDON', emoji: '🇬🇧',
+    season: 'summer', sceneCity: 'london',
+    colHeights: [0, 0, 13, 13, 0, 9, 9, 9, 0, 0],
+    monuments: [
+      { name: 'BIG BEN',   cols: [2,3],   colour: '#E03A3A' },
+      { name: 'TOWN HALL', cols: [5,6,7], colour: '#F5A623' },
+    ],
+  },
+  {
+    id: 'london', name: 'LONDON', emoji: '🇬🇧',
+    season: 'winter', sceneCity: 'london',
+    colHeights: [0, 0, 13, 13, 0, 9, 9, 9, 0, 0],
+    monuments: [
+      { name: 'BIG BEN',   cols: [2,3],   colour: '#E03A3A' },
+      { name: 'TOWN HALL', cols: [5,6,7], colour: '#F5A623' },
+    ],
   },
 ];
 
@@ -8225,46 +8248,87 @@ function startMonumentsGame(levelIdx) {
   monumentsLevelIdx = Math.min(levelIdx || 0, MONUMENTS_LEVELS.length - 1);
   const lv = MONUMENTS_LEVELS[monumentsLevelIdx];
   // Reuse City Pack masking engine — monuments are columns with heights.
-  cityPackActive = true;  // piggy-back on existing isMasked()/clearLines logic
-  cityPackCityIdx = 0;    // unused for monuments but keeps state safe
+  cityPackActive = true;
+  cityPackCityIdx = 0;
   gridMask = buildCityMask(lv.colHeights);
   const totalCells = lv.colHeights.reduce((a,b)=>a+b,0);
   monumentsLinesTarget = Math.max(6, Math.round(totalCells / 6));
   monumentsLinesCleared = 0;
-  // Pipe to City Pack counters so existing line-clear hook increments them.
   cityPackLinesTarget  = monumentsLinesTarget;
   cityPackLinesCleared = 0;
   _skyReset();
-  _monumentsBgInit();
+  _monumentsBgInit(lv.sceneCity, lv.season);
+  _monumentsCycleStart();
   document.body.classList.add('mn-active');
   startGame();
   gridMask = buildCityMask(lv.colHeights);
   for (let r=0;r<ROWS;r++) for (let c=0;c<COLS;c++) if(isMasked(r,c)) grid[r][c]=0;
   if (typeof _skyInit === 'function') _skyInit(gridCanvas.width, gridCanvas.height);
   _monumentsHudShow();
+  // Update banner with season label
+  const seasonEmoji = { spring:'🌸', summer:'☀️', autumn:'🍂', winter:'❄️' }[lv.season] || '';
   setTimeout(() => showEventBanner(
-    lv.emoji + ' LEVEL ' + (monumentsLevelIdx+1) + ' · ' + lv.name + ' — ' + monumentsLinesTarget + ' LINES!'
+    lv.emoji + ' LEVEL ' + (monumentsLevelIdx+1) + ' · ' + lv.name + ' ' + seasonEmoji + ' — ' + monumentsLinesTarget + ' LINES!'
   ), 300);
 }
 
-function _monumentsBgInit() {
-  // Inject (or refresh) the warm-sunset background layer + animated vehicles
-  // behind the play canvas. Uses CSS only — no canvas redraw needed.
+function _monumentsBgInit(city, season) {
+  // Inject (or refresh) the painted scene background layer + animated traffic
+  // behind the play canvas. Day + night PNGs are layered; JS oscillates night opacity.
   let bg = document.getElementById('monuments-bg');
   if (!bg) {
     bg = document.createElement('div');
     bg.id = 'monuments-bg';
     bg.innerHTML =
-      '<div class="mn-scene"></div>' +
+      '<div class="mn-scene mn-scene-day"></div>' +
+      '<div class="mn-scene mn-scene-night"></div>' +
       '<div class="mn-tint"></div>' +
       '<div class="mn-traffic mn-traffic-r1">🚌</div>' +
       '<div class="mn-traffic mn-traffic-r2">🚗</div>' +
-      '<div class="mn-traffic mn-traffic-l1">🚕</div>';
-    // Insert into the game screen so it sits behind the grid container
+      '<div class="mn-traffic mn-traffic-l1">🚕</div>' +
+      '<div class="mn-traffic mn-traffic-l2">🚚</div>' +
+      '<div class="mn-traffic mn-traffic-train">🚈🚈🚈</div>' +
+      '<div class="mn-traffic mn-traffic-bike">🏍️</div>';
     const gameScreen = document.getElementById('screen-game');
     if (gameScreen) gameScreen.insertBefore(bg, gameScreen.firstChild);
   }
+  // Set day + night scene images for this level
+  const c = city || 'london';
+  const s = season || 'autumn';
+  const dayEl   = bg.querySelector('.mn-scene-day');
+  const nightEl = bg.querySelector('.mn-scene-night');
+  if (dayEl)   dayEl.style.backgroundImage   = "url('assets/monuments/" + c + "_" + s + "_day.png')";
+  if (nightEl) nightEl.style.backgroundImage = "url('assets/monuments/" + c + "_" + s + "_night.png')";
   bg.style.display = 'block';
+}
+
+// Day/night cycle: ramp night-layer opacity from 0 → 1 → 0 over MN_CYCLE_MS.
+// Matches Golden Frog feel — a full day passes during a level.
+let _mnCycleRAF = null;
+let _mnCycleStart = 0;
+const MN_CYCLE_MS = 90 * 1000; // 90s for one full day-night-day cycle
+function _monumentsCycleStart() {
+  _monumentsCycleStop();
+  _mnCycleStart = performance.now();
+  const tick = () => {
+    if (typeof monumentsActive === 'undefined' || !monumentsActive) {
+      _mnCycleRAF = null; return;
+    }
+    const t = ((performance.now() - _mnCycleStart) % MN_CYCLE_MS) / MN_CYCLE_MS; // 0..1
+    // Phase: 0 = full day, 0.5 = full night, 1 = full day. Smooth via cosine curve.
+    const nightOpacity = 0.5 - 0.5 * Math.cos(t * Math.PI * 2);
+    const bg = document.getElementById('monuments-bg');
+    const nightEl = bg && bg.querySelector('.mn-scene-night');
+    if (nightEl) nightEl.style.opacity = String(nightOpacity);
+    _mnCycleRAF = requestAnimationFrame(tick);
+  };
+  _mnCycleRAF = requestAnimationFrame(tick);
+}
+function _monumentsCycleStop() {
+  if (_mnCycleRAF) { cancelAnimationFrame(_mnCycleRAF); _mnCycleRAF = null; }
+  const bg = document.getElementById('monuments-bg');
+  const nightEl = bg && bg.querySelector('.mn-scene-night');
+  if (nightEl) nightEl.style.opacity = '0';
 }
 
 function _monumentsBgHide() {
@@ -8307,10 +8371,18 @@ function stopMonumentsGame() {
   monumentsActive = false;
   cityPackActive = false;
   gridMask = null;
+  _monumentsCycleStop();
   _monumentsBgHide();
   _monumentsHudHide();
   document.body.classList.remove('mn-active');
   if (typeof _skyReset === 'function') _skyReset();
+}
+
+// Advance to the next monuments level (or wrap back to 0).
+function advanceMonumentsLevel() {
+  const next = (monumentsLevelIdx + 1) % MONUMENTS_LEVELS.length;
+  stopMonumentsGame();
+  setTimeout(() => startMonumentsGame(next), 400);
 }
 
 // ── Grid helpers ──────────────────────────────────────────────────
@@ -8377,8 +8449,18 @@ function clearLines({completedRows,completedCols,completedHalfRows}){
       _monumentsHudUpdate();
       if (monumentsLinesCleared >= monumentsLinesTarget) {
         setTimeout(() => {
-          showEventBanner('🏆 ' + MONUMENTS_LEVELS[monumentsLevelIdx].name + ' COMPLETE!');
-          setTimeout(() => { stopMonumentsGame(); triggerGameOver(); }, 1500);
+          const _lvName = MONUMENTS_LEVELS[monumentsLevelIdx].name;
+          showEventBanner('🏆 ' + _lvName + ' COMPLETE!');
+          // Mark progress (unlock next) — dev mode already has all 10.
+          try {
+            if (typeof _cdProgress !== 'undefined') {
+              const curLv = monumentsLevelIdx + 1;
+              _cdProgress.setLastLevel('monuments', curLv);
+              if (typeof _cdProgress.markCompleted === 'function') _cdProgress.markCompleted('monuments', curLv);
+            }
+          } catch(_e) {}
+          // Auto-advance to next monuments level (or wrap to start).
+          setTimeout(() => { advanceMonumentsLevel(); }, 1500);
         }, 700);
       }
     } else {
@@ -17732,12 +17814,14 @@ document.getElementById('btn-menu').addEventListener('click',()=>{ openPause(); 
 // Next: jump to lv+1 (only allowed if next is unlocked — i.e. you've already passed it OR dev mode).
 // Picker: opens the existing level picker overlay without leaving the game.
 function _getActiveLevelPack() {
-  // Returns 'goldenfrog' | 'citypack' | null based on current game state.
+  // Returns 'monuments' | 'goldenfrog' | 'citypack' | null based on current game state.
+  if (typeof monumentsActive !== 'undefined' && monumentsActive) return 'monuments';
   if (typeof cityPackActive !== 'undefined' && cityPackActive) return 'citypack';
   if (typeof activeChallengeMode !== 'undefined' && activeChallengeMode === 'goldenfrog') return 'goldenfrog';
   return null;
 }
 function _getActiveLevelNum(pack) {
+  if (pack === 'monuments')  return (typeof monumentsLevelIdx !== 'undefined' ? ((monumentsLevelIdx|0)+1) : 1);
   if (pack === 'goldenfrog') return (typeof cm_gfLevel !== 'undefined' ? (cm_gfLevel|0) : 1);
   if (pack === 'citypack')   return (typeof cityPackCityIdx !== 'undefined' ? ((cityPackCityIdx|0)+1) : 1);
   return 1;
@@ -17778,6 +17862,15 @@ function _jumpToLevel(pack, targetLv) {
   const cap = isDev ? 10 : Math.min(10, unlocked);
   if (targetLv < 1 || targetLv > cap) return;
   if (typeof _cdProgress !== 'undefined') _cdProgress.setLastLevel(pack, targetLv);
+  if (pack === 'monuments') {
+    if (typeof startMonumentsGame === 'function') {
+      // Wrap to available levels (4 painted London seasons, then cycles)
+      const lvCount = (typeof MONUMENTS_LEVELS !== 'undefined') ? MONUMENTS_LEVELS.length : 4;
+      const idx = ((targetLv - 1) % lvCount + lvCount) % lvCount;
+      startMonumentsGame(idx);
+    }
+    return;
+  }
   if (pack === 'citypack') {
     if (typeof startCityPackGame === 'function') startCityPackGame(targetLv - 1);
     return;
