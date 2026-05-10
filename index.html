@@ -7212,28 +7212,201 @@ const MN_TOWER_BRIDGE_ZONES = [
      [ 3, 3, 3, 3, 3, 3, 3, 3, 3, 3 ], // r9  piers / waterline (brown — full span)
 ];
 
+// ═══════════════════════════════════════════════════════════════════════
+// 9 NEW MONUMENT SILHOUETTES — Prague, Accra, Cairo, Beijing, Jaipur,
+// Rio, Reykjavík, Marrakech, Sydney.  All on 10×10 zone maps with the same
+// 1/2/3 layering convention as Tower Bridge.
+// ═══════════════════════════════════════════════════════════════════════
+const MN_CHARLES_BRIDGE_ZONES = [
+  [ 0, 0, 0, 1, 0, 0, 0, 1, 0, 0 ],
+  [ 0, 0, 0, 1, 0, 0, 0, 1, 0, 0 ],
+  [ 0, 1, 0, 1, 0, 0, 0, 1, 0, 1 ],
+  [ 0, 1, 0, 1, 1, 1, 1, 1, 0, 1 ],
+  [ 0, 2, 2, 2, 2, 2, 2, 2, 2, 2 ],
+  [ 0, 2, 2, 2, 2, 2, 2, 2, 2, 2 ],
+  [ 2, 2, 2, 2, 2, 2, 2, 2, 2, 2 ],
+  [ 3, 3, 3, 3, 3, 3, 3, 3, 3, 3 ],
+  [ 3, 0, 3, 0, 3, 0, 3, 0, 3, 3 ],
+  [ 3, 3, 3, 3, 3, 3, 3, 3, 3, 3 ],
+];
+const MN_BLACK_STAR_GATE_ZONES = [
+  [ 0, 0, 0, 0, 1, 1, 0, 0, 0, 0 ],
+  [ 0, 0, 0, 1, 1, 1, 1, 0, 0, 0 ],
+  [ 0, 0, 0, 0, 1, 1, 0, 0, 0, 0 ],
+  [ 0, 0, 2, 2, 2, 2, 2, 2, 0, 0 ],
+  [ 0, 2, 2, 0, 0, 0, 0, 2, 2, 0 ],
+  [ 2, 2, 0, 0, 0, 0, 0, 0, 2, 2 ],
+  [ 2, 2, 0, 0, 0, 0, 0, 0, 2, 2 ],
+  [ 2, 2, 0, 0, 0, 0, 0, 0, 2, 2 ],
+  [ 3, 3, 3, 0, 0, 0, 0, 3, 3, 3 ],
+  [ 3, 3, 3, 3, 3, 3, 3, 3, 3, 3 ],
+];
+const MN_PYRAMIDS_ZONES = [
+  [ 0, 0, 0, 0, 0, 1, 0, 0, 0, 0 ],
+  [ 0, 0, 0, 0, 1, 1, 1, 0, 0, 0 ],
+  [ 0, 0, 0, 1, 1, 1, 1, 1, 0, 0 ],
+  [ 0, 0, 1, 1, 1, 1, 1, 1, 1, 0 ],
+  [ 0, 1, 1, 1, 1, 1, 1, 1, 1, 1 ],
+  [ 0, 0, 0, 2, 2, 2, 2, 1, 1, 1 ],
+  [ 0, 0, 2, 2, 2, 2, 2, 2, 1, 1 ],
+  [ 0, 2, 2, 2, 2, 2, 2, 2, 2, 1 ],
+  [ 2, 2, 2, 2, 2, 2, 2, 2, 2, 2 ],
+  [ 3, 3, 3, 3, 3, 3, 3, 3, 3, 3 ],
+];
+const MN_GREAT_WALL_ZONES = [
+  [ 0, 0, 1, 0, 0, 0, 1, 0, 0, 1 ],
+  [ 0, 1, 1, 1, 0, 1, 1, 1, 0, 1 ],
+  [ 0, 1, 1, 1, 0, 1, 1, 1, 1, 1 ],
+  [ 0, 1, 1, 1, 2, 1, 1, 1, 1, 1 ],
+  [ 0, 2, 2, 2, 2, 2, 2, 2, 2, 2 ],
+  [ 0, 2, 2, 2, 2, 2, 2, 2, 2, 2 ],
+  [ 2, 2, 2, 2, 2, 2, 2, 2, 2, 2 ],
+  [ 2, 2, 2, 2, 2, 2, 2, 2, 2, 2 ],
+  [ 3, 3, 3, 3, 3, 3, 3, 3, 3, 3 ],
+  [ 3, 3, 3, 3, 3, 3, 3, 3, 3, 3 ],
+];
+const MN_HAWA_MAHAL_ZONES = [
+  [ 0, 0, 0, 0, 1, 1, 0, 0, 0, 0 ],
+  [ 0, 0, 0, 1, 1, 1, 1, 0, 0, 0 ],
+  [ 0, 0, 1, 1, 1, 1, 1, 1, 0, 0 ],
+  [ 0, 1, 1, 1, 1, 1, 1, 1, 1, 0 ],
+  [ 1, 1, 1, 1, 1, 1, 1, 1, 1, 1 ],
+  [ 2, 2, 2, 2, 2, 2, 2, 2, 2, 2 ],
+  [ 2, 2, 2, 2, 2, 2, 2, 2, 2, 2 ],
+  [ 2, 2, 2, 2, 2, 2, 2, 2, 2, 2 ],
+  [ 3, 3, 3, 3, 3, 3, 3, 3, 3, 3 ],
+  [ 3, 3, 3, 3, 3, 3, 3, 3, 3, 3 ],
+];
+const MN_REDEEMER_ZONES = [
+  [ 0, 0, 0, 0, 1, 1, 0, 0, 0, 0 ],
+  [ 0, 0, 0, 0, 1, 1, 0, 0, 0, 0 ],
+  [ 1, 1, 1, 1, 1, 1, 1, 1, 1, 1 ],
+  [ 0, 0, 0, 0, 1, 1, 0, 0, 0, 0 ],
+  [ 0, 0, 0, 0, 1, 1, 0, 0, 0, 0 ],
+  [ 0, 0, 0, 1, 1, 1, 1, 0, 0, 0 ],
+  [ 0, 0, 2, 2, 2, 2, 2, 2, 0, 0 ],
+  [ 0, 2, 2, 2, 2, 2, 2, 2, 2, 0 ],
+  [ 3, 3, 3, 3, 3, 3, 3, 3, 3, 3 ],
+  [ 3, 3, 3, 3, 3, 3, 3, 3, 3, 3 ],
+];
+const MN_HALLGRIMS_ZONES = [
+  [ 0, 0, 0, 0, 1, 1, 0, 0, 0, 0 ],
+  [ 0, 0, 0, 0, 1, 1, 0, 0, 0, 0 ],
+  [ 0, 0, 0, 1, 1, 1, 1, 0, 0, 0 ],
+  [ 0, 0, 0, 1, 1, 1, 1, 0, 0, 0 ],
+  [ 0, 0, 1, 1, 1, 1, 1, 1, 0, 0 ],
+  [ 0, 2, 2, 1, 1, 1, 1, 2, 2, 0 ],
+  [ 0, 2, 2, 2, 2, 2, 2, 2, 2, 0 ],
+  [ 2, 2, 2, 2, 2, 2, 2, 2, 2, 2 ],
+  [ 3, 3, 3, 3, 3, 3, 3, 3, 3, 3 ],
+  [ 3, 3, 3, 3, 3, 3, 3, 3, 3, 3 ],
+];
+const MN_KOUTOUBIA_ZONES = [
+  [ 0, 0, 0, 0, 1, 1, 0, 0, 0, 0 ],
+  [ 0, 0, 0, 1, 1, 1, 1, 0, 0, 0 ],
+  [ 0, 0, 0, 1, 1, 1, 1, 0, 0, 0 ],
+  [ 0, 0, 1, 1, 1, 1, 1, 1, 0, 0 ],
+  [ 0, 0, 1, 1, 1, 1, 1, 1, 0, 0 ],
+  [ 0, 0, 1, 1, 1, 1, 1, 1, 0, 0 ],
+  [ 0, 0, 1, 1, 1, 1, 1, 1, 0, 0 ],
+  [ 0, 2, 2, 2, 2, 2, 2, 2, 2, 0 ],
+  [ 2, 2, 2, 2, 2, 2, 2, 2, 2, 2 ],
+  [ 3, 3, 3, 3, 3, 3, 3, 3, 3, 3 ],
+];
+const MN_OPERA_HOUSE_ZONES = [
+  [ 0, 0, 0, 0, 0, 1, 0, 0, 0, 0 ],
+  [ 0, 0, 0, 0, 1, 1, 1, 0, 0, 0 ],
+  [ 0, 0, 0, 1, 1, 1, 1, 1, 0, 0 ],
+  [ 0, 0, 1, 1, 1, 1, 1, 1, 1, 0 ],
+  [ 0, 1, 1, 1, 1, 1, 1, 1, 1, 1 ],
+  [ 1, 1, 1, 1, 1, 1, 1, 1, 1, 1 ],
+  [ 2, 2, 2, 2, 2, 2, 2, 2, 2, 2 ],
+  [ 2, 2, 2, 2, 2, 2, 2, 2, 2, 2 ],
+  [ 3, 3, 3, 3, 3, 3, 3, 3, 3, 3 ],
+  [ 3, 3, 3, 3, 3, 3, 3, 3, 3, 3 ],
+];
+
+// ═══════════════════════════════════════════════════════════════════════
+// MONUMENTS_LEVELS — 40 levels total (London + 9 new cities × 4 seasons).
+// Each level keeps the canonical 4 season strings (spring/summer/autumn/
+// winter) that drive the sky palette + base hazard archetype, but the
+// `hazardLabel` and `hazardTint` fields re-skin the hazard so it reads as
+// the country's signature seasonal event (sandstorm, monsoon, carnival
+// confetti, volcanic ash, bushfire embers, etc.).
+// ═══════════════════════════════════════════════════════════════════════
 const MONUMENTS_LEVELS = [
-  { id:'london_tb', name:'TOWER BRIDGE', city:'London', emoji:'🇬🇧',
-    season:'autumn', zoneMap: MN_TOWER_BRIDGE_ZONES },
-  { id:'london_tb', name:'TOWER BRIDGE', city:'London', emoji:'🇬🇧',
-    season:'spring', zoneMap: MN_TOWER_BRIDGE_ZONES },
-  { id:'london_tb', name:'TOWER BRIDGE', city:'London', emoji:'🇬🇧',
-    season:'summer', zoneMap: MN_TOWER_BRIDGE_ZONES },
-  { id:'london_tb', name:'TOWER BRIDGE', city:'London', emoji:'🇬🇧',
-    season:'winter', zoneMap: MN_TOWER_BRIDGE_ZONES },
+  // 1. LONDON · Tower Bridge
+  { id:'london_tb', name:'TOWER BRIDGE', city:'London', emoji:'🇬🇧', season:'autumn', zoneMap: MN_TOWER_BRIDGE_ZONES },
+  { id:'london_tb', name:'TOWER BRIDGE', city:'London', emoji:'🇬🇧', season:'spring', zoneMap: MN_TOWER_BRIDGE_ZONES },
+  { id:'london_tb', name:'TOWER BRIDGE', city:'London', emoji:'🇬🇧', season:'summer', zoneMap: MN_TOWER_BRIDGE_ZONES },
+  { id:'london_tb', name:'TOWER BRIDGE', city:'London', emoji:'🇬🇧', season:'winter', zoneMap: MN_TOWER_BRIDGE_ZONES },
+  // 2. PRAGUE · Charles Bridge (Czechia)
+  { id:'prague_cb', name:'CHARLES BRIDGE', city:'Prague', emoji:'🇨🇿', season:'autumn', zoneMap: MN_CHARLES_BRIDGE_ZONES, hazardLabel:'chestnut leaves' },
+  { id:'prague_cb', name:'CHARLES BRIDGE', city:'Prague', emoji:'🇨🇿', season:'spring', zoneMap: MN_CHARLES_BRIDGE_ZONES, hazardLabel:'cherry petals' },
+  { id:'prague_cb', name:'CHARLES BRIDGE', city:'Prague', emoji:'🇨🇿', season:'summer', zoneMap: MN_CHARLES_BRIDGE_ZONES, hazardLabel:'vltava flood' },
+  { id:'prague_cb', name:'CHARLES BRIDGE', city:'Prague', emoji:'🇨🇿', season:'winter', zoneMap: MN_CHARLES_BRIDGE_ZONES, hazardLabel:'frozen vltava' },
+  // 3. ACCRA · Black Star Gate (Ghana)
+  { id:'accra_bsg', name:'BLACK STAR GATE', city:'Accra', emoji:'🇬🇭', season:'autumn', zoneMap: MN_BLACK_STAR_GATE_ZONES, hazardLabel:'harmattan dust', hazardTint:'sand' },
+  { id:'accra_bsg', name:'BLACK STAR GATE', city:'Accra', emoji:'🇬🇭', season:'summer', zoneMap: MN_BLACK_STAR_GATE_ZONES, hazardLabel:'tropical downpour' },
+  { id:'accra_bsg', name:'BLACK STAR GATE', city:'Accra', emoji:'🇬🇭', season:'spring', zoneMap: MN_BLACK_STAR_GATE_ZONES, hazardLabel:'ripe mango drop', hazardTint:'mango' },
+  { id:'accra_bsg', name:'BLACK STAR GATE', city:'Accra', emoji:'🇬🇭', season:'winter', zoneMap: MN_BLACK_STAR_GATE_ZONES, hazardLabel:'savanna haze', hazardTint:'gold' },
+  // 4. CAIRO · Pyramids of Giza (Egypt)
+  { id:'cairo_py', name:'PYRAMIDS OF GIZA', city:'Cairo', emoji:'🇪🇬', season:'autumn', zoneMap: MN_PYRAMIDS_ZONES, hazardLabel:'khamsin sandstorm', hazardTint:'sand' },
+  { id:'cairo_py', name:'PYRAMIDS OF GIZA', city:'Cairo', emoji:'🇪🇬', season:'spring', zoneMap: MN_PYRAMIDS_ZONES, hazardLabel:'desert bloom', hazardTint:'rose' },
+  { id:'cairo_py', name:'PYRAMIDS OF GIZA', city:'Cairo', emoji:'🇪🇬', season:'summer', zoneMap: MN_PYRAMIDS_ZONES, hazardLabel:'nile flood' },
+  { id:'cairo_py', name:'PYRAMIDS OF GIZA', city:'Cairo', emoji:'🇪🇬', season:'winter', zoneMap: MN_PYRAMIDS_ZONES, hazardLabel:'desert night frost' },
+  // 5. BEIJING · Great Wall (China)
+  { id:'beijing_gw', name:'GREAT WALL', city:'Beijing', emoji:'🇨🇳', season:'autumn', zoneMap: MN_GREAT_WALL_ZONES, hazardLabel:'gingko fall' },
+  { id:'beijing_gw', name:'GREAT WALL', city:'Beijing', emoji:'🇨🇳', season:'spring', zoneMap: MN_GREAT_WALL_ZONES, hazardLabel:'plum blossom' },
+  { id:'beijing_gw', name:'GREAT WALL', city:'Beijing', emoji:'🇨🇳', season:'summer', zoneMap: MN_GREAT_WALL_ZONES, hazardLabel:'monsoon rain' },
+  { id:'beijing_gw', name:'GREAT WALL', city:'Beijing', emoji:'🇨🇳', season:'winter', zoneMap: MN_GREAT_WALL_ZONES, hazardLabel:'mountain snow' },
+  // 6. JAIPUR · Hawa Mahal (India)
+  { id:'jaipur_hm', name:'HAWA MAHAL', city:'Jaipur', emoji:'🇮🇳', season:'summer', zoneMap: MN_HAWA_MAHAL_ZONES, hazardLabel:'marigold petals', hazardTint:'marigold' },
+  { id:'jaipur_hm', name:'HAWA MAHAL', city:'Jaipur', emoji:'🇮🇳', season:'spring', zoneMap: MN_HAWA_MAHAL_ZONES, hazardLabel:'holi color powder', hazardTint:'holi' },
+  { id:'jaipur_hm', name:'HAWA MAHAL', city:'Jaipur', emoji:'🇮🇳', season:'autumn', zoneMap: MN_HAWA_MAHAL_ZONES, hazardLabel:'monsoon flood' },
+  { id:'jaipur_hm', name:'HAWA MAHAL', city:'Jaipur', emoji:'🇮🇳', season:'winter', zoneMap: MN_HAWA_MAHAL_ZONES, hazardLabel:'desert frost' },
+  // 7. RIO · Christ the Redeemer (Brazil)
+  { id:'rio_ctr', name:'CHRIST THE REDEEMER', city:'Rio', emoji:'🇧🇷', season:'summer', zoneMap: MN_REDEEMER_ZONES, hazardLabel:'carnival confetti', hazardTint:'carnival' },
+  { id:'rio_ctr', name:'CHRIST THE REDEEMER', city:'Rio', emoji:'🇧🇷', season:'spring', zoneMap: MN_REDEEMER_ZONES, hazardLabel:'jacaranda petals', hazardTint:'jacaranda' },
+  { id:'rio_ctr', name:'CHRIST THE REDEEMER', city:'Rio', emoji:'🇧🇷', season:'autumn', zoneMap: MN_REDEEMER_ZONES, hazardLabel:'tropical downpour' },
+  { id:'rio_ctr', name:'CHRIST THE REDEEMER', city:'Rio', emoji:'🇧🇷', season:'winter', zoneMap: MN_REDEEMER_ZONES, hazardLabel:'atlantic mist' },
+  // 8. REYKJAVÍK · Hallgrímskirkja (Iceland)
+  { id:'rvk_hk', name:'HALLGRÍMSKIRKJA', city:'Reykjavík', emoji:'🇮🇸', season:'winter', zoneMap: MN_HALLGRIMS_ZONES, hazardLabel:'arctic snow' },
+  { id:'rvk_hk', name:'HALLGRÍMSKIRKJA', city:'Reykjavík', emoji:'🇮🇸', season:'spring', zoneMap: MN_HALLGRIMS_ZONES, hazardLabel:'volcanic ash', hazardTint:'ash' },
+  { id:'rvk_hk', name:'HALLGRÍMSKIRKJA', city:'Reykjavík', emoji:'🇮🇸', season:'summer', zoneMap: MN_HALLGRIMS_ZONES, hazardLabel:'midnight sun melt' },
+  { id:'rvk_hk', name:'HALLGRÍMSKIRKJA', city:'Reykjavík', emoji:'🇮🇸', season:'autumn', zoneMap: MN_HALLGRIMS_ZONES, hazardLabel:'aurora frost', hazardTint:'aurora' },
+  // 9. MARRAKECH · Koutoubia Mosque (Morocco)
+  { id:'mrk_km', name:'KOUTOUBIA MOSQUE', city:'Marrakech', emoji:'🇲🇦', season:'summer', zoneMap: MN_KOUTOUBIA_ZONES, hazardLabel:'sirocco sand', hazardTint:'sand' },
+  { id:'mrk_km', name:'KOUTOUBIA MOSQUE', city:'Marrakech', emoji:'🇲🇦', season:'spring', zoneMap: MN_KOUTOUBIA_ZONES, hazardLabel:'rose petals', hazardTint:'rose' },
+  { id:'mrk_km', name:'KOUTOUBIA MOSQUE', city:'Marrakech', emoji:'🇲🇦', season:'autumn', zoneMap: MN_KOUTOUBIA_ZONES, hazardLabel:'date palm fall' },
+  { id:'mrk_km', name:'KOUTOUBIA MOSQUE', city:'Marrakech', emoji:'🇲🇦', season:'winter', zoneMap: MN_KOUTOUBIA_ZONES, hazardLabel:'atlas frost' },
+  // 10. SYDNEY · Opera House (Australia)
+  { id:'syd_oh', name:'SYDNEY OPERA HOUSE', city:'Sydney', emoji:'🇦🇺', season:'summer', zoneMap: MN_OPERA_HOUSE_ZONES, hazardLabel:'bushfire embers', hazardTint:'ember' },
+  { id:'syd_oh', name:'SYDNEY OPERA HOUSE', city:'Sydney', emoji:'🇦🇺', season:'spring', zoneMap: MN_OPERA_HOUSE_ZONES, hazardLabel:'jacaranda petals', hazardTint:'jacaranda' },
+  { id:'syd_oh', name:'SYDNEY OPERA HOUSE', city:'Sydney', emoji:'🇦🇺', season:'autumn', zoneMap: MN_OPERA_HOUSE_ZONES, hazardLabel:'harbour downpour' },
+  { id:'syd_oh', name:'SYDNEY OPERA HOUSE', city:'Sydney', emoji:'🇦🇺', season:'winter', zoneMap: MN_OPERA_HOUSE_ZONES, hazardLabel:'blue mountain frost' },
 ];
 
 // Look up the per-level intro voice clip for a Monuments level. Maps the
-// level's monument id + season to the right COMMENTARY entry. Returns null
-// if no intro is wired for that combination yet (extend as more monuments
-// get audio coverage).
+// level's monument id + season to the right COMMENTARY entry.
 function _mnLevelIntroEntry(lv) {
   if (!lv || typeof COMMENTARY === 'undefined') return null;
+  // London (original 4)
   if (lv.id === 'london_tb') {
     if (lv.season === 'autumn') return COMMENTARY.monLv1Autumn  && COMMENTARY.monLv1Autumn[0];
     if (lv.season === 'spring') return COMMENTARY.monLv2Spring  && COMMENTARY.monLv2Spring[0];
     if (lv.season === 'summer') return COMMENTARY.monLv3Summer  && COMMENTARY.monLv3Summer[0];
     if (lv.season === 'winter') return COMMENTARY.monLv4Winter  && COMMENTARY.monLv4Winter[0];
+  }
+  // 9 new cities — key pattern: mon_<cityid>_<season>
+  const cityKeyMap = {
+    'prague_cb': 'Prague', 'accra_bsg': 'Accra', 'cairo_py': 'Cairo',
+    'beijing_gw': 'Beijing', 'jaipur_hm': 'Jaipur', 'rio_ctr': 'Rio',
+    'rvk_hk': 'Reykjavik', 'mrk_km': 'Marrakech', 'syd_oh': 'Sydney',
+  };
+  if (cityKeyMap[lv.id]) {
+    const key = 'mon_' + cityKeyMap[lv.id] + '_' + lv.season;
+    return COMMENTARY[key] && COMMENTARY[key][0];
   }
   return null;
 }
@@ -10241,6 +10414,35 @@ function _mnDrawHazards() {
           const rot = phaseT * 7 + seed;
           drawPetal(sx2, sy2, sz, petalCols[i % petalCols.length], rot);
         }
+        ctx.restore();
+      }
+    }
+    // ─── Country-specific hazard tint overlay ───────────────────────
+    // Re-skin generic hazard archetypes (ice/puddle/leaves/blossom) with
+    // country-specific colors so e.g. Cairo's "puddle" reads as Nile flood
+    // while Marrakech's reads as warm sand drift.
+    const _curLv = (typeof MONUMENTS_LEVELS !== 'undefined') ? MONUMENTS_LEVELS[monumentsLevelIdx] : null;
+    const tint = _curLv && _curLv.hazardTint;
+    if (tint) {
+      const tintColors = {
+        sand:      'rgba(218, 178, 96, 0.28)',   // warm desert sand
+        mango:     'rgba(255, 152, 64, 0.25)',   // ripe mango orange
+        gold:      'rgba(240, 200, 80, 0.22)',
+        rose:      'rgba(232, 110, 140, 0.25)',  // desert rose / Marrakech rose
+        marigold:  'rgba(255, 180, 40, 0.30)',   // Indian marigold
+        holi:      'rgba(220, 70, 200, 0.30)',   // Holi color powder pink/magenta
+        carnival:  'rgba(255, 80, 200, 0.30)',   // Rio carnival magenta
+        jacaranda: 'rgba(170, 110, 230, 0.28)',  // jacaranda purple
+        ash:       'rgba(90, 95, 105, 0.32)',    // volcanic ash gray
+        aurora:    'rgba(120, 230, 180, 0.26)',  // aurora green-teal
+        ember:     'rgba(255, 90, 40, 0.32)',    // bushfire ember orange-red
+      };
+      const tc = tintColors[tint];
+      if (tc) {
+        ctx.save();
+        ctx.globalCompositeOperation = 'source-atop';
+        ctx.fillStyle = tc;
+        ctx.fillRect(x + 1, y + 1, CELL - 2, CELL - 2);
         ctx.restore();
       }
     }
@@ -13624,6 +13826,52 @@ const COMMENTARY = {
   monLv2Spring:  [['🌸 London · Spring — blossoms drop in for 6 seconds.', 'mon_lv2_london_spring_0']],
   monLv3Summer:  [['☀️ London · Summer — bricks melt in the heatwave.', 'mon_lv3_london_summer_0']],
   monLv4Winter:  [['❄️ London · Winter — ice locks rows until it thaws.', 'mon_lv4_london_winter_0']],
+  // ─── 9 NEW CITIES × 4 SEASONS = 36 per-level intros ───────────────
+  // Prague · Charles Bridge
+  mon_Prague_autumn: [['🍂 Prague · Autumn — chestnut leaves pile on the bridge.', 'mon_Prague_autumn_0']],
+  mon_Prague_spring: [['🌸 Prague · Spring — cherry petals drop for 6 seconds.', 'mon_Prague_spring_0']],
+  mon_Prague_summer: [['💦 Prague · Summer — the Vltava floods the arches.', 'mon_Prague_summer_0']],
+  mon_Prague_winter: [['❄️ Prague · Winter — the river freezes solid.', 'mon_Prague_winter_0']],
+  // Accra · Black Star Gate
+  mon_Accra_autumn:  [['🌫️ Accra · Harmattan — Saharan dust drifts in to block tiles.', 'mon_Accra_autumn_0']],
+  mon_Accra_summer:  [['🌧️ Accra · Wet Season — tropical downpour pools on the gate.', 'mon_Accra_summer_0']],
+  mon_Accra_spring:  [['🥭 Accra · Mango Drop — ripe mangoes fall and block tiles for 6 seconds.', 'mon_Accra_spring_0']],
+  mon_Accra_winter:  [['☀️ Accra · Dry Heat — savanna haze scorches the bricks.', 'mon_Accra_winter_0']],
+  // Cairo · Pyramids
+  mon_Cairo_autumn:  [['🏜️ Cairo · Khamsin — sandstorm buries cells until the wind clears.', 'mon_Cairo_autumn_0']],
+  mon_Cairo_spring:  [['🌹 Cairo · Desert Bloom — desert flowers drop for 6 seconds.', 'mon_Cairo_spring_0']],
+  mon_Cairo_summer:  [['🌊 Cairo · Nile Flood — the river rises and floods the pyramid base.', 'mon_Cairo_summer_0']],
+  mon_Cairo_winter:  [['🌙 Cairo · Desert Night — frost locks the stones until dawn.', 'mon_Cairo_winter_0']],
+  // Beijing · Great Wall
+  mon_Beijing_autumn:[['🍁 Beijing · Autumn — gingko leaves pile on the wall.', 'mon_Beijing_autumn_0']],
+  mon_Beijing_spring:[['🌸 Beijing · Spring — plum blossoms drop for 6 seconds.', 'mon_Beijing_spring_0']],
+  mon_Beijing_summer:[['🌧️ Beijing · Monsoon — heavy rain pools on the parapet.', 'mon_Beijing_summer_0']],
+  mon_Beijing_winter:[['❄️ Beijing · Winter — mountain snow freezes whole rows.', 'mon_Beijing_winter_0']],
+  // Jaipur · Hawa Mahal
+  mon_Jaipur_summer: [['🌼 Jaipur · Pre-monsoon — marigold garlands drop for 6 seconds.', 'mon_Jaipur_summer_0']],
+  mon_Jaipur_spring: [['🎨 Jaipur · Holi — color powder clouds settle on the windows.', 'mon_Jaipur_spring_0']],
+  mon_Jaipur_autumn: [['🌧️ Jaipur · Monsoon — floodwater pools on the palace.', 'mon_Jaipur_autumn_0']],
+  mon_Jaipur_winter: [['❄️ Jaipur · Desert Winter — frost locks the lattice.', 'mon_Jaipur_winter_0']],
+  // Rio · Christ the Redeemer
+  mon_Rio_summer:    [['🎉 Rio · Carnival — confetti drops for 6 seconds.', 'mon_Rio_summer_0']],
+  mon_Rio_spring:    [['💜 Rio · Spring — jacaranda petals pile up.', 'mon_Rio_spring_0']],
+  mon_Rio_autumn:    [['🌧️ Rio · Tropical Storm — sudden downpour floods the statue.', 'mon_Rio_autumn_0']],
+  mon_Rio_winter:    [['🌫️ Rio · Atlantic Mist — cool fog locks the sightlines.', 'mon_Rio_winter_0']],
+  // Reykjavík · Hallgrímskirkja
+  mon_Reykjavik_winter:[['❄️ Reykjavík · Arctic Winter — snow freezes whole rows.', 'mon_Reykjavik_winter_0']],
+  mon_Reykjavik_spring:[['🌋 Reykjavík · Volcanic Ash — ash drift settles for 6 seconds.', 'mon_Reykjavik_spring_0']],
+  mon_Reykjavik_summer:[['☀️ Reykjavík · Midnight Sun — meltwater pools on the church.', 'mon_Reykjavik_summer_0']],
+  mon_Reykjavik_autumn:[['🌌 Reykjavík · Aurora Frost — northern lights freeze the spire.', 'mon_Reykjavik_autumn_0']],
+  // Marrakech · Koutoubia Mosque
+  mon_Marrakech_summer:[['🏜️ Marrakech · Sirocco — Sahara sand drift buries the tiles.', 'mon_Marrakech_summer_0']],
+  mon_Marrakech_spring:[['🌹 Marrakech · Rose Valley — rose petals drop for 6 seconds.', 'mon_Marrakech_spring_0']],
+  mon_Marrakech_autumn:[['🌴 Marrakech · Date Harvest — date palm fronds pile on the minaret.', 'mon_Marrakech_autumn_0']],
+  mon_Marrakech_winter:[['❄️ Marrakech · Atlas Frost — mountain cold freezes the stones.', 'mon_Marrakech_winter_0']],
+  // Sydney · Opera House
+  mon_Sydney_summer: [['🔥 Sydney · Bushfire — embers drop and scorch for 6 seconds.', 'mon_Sydney_summer_0']],
+  mon_Sydney_spring: [['💜 Sydney · Spring — jacaranda petals pile on the sails.', 'mon_Sydney_spring_0']],
+  mon_Sydney_autumn: [['🌧️ Sydney · Harbour Storm — heavy rain pools on the shells.', 'mon_Sydney_autumn_0']],
+  mon_Sydney_winter: [['❄️ Sydney · Blue Mountain Frost — cool mist freezes the sails.', 'mon_Sydney_winter_0']],
   // Golden Frog mechanic in-game tips — fire ONCE per level on first hazard tick.
   gfTipQuake:    [['🌍 Brace! Quake incoming — tiles will slide.', 'gf_tip_quake_0']],
   gfTipTide:     [['🌊 Tide rising — clear bottom rows fast.', 'gf_tip_tide_0']],
