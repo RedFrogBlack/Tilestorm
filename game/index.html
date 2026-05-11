@@ -9906,28 +9906,18 @@ function _mnDrawSkylineImage(ctx, W, H, baseY, id, dayMix, night, season) {
 
   ctx.save();
   const iw = dayImg.naturalWidth, ih = dayImg.naturalHeight;
-  // ── FIT MODE: 'contain' (was 'cover') so the entire skyline composition is
-  //    always visible, never cropped. Any letterbox bars are matted with the
-  //    image's edge sky color so it reads as one continuous banner.
-  const scale = Math.min(W / iw, H / ih);
+  // ── FIT MODE: 'cover' ─ fill the entire board so there are NO matte seam
+  //    bars at top/bottom. We previously used 'contain', which letterboxed and
+  //    the generic blue/orange matte gradient produced visible horizontal
+  //    seams that didn't match the image's actual edge colours — looked like
+  //    "weird lines at the bottom and top" of the city, and a ghosted second
+  //    skyline strip in the matte band. The JPEGs are wide-panoramic 16:9
+  //    landscapes, so 'cover' on a roughly-square board crops modest amounts
+  //    of the left + right edges (sky area only — the main monument stays
+  //    centred) but produces a perfectly seamless full-bleed background.
+  const scale = Math.max(W / iw, H / ih);
   const dw = iw * scale, dh = ih * scale;
   const dx = (W - dw) / 2, dy = (H - dh) / 2;
-
-  // ── 0. Matte fill behind the image (covers any letterbox bars) ──
-  //    Use a vertical gradient that roughly matches the GF day/night sky so
-  //    side or top bars blend invisibly into the composition.
-  if (dw < W - 0.5 || dh < H - 0.5) {
-    const mGrad = ctx.createLinearGradient(0, 0, 0, H);
-    if (night > 0.5) {
-      mGrad.addColorStop(0, '#0a1530');
-      mGrad.addColorStop(1, '#3a2a55');
-    } else {
-      mGrad.addColorStop(0, '#5fb6ee');
-      mGrad.addColorStop(1, '#ffcb9a');
-    }
-    ctx.fillStyle = mGrad;
-    ctx.fillRect(0, 0, W, H);
-  }
 
   // ── 1. Base illustration: HARD switch day ↔ night based on `night` value ──
   // Why hard switch (not crossfade)? Each image has its OWN sun/moon in fixed
