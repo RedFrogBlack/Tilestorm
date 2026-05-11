@@ -8585,17 +8585,9 @@ function startMonumentsGame(levelIdx) {
   // never speaks.
   const _tierTutorWillFire = (typeof showTutor === 'function') &&
     (typeof _tutorAlreadyShown !== 'function' || !_tutorAlreadyShown('tier_monuments'));
-  if (typeof showTutor === 'function') {
-    showTutor('tier_monuments', COMMENTARY.tierMonuments[0], { color: 'purple', ribbit: 'warm', delayMs: 2400 });
-  }
-  // Per-level intro — plays every time the player enters this level. We delay
-  // it after the tier intro on first run so the two clips don't collide; on
-  // repeat visits the tier intro is suppressed so the level intro fires fast.
-  if (typeof sayLevelIntro === 'function') {
-    const _levelEntry = _mnLevelIntroEntry(lv);
-    const _introDelay = _tierTutorWillFire ? 7500 : 1200;
-    if (_levelEntry) sayLevelIntro(_levelEntry, { color: 'purple', ribbit: 'warm', delayMs: _introDelay });
-  }
+  // Monuments mode is silent by user request — no tier intro tutor banner,
+  // no per-level voice intro. The HUD label + board art are sufficient.
+  // (Tier tutor + level intro disabled.)
   // Arm 20s auto-advance so all four seasons cycle automatically.
   if (typeof _mnArmSeasonAutoAdvance === 'function') _mnArmSeasonAutoAdvance();
   // Refresh top-bar level nav strip (label "N / 10" + prev/next enable state)
@@ -11896,11 +11888,10 @@ function _mnHazardHintMark(season) {
 }
 function _mnHazardHintReset() { _mnHazardHintShown = Object.create(null); }
 function _mnSayHazardOnce(season, color, pool, ribbit) {
-  if (!hazardHintsOn) return;
-  if (_mnHazardHintAlreadyShown(season)) return;
-  if (typeof showFrogSpeech !== 'function') return;
-  _mnHazardHintMark(season);
-  showFrogSpeech(color, _pick(pool), ribbit);
+  // Monuments mode: silent. The visual hazards on the board are
+  // self-explanatory, and the user requested no noises / no top-banner
+  // messages during play. The hint system is preserved for other modes.
+  return;
 }
 
 // ─────────────────────────────────────────────────────────────────────
@@ -11912,11 +11903,11 @@ function _mnSayHazardOnce(season, color, pool, ribbit) {
 //   tint      : optional color string passed through to renderer for re-skinning.
 // ─────────────────────────────────────────────────────────────────────
 const _MN_HAZARD_LABEL_MAP = {
-  // Prague
-  'chestnut leaves':   { archetype:'autumn', type:'leaves',    tint:'chestnut' },
-  'cherry petals':     { archetype:'spring', type:'blossom',   tint:'cherry' },
-  'vltava flood':      { archetype:'summer', type:'puddle',    tint:'flood' },
-  'frozen vltava':     { archetype:'winter', type:'ice',       tint:'ice' },
+  // Prague — distinct from London via colour + behaviour
+  'chestnut leaves':   { archetype:'autumn', type:'leaves',    tint:'gingko' },   // bohemian gold linden leaves
+  'cherry petals':     { archetype:'spring', type:'confetti',  tint:'plum' },     // delicate plum/violet petals flurry
+  'vltava flood':      { archetype:'summer', type:'puddle',    tint:'flood' },    // green-blue river overflow
+  'frozen vltava':     { archetype:'winter', type:'mist',      tint:'mist' },     // freezing river fog
   // Accra
   'harmattan dust':    { archetype:'autumn', type:'leaves',    tint:'sand' },
   'tropical downpour': { archetype:'summer', type:'puddle',    tint:'flood' },
@@ -13327,6 +13318,7 @@ function _monumentsHudUpdate() {
   // would otherwise keep showing the cityPack's name (e.g. "LONDON") for every
   // monument city. updateCityPackHUD branches on monumentsActive internally.
   if (typeof updateCityPackHUD === 'function') { try { updateCityPackHUD(); } catch(_e) {} }
+  if (typeof _updateMidZone === 'function') { try { _updateMidZone(); } catch(_e) {} }
   const sc = document.getElementById('mn-score');
   const go = document.getElementById('mn-goal');
   const lv = document.getElementById('mn-level');
@@ -13445,24 +13437,14 @@ function advanceMonumentsLevel() {
     if (typeof _mnHazardHintReset === 'function') _mnHazardHintReset();
     // Kick off fresh seasonal hazards for the new season.
     if (typeof _mnStartHazards === 'function') _mnStartHazards();
-    // Announce the new season with a soft banner — NO full-screen overlay, NO board reset.
+    // Season change is now silent — no top banner, no frog voice.
+    // The persistent HUD label (city · season) is the only indicator.
+    // The board art + hazard visuals carry the rest of the storytelling.
     try {
-      const seasonEmoji = { spring:'🌸', summer:'☀️', autumn:'🍂', winter:'❄️' }[nextSeason] || '';
-      const seasonName  = (nextSeason || '').toUpperCase();
-      if (typeof showEventBanner === 'function') {
-        showEventBanner(seasonEmoji + ' ' + (nextLv.name || '').toUpperCase() + ' · ' + seasonName);
-      }
-      // Push the new season into the persistent under-topbar label.
       if (typeof _monumentsHudUpdate === 'function') _monumentsHudUpdate();
     } catch(_e) {}
-    // Per-level intro for the new season — fires every time we swap in.
-    // Hard-stop any clip currently playing (e.g. previous season's intro
-    // that hadn't finished yet) so the frog speaks about the NEW season.
+    // Hard-stop any voice clip that might still be playing from before.
     if (typeof _frogVoiceStop === 'function') _frogVoiceStop();
-    if (typeof sayLevelIntro === 'function') {
-      const _intro = _mnLevelIntroEntry(nextLv);
-      if (_intro) sayLevelIntro(_intro, { color: 'purple', ribbit: 'warm', delayMs: 900 });
-    }
     // Re-arm the 20s auto-advance for this fresh season.
     if (typeof _mnArmSeasonAutoAdvance === 'function') _mnArmSeasonAutoAdvance();
     return;
@@ -16826,6 +16808,12 @@ function _updateMidZone(tier) {
     if (currentDuoGame) {
       const meta = DUO_GAME_META && DUO_GAME_META[currentDuoGame];
       badge.textContent = meta ? (meta.emoji + ' ' + meta.name + ' · LVL ' + (currentDuoLevel||1)) : 'DUO';
+    } else if (typeof monumentsActive !== 'undefined' && monumentsActive) {
+      // Monuments mode — show current monument's city + season instead of CITY_PACK_CITIES[0]
+      const lv = MONUMENTS_LEVELS[monumentsLevelIdx] || {};
+      const cityName = (lv.city || lv.name || '').toUpperCase();
+      const seasonName = (lv.season || '').toUpperCase();
+      badge.textContent = (lv.emoji ? lv.emoji + ' ' : '') + cityName + (seasonName ? ' · ' + seasonName : '');
     } else if (cityPackActive) {
       const city = CITY_PACK_CITIES[cityPackCityIdx];
       badge.textContent = city ? (city.emoji + ' ' + city.name) : 'CITY PACK';
