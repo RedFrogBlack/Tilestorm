@@ -9893,16 +9893,32 @@ function _mnDrawSkylineImage(ctx, W, H, baseY, id, dayMix, night, season) {
     ctx.fillRect(0, 0, W, H);
   }
 
-  // ── 1. Base illustration: crossfade day → night based on `night` value ──
+  // ── 1. Base illustration: HARD switch day ↔ night based on `night` value ──
+  // Why hard switch (not crossfade)? Each image has its OWN sun/moon in fixed
+  // positions. A linear/smoothstep crossfade shows BOTH celestial bodies at
+  // once during the transition, producing a ghosted double-image. So we keep
+  // day until twilight, twilight is a narrow blended dusk band, then night.
   if (nightReady && night > 0.01) {
-    // Smoothstep the crossfade so the transition is gentle, not linear.
     const t = Math.max(0, Math.min(1, night));
-    const smoothT = t * t * (3 - 2 * t);
+    // Dead zones: pure day below 0.55, pure night above 0.80. Between those
+    // a narrow band is blended via smoothstep, but kept short so the double
+    // sun+moon never lingers long enough to be noticed.
+    let nightAlpha;
+    if (t < 0.55) {
+      nightAlpha = 0;
+    } else if (t > 0.80) {
+      nightAlpha = 1;
+    } else {
+      const u = (t - 0.55) / 0.25; // 0..1 across the twilight band
+      nightAlpha = u * u * (3 - 2 * u); // smoothstep
+    }
     ctx.globalAlpha = 1;
     ctx.drawImage(dayImg, dx, dy, dw, dh);
-    ctx.globalAlpha = smoothT;
-    ctx.drawImage(nightImg, dx, dy, dw, dh);
-    ctx.globalAlpha = 1;
+    if (nightAlpha > 0.01) {
+      ctx.globalAlpha = nightAlpha;
+      ctx.drawImage(nightImg, dx, dy, dw, dh);
+      ctx.globalAlpha = 1;
+    }
   } else {
     ctx.drawImage(dayImg, dx, dy, dw, dh);
     // For cities without a night variant, apply a darkening wash so the
