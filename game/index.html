@@ -9897,11 +9897,20 @@ function _mnDrawSkylinePlaceholder(ctx, W, H, baseY, season, night) {
   ctx.fillRect(0, baseY, W, H - baseY);
 }
 
+// Cities that should use ONE base image and shift through day↔night via
+// a tint/darkening wash only (no separate night JPEG). The user reported that
+// having two distinct day/night JPEGs with different compositions produces
+// ghosting (two skylines visible at once during transition) since each image
+// has its own building/sun/moon positions. Single-image cities sidestep this.
+const _MN_SINGLE_IMAGE = { london: true };
+
 // Returns true if it drew the image, false if the image is not ready yet.
 function _mnDrawSkylineImage(ctx, W, H, baseY, id, dayMix, night, season) {
   const dayImg = _mnGetSkylineImage(id);
   if (!dayImg._mnLoaded || dayImg._mnError) return false;
-  const nightImg = _MN_HAS_NIGHT_VARIANT[id] ? _mnGetSkylineImage(id + '_night') : null;
+  // Single-image cities: force night variant to null so we apply tint instead.
+  const useSingle = !!_MN_SINGLE_IMAGE[id];
+  const nightImg = (!useSingle && _MN_HAS_NIGHT_VARIANT[id]) ? _mnGetSkylineImage(id + '_night') : null;
   const nightReady = !!(nightImg && nightImg._mnLoaded && !nightImg._mnError);
 
   ctx.save();
@@ -9946,12 +9955,31 @@ function _mnDrawSkylineImage(ctx, W, H, baseY, id, dayMix, night, season) {
       ctx.globalAlpha = 1;
     }
   } else {
+    // Single-image path — always use the SAME composition (no second JPEG)
+    // and shift day↔night via tinting only. This eliminates all ghosting
+    // because there is only ever one skyline drawn.
     ctx.drawImage(dayImg, dx, dy, dw, dh);
-    // For cities without a night variant, apply a darkening wash so the
-    // image still reads as evening when night > 0.
     if (night > 0.01) {
-      ctx.fillStyle = `rgba(6, 10, 28, ${0.45 * night})`;
-      ctx.fillRect(0, 0, W, H);
+      // Two-stop tint: dusk (warm, low-night) → night (cool dark navy).
+      // Lerp between them based on night value so the transition reads as a
+      // natural sunset rather than a flat darkening.
+      ctx.save();
+      // Stage 1: warm dusk wash peaks around night ~ 0.35 (golden hour).
+      const duskA = Math.max(0, Math.min(1, 1 - Math.abs(night - 0.35) / 0.35)) * 0.22;
+      if (duskA > 0.01) {
+        ctx.globalCompositeOperation = 'multiply';
+        ctx.fillStyle = `rgba(255, 170, 110, ${duskA})`;
+        ctx.fillRect(0, 0, W, H);
+        ctx.globalCompositeOperation = 'source-over';
+      }
+      // Stage 2: deep night darkening, starts at night > 0.4, full by 0.9.
+      const nightA = Math.max(0, Math.min(1, (night - 0.4) / 0.5));
+      if (nightA > 0.01) {
+        // Cool navy wash darkens everything
+        ctx.fillStyle = `rgba(8, 14, 36, ${0.55 * nightA})`;
+        ctx.fillRect(0, 0, W, H);
+      }
+      ctx.restore();
     }
   }
 
@@ -10055,9 +10083,15 @@ function _mnDrawLondonAnimation(ctx, W, H, baseY, id, night, tnow) {
   drawFerry(0.5,  0.014, 0.78, 0.6);   // smaller boat further out
 
   // ── Traffic on Tower Bridge: 3 tiny moving headlight dots crossing deck ──
-  // The bridge deck in the new image runs around y ≈ H * 0.55..0.58 between
-  // x ≈ 0.40 W and 0.62 W. Cars are tiny rectangles with headlights.
-  const deckY = H * 0.575;
+  // The bridge in london.jpg has TWO horizontal spans:
+  //   - upper walkway at image-y ≈ 460/900 (≈ H * 0.51 on canvas) — this is
+  //     just the suspension cables / pedestrian walkway. NO traffic here.
+  //   - lower roadway at image-y ≈ 595/900 (≈ H * 0.66 on canvas) — this is
+  //     the actual road deck and where traffic should run.
+  // We previously had cars at H*0.575 which placed them on the cable walkway
+  // — looked silly (cars driving through suspension cables). Moved to the
+  // lower roadway. x-range is the central bridge span between the two towers.
+  const deckY = H * 0.66;
   const bridgeL = W * 0.40;
   const bridgeR = W * 0.62;
   const bridgeSpan = bridgeR - bridgeL;
