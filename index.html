@@ -9810,105 +9810,197 @@ function _mnNightWindowsFor(id, W, H, baseY) {
   return pts;
 }
 
+// Cities that have a separate `<id>_night.jpg` baked image. For these we
+// crossfade the day and night illustrations instead of darkening the day
+// image — produces a far richer night look (illuminated landmarks, lit
+// windows, moon, water reflections) with no hue-replacement seams.
+const _MN_HAS_NIGHT_VARIANT = { london: true };
+
 // Returns true if it drew the image, false if the image is not ready yet.
 function _mnDrawSkylineImage(ctx, W, H, baseY, id, dayMix, night, season) {
-  const img = _mnGetSkylineImage(id);
-  if (!img._mnLoaded || img._mnError) return false;
+  const dayImg = _mnGetSkylineImage(id);
+  if (!dayImg._mnLoaded || dayImg._mnError) return false;
+  const nightImg = _MN_HAS_NIGHT_VARIANT[id] ? _mnGetSkylineImage(id + '_night') : null;
+  const nightReady = !!(nightImg && nightImg._mnLoaded && !nightImg._mnError);
 
-  // ── 1. Base illustration (fully opaque) ──
   ctx.save();
-  const iw = img.naturalWidth, ih = img.naturalHeight;
+  const iw = dayImg.naturalWidth, ih = dayImg.naturalHeight;
   const scale = Math.max(W / iw, H / ih);
   const dw = iw * scale, dh = ih * scale;
   const dx = (W - dw) / 2, dy = (H - dh) / 2;
-  ctx.drawImage(img, dx, dy, dw, dh);
 
-  // ── 2. Full-canvas hue replacement ──
-  // The baked image is a warm sunset (orange sky + orange water reflection).
-  // We replace the hue across the ENTIRE canvas using 'color' compositing:
-  // luminance is preserved (bright sky stays bright, dark silhouettes stay
-  // dark, sun stays bright, reflections keep their shimmer) but the
-  // chromaticity is forced to the season palette.
-  //
-  // CRITICAL: use ONE smooth gradient over the whole canvas (no hard band
-  // boundaries). Previously we used three separate bands which produced
-  // visible horizontal seams at the boundary y-values — the user saw these
-  // as "strange stripes".
-  const pal = _mnSkyPalette(season, night);
-  const fullGrad = ctx.createLinearGradient(0, 0, 0, H);
-  fullGrad.addColorStop(0.00, `rgb(${pal.top[0]}, ${pal.top[1]}, ${pal.top[2]})`);
-  fullGrad.addColorStop(0.45, `rgb(${pal.bot[0]}, ${pal.bot[1]}, ${pal.bot[2]})`);
-  // Smooth blend from sky-bottom hue to water hue across the bridge band so
-  // there's no visible horizontal seam.
-  fullGrad.addColorStop(0.62, `rgb(${Math.round((pal.bot[0]+pal.water[0])/2)}, ${Math.round((pal.bot[1]+pal.water[1])/2)}, ${Math.round((pal.bot[2]+pal.water[2])/2)})`);
-  fullGrad.addColorStop(0.78, `rgb(${pal.water[0]}, ${pal.water[1]}, ${pal.water[2]})`);
-  fullGrad.addColorStop(1.00, `rgb(${Math.max(0,pal.water[0]-15)}, ${Math.max(0,pal.water[1]-12)}, ${Math.max(0,pal.water[2]-8)})`);
-  ctx.globalCompositeOperation = 'color';
-  ctx.fillStyle = fullGrad;
-  ctx.fillRect(0, 0, W, H);
-  ctx.globalCompositeOperation = 'source-over';
-
-  // ── 2b. Daytime brightness lift — the baked image has a moody dusk
-  // luminance, so even with bright blue chroma summer reads gloomy. For
-  // bright-day seasons we add a 'screen' wash to lift overall lightness.
-  // (Skipped at night.)
-  if (night < 0.35) {
-    const lift = _mnDayBrightness(season) * (1 - night / 0.35);
-    if (lift > 0.01) {
-      ctx.save();
-      ctx.globalCompositeOperation = 'screen';
-      // Stronger in the sky, fading toward the water (single smooth gradient)
-      const liftGrad = ctx.createLinearGradient(0, 0, 0, H);
-      liftGrad.addColorStop(0,    `rgba(255, 250, 235, ${lift})`);
-      liftGrad.addColorStop(0.55, `rgba(255, 250, 235, ${lift * 0.55})`);
-      liftGrad.addColorStop(1,    `rgba(255, 250, 235, ${lift * 0.20})`);
-      ctx.fillStyle = liftGrad;
+  // ── 1. Base illustration: crossfade day → night based on `night` value ──
+  if (nightReady && night > 0.01) {
+    // Smoothstep the crossfade so the transition is gentle, not linear.
+    const t = Math.max(0, Math.min(1, night));
+    const smoothT = t * t * (3 - 2 * t);
+    ctx.globalAlpha = 1;
+    ctx.drawImage(dayImg, dx, dy, dw, dh);
+    ctx.globalAlpha = smoothT;
+    ctx.drawImage(nightImg, dx, dy, dw, dh);
+    ctx.globalAlpha = 1;
+  } else {
+    ctx.drawImage(dayImg, dx, dy, dw, dh);
+    // For cities without a night variant, apply a darkening wash so the
+    // image still reads as evening when night > 0.
+    if (night > 0.01) {
+      ctx.fillStyle = `rgba(6, 10, 28, ${0.45 * night})`;
       ctx.fillRect(0, 0, W, H);
-      ctx.restore();
     }
   }
 
-  // ── 3. Night enhancements ──
-  if (night > 0.35) {
-    const t = (night - 0.35) / 0.65; // 0..1 within night band
-    // Cool dark wash over the whole scene (not just sky) — strong but not opaque
-    ctx.fillStyle = `rgba(6, 10, 28, ${0.30 * t})`;
-    ctx.fillRect(0, 0, W, H);
-    // Lit windows — warm yellow dots scattered across the building band.
-    // Use 'lighter' (additive) so they glow on top of dark silhouettes.
+  // ── 2. Gentle seasonal hue shift ──
+  // The new base images are already pleasant (bright blue sky + blue Thames),
+  // so we apply only a SOFT seasonal tint instead of a full hue replacement.
+  // This preserves the source's nuance (clouds, sun glow, reflections, lit
+  // windows) and produces zero seams because we use a single full-canvas wash.
+  const seasonTint = _mnSeasonTint(season, night);
+  if (seasonTint.a > 0.01) {
     ctx.save();
-    ctx.globalCompositeOperation = 'lighter';
-    const wins = _mnNightWindowsFor(id, W, H, baseY);
-    const tnow = (typeof performance !== 'undefined') ? performance.now() / 1000 : 0;
-    for (const p of wins) {
-      // Gentle flicker: amplitude depends on per-window phase
-      const flick = 0.75 + 0.25 * Math.sin(tnow * 1.6 + p.flick * 12);
-      const alpha = 0.55 * t * flick;
-      ctx.fillStyle = `rgba(255, 215, 140, ${alpha})`;
-      ctx.beginPath(); ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2); ctx.fill();
-    }
+    ctx.globalCompositeOperation = seasonTint.mode;
+    ctx.fillStyle = `rgba(${seasonTint.r}, ${seasonTint.g}, ${seasonTint.b}, ${seasonTint.a})`;
+    ctx.fillRect(0, 0, W, H);
     ctx.restore();
-    // Add a soft moon glow top-right when full night
-    if (t > 0.6) {
-      ctx.save();
-      const mx = W * 0.85, my = H * 0.18, mr = Math.min(W, H) * 0.045;
-      const moonGrad = ctx.createRadialGradient(mx, my, 0, mx, my, mr * 3.5);
-      moonGrad.addColorStop(0, `rgba(245,240,220, ${0.95 * t})`);
-      moonGrad.addColorStop(0.4, `rgba(245,240,220, ${0.25 * t})`);
-      moonGrad.addColorStop(1, 'rgba(245,240,220, 0)');
-      ctx.fillStyle = moonGrad;
-      ctx.fillRect(mx - mr*4, my - mr*4, mr*8, mr*8);
-      ctx.fillStyle = `rgba(255, 250, 230, ${0.95 * t})`;
-      ctx.beginPath(); ctx.arc(mx, my, mr, 0, Math.PI * 2); ctx.fill();
-      ctx.restore();
-    }
   }
-  // (Removed legacy mid-day sky-only brighten — the smooth lift gradient
-  // above already handles this without producing a hard seam at the
-  // horizon line.)
+
+  // ── 3. Live animation: water shimmer + boats + bridge traffic + flicker ──
+  const tnow = (typeof performance !== 'undefined') ? performance.now() / 1000 : 0;
+  _mnDrawLondonAnimation(ctx, W, H, baseY, id, night, tnow);
 
   ctx.restore();
   return true;
+}
+
+// Soft seasonal overlay — returns {mode, r, g, b, a} for the tint pass.
+// Day: gentle 'multiply' wash with a warm/cool hue. Night: tiny 'overlay'.
+function _mnSeasonTint(season, night) {
+  // At night, the night image already carries the right mood — skip tint.
+  if (night > 0.65) return { mode: 'source-over', r:0, g:0, b:0, a: 0 };
+  const dayMix = 1 - night; // 1 = full day, 0 = full night
+  switch (season) {
+    case 'spring': return { mode: 'overlay',  r: 255, g: 195, b: 220, a: 0.12 * dayMix }; // soft pink
+    case 'summer': return { mode: 'source-over', r: 0,   g: 0,   b: 0,   a: 0 };               // base image IS summer
+    case 'autumn': return { mode: 'multiply', r: 245, g: 200, b: 160, a: 0.30 * dayMix }; // warm amber
+    case 'winter': return { mode: 'overlay',  r: 200, g: 220, b: 245, a: 0.20 * dayMix }; // cool icy
+    default:       return { mode: 'source-over', r: 0,   g: 0,   b: 0,   a: 0 };
+  }
+}
+
+// London-specific live animation: shimmering water highlights, two ferries
+// drifting on the Thames, animated traffic dots on Tower Bridge, and gentle
+// window-light flicker at night. Generic for other cities = no-op.
+function _mnDrawLondonAnimation(ctx, W, H, baseY, id, night, tnow) {
+  if (id !== 'london') return;
+
+  // ── Water shimmer: a few horizontal highlight streaks that drift slowly ──
+  const waterTop = H * 0.66;
+  ctx.save();
+  ctx.globalCompositeOperation = 'lighter';
+  for (let i = 0; i < 6; i++) {
+    const phase = (tnow * 0.15 + i * 0.37) % 1;
+    const y = waterTop + (H - waterTop) * (0.1 + i * 0.14);
+    const dx = (Math.sin(tnow * 0.6 + i) * 0.5 + 0.5) * W * 0.6;
+    const len = W * (0.15 + 0.08 * Math.sin(tnow * 0.5 + i * 2));
+    const alpha = (night > 0.5 ? 0.22 : 0.18) * (1 - phase * 0.4);
+    const grad = ctx.createLinearGradient(dx, y, dx + len, y);
+    const tint = night > 0.5 ? '255, 220, 150' : '255, 255, 255';
+    grad.addColorStop(0,   `rgba(${tint}, 0)`);
+    grad.addColorStop(0.5, `rgba(${tint}, ${alpha})`);
+    grad.addColorStop(1,   `rgba(${tint}, 0)`);
+    ctx.fillStyle = grad;
+    ctx.fillRect(dx, y - 0.8, len, 1.6);
+  }
+  ctx.restore();
+
+  // ── Ferries on the Thames: two boats drifting at different speeds ──
+  // Drawn as simple silhouettes so they always read clearly over the water
+  // regardless of day/night base image.
+  const drawFerry = (xPct, speed, scale, phase) => {
+    const cycleX = ((tnow * speed + phase) % 1.3) - 0.15;     // -0.15..1.15 loop
+    const x = cycleX * W;
+    const y = H * (0.74 + 0.005 * Math.sin(tnow * 1.2 + phase * 6));  // tiny bob
+    const fw = W * 0.06 * scale;
+    const fh = fw * 0.42;
+    ctx.save();
+    // Hull
+    ctx.fillStyle = night > 0.5 ? 'rgba(28, 32, 48, 0.92)' : 'rgba(40, 50, 78, 0.92)';
+    ctx.beginPath();
+    ctx.moveTo(x, y);
+    ctx.lineTo(x + fw * 0.85, y);
+    ctx.lineTo(x + fw,        y - fh * 0.45);
+    ctx.lineTo(x + fw * 0.15, y - fh * 0.45);
+    ctx.closePath();
+    ctx.fill();
+    // Cabin
+    ctx.fillRect(x + fw * 0.25, y - fh, fw * 0.55, fh * 0.55);
+    // Lit windows on cabin
+    ctx.fillStyle = night > 0.4
+      ? `rgba(255, 220, 140, ${0.85 + 0.15 * Math.sin(tnow * 3 + phase * 4)})`
+      : 'rgba(220, 235, 250, 0.85)';
+    for (let i = 0; i < 4; i++) {
+      ctx.fillRect(x + fw * (0.30 + i * 0.13), y - fh * 0.82, fw * 0.07, fh * 0.30);
+    }
+    // Wake (small ripple behind hull)
+    ctx.fillStyle = `rgba(255, 255, 255, ${night > 0.5 ? 0.20 : 0.45})`;
+    ctx.fillRect(x - fw * 0.10, y - 1, fw * 0.18, 2);
+    ctx.restore();
+  };
+  drawFerry(0,    0.020, 1.00, 0.0);   // slow boat L→R
+  drawFerry(0.5,  0.014, 0.78, 0.6);   // smaller boat further out
+
+  // ── Traffic on Tower Bridge: 3 tiny moving headlight dots crossing deck ──
+  // The bridge deck in the new image runs around y ≈ H * 0.55..0.58 between
+  // x ≈ 0.40 W and 0.62 W. Cars are tiny rectangles with headlights.
+  const deckY = H * 0.575;
+  const bridgeL = W * 0.40;
+  const bridgeR = W * 0.62;
+  const bridgeSpan = bridgeR - bridgeL;
+  ctx.save();
+  for (let i = 0; i < 3; i++) {
+    // Two lanes — even i = left-to-right, odd i = right-to-left
+    const rightward = i % 2 === 0;
+    const speed = 0.10 + i * 0.04;
+    const phase = i * 0.33;
+    const cycle = (tnow * speed + phase) % 1.15;
+    const t = rightward ? cycle : 1 - cycle;
+    if (t < -0.05 || t > 1.05) continue;
+    const x = bridgeL + t * bridgeSpan;
+    const y = deckY + (rightward ? -2 : 1.5);
+    // Car body
+    ctx.fillStyle = night > 0.4 ? 'rgba(20, 22, 30, 0.95)' : 'rgba(30, 38, 60, 0.9)';
+    ctx.fillRect(x, y - 2.5, 4.5, 2);
+    // Headlight / tail
+    if (night > 0.4) {
+      ctx.fillStyle = rightward ? 'rgba(255, 240, 180, 0.9)' : 'rgba(255, 90, 80, 0.9)';
+      ctx.fillRect(x + (rightward ? 4 : -1), y - 1.8, 1.2, 1);
+    }
+  }
+  ctx.restore();
+
+  // ── Window flicker on the buildings (night only) ──
+  // The new night base image has lit windows baked in. We add a subtle
+  // additive flicker on top so a few windows appear to switch on and off.
+  if (night > 0.4) {
+    ctx.save();
+    ctx.globalCompositeOperation = 'lighter';
+    const pts = _mnNightWindowsFor(id, W, H, baseY);
+    for (let i = 0; i < pts.length; i++) {
+      const p = pts[i];
+      // Slow flicker: each window switches on/off on its own schedule.
+      const period = 4 + (p.flick * 6); // 4-10s
+      const phase = p.flick * 9;
+      const cycle = ((tnow + phase) % period) / period; // 0..1
+      const on = cycle < 0.5 ? 1 : 0;                    // hard on/off
+      const fade = on ? Math.min(1, (0.5 - cycle) * 8 + 1) : Math.max(0, 1 - (cycle - 0.5) * 8);
+      const alpha = 0.42 * fade;
+      if (alpha < 0.02) continue;
+      ctx.fillStyle = `rgba(255, 215, 140, ${alpha})`;
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, p.r * 1.2, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.restore();
+  }
 }
 
 // ─── 1. PRAGUE — illustration-based ──────────────────────────────────────
