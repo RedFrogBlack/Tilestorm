@@ -7017,6 +7017,8 @@ const RIBBIT_PATTERNS = {
 
 function playRibbit(patternName) {
   if (!soundOn || !commentaryOn) return;
+  // Monuments mode: silent except brick/tile placement audio (per user request).
+  if (typeof monumentsActive !== 'undefined' && monumentsActive) return;
   ensureAudio();
   const p = RIBBIT_PATTERNS[patternName];
   if (!p) return;
@@ -16550,6 +16552,8 @@ function _cancelPendingLevelIntro() {
 }
 function sayLevelIntro(entries, opts) {
   if (typeof tutorOn !== 'undefined' && !tutorOn) return;
+  // Monuments mode: silent (per user request).
+  if (typeof monumentsActive !== 'undefined' && monumentsActive) return;
   const arr = Array.isArray(entries) && Array.isArray(entries[0]) ? entries : [entries];
   const color = (opts && opts.color) || 'purple';
   const ribbit = (opts && opts.ribbit) || 'warm';
@@ -16581,6 +16585,8 @@ function _frogVoiceStop() {
 // `entries` may be a single COMMENTARY entry [text,audioKey] OR an array of
 // entries to play in sequence (with delayMs between).
 function showTutor(key, entries, opts) {
+  // Monuments mode: silent (per user request).
+  if (typeof monumentsActive !== 'undefined' && monumentsActive) return;
   if (typeof tutorOn !== 'undefined' && !tutorOn) return;
   if (_tutorAlreadyShown(key)) return;
   _tutorMarkShown(key);
@@ -16619,6 +16625,8 @@ function _frogVoiceIsPlaying() {
 }
 function _playFrogVoice(key) {
   if (!soundOn || !commentaryOn) return;
+  // Monuments mode: silent except brick/tile placement audio (per user request).
+  if (typeof monumentsActive !== 'undefined' && monumentsActive) return;
   // CRITICAL: if a frog clip is currently playing, DROP this new request
   // instead of cutting the previous one off mid-sentence. The user explicitly
   // complained: "he keeps talking and than interrupt himself".
@@ -16656,6 +16664,8 @@ function _playFrogVoice(key) {
 // Show a speech bubble near the frog icon in topbar
 // entry is now [text, audioKey] pair from COMMENTARY arrays
 function showFrogSpeech(color, entry, ribbitPattern) {
+  // Monuments mode: silent + no banner (per user request).
+  if (typeof monumentsActive !== 'undefined' && monumentsActive) return;
   const [text, audioKey] = Array.isArray(entry) ? entry : [entry, null];
   const banner = document.getElementById('event-banner');
   if (!banner) return;
