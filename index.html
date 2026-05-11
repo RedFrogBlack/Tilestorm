@@ -11831,7 +11831,11 @@ function _mnHazardSet(r, c, hz) { _mnHazards.set(_mnHazardKey(r, c), hz); }
 function _mnHazardBlocksPlacement(r, c) {
   const hz = _mnHazardAt(r, c);
   if (!hz) return false;
-  return hz.type === 'puddle' || hz.type === 'leaves' || hz.type === 'flood' || hz.type === 'blossom';
+  // Ice + mist + aurora are visual-only (don't block placement on empty cells).
+  // Everything else that occupies a cell blocks new piece placement.
+  return hz.type === 'puddle' || hz.type === 'leaves' || hz.type === 'flood' ||
+         hz.type === 'blossom' || hz.type === 'sandstorm' || hz.type === 'confetti' ||
+         hz.type === 'embers';
 }
 // Returns true if any cell on row r has an ice hazard (blocks row clear).
 function _mnRowHasIce(r) {
@@ -11888,12 +11892,81 @@ function _mnSayHazardOnce(season, color, pool, ribbit) {
   showFrogSpeech(color, _pick(pool), ribbit);
 }
 
+// ─────────────────────────────────────────────────────────────────────
+// Per-hazardLabel → archetype + type + tint mapping.
+//   archetype : which base mechanic to use (winter=row-freeze, summer=splash,
+//               autumn=drop-piles, spring=light-petals). Drives spawn logic.
+//   type      : the renderer case (ice, puddle, leaves, blossom, sandstorm,
+//               confetti, aurora). Drives _mnDrawHazards.
+//   tint      : optional color string passed through to renderer for re-skinning.
+// ─────────────────────────────────────────────────────────────────────
+const _MN_HAZARD_LABEL_MAP = {
+  // Prague
+  'chestnut leaves':   { archetype:'autumn', type:'leaves',    tint:'chestnut' },
+  'cherry petals':     { archetype:'spring', type:'blossom',   tint:'cherry' },
+  'vltava flood':      { archetype:'summer', type:'puddle',    tint:'flood' },
+  'frozen vltava':     { archetype:'winter', type:'ice',       tint:'ice' },
+  // Accra
+  'harmattan dust':    { archetype:'autumn', type:'leaves',    tint:'sand' },
+  'tropical downpour': { archetype:'summer', type:'puddle',    tint:'flood' },
+  'ripe mango drop':   { archetype:'spring', type:'leaves',    tint:'mango' },
+  'savanna haze':      { archetype:'winter', type:'mist',      tint:'gold' },
+  // Cairo
+  'khamsin sandstorm': { archetype:'autumn', type:'sandstorm', tint:'sand' },
+  'desert bloom':      { archetype:'spring', type:'blossom',   tint:'rose' },
+  'nile flood':        { archetype:'summer', type:'puddle',    tint:'flood' },
+  'desert night frost':{ archetype:'winter', type:'ice',       tint:'desert' },
+  // Beijing
+  'gingko fall':       { archetype:'autumn', type:'leaves',    tint:'gingko' },
+  'plum blossom':      { archetype:'spring', type:'blossom',   tint:'plum' },
+  'monsoon rain':      { archetype:'summer', type:'puddle',    tint:'flood' },
+  'mountain snow':     { archetype:'winter', type:'ice',       tint:'ice' },
+  // Jaipur
+  'marigold petals':   { archetype:'spring', type:'blossom',   tint:'marigold' },
+  'holi color powder': { archetype:'spring', type:'confetti',  tint:'holi' },
+  'monsoon flood':     { archetype:'summer', type:'puddle',    tint:'flood' },
+  'desert frost':      { archetype:'winter', type:'ice',       tint:'desert' },
+  // Rio
+  'carnival confetti': { archetype:'summer', type:'confetti',  tint:'carnival' },
+  'jacaranda petals':  { archetype:'spring', type:'blossom',   tint:'jacaranda' },
+  'atlantic mist':     { archetype:'winter', type:'mist',      tint:'mist' },
+  // Reykjavík
+  'arctic snow':       { archetype:'winter', type:'ice',       tint:'ice' },
+  'volcanic ash':      { archetype:'autumn', type:'leaves',    tint:'ash' },
+  'midnight sun melt': { archetype:'summer', type:'puddle',    tint:'aurora' },
+  'aurora frost':      { archetype:'winter', type:'aurora',    tint:'aurora' },
+  // Marrakech
+  'sirocco sand':      { archetype:'summer', type:'sandstorm', tint:'sand' },
+  'rose petals':       { archetype:'spring', type:'blossom',   tint:'rose' },
+  'date palm fall':    { archetype:'autumn', type:'leaves',    tint:'date' },
+  'atlas frost':       { archetype:'winter', type:'ice',       tint:'ice' },
+  // Sydney
+  'bushfire embers':   { archetype:'autumn', type:'embers',    tint:'ember' },
+  'harbour downpour':  { archetype:'summer', type:'puddle',    tint:'flood' },
+  'blue mountain frost': { archetype:'winter', type:'ice',     tint:'ice' },
+};
+function _mnResolveHazard(lv) {
+  // London (no hazardLabel) falls back to the season → default mapping.
+  const label = lv && lv.hazardLabel;
+  if (label && _MN_HAZARD_LABEL_MAP[label]) return _MN_HAZARD_LABEL_MAP[label];
+  // Fallback: season → default type (London + any unmapped entry)
+  const s = lv && lv.season;
+  if (s === 'winter') return { archetype:'winter', type:'ice',     tint:'ice' };
+  if (s === 'summer') return { archetype:'summer', type:'puddle',  tint:'flood' };
+  if (s === 'autumn') return { archetype:'autumn', type:'leaves',  tint:'chestnut' };
+  if (s === 'spring') return { archetype:'spring', type:'blossom', tint:'cherry' };
+  return { archetype:'autumn', type:'leaves', tint:'chestnut' };
+}
+
 function _mnSpawnSeasonHazard() {
   if (!monumentsActive || typeof gameActive === 'undefined' || !gameActive) return;
   const lv = MONUMENTS_LEVELS[monumentsLevelIdx];
   if (!lv) return;
   const now = performance.now();
-  if (lv.season === 'winter') {
+  const hz = _mnResolveHazard(lv);
+  const HZ_TYPE = hz.type;
+  const HZ_TINT = hz.tint;
+  if (hz.archetype === 'winter') {
     // Freeze a row. Prefer rows with bricks (so ice locks them in place),
     // but if the board is empty we still freeze a random EMPTY zone row so
     // the player visibly sees frost — and can\'t place new bricks there
@@ -11913,7 +11986,7 @@ function _mnSpawnSeasonHazard() {
       const r = rowsWithBricks[Math.floor(Math.random() * rowsWithBricks.length)];
       for (let c = 0; c < COLS; c++) {
         if (grid[r][c] !== 0 && _mnZoneMap[r][c] > 0 && !_mnHazardAt(r, c)) {
-          _mnHazardSet(r, c, { type: 'ice', startedAt: now, expiresAt: now + lifetime });
+          _mnHazardSet(r, c, { type: HZ_TYPE, tint: HZ_TINT, label: lv.hazardLabel, startedAt: now, expiresAt: now + lifetime });
           froze = true;
         }
       }
@@ -11934,13 +12007,13 @@ function _mnSpawnSeasonHazard() {
         const r = emptyRows[Math.floor(Math.random() * emptyRows.length)];
         for (let c = 0; c < COLS; c++) {
           if (_mnZoneMap[r][c] > 0 && grid[r][c] === 0 && !_mnHazardAt(r, c)) {
-            _mnHazardSet(r, c, { type: 'ice', startedAt: now, expiresAt: now + lifetime });
+            _mnHazardSet(r, c, { type: HZ_TYPE, tint: HZ_TINT, label: lv.hazardLabel, startedAt: now, expiresAt: now + lifetime });
           }
         }
         _mnSayHazardOnce('winter', 'purple', COMMENTARY.frost, 'slow');
       }
     }
-  } else if (lv.season === 'summer') {
+  } else if (hz.archetype === 'summer') {
     // Melt 1 filled cell + adjacent splash. If nothing filled yet, spawn a
     // puddle on a random EMPTY zone cell so the heatwave is still visible.
     // Lifetime ~12s: 1.2s shimmer + 1.4s melt + 1.6s scorch + ~6s locked + 1.8s cool.
@@ -11948,7 +12021,7 @@ function _mnSpawnSeasonHazard() {
     const filled = _mnPickRandomFilledZoneCell();
     if (filled) {
       const [r, c] = filled;
-      _mnHazardSet(r, c, { type: 'puddle', startedAt: now, expiresAt: now + lifetime });
+      _mnHazardSet(r, c, { type: HZ_TYPE, tint: HZ_TINT, label: lv.hazardLabel, startedAt: now, expiresAt: now + lifetime });
       const neighbors = [];
       for (let dr = -1; dr <= 1; dr++) for (let dc = -1; dc <= 1; dc++) {
         if (!dr && !dc) continue;
@@ -11961,7 +12034,7 @@ function _mnSpawnSeasonHazard() {
       neighbors.sort(() => Math.random() - 0.5);
       for (let i = 0; i < Math.min(2, neighbors.length); i++) {
         const [nr, nc] = neighbors[i];
-        _mnHazardSet(nr, nc, { type: 'puddle', startedAt: now, expiresAt: now + lifetime });
+        _mnHazardSet(nr, nc, { type: HZ_TYPE, tint: HZ_TINT, label: lv.hazardLabel, startedAt: now, expiresAt: now + lifetime });
       }
       _mnSayHazardOnce('summer', 'red', COMMENTARY.heatwave, 'panic');
     } else {
@@ -11972,14 +12045,14 @@ function _mnSpawnSeasonHazard() {
         if (!cell) break;
         const [r, c] = cell;
         if (!_mnHazardAt(r, c)) {
-          _mnHazardSet(r, c, { type: 'puddle', startedAt: now, expiresAt: now + lifetime });
+          _mnHazardSet(r, c, { type: HZ_TYPE, tint: HZ_TINT, label: lv.hazardLabel, startedAt: now, expiresAt: now + lifetime });
           placed.push([r, c]);
         }
       }
       if (placed.length) _mnSayHazardOnce('summer', 'red', COMMENTARY.heatwave, 'panic');
     }
-  } else if (lv.season === 'autumn') {
-    // Drop 1-3 leaf piles on empty zone cells anywhere on the board.
+  } else if (hz.archetype === 'autumn') {
+    // Drop 1-3 piles on empty zone cells anywhere on the board.
     // Lifetime ~12s: 1.5s falling + 1.5s piling + 1s settling + ~6.2s locked + 1.8s sweep.
     const count = 1 + Math.floor(Math.random() * 2); // 1-2 piles
     const lifetime = 12000;
@@ -11987,10 +12060,10 @@ function _mnSpawnSeasonHazard() {
       const cell = _mnPickRandomEmptyZoneCell();
       if (!cell) break;
       const [r, c] = cell;
-      _mnHazardSet(r, c, { type: 'leaves', startedAt: now, expiresAt: now + lifetime });
+      _mnHazardSet(r, c, { type: HZ_TYPE, tint: HZ_TINT, label: lv.hazardLabel, startedAt: now, expiresAt: now + lifetime });
     }
     _mnSayHazardOnce('autumn', 'purple', COMMENTARY.leaves, 'warm');
-  } else if (lv.season === 'spring') {
+  } else if (hz.archetype === 'spring') {
     // Finite blossom event — drop 2-3 petal piles on EMPTY zone cells.
     // They block placement for ~6s, then wind blows them away.
     // Lifetime ~6s: 1.5s drifting in + 1.3s landing + 1.7s holding + 1.5s blowing.
@@ -12002,7 +12075,7 @@ function _mnSpawnSeasonHazard() {
       if (!cell) break;
       const [r, c] = cell;
       if (!_mnHazardAt(r, c)) {
-        _mnHazardSet(r, c, { type: 'blossom', startedAt: now, expiresAt: now + lifetime });
+        _mnHazardSet(r, c, { type: HZ_TYPE, tint: HZ_TINT, label: lv.hazardLabel, startedAt: now, expiresAt: now + lifetime });
         placed.push([r, c]);
       }
     }
@@ -12721,13 +12794,208 @@ function _mnDrawHazards() {
         }
         ctx.restore();
       }
+    } else if (hz.type === 'sandstorm') {
+      // ═══ SANDSTORM — swirling tan/orange dust, partial occlusion ═══
+      const elapsed = now - hz.startedAt;
+      const totalLife = hz.expiresAt - hz.startedAt;
+      const timeLeft = hz.expiresAt - now;
+      const RISE = 1500, SETTLE_DUR = 1800;
+      let alpha, swirlT;
+      if (elapsed < RISE) { alpha = elapsed / RISE; swirlT = elapsed / 1000; }
+      else if (timeLeft <= SETTLE_DUR) { alpha = timeLeft / SETTLE_DUR; swirlT = elapsed / 1000; }
+      else { alpha = 1; swirlT = elapsed / 1000; }
+      ctx.save();
+      ctx.globalAlpha = alpha * 0.85;
+      // Base sand fill
+      const sg = ctx.createLinearGradient(x, y, x, y + CELL);
+      sg.addColorStop(0, 'rgba(232, 196, 130, 0.55)');
+      sg.addColorStop(1, 'rgba(176, 130, 70, 0.70)');
+      ctx.fillStyle = sg;
+      ctx.beginPath(); ctx.roundRect(x + 1, y + 1, CELL - 2, CELL - 2, 5); ctx.fill();
+      // Swirling dust particles
+      ctx.globalAlpha = alpha;
+      for (let i = 0; i < 14; i++) {
+        const seed = (r * 11 + c * 17 + i * 23);
+        const ang = swirlT * 1.8 + seed;
+        const rad = CELL * (0.18 + ((seed * 0.07) % 1) * 0.30);
+        const px = x + CELL / 2 + Math.cos(ang) * rad;
+        const py = y + CELL / 2 + Math.sin(ang * 1.3) * rad * 0.7;
+        const psz = Math.max(1.5, CELL * (0.04 + ((seed * 0.03) % 1) * 0.03));
+        ctx.fillStyle = (i % 3 === 0) ? 'rgba(255, 220, 150, 0.9)' : 'rgba(200, 150, 80, 0.85)';
+        ctx.beginPath(); ctx.arc(px, py, psz, 0, Math.PI * 2); ctx.fill();
+      }
+      // Wind streaks
+      ctx.strokeStyle = 'rgba(255, 220, 160, 0.45)';
+      ctx.lineWidth = 1.2;
+      for (let i = 0; i < 3; i++) {
+        const yOff = y + CELL * (0.2 + i * 0.25) + Math.sin(swirlT * 2 + i) * 3;
+        ctx.beginPath();
+        ctx.moveTo(x + 2, yOff);
+        ctx.quadraticCurveTo(x + CELL / 2, yOff - 4, x + CELL - 2, yOff + 2);
+        ctx.stroke();
+      }
+      ctx.restore();
+    } else if (hz.type === 'confetti') {
+      // ═══ CONFETTI — multicolor falling specks (Carnival/Holi) ═══
+      const elapsed = now - hz.startedAt;
+      const totalLife = hz.expiresAt - hz.startedAt;
+      const timeLeft = hz.expiresAt - now;
+      const FADE = 1500;
+      const alpha = (timeLeft < FADE) ? Math.max(0, timeLeft / FADE) : Math.min(1, elapsed / 500);
+      ctx.save();
+      ctx.globalAlpha = alpha;
+      // Soft pastel base
+      const isHoli = (hz.tint === 'holi');
+      const baseColor = isHoli ? 'rgba(255, 180, 230, 0.30)' : 'rgba(255, 200, 220, 0.25)';
+      ctx.fillStyle = baseColor;
+      ctx.beginPath(); ctx.roundRect(x + 1, y + 1, CELL - 2, CELL - 2, 5); ctx.fill();
+      // Multi-colour confetti specks
+      const cols = ['#ff3e8a', '#ffcb1a', '#21c4ff', '#5cd97e', '#b561ff', '#ff7a30'];
+      for (let i = 0; i < 18; i++) {
+        const seed = (r * 7 + c * 13 + i * 31);
+        const fxBase = x + CELL * (0.1 + ((seed * 0.17) % 1) * 0.8);
+        const cycle = ((elapsed + seed * 80) % 1400) / 1400;
+        const fy = y - CELL * 0.2 + CELL * 1.2 * cycle;
+        const fx = fxBase + Math.sin(cycle * Math.PI * 3 + seed) * 3;
+        const sz = Math.max(2, CELL * (0.05 + ((seed * 0.04) % 1) * 0.03));
+        ctx.fillStyle = cols[seed % cols.length];
+        ctx.save();
+        ctx.translate(fx, fy);
+        ctx.rotate(cycle * 6 + seed);
+        ctx.fillRect(-sz / 2, -sz / 4, sz, sz / 2);
+        ctx.restore();
+      }
+      ctx.restore();
+    } else if (hz.type === 'aurora') {
+      // ═══ AURORA FROST — luminous green/purple ribbon over icy cell ═══
+      const elapsed = now - hz.startedAt;
+      const timeLeft = hz.expiresAt - now;
+      const FADE = 2000;
+      const alpha = (timeLeft < FADE) ? Math.max(0, timeLeft / FADE) : Math.min(1, elapsed / 800);
+      ctx.save();
+      ctx.globalAlpha = alpha;
+      // Frosty base (similar to ice but darker night-blue)
+      const ag = ctx.createLinearGradient(x, y, x, y + CELL);
+      ag.addColorStop(0, 'rgba(40, 60, 110, 0.60)');
+      ag.addColorStop(1, 'rgba(20, 40, 90, 0.75)');
+      ctx.fillStyle = ag;
+      ctx.beginPath(); ctx.roundRect(x + 1, y + 1, CELL - 2, CELL - 2, 5); ctx.fill();
+      // Aurora ribbon — horizontal sinuous bands
+      const wave = elapsed * 0.0018;
+      for (let band = 0; band < 3; band++) {
+        const bandY = y + CELL * (0.25 + band * 0.22);
+        const grad = ctx.createLinearGradient(x, bandY - 4, x, bandY + 4);
+        const hueShift = band * 0.33;
+        if (band === 0) {
+          grad.addColorStop(0, 'rgba(80, 240, 170, 0.0)');
+          grad.addColorStop(0.5, 'rgba(80, 240, 170, 0.85)');
+          grad.addColorStop(1, 'rgba(80, 240, 170, 0.0)');
+        } else if (band === 1) {
+          grad.addColorStop(0, 'rgba(160, 120, 255, 0.0)');
+          grad.addColorStop(0.5, 'rgba(160, 120, 255, 0.80)');
+          grad.addColorStop(1, 'rgba(160, 120, 255, 0.0)');
+        } else {
+          grad.addColorStop(0, 'rgba(120, 200, 255, 0.0)');
+          grad.addColorStop(0.5, 'rgba(120, 200, 255, 0.70)');
+          grad.addColorStop(1, 'rgba(120, 200, 255, 0.0)');
+        }
+        ctx.fillStyle = grad;
+        ctx.beginPath();
+        ctx.moveTo(x + 1, bandY + Math.sin(wave + band) * 3);
+        for (let px = 1; px <= CELL - 1; px += 3) {
+          const py = bandY + Math.sin(wave + band + px * 0.15) * 3 - 3;
+          ctx.lineTo(x + px, py);
+        }
+        for (let px = CELL - 1; px >= 1; px -= 3) {
+          const py = bandY + Math.sin(wave + band + px * 0.15) * 3 + 3;
+          ctx.lineTo(x + px, py);
+        }
+        ctx.closePath(); ctx.fill();
+      }
+      // Twinkling stars
+      ctx.fillStyle = '#ffffff';
+      for (let i = 0; i < 4; i++) {
+        const seed = (r * 5 + c * 11 + i * 19);
+        const tw = Math.abs(Math.sin(elapsed * 0.003 + seed));
+        ctx.globalAlpha = alpha * tw;
+        const sx = x + CELL * (0.15 + ((seed * 0.13) % 1) * 0.7);
+        const sy = y + CELL * (0.05 + ((seed * 0.11) % 1) * 0.25);
+        ctx.beginPath(); ctx.arc(sx, sy, 1.5, 0, Math.PI * 2); ctx.fill();
+      }
+      ctx.restore();
+    } else if (hz.type === 'mist') {
+      // ═══ MIST — soft drifting fog overlay (Atlantic / savanna haze) ═══
+      const elapsed = now - hz.startedAt;
+      const timeLeft = hz.expiresAt - now;
+      const FADE = 1800;
+      const alpha = (timeLeft < FADE) ? Math.max(0, timeLeft / FADE) : Math.min(1, elapsed / 1000);
+      ctx.save();
+      ctx.globalAlpha = alpha * 0.7;
+      // Two layered drifting fog bands
+      const drift = elapsed * 0.04;
+      for (let layer = 0; layer < 2; layer++) {
+        const baseY = y + CELL * (0.2 + layer * 0.4);
+        const grad = ctx.createLinearGradient(x, baseY, x, baseY + CELL * 0.5);
+        grad.addColorStop(0, 'rgba(230, 235, 240, 0.0)');
+        grad.addColorStop(0.5, 'rgba(230, 235, 240, 0.85)');
+        grad.addColorStop(1, 'rgba(230, 235, 240, 0.0)');
+        ctx.fillStyle = grad;
+        ctx.beginPath();
+        ctx.moveTo(x + 1, baseY);
+        for (let px = 1; px <= CELL - 1; px += 4) {
+          const py = baseY + Math.sin((px + drift + layer * 30) * 0.12) * 3;
+          ctx.lineTo(x + px, py);
+        }
+        ctx.lineTo(x + CELL - 1, baseY + CELL * 0.5);
+        ctx.lineTo(x + 1, baseY + CELL * 0.5);
+        ctx.closePath(); ctx.fill();
+      }
+      ctx.restore();
+    } else if (hz.type === 'embers') {
+      // ═══ BUSHFIRE EMBERS — glowing orange particles rising, scorched cell ═══
+      const elapsed = now - hz.startedAt;
+      const timeLeft = hz.expiresAt - now;
+      const FADE = 1600;
+      const alpha = (timeLeft < FADE) ? Math.max(0, timeLeft / FADE) : Math.min(1, elapsed / 700);
+      ctx.save();
+      ctx.globalAlpha = alpha;
+      // Scorched base
+      const eg = ctx.createLinearGradient(x, y, x, y + CELL);
+      eg.addColorStop(0, 'rgba(120, 40, 20, 0.55)');
+      eg.addColorStop(1, 'rgba(60, 20, 10, 0.70)');
+      ctx.fillStyle = eg;
+      ctx.beginPath(); ctx.roundRect(x + 1, y + 1, CELL - 2, CELL - 2, 5); ctx.fill();
+      // Hot border glow
+      ctx.shadowColor = 'rgba(255, 90, 30, 0.9)';
+      ctx.shadowBlur = 8;
+      ctx.strokeStyle = 'rgba(255, 120, 40, 0.85)';
+      ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.roundRect(x + 1.5, y + 1.5, CELL - 3, CELL - 3, 5); ctx.stroke();
+      ctx.shadowBlur = 0;
+      // Rising embers
+      for (let i = 0; i < 10; i++) {
+        const seed = (r * 13 + c * 19 + i * 29);
+        const cycle = ((elapsed + seed * 70) % 1200) / 1200;
+        const ex = x + CELL * (0.15 + ((seed * 0.17) % 1) * 0.7) + Math.sin(cycle * 4 + seed) * 3;
+        const ey = y + CELL * (1 - cycle * 0.9);
+        const esz = Math.max(1.5, CELL * (0.05 + ((seed * 0.03) % 1) * 0.04));
+        const eFade = 1 - cycle;
+        ctx.globalAlpha = alpha * eFade;
+        ctx.shadowColor = 'rgba(255, 100, 30, 0.9)';
+        ctx.shadowBlur = 6;
+        // colour shifts from yellow-white at base to deep red at top
+        ctx.fillStyle = cycle < 0.4 ? '#ffe680' : (cycle < 0.7 ? '#ff8c2a' : '#d63a18');
+        ctx.beginPath(); ctx.arc(ex, ey, esz, 0, Math.PI * 2); ctx.fill();
+      }
+      ctx.restore();
     }
     // ─── Country-specific hazard tint overlay ───────────────────────
     // Re-skin generic hazard archetypes (ice/puddle/leaves/blossom) with
     // country-specific colors so e.g. Cairo's "puddle" reads as Nile flood
     // while Marrakech's reads as warm sand drift.
+    // Prefer per-hazard tint (set by spawner per hazardLabel); fall back to level's hazardTint.
     const _curLv = (typeof MONUMENTS_LEVELS !== 'undefined') ? MONUMENTS_LEVELS[monumentsLevelIdx] : null;
-    const tint = _curLv && _curLv.hazardTint;
+    const tint = hz.tint || (_curLv && _curLv.hazardTint);
     if (tint) {
       const tintColors = {
         sand:      'rgba(218, 178, 96, 0.28)',   // warm desert sand
@@ -12741,6 +13009,16 @@ function _mnDrawHazards() {
         ash:       'rgba(90, 95, 105, 0.32)',    // volcanic ash gray
         aurora:    'rgba(120, 230, 180, 0.26)',  // aurora green-teal
         ember:     'rgba(255, 90, 40, 0.32)',    // bushfire ember orange-red
+        // ── Extended palette for per-hazardLabel re-skins ──
+        chestnut:  'rgba(180, 90, 40, 0.22)',    // London chestnut leaves
+        cherry:    'rgba(255, 180, 210, 0.24)',  // cherry blossom pink
+        gingko:    'rgba(250, 210, 60, 0.30)',   // Beijing gingko yellow
+        plum:      'rgba(220, 140, 200, 0.26)',  // Beijing plum blossom
+        flood:     'rgba(80, 130, 200, 0.30)',   // generic river / monsoon water
+        mist:      'rgba(180, 200, 220, 0.30)',  // Atlantic / coastal mist
+        date:      'rgba(140, 90, 50, 0.26)',    // date palm brown
+        desert:    'rgba(220, 200, 150, 0.22)',  // pale desert tone
+        ice:       null,                          // no tint (default cyan ice)
       };
       const tc = tintColors[tint];
       if (tc) {
@@ -14734,9 +15012,10 @@ function updateUI(){
   const mainFill = document.getElementById('level-progress-fill-main');
   if(mainFill) mainFill.style.width = pct + '%';
   const lpbLevel = document.getElementById('lpb-level-label');
-  if(lpbLevel) lpbLevel.textContent = nextTarget ? 'LEVEL ' + level + ' → ' + (level+1) : 'MAX LEVEL';
+  // Don't overwrite the monuments label (city · season) — _monumentsHudUpdate owns it
+  if(lpbLevel && !(typeof monumentsActive !== 'undefined' && monumentsActive)) lpbLevel.textContent = nextTarget ? 'LEVEL ' + level + ' → ' + (level+1) : 'MAX LEVEL';
   const lpbLines = document.getElementById('lpb-lines-label');
-  if(lpbLines) lpbLines.textContent = nextTarget ? linesCleared + ' / ' + nextTarget + ' LINES' : 'MAX LEVEL';
+  if(lpbLines && !(typeof monumentsActive !== 'undefined' && monumentsActive)) lpbLines.textContent = nextTarget ? linesCleared + ' / ' + nextTarget + ' LINES' : 'MAX LEVEL';
 }
 function showToast(msg){
   const t=document.getElementById('powerup-toast');t.textContent=msg;
