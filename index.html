@@ -8568,14 +8568,22 @@ function startMonumentsGame(levelIdx) {
     lv.emoji + ' LEVEL ' + (monumentsLevelIdx+1) + ' · ' + lv.name + ' ' + seasonEmoji + ' — BUILD ' + lv.name + '!'
   ), 300);
   // Tutor: tier intro (first time the player ever enters Monuments).
+  // Detect whether the tier_monuments tutor will actually fire — it's skipped
+  // on repeat visits (already-shown dedupe). On repeat visits we can play the
+  // level intro almost immediately instead of waiting 7.5s for a tutor that
+  // never speaks.
+  const _tierTutorWillFire = (typeof showTutor === 'function') &&
+    (typeof _tutorAlreadyShown !== 'function' || !_tutorAlreadyShown('tier_monuments'));
   if (typeof showTutor === 'function') {
     showTutor('tier_monuments', COMMENTARY.tierMonuments[0], { color: 'purple', ribbit: 'warm', delayMs: 2400 });
   }
-  // Per-level intro — plays every time the player enters this level. We
-  // delay it after the tier intro so the two clips don't collide.
+  // Per-level intro — plays every time the player enters this level. We delay
+  // it after the tier intro on first run so the two clips don't collide; on
+  // repeat visits the tier intro is suppressed so the level intro fires fast.
   if (typeof sayLevelIntro === 'function') {
     const _levelEntry = _mnLevelIntroEntry(lv);
-    if (_levelEntry) sayLevelIntro(_levelEntry, { color: 'purple', ribbit: 'warm', delayMs: 7500 });
+    const _introDelay = _tierTutorWillFire ? 7500 : 1200;
+    if (_levelEntry) sayLevelIntro(_levelEntry, { color: 'purple', ribbit: 'warm', delayMs: _introDelay });
   }
   // Arm 20s auto-advance so all four seasons cycle automatically.
   if (typeof _mnArmSeasonAutoAdvance === 'function') _mnArmSeasonAutoAdvance();
@@ -9686,7 +9694,15 @@ function _mnNightWindows(ctx, W, H, baseY, dayMix, night, ts, rects) {
 // stretched to fill (0..W, 0..baseY+slack), with day/night tint overlay.
 const _mnSkylineImgCache = Object.create(null);
 function _mnGetSkylineImage(id) {
-  if (_mnSkylineImgCache[id]) return _mnSkylineImgCache[id];
+  if (_mnSkylineImgCache[id]) {
+    const cached = _mnSkylineImgCache[id];
+    // Catch case where load event fired before our handler was attached
+    // (e.g. cached image). If complete + has size, mark loaded.
+    if (!cached._mnLoaded && !cached._mnError && cached.complete && cached.naturalWidth > 0) {
+      cached._mnLoaded = true;
+    }
+    return cached;
+  }
   const img = new Image();
   img.crossOrigin = 'anonymous';
   img.decoding = 'async';
@@ -9694,42 +9710,146 @@ function _mnGetSkylineImage(id) {
   img.onload  = () => { img._mnLoaded = true; };
   img.onerror = () => { img._mnError  = true; };
   img.src = 'assets/skylines/' + id + '.jpg';
+  // Sync-check in case the image was already cached and load fired synchronously
+  if (img.complete && img.naturalWidth > 0) img._mnLoaded = true;
   _mnSkylineImgCache[id] = img;
   return img;
 }
+// ─── Sky colour palette per season × day/night ─────────────────────────────
+// Returns {top:[r,g,b], bot:[r,g,b]} target colours that REPLACE the baked-in
+// orange sunset sky in the illustration via multiply/screen blending.
+function _mnSkyPalette(season, night) {
+  // Day palettes (night = 0)
+  const dayPal = {
+    spring: { top:[120,180,235], bot:[235,200,225] },   // soft blue → blossom pink horizon
+    summer: { top:[ 80,165,235], bot:[200,225,245] },   // bright blue → pale haze
+    autumn: { top:[150,158,170], bot:[210,200,190] },   // overcast grey → soft beige (rainy)
+    winter: { top:[170,200,225], bot:[225,230,235] },   // cool pale blue → snowy white
+  };
+  // Night palettes
+  const nightPal = {
+    spring: { top:[ 18, 22, 50], bot:[ 55, 45, 75] },
+    summer: { top:[ 12, 18, 48], bot:[ 45, 50, 90] },
+    autumn: { top:[ 14, 16, 32], bot:[ 38, 38, 55] },
+    winter: { top:[ 18, 28, 55], bot:[ 60, 75,105] },
+  };
+  const dp = dayPal[season] || dayPal.autumn;
+  const np = nightPal[season] || nightPal.autumn;
+  const k = Math.max(0, Math.min(1, night));
+  const mix = (a,b) => [
+    Math.round(a[0]*(1-k) + b[0]*k),
+    Math.round(a[1]*(1-k) + b[1]*k),
+    Math.round(a[2]*(1-k) + b[2]*k),
+  ];
+  return { top: mix(dp.top, np.top), bot: mix(dp.bot, np.bot) };
+}
+
+// Deterministic pseudo-random window positions for night-lit windows.
+// Seeded by city id so positions are stable across frames per city.
+function _mnNightWindowsFor(id, W, H, baseY) {
+  if (!_mnNightWindowsFor._cache) _mnNightWindowsFor._cache = Object.create(null);
+  const key = id + ':' + Math.round(W) + 'x' + Math.round(H);
+  if (_mnNightWindowsFor._cache[key]) return _mnNightWindowsFor._cache[key];
+  // Simple hash
+  let s = 0; for (let i=0;i<id.length;i++) s = (s*31 + id.charCodeAt(i)) >>> 0;
+  const rng = () => { s = (s * 1664525 + 1013904223) >>> 0; return s / 0xffffffff; };
+  const pts = [];
+  // Window band: where buildings live (between sky and ground reflection)
+  const yTop = H * 0.30;
+  const yBot = baseY - 4;
+  const count = Math.round(W * 0.06);
+  for (let i = 0; i < count; i++) {
+    pts.push({
+      x: rng() * W,
+      y: yTop + rng() * (yBot - yTop),
+      r: 0.6 + rng() * 1.4,
+      flick: rng(),
+    });
+  }
+  _mnNightWindowsFor._cache[key] = pts;
+  return pts;
+}
+
 // Returns true if it drew the image, false if the image is not ready yet.
 function _mnDrawSkylineImage(ctx, W, H, baseY, id, dayMix, night, season) {
   const img = _mnGetSkylineImage(id);
   if (!img._mnLoaded || img._mnError) return false;
-  // Image fills full canvas: it already contains sky + ground.
+
+  // ── 1. Base illustration (fully opaque) ──
   ctx.save();
-  // Cover-fit (centered): scale so image covers W×H, crop overflow
   const iw = img.naturalWidth, ih = img.naturalHeight;
   const scale = Math.max(W / iw, H / ih);
   const dw = iw * scale, dh = ih * scale;
   const dx = (W - dw) / 2, dy = (H - dh) / 2;
   ctx.drawImage(img, dx, dy, dw, dh);
-  // Night dim overlay
-  if (night > 0.05) {
-    ctx.fillStyle = `rgba(8, 12, 32, ${Math.min(0.55, night * 0.55)})`;
+
+  // ── 2. Sky region recolour ──
+  // The baked sky is a warm sunset (~RGB(253,180,130)). We replace its hue
+  // using the 'color' composite operation which keeps the original luminance
+  // (so bright sky stays bright, dark silhouettes stay dark) but adopts the
+  // new chromaticity. We apply this over the entire sky+silhouette band so
+  // there's no visible horizon seam.
+  const pal = _mnSkyPalette(season, night);
+  const lowerSkyH = H * 0.62;   // covers sky + silhouette band (bridge ~H*0.55)
+  const grad = ctx.createLinearGradient(0, 0, 0, lowerSkyH);
+  grad.addColorStop(0,    `rgb(${pal.top[0]}, ${pal.top[1]}, ${pal.top[2]})`);
+  grad.addColorStop(0.7,  `rgb(${pal.bot[0]}, ${pal.bot[1]}, ${pal.bot[2]})`);
+  grad.addColorStop(1,    `rgb(${pal.bot[0]}, ${pal.bot[1]}, ${pal.bot[2]})`);
+  ctx.globalCompositeOperation = 'color';
+  ctx.fillStyle = grad;
+  ctx.fillRect(0, 0, W, lowerSkyH);
+  ctx.globalCompositeOperation = 'source-over';
+  // Add a SECOND pass of opacity over the very top to deepen the sky
+  // (since 'color' alone can leave it pale).
+  const topGrad = ctx.createLinearGradient(0, 0, 0, H * 0.28);
+  topGrad.addColorStop(0, `rgba(${pal.top[0]}, ${pal.top[1]}, ${pal.top[2]}, 0.45)`);
+  topGrad.addColorStop(1, `rgba(${pal.top[0]}, ${pal.top[1]}, ${pal.top[2]}, 0)`);
+  ctx.fillStyle = topGrad;
+  ctx.fillRect(0, 0, W, H * 0.28);
+
+  // ── 3. Night enhancements ──
+  if (night > 0.35) {
+    const t = (night - 0.35) / 0.65; // 0..1 within night band
+    // Cool dark wash over the whole scene (not just sky) — strong but not opaque
+    ctx.fillStyle = `rgba(6, 10, 28, ${0.30 * t})`;
     ctx.fillRect(0, 0, W, H);
+    // Lit windows — warm yellow dots scattered across the building band.
+    // Use 'lighter' (additive) so they glow on top of dark silhouettes.
+    ctx.save();
+    ctx.globalCompositeOperation = 'lighter';
+    const wins = _mnNightWindowsFor(id, W, H, baseY);
+    const tnow = (typeof performance !== 'undefined') ? performance.now() / 1000 : 0;
+    for (const p of wins) {
+      // Gentle flicker: amplitude depends on per-window phase
+      const flick = 0.75 + 0.25 * Math.sin(tnow * 1.6 + p.flick * 12);
+      const alpha = 0.55 * t * flick;
+      ctx.fillStyle = `rgba(255, 215, 140, ${alpha})`;
+      ctx.beginPath(); ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2); ctx.fill();
+    }
+    ctx.restore();
+    // Add a soft moon glow top-right when full night
+    if (t > 0.6) {
+      ctx.save();
+      const mx = W * 0.85, my = H * 0.18, mr = Math.min(W, H) * 0.045;
+      const moonGrad = ctx.createRadialGradient(mx, my, 0, mx, my, mr * 3.5);
+      moonGrad.addColorStop(0, `rgba(245,240,220, ${0.95 * t})`);
+      moonGrad.addColorStop(0.4, `rgba(245,240,220, ${0.25 * t})`);
+      moonGrad.addColorStop(1, 'rgba(245,240,220, 0)');
+      ctx.fillStyle = moonGrad;
+      ctx.fillRect(mx - mr*4, my - mr*4, mr*8, mr*8);
+      ctx.fillStyle = `rgba(255, 250, 230, ${0.95 * t})`;
+      ctx.beginPath(); ctx.arc(mx, my, mr, 0, Math.PI * 2); ctx.fill();
+      ctx.restore();
+    }
+  } else if (dayMix > 0.85) {
+    // Bright midday — gentle screen brighten on sky band only
+    ctx.save();
+    ctx.globalCompositeOperation = 'screen';
+    ctx.fillStyle = `rgba(255, 250, 220, ${(dayMix - 0.85) * 0.35})`;
+    ctx.fillRect(0, 0, W, lowerSkyH);
+    ctx.restore();
   }
-  // Daytime brighten (subtle, only when very bright)
-  if (dayMix > 0.85 && night < 0.1) {
-    ctx.fillStyle = `rgba(255, 240, 200, ${(dayMix - 0.85) * 0.2})`;
-    ctx.fillRect(0, 0, W, H);
-  }
-  // Season tints (very subtle, preserve the illustration's mood)
-  if (season === 'winter') {
-    ctx.fillStyle = 'rgba(180, 210, 235, 0.10)';
-    ctx.fillRect(0, 0, W, H);
-  } else if (season === 'spring') {
-    ctx.fillStyle = 'rgba(255, 200, 215, 0.06)';
-    ctx.fillRect(0, 0, W, H);
-  } else if (season === 'summer') {
-    ctx.fillStyle = 'rgba(255, 220, 130, 0.06)';
-    ctx.fillRect(0, 0, W, H);
-  }
+
   ctx.restore();
   return true;
 }
