@@ -8468,10 +8468,19 @@ function updateCityPackHUD() {
   const hud = document.getElementById('city-pack-hud');
   if (!hud) return;
   if (!cityPackActive) { hud.style.display='none'; return; }
-  const city = CITY_PACK_CITIES[cityPackCityIdx];
+  // Monuments mode piggybacks on cityPackActive but uses its own city list
+  // (MONUMENTS_LEVELS). When in monuments mode, show the current monument's
+  // city + season here instead of the unrelated CITY_PACK_CITIES entry.
+  const isMonuments = (typeof monumentsActive !== 'undefined' && monumentsActive);
+  const city = isMonuments
+    ? (function(){
+        const lv = MONUMENTS_LEVELS[monumentsLevelIdx] || {};
+        return { emoji: lv.emoji || '', name: (lv.city || lv.name || '').toUpperCase() };
+      })()
+    : CITY_PACK_CITIES[cityPackCityIdx];
   const isDev = localStorage.getItem('cd_dev_unlock') === '1';
   const nameEl = hud.querySelector('.cp-city-name');
-  nameEl.textContent = city.emoji+' '+city.name+(isDev ? ' ⏭' : '');
+  nameEl.textContent = city.emoji+' '+city.name+(isDev && !isMonuments ? ' ⏭' : '');
   // Dev tap-to-skip: tap city name to advance to next city instantly
   nameEl.style.cursor = isDev ? 'pointer' : 'default';
   // Remove old listeners cleanly
@@ -8482,7 +8491,9 @@ function updateCityPackHUD() {
     newNameEl.addEventListener('click', _devSkip);
     newNameEl.addEventListener('touchend', _devSkip, { passive: false });
   }
-  hud.querySelector('.cp-progress').textContent  = cityPackLinesCleared+' / '+cityPackLinesTarget+' lines';
+  hud.querySelector('.cp-progress').textContent = isMonuments
+    ? (monumentsLinesCleared+' / '+monumentsLinesTarget+' lines')
+    : (cityPackLinesCleared+' / '+cityPackLinesTarget+' lines');
   // 'City N / 10' redundant with topbar nav strip — hide.
   const _cpLevelEl = hud.querySelector('.cp-level');
   if (_cpLevelEl) _cpLevelEl.style.display = 'none';
@@ -13312,6 +13323,10 @@ function _monumentsHudHide() {
 
 function _monumentsHudUpdate() {
   if (!monumentsActive) return;
+  // Refresh the city-pack-hud strip too — it piggybacks on cityPackActive and
+  // would otherwise keep showing the cityPack's name (e.g. "LONDON") for every
+  // monument city. updateCityPackHUD branches on monumentsActive internally.
+  if (typeof updateCityPackHUD === 'function') { try { updateCityPackHUD(); } catch(_e) {} }
   const sc = document.getElementById('mn-score');
   const go = document.getElementById('mn-goal');
   const lv = document.getElementById('mn-level');
