@@ -8565,7 +8565,7 @@ function startMonumentsGame(levelIdx) {
 
   const seasonEmoji = { spring:'🌸', summer:'☀️', autumn:'🍂', winter:'❄️' }[lv.season] || '';
   setTimeout(() => showEventBanner(
-    lv.emoji + ' LEVEL ' + (monumentsLevelIdx+1) + ' · ' + lv.name + ' ' + seasonEmoji + ' — BUILD ' + lv.name + '!'
+    seasonEmoji + ' ' + lv.name.toUpperCase() + ' · ' + (lv.season || '').toUpperCase()
   ), 300);
   // Tutor: tier intro (first time the player ever enters Monuments).
   // Detect whether the tier_monuments tutor will actually fire — it's skipped
@@ -8590,6 +8590,10 @@ function startMonumentsGame(levelIdx) {
   // Refresh top-bar level nav strip (label "N / 10" + prev/next enable state)
   // — mirrors Golden Frog which calls this in initChallengeMode.
   if (typeof updateLevelNavStrip === 'function') updateLevelNavStrip();
+  // Update the persistent city × season HUD label so it reflects the new
+  // level immediately on entry (otherwise it would lag behind until the
+  // first row clear or HUD tick).
+  if (typeof _monumentsHudUpdate === 'function') _monumentsHudUpdate();
 }
 
 // ── Procedural background scene canvas (Golden-Frog style) ──────────────
@@ -9715,25 +9719,44 @@ function _mnGetSkylineImage(id) {
   _mnSkylineImgCache[id] = img;
   return img;
 }
-// ─── Sky colour palette per season × day/night ─────────────────────────────
-// Returns {top:[r,g,b], bot:[r,g,b]} target colours that REPLACE the baked-in
-// orange sunset sky in the illustration via multiply/screen blending.
+// ─── Scene palette per season × day/night ─────────────────────────────
+// Returns colour targets for the sky AND the water/foreground. The baked
+// illustration has a warm orange sunset sky + warm pink/orange water
+// reflection — we override BOTH so a summer scene gets a blue sky AND blue
+// Thames, an autumn scene gets a grey-green river, a winter scene gets pale
+// frozen water, etc. Returns {top,bot,water} all as [r,g,b].
 function _mnSkyPalette(season, night) {
   // Day palettes (night = 0)
   const dayPal = {
-    spring: { top:[120,180,235], bot:[235,200,225] },   // soft blue → blossom pink horizon
-    summer: { top:[ 80,165,235], bot:[200,225,245] },   // bright blue → pale haze
-    autumn: { top:[150,158,170], bot:[210,200,190] },   // overcast grey → soft beige (rainy)
-    winter: { top:[170,200,225], bot:[225,230,235] },   // cool pale blue → snowy white
+    spring: {
+      top:   [110, 175, 235],   // soft blue sky
+      bot:   [225, 200, 220],   // pale blossom horizon
+      water: [115, 160, 195],   // light spring blue river
+    },
+    summer: {
+      top:   [ 75, 160, 235],   // bright blue sky
+      bot:   [195, 220, 240],   // hazy pale blue horizon
+      water: [ 70, 130, 185],   // deep summer-blue Thames
+    },
+    autumn: {
+      top:   [150, 160, 175],   // overcast grey rainy sky
+      bot:   [195, 195, 195],   // soft grey horizon
+      water: [ 95, 110, 120],   // moody grey-green river
+    },
+    winter: {
+      top:   [180, 205, 225],   // cool pale blue sky
+      bot:   [225, 230, 235],   // snowy white horizon
+      water: [150, 175, 195],   // pale icy river
+    },
   };
   // Night palettes
   const nightPal = {
-    spring: { top:[ 18, 22, 50], bot:[ 55, 45, 75] },
-    summer: { top:[ 12, 18, 48], bot:[ 45, 50, 90] },
-    autumn: { top:[ 14, 16, 32], bot:[ 38, 38, 55] },
-    winter: { top:[ 18, 28, 55], bot:[ 60, 75,105] },
+    spring: { top:[ 18, 22, 50], bot:[ 55, 45, 75], water:[ 22, 30, 55] },
+    summer: { top:[ 10, 18, 48], bot:[ 35, 50, 90], water:[ 14, 28, 65] },
+    autumn: { top:[ 12, 14, 28], bot:[ 32, 32, 45], water:[ 18, 22, 32] },
+    winter: { top:[ 18, 28, 60], bot:[ 55, 70,100], water:[ 28, 45, 75] },
   };
-  const dp = dayPal[season] || dayPal.autumn;
+  const dp = dayPal[season]   || dayPal.autumn;
   const np = nightPal[season] || nightPal.autumn;
   const k = Math.max(0, Math.min(1, night));
   const mix = (a,b) => [
@@ -9741,7 +9764,11 @@ function _mnSkyPalette(season, night) {
     Math.round(a[1]*(1-k) + b[1]*k),
     Math.round(a[2]*(1-k) + b[2]*k),
   ];
-  return { top: mix(dp.top, np.top), bot: mix(dp.bot, np.bot) };
+  return {
+    top:   mix(dp.top,   np.top),
+    bot:   mix(dp.bot,   np.bot),
+    water: mix(dp.water, np.water),
+  };
 }
 
 // Deterministic pseudo-random window positions for night-lit windows.
@@ -9783,29 +9810,50 @@ function _mnDrawSkylineImage(ctx, W, H, baseY, id, dayMix, night, season) {
   const dx = (W - dw) / 2, dy = (H - dh) / 2;
   ctx.drawImage(img, dx, dy, dw, dh);
 
-  // ── 2. Sky region recolour ──
-  // The baked sky is a warm sunset (~RGB(253,180,130)). We replace its hue
-  // using the 'color' composite operation which keeps the original luminance
-  // (so bright sky stays bright, dark silhouettes stay dark) but adopts the
-  // new chromaticity. We apply this over the entire sky+silhouette band so
-  // there's no visible horizon seam.
+  // ── 2. Full-canvas hue replacement ──
+  // The baked image is a warm sunset (orange sky + orange water reflection).
+  // We replace the hue across the ENTIRE canvas using 'color' compositing:
+  // luminance is preserved (bright sky stays bright, dark silhouettes stay
+  // dark, sun stays bright, reflections keep their shimmer) but the
+  // chromaticity is forced to the season palette.
+  //
+  // Layout:
+  //   y  0→ H*0.55  → sky colour (top → bot)
+  //   y  H*0.55→ H  → water colour
   const pal = _mnSkyPalette(season, night);
-  const lowerSkyH = H * 0.62;   // covers sky + silhouette band (bridge ~H*0.55)
-  const grad = ctx.createLinearGradient(0, 0, 0, lowerSkyH);
-  grad.addColorStop(0,    `rgb(${pal.top[0]}, ${pal.top[1]}, ${pal.top[2]})`);
-  grad.addColorStop(0.7,  `rgb(${pal.bot[0]}, ${pal.bot[1]}, ${pal.bot[2]})`);
-  grad.addColorStop(1,    `rgb(${pal.bot[0]}, ${pal.bot[1]}, ${pal.bot[2]})`);
+  const horizonY = H * 0.55;
+  // Sky band gradient
+  const skyGrad = ctx.createLinearGradient(0, 0, 0, horizonY);
+  skyGrad.addColorStop(0,    `rgb(${pal.top[0]}, ${pal.top[1]}, ${pal.top[2]})`);
+  skyGrad.addColorStop(0.85, `rgb(${pal.bot[0]}, ${pal.bot[1]}, ${pal.bot[2]})`);
+  skyGrad.addColorStop(1,    `rgb(${pal.bot[0]}, ${pal.bot[1]}, ${pal.bot[2]})`);
   ctx.globalCompositeOperation = 'color';
-  ctx.fillStyle = grad;
-  ctx.fillRect(0, 0, W, lowerSkyH);
+  ctx.fillStyle = skyGrad;
+  ctx.fillRect(0, 0, W, horizonY);
+  // Water band — single hue, optionally darker near the bottom for depth
+  const waterGrad = ctx.createLinearGradient(0, horizonY, 0, H);
+  waterGrad.addColorStop(0, `rgb(${pal.water[0]}, ${pal.water[1]}, ${pal.water[2]})`);
+  waterGrad.addColorStop(1, `rgb(${Math.max(0,pal.water[0]-20)}, ${Math.max(0,pal.water[1]-15)}, ${Math.max(0,pal.water[2]-10)})`);
+  ctx.fillStyle = waterGrad;
+  ctx.fillRect(0, horizonY, W, H - horizonY);
   ctx.globalCompositeOperation = 'source-over';
-  // Add a SECOND pass of opacity over the very top to deepen the sky
-  // (since 'color' alone can leave it pale).
+
+  // ── 2b. Sky deepening pass — 'color' alone leaves the sky pale because the
+  // baked sky was light. Add a translucent top gradient with the season hue
+  // so the upper sky reads more saturated.
   const topGrad = ctx.createLinearGradient(0, 0, 0, H * 0.28);
-  topGrad.addColorStop(0, `rgba(${pal.top[0]}, ${pal.top[1]}, ${pal.top[2]}, 0.45)`);
+  topGrad.addColorStop(0, `rgba(${pal.top[0]}, ${pal.top[1]}, ${pal.top[2]}, 0.55)`);
   topGrad.addColorStop(1, `rgba(${pal.top[0]}, ${pal.top[1]}, ${pal.top[2]}, 0)`);
   ctx.fillStyle = topGrad;
   ctx.fillRect(0, 0, W, H * 0.28);
+
+  // ── 2c. Water depth tint — same idea, adds saturation to the river so it
+  // doesn't look washed out.
+  const waterTint = ctx.createLinearGradient(0, horizonY, 0, H);
+  waterTint.addColorStop(0, `rgba(${pal.water[0]}, ${pal.water[1]}, ${pal.water[2]}, 0.30)`);
+  waterTint.addColorStop(1, `rgba(${pal.water[0]}, ${pal.water[1]}, ${pal.water[2]}, 0.50)`);
+  ctx.fillStyle = waterTint;
+  ctx.fillRect(0, horizonY, W, H - horizonY);
 
   // ── 3. Night enhancements ──
   if (night > 0.35) {
@@ -9846,7 +9894,7 @@ function _mnDrawSkylineImage(ctx, W, H, baseY, id, dayMix, night, season) {
     ctx.save();
     ctx.globalCompositeOperation = 'screen';
     ctx.fillStyle = `rgba(255, 250, 220, ${(dayMix - 0.85) * 0.35})`;
-    ctx.fillRect(0, 0, W, lowerSkyH);
+    ctx.fillRect(0, 0, W, horizonY);
     ctx.restore();
   }
 
@@ -12858,6 +12906,26 @@ function _monumentsHudUpdate() {
   if (sc && typeof score !== 'undefined') sc.textContent = score|0;
   if (go) go.textContent = monumentsLinesCleared + ' / ' + monumentsLinesTarget;
   if (lv) lv.textContent = (monumentsLevelIdx+1);
+  // ── Persistent city + season label under the topbar ──
+  // Re-purpose the standard-mode level progress bar to display the active
+  // monument and season. Without this, the player only sees the brief intro
+  // banner and is then left wondering "what season am I in?".
+  try {
+    const curLv = MONUMENTS_LEVELS[monumentsLevelIdx];
+    if (curLv) {
+      const seasonEmoji = ({spring:'🌸', summer:'☀️', autumn:'🍂', winter:'❄️'})[curLv.season] || '';
+      const cityName = (curLv.name || '').toUpperCase();
+      const seasonName = (curLv.season || '').toUpperCase();
+      const lpbLevel = document.getElementById('lpb-level-label');
+      const lpbLines = document.getElementById('lpb-lines-label');
+      if (lpbLevel) lpbLevel.textContent = seasonEmoji + ' ' + cityName + ' · ' + seasonName;
+      if (lpbLines) lpbLines.textContent = monumentsLinesCleared + ' / ' + monumentsLinesTarget + ' LINES';
+      // Update level-progress fill bar based on monuments progress
+      const pct = monumentsLinesTarget > 0 ? Math.min(100, Math.round(100 * monumentsLinesCleared / monumentsLinesTarget)) : 0;
+      const fill = document.getElementById('level-progress-fill-main');
+      if (fill) fill.style.width = pct + '%';
+    }
+  } catch(_e) {}
 }
 
 // Auto-advance timer: each season caps out at MN_SEASON_MAX_MS so the player
@@ -12955,8 +13023,10 @@ function advanceMonumentsLevel() {
       const seasonEmoji = { spring:'🌸', summer:'☀️', autumn:'🍂', winter:'❄️' }[nextSeason] || '';
       const seasonName  = (nextSeason || '').toUpperCase();
       if (typeof showEventBanner === 'function') {
-        showEventBanner(seasonEmoji + ' ' + seasonName + ' — keep building!');
+        showEventBanner(seasonEmoji + ' ' + (nextLv.name || '').toUpperCase() + ' · ' + seasonName);
       }
+      // Push the new season into the persistent under-topbar label.
+      if (typeof _monumentsHudUpdate === 'function') _monumentsHudUpdate();
     } catch(_e) {}
     // Per-level intro for the new season — fires every time we swap in.
     // Hard-stop any clip currently playing (e.g. previous season's intro
@@ -13082,6 +13152,19 @@ function clearLines({completedRows,completedCols,completedHalfRows}){
           _cdProgress.addLines('monuments', _cpLineCount);
           _cdProgress.noteActivity('monuments');
         }
+        // 🐸 Cheer on row clears — low-probability so it stays fresh.
+        // Doubles up for combos (≥2 line clears at once = louder hype).
+        try {
+          if (typeof showFrogSpeech === 'function' && typeof COMMENTARY !== 'undefined' &&
+              Array.isArray(COMMENTARY.cheer) && typeof _pick === 'function' &&
+              typeof canShowCommentary === 'function' && canShowCommentary()) {
+            const chance = _cpLineCount >= 2 ? 0.70 : 0.28;
+            if (Math.random() < chance) {
+              showFrogSpeech('purple', _pick(COMMENTARY.cheer), _cpLineCount >= 2 ? 'hype' : 'fast');
+              if (typeof didShowCommentary === 'function') didShowCommentary();
+            }
+          }
+        } catch(_e) {}
       }
       // Recompute the goal counter from filled-silhouette cells — line clears
       // emptied cells, so this could DECREASE the count.
@@ -15654,7 +15737,7 @@ let beh = {
   lastFill:           0,   // current fill % (updated each placement)
   // Commentary throttle
   lastCommentaryAt:   0,   // Date.now() of last comment shown
-  commentaryCooldownMs: 9000, // never show two comments within 9s (was 18s — user wanted more frequent voice)
+  commentaryCooldownMs: 18000, // never show two comments within 18s (user feedback: frog talks too much)
   // Cross-session (loaded from storage)
   totalGames:         0,
   totalWins:          0,   // games with score > bestScore at time
@@ -16211,26 +16294,26 @@ function maybeShowCommentary() {
     _prevFill = fill; return;
   }
 
-  // 3. Struggling (not quite danger)
-  if (playerIsStruggling() && Math.random() < 0.5) {
+  // 3. Struggling (not quite danger) — softened from 0.5 → 0.25
+  if (playerIsStruggling() && Math.random() < 0.25) {
     showFrogSpeech('red', _pick(COMMENTARY.struggling), 'slow');
     didShowCommentary(); _prevFill = fill; return;
   }
 
-  // 4. Dominating
-  if (playerIsDominating() && Math.random() < 0.45) {
+  // 4. Dominating — softened from 0.45 → 0.22 (less smug)
+  if (playerIsDominating() && Math.random() < 0.22) {
     showFrogSpeech('red', _pick(COMMENTARY.dominating), 'deadpan');
     didShowCommentary(); _prevFill = fill; return;
   }
 
-  // 5. Clunky
-  if (playerIsClunky() && Math.random() < 0.4) {
+  // 5. Clunky — softened from 0.4 → 0.18
+  if (playerIsClunky() && Math.random() < 0.18) {
     showFrogSpeech('red', _pick(COMMENTARY.clunky), 'long');
     didShowCommentary(); _prevFill = fill; return;
   }
 
-  // 6. Dry spell: many placements, no lines in last 12 pieces
-  if (placements > 20 && (lines / placements) < 0.06 && Math.random() < 0.35) {
+  // 6. Dry spell — softened from 0.35 → 0.15 (only if REALLY dry)
+  if (placements > 25 && (lines / placements) < 0.05 && Math.random() < 0.15) {
     showFrogSpeech('red', _pick(COMMENTARY.dry), 'deadpan');
     didShowCommentary(); _prevFill = fill; return;
   }
