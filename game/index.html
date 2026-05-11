@@ -9960,23 +9960,43 @@ function _mnDrawSkylineImage(ctx, W, H, baseY, id, dayMix, night, season) {
     // because there is only ever one skyline drawn.
     ctx.drawImage(dayImg, dx, dy, dw, dh);
     if (night > 0.01) {
-      // Two-stop tint: dusk (warm, low-night) → night (cool dark navy).
-      // Lerp between them based on night value so the transition reads as a
-      // natural sunset rather than a flat darkening.
+      // Three-stop tint: noon (clear) → dusk (warm) → night (deep dark navy).
       ctx.save();
-      // Stage 1: warm dusk wash peaks around night ~ 0.35 (golden hour).
-      const duskA = Math.max(0, Math.min(1, 1 - Math.abs(night - 0.35) / 0.35)) * 0.22;
+      // Stage 1: warm dusk multiply, peaks around night ≈ 0.35 (golden hour),
+      // gives the JPEG sky a sunset hue.
+      const duskA = Math.max(0, Math.min(1, 1 - Math.abs(night - 0.35) / 0.35)) * 0.32;
       if (duskA > 0.01) {
         ctx.globalCompositeOperation = 'multiply';
-        ctx.fillStyle = `rgba(255, 170, 110, ${duskA})`;
+        ctx.fillStyle = `rgba(255, 150, 95, ${duskA})`;
         ctx.fillRect(0, 0, W, H);
         ctx.globalCompositeOperation = 'source-over';
       }
-      // Stage 2: deep night darkening, starts at night > 0.4, full by 0.9.
-      const nightA = Math.max(0, Math.min(1, (night - 0.4) / 0.5));
+      // Stage 2: deep night MULTIPLY — ramps from night=0.40 to night=0.85,
+      // crushes the bright sky/sun into a near-black navy. Using multiply
+      // (not source-over) preserves colour relationships so windows still
+      // pop when drawn additively on top.
+      const nightA = Math.max(0, Math.min(1, (night - 0.40) / 0.45));
       if (nightA > 0.01) {
-        // Cool navy wash darkens everything
-        ctx.fillStyle = `rgba(8, 14, 36, ${0.55 * nightA})`;
+        ctx.globalCompositeOperation = 'multiply';
+        // Dark navy multiplier: 1 → (0.10, 0.13, 0.32) at full night.
+        const mr = Math.round(_skyLerp(255,  26, nightA));
+        const mg = Math.round(_skyLerp(255,  34, nightA));
+        const mb = Math.round(_skyLerp(255,  82, nightA));
+        ctx.fillStyle = `rgb(${mr},${mg},${mb})`;
+        ctx.fillRect(0, 0, W, H);
+        ctx.globalCompositeOperation = 'source-over';
+      }
+      // Stage 3: cool navy on-top wash so the deep-night sky reads as proper
+      // midnight rather than just dim-day. Source-over with low alpha at the
+      // top of frame, fading to nothing near the horizon so the water still
+      // catches some moonlight.
+      if (nightA > 0.3) {
+        const skyWash = ctx.createLinearGradient(0, 0, 0, H);
+        const aTop = 0.45 * Math.min(1, (nightA - 0.3) / 0.7);
+        skyWash.addColorStop(0,   `rgba(8, 12, 30, ${aTop})`);
+        skyWash.addColorStop(0.65,`rgba(8, 12, 30, ${aTop * 0.6})`);
+        skyWash.addColorStop(1,   `rgba(8, 12, 30, 0)`);
+        ctx.fillStyle = skyWash;
         ctx.fillRect(0, 0, W, H);
       }
       ctx.restore();
@@ -10025,6 +10045,89 @@ function _mnSeasonTint(season, night) {
 // window-light flicker at night. Generic for other cities = no-op.
 function _mnDrawLondonAnimation(ctx, W, H, baseY, id, night, tnow) {
   if (id !== 'london') return;
+
+  // ── Animated SUN ↔ MOON arc ─────────────────────────────────────────────────
+  // London uses a single base JPEG — it cannot show a moving sun/moon on its
+  // own. We draw a procedural sun + moon that ride the day/night cycle:
+  //  - During the day the sun arcs across the sky and dips toward the horizon.
+  //  - During twilight the sun sets and the moon rises on the opposite side.
+  //  - Both ride a half-circle arc above the horizon, fading in/out as they
+  //    cross the water line so they appear to rise from and set into the river.
+  // The JPEG's baked-in static sun is hidden by the strong night darkening,
+  // so the visible celestial body during night will be the procedural moon.
+  if (typeof _mnSceneT !== 'undefined') {
+    const t = _mnSceneT; // 0..1, 0 = midnight, 0.5 = noon
+    // Sun phase — visible 0.25..0.75 (sunrise..sunset). Arc parameter sx ∈ [0,1]
+    const sunVis = (t > 0.22 && t < 0.78);
+    if (sunVis) {
+      const sx = (t - 0.22) / 0.56;             // 0..1 across sky
+      const ax = Math.PI * sx;                  // 0..π (left → right semicircle)
+      const cx = W * (0.10 + 0.80 * sx);        // x sweeps L→R
+      const horizon = H * 0.66;                 // river/water line
+      const peak    = H * 0.18;                 // top of arc
+      const cy = horizon - (horizon - peak) * Math.sin(ax);
+      // Fade in at rise & out at set so the sun appears to come up through
+      // the horizon rather than pop in.
+      let alpha = 1;
+      if (sx < 0.08) alpha = sx / 0.08;
+      else if (sx > 0.92) alpha = (1 - sx) / 0.08;
+      alpha *= (1 - night * 1.2); // fade out as night darkens
+      if (alpha > 0.02) {
+        ctx.save();
+        ctx.globalAlpha = alpha;
+        // Warm glow halo
+        const sg = ctx.createRadialGradient(cx, cy, 4, cx, cy, 64);
+        // Colour warms as sun approaches horizon.
+        const horizDist = Math.min(1, Math.abs(sx - 0.5) * 2.2); // 0 at noon → 1 at horizon
+        const r0 = Math.round(_skyLerp(255, 255, horizDist));
+        const g0 = Math.round(_skyLerp(232, 150, horizDist));
+        const b0 = Math.round(_skyLerp(120,  60, horizDist));
+        sg.addColorStop(0,   `rgba(${r0},${g0},${b0},0.95)`);
+        sg.addColorStop(0.45,`rgba(${r0},${g0},${b0},0.4)`);
+        sg.addColorStop(1,   `rgba(${r0},${g0},${b0},0)`);
+        ctx.fillStyle = sg;
+        ctx.beginPath(); ctx.arc(cx, cy, 64, 0, Math.PI*2); ctx.fill();
+        // Solid disc
+        ctx.fillStyle = `rgb(${r0},${g0},${b0})`;
+        ctx.beginPath(); ctx.arc(cx, cy, 16, 0, Math.PI*2); ctx.fill();
+        ctx.restore();
+      }
+    }
+    // Moon phase — visible 0.72..1.0 + 0.0..0.28 (sets after sunrise, rises
+    // after sunset). Single sweep across the night sky.
+    const moonT = (t >= 0.72) ? (t - 0.72) / 0.56
+                 : (t <= 0.28) ? (0.28 + t) / 0.56
+                 : -1;
+    if (moonT >= 0 && moonT <= 1) {
+      const mx = W * (0.10 + 0.80 * moonT);
+      const horizon = H * 0.66;
+      const peak    = H * 0.14;
+      const ax = Math.PI * moonT;
+      const my = horizon - (horizon - peak) * Math.sin(ax);
+      let alpha = 1;
+      if (moonT < 0.08) alpha = moonT / 0.08;
+      else if (moonT > 0.92) alpha = (1 - moonT) / 0.08;
+      alpha *= Math.min(1, night * 1.6); // strongest when fully night
+      if (alpha > 0.02) {
+        ctx.save();
+        ctx.globalAlpha = alpha;
+        // Soft moon glow
+        const mg = ctx.createRadialGradient(mx, my, 4, mx, my, 48);
+        mg.addColorStop(0,   'rgba(245, 245, 220, 0.95)');
+        mg.addColorStop(0.5, 'rgba(245, 245, 220, 0.3)');
+        mg.addColorStop(1,   'rgba(245, 245, 220, 0)');
+        ctx.fillStyle = mg;
+        ctx.beginPath(); ctx.arc(mx, my, 48, 0, Math.PI*2); ctx.fill();
+        // Solid moon disc with a soft shadow crescent
+        ctx.fillStyle = 'rgb(245, 245, 220)';
+        ctx.beginPath(); ctx.arc(mx, my, 14, 0, Math.PI*2); ctx.fill();
+        // Subtle dark crescent on the right side for waxing-moon shape
+        ctx.fillStyle = 'rgba(40, 50, 80, 0.30)';
+        ctx.beginPath(); ctx.arc(mx + 5, my - 1, 12, 0, Math.PI*2); ctx.fill();
+        ctx.restore();
+      }
+    }
+  }
 
   // ── Water shimmer: a few horizontal highlight streaks that drift slowly ──
   const waterTop = H * 0.66;
@@ -10117,10 +10220,11 @@ function _mnDrawLondonAnimation(ctx, W, H, baseY, id, night, tnow) {
   }
   ctx.restore();
 
-  // ── Window flicker on the buildings (night only) ──
-  // The new night base image has lit windows baked in. We add a subtle
-  // additive flicker on top so a few windows appear to switch on and off.
-  if (night > 0.4) {
+  // ── Window flicker on the buildings (evening + night) ──
+  // Buildings in the JPEG are dark silhouettes. We add bright windows that
+  // begin to switch on as twilight falls (night > 0.25), peaking at full night,
+  // and each flickers on its own schedule so the city looks alive.
+  if (night > 0.25) {
     ctx.save();
     ctx.globalCompositeOperation = 'lighter';
     const pts = _mnNightWindowsFor(id, W, H, baseY);
@@ -10132,7 +10236,9 @@ function _mnDrawLondonAnimation(ctx, W, H, baseY, id, night, tnow) {
       const cycle = ((tnow + phase) % period) / period; // 0..1
       const on = cycle < 0.5 ? 1 : 0;                    // hard on/off
       const fade = on ? Math.min(1, (0.5 - cycle) * 8 + 1) : Math.max(0, 1 - (cycle - 0.5) * 8);
-      const alpha = 0.42 * fade;
+      // Ramp window brightness with night: barely visible at dusk → full at midnight.
+      const nightRamp = Math.min(1, (night - 0.25) / 0.4);
+      const alpha = 0.70 * fade * nightRamp;
       if (alpha < 0.02) continue;
       ctx.fillStyle = `rgba(255, 215, 140, ${alpha})`;
       ctx.beginPath();
