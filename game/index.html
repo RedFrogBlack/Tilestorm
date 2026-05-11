@@ -8917,6 +8917,9 @@ function _mnDrawScene(ts) {
   const CW = (f) => f * W;
   if (!_isLondon) {
     _mnDrawCitySkyline(ctx, W, H, baseY, _mnCityMeta, season, dayMix, night, ts, horiz);
+  } else if (typeof _mnDrawSkylineImage === 'function' &&
+             _mnDrawSkylineImage(ctx, W, H, baseY, 'london', dayMix, night, season)) {
+    /* London illustration drew successfully — skip procedural London path. */
   } else {
   // SH = skyline silhouette HEIGHT. Tied to BOARD HEIGHT (not width) so the
   // tallest building (Shard at SH*1.0) reaches near the top of the sky.
@@ -9987,8 +9990,12 @@ function _mnDrawCityPragueProcedural(ctx, W, H, baseY, season, dayMix, night, ts
   ]);
 }
 
-// ─── 2. ACCRA — Black Star Gate arch + Independence Square ───────────────
+// ─── 2. ACCRA — illustration-based ─────────────────────────────────────────
 function _mnDrawCityAccra(ctx, W, H, baseY, season, dayMix, night, ts, horiz) {
+  if (_mnDrawSkylineImage(ctx, W, H, baseY, 'accra', dayMix, night, season)) return;
+  _mnDrawCityAccraProcedural(ctx, W, H, baseY, season, dayMix, night, ts, horiz);
+}
+function _mnDrawCityAccraProcedural(ctx, W, H, baseY, season, dayMix, night, ts, horiz) {
   const SH = H * 0.55;
   _mnDrawGroundBand(ctx, W, H, baseY, 'savannah', dayMix, horiz);
 
@@ -10159,6 +10166,10 @@ function _mnDrawCityAccra(ctx, W, H, baseY, season, dayMix, night, ts, horiz) {
 
 // ─── 3. CAIRO — Pyramids of Giza + Sphinx + palms ────────────────────────
 function _mnDrawCityCairo(ctx, W, H, baseY, season, dayMix, night, ts, horiz) {
+  if (_mnDrawSkylineImage(ctx, W, H, baseY, 'cairo', dayMix, night, season)) return;
+  _mnDrawCityCairoProcedural(ctx, W, H, baseY, season, dayMix, night, ts, horiz);
+}
+function _mnDrawCityCairoProcedural(ctx, W, H, baseY, season, dayMix, night, ts, horiz) {
   const SH = H * 0.55;
   _mnDrawGroundBand(ctx, W, H, baseY, 'sand', dayMix, horiz);
 
@@ -10351,6 +10362,10 @@ function _mnDrawCityCairo(ctx, W, H, baseY, season, dayMix, night, ts, horiz) {
 
 // ─── 4. BEIJING — Great Wall winding over mountains + pagoda towers ──────
 function _mnDrawCityBeijing(ctx, W, H, baseY, season, dayMix, night, ts, horiz) {
+  if (_mnDrawSkylineImage(ctx, W, H, baseY, 'beijing', dayMix, night, season)) return;
+  _mnDrawCityBeijingProcedural(ctx, W, H, baseY, season, dayMix, night, ts, horiz);
+}
+function _mnDrawCityBeijingProcedural(ctx, W, H, baseY, season, dayMix, night, ts, horiz) {
   const SH = H * 0.55;
   _mnDrawGroundBand(ctx, W, H, baseY, 'mountains', dayMix, horiz);
 
@@ -10520,6 +10535,10 @@ function _mnDrawCityBeijing(ctx, W, H, baseY, season, dayMix, night, ts, horiz) 
 
 // ─── 5. JAIPUR — Hawa Mahal pink lattice façade + chhatris ───────────────
 function _mnDrawCityJaipur(ctx, W, H, baseY, season, dayMix, night, ts, horiz) {
+  if (_mnDrawSkylineImage(ctx, W, H, baseY, 'jaipur', dayMix, night, season)) return;
+  _mnDrawCityJaipurProcedural(ctx, W, H, baseY, season, dayMix, night, ts, horiz);
+}
+function _mnDrawCityJaipurProcedural(ctx, W, H, baseY, season, dayMix, night, ts, horiz) {
   const SH = H * 0.55;
   _mnDrawGroundBand(ctx, W, H, baseY, 'sand', dayMix, horiz);
 
@@ -10725,6 +10744,10 @@ function placeChhatriRow(ctx, x1, x2, topY, trimColor, shadeColor) {
 
 // ─── 6. RIO — Christ the Redeemer on Corcovado + Sugarloaf + ocean ───────
 function _mnDrawCityRio(ctx, W, H, baseY, season, dayMix, night, ts, horiz) {
+  if (_mnDrawSkylineImage(ctx, W, H, baseY, 'rio', dayMix, night, season)) return;
+  _mnDrawCityRioProcedural(ctx, W, H, baseY, season, dayMix, night, ts, horiz);
+}
+function _mnDrawCityRioProcedural(ctx, W, H, baseY, season, dayMix, night, ts, horiz) {
   const SH = H * 0.55;
   _mnDrawGroundBand(ctx, W, H, baseY, 'ocean', dayMix, horiz);
 
@@ -10870,6 +10893,10 @@ function _mnDrawCityRio(ctx, W, H, baseY, season, dayMix, night, ts, horiz) {
 
 // ─── 7. REYKJAVIK — Hallgrímskirkja stepped basalt church + fjord ────────
 function _mnDrawCityReykjavik(ctx, W, H, baseY, season, dayMix, night, ts, horiz) {
+  if (_mnDrawSkylineImage(ctx, W, H, baseY, 'reykjavik', dayMix, night, season)) return;
+  _mnDrawCityReykjavikProcedural(ctx, W, H, baseY, season, dayMix, night, ts, horiz);
+}
+function _mnDrawCityReykjavikProcedural(ctx, W, H, baseY, season, dayMix, night, ts, horiz) {
   const SH = H * 0.55;
   _mnDrawGroundBand(ctx, W, H, baseY, 'snow', dayMix, horiz);
 
@@ -10990,6 +11017,10 @@ function _mnDrawCityReykjavik(ctx, W, H, baseY, season, dayMix, night, ts, horiz
 
 // ─── 8. MARRAKECH — Koutoubia minaret + medina walls + palm grove ───────
 function _mnDrawCityMarrakech(ctx, W, H, baseY, season, dayMix, night, ts, horiz) {
+  if (_mnDrawSkylineImage(ctx, W, H, baseY, 'marrakech', dayMix, night, season)) return;
+  _mnDrawCityMarrakechProcedural(ctx, W, H, baseY, season, dayMix, night, ts, horiz);
+}
+function _mnDrawCityMarrakechProcedural(ctx, W, H, baseY, season, dayMix, night, ts, horiz) {
   const SH = H * 0.55;
   _mnDrawGroundBand(ctx, W, H, baseY, 'sand', dayMix, horiz);
 
@@ -11118,6 +11149,10 @@ function _mnDrawCityMarrakech(ctx, W, H, baseY, season, dayMix, night, ts, horiz
 
 // ─── 9. SYDNEY — Opera House sails + Harbour Bridge arch ────────────────
 function _mnDrawCitySydney(ctx, W, H, baseY, season, dayMix, night, ts, horiz) {
+  if (_mnDrawSkylineImage(ctx, W, H, baseY, 'sydney', dayMix, night, season)) return;
+  _mnDrawCitySydneyProcedural(ctx, W, H, baseY, season, dayMix, night, ts, horiz);
+}
+function _mnDrawCitySydneyProcedural(ctx, W, H, baseY, season, dayMix, night, ts, horiz) {
   const SH = H * 0.55;
   _mnDrawGroundBand(ctx, W, H, baseY, 'harbour', dayMix, horiz);
 
