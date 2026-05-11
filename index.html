@@ -8932,6 +8932,9 @@ function _mnDrawScene(ts) {
   } else if (typeof _mnDrawSkylineImage === 'function' &&
              _mnDrawSkylineImage(ctx, W, H, baseY, 'london', dayMix, night, season)) {
     /* London illustration drew successfully — skip procedural London path. */
+  } else if (typeof _mnDrawSkylinePlaceholder === 'function') {
+    /* Image still loading — show clean placeholder gradient, not procedural. */
+    _mnDrawSkylinePlaceholder(ctx, W, H, baseY, season, night);
   } else {
   // SH = skyline silhouette HEIGHT. Tied to BOARD HEIGHT (not width) so the
   // tallest building (Shard at SH*1.0) reaches near the top of the sky.
@@ -9816,6 +9819,37 @@ function _mnNightWindowsFor(id, W, H, baseY) {
 // windows, moon, water reflections) with no hue-replacement seams.
 const _MN_HAS_NIGHT_VARIANT = { london: true, prague: true, accra: true, cairo: true, beijing: true, jaipur: true, rio: true, reykjavik: true, marrakech: true, sydney: true };
 
+// Eagerly preload every city's day + night illustration at module load time.
+// This means by the time the player reaches level 5 (Prague), level 9 (Accra),
+// etc., the new artwork is already in the browser cache — no flash of the
+// procedural fallback or the previous level's image when crossing city
+// boundaries. Total payload ≈ 5 MB, all small JPEGs.
+(function _mnPreloadAllSkylines() {
+  const ids = Object.keys(_MN_HAS_NIGHT_VARIANT);
+  // Defer slightly so the first frame paints before we kick off 20 GETs.
+  setTimeout(() => {
+    for (const id of ids) {
+      _mnGetSkylineImage(id);
+      _mnGetSkylineImage(id + '_night');
+    }
+  }, 80);
+})();
+
+// Draws a clean season-tinted sky+water gradient as a placeholder while a
+// city's illustration is still loading. Prevents any flash of the procedural
+// fallback OR the previous city's image when transitioning between cities.
+function _mnDrawSkylinePlaceholder(ctx, W, H, baseY, season, night) {
+  const pal = _mnSkyPalette(season || 'spring', Math.max(0, Math.min(1, night || 0)));
+  // Sky gradient
+  const sky = ctx.createLinearGradient(0, 0, 0, baseY);
+  sky.addColorStop(0, `rgb(${pal.top[0]},${pal.top[1]},${pal.top[2]})`);
+  sky.addColorStop(1, `rgb(${pal.bot[0]},${pal.bot[1]},${pal.bot[2]})`);
+  ctx.fillStyle = sky; ctx.fillRect(0, 0, W, baseY);
+  // Water / ground band
+  ctx.fillStyle = `rgb(${pal.water[0]},${pal.water[1]},${pal.water[2]})`;
+  ctx.fillRect(0, baseY, W, H - baseY);
+}
+
 // Returns true if it drew the image, false if the image is not ready yet.
 function _mnDrawSkylineImage(ctx, W, H, baseY, id, dayMix, night, season) {
   const dayImg = _mnGetSkylineImage(id);
@@ -10005,11 +10039,10 @@ function _mnDrawLondonAnimation(ctx, W, H, baseY, id, night, tnow) {
 
 // ─── 1. PRAGUE — illustration-based ──────────────────────────────────────
 function _mnDrawCityPrague(ctx, W, H, baseY, season, dayMix, night, ts, horiz) {
-  // Try image first; fall back to procedural drawing if asset not loaded yet.
-  if (_mnDrawSkylineImage(ctx, W, H, baseY, 'prague', dayMix, night, season)) {
-    return;
-  }
-  _mnDrawCityPragueProcedural(ctx, W, H, baseY, season, dayMix, night, ts, horiz);
+  // Try image first. If asset not loaded yet, draw clean placeholder gradient
+  // (NOT procedural) so there's no visual flash on level transitions.
+  if (_mnDrawSkylineImage(ctx, W, H, baseY, 'prague', dayMix, night, season)) return;
+  _mnDrawSkylinePlaceholder(ctx, W, H, baseY, season, night);
 }
 
 function _mnDrawCityPragueProcedural(ctx, W, H, baseY, season, dayMix, night, ts, horiz) {
@@ -10262,7 +10295,7 @@ function _mnDrawCityPragueProcedural(ctx, W, H, baseY, season, dayMix, night, ts
 // ─── 2. ACCRA — illustration-based ─────────────────────────────────────────
 function _mnDrawCityAccra(ctx, W, H, baseY, season, dayMix, night, ts, horiz) {
   if (_mnDrawSkylineImage(ctx, W, H, baseY, 'accra', dayMix, night, season)) return;
-  _mnDrawCityAccraProcedural(ctx, W, H, baseY, season, dayMix, night, ts, horiz);
+  _mnDrawSkylinePlaceholder(ctx, W, H, baseY, season, night);
 }
 function _mnDrawCityAccraProcedural(ctx, W, H, baseY, season, dayMix, night, ts, horiz) {
   const SH = H * 0.55;
@@ -10436,7 +10469,7 @@ function _mnDrawCityAccraProcedural(ctx, W, H, baseY, season, dayMix, night, ts,
 // ─── 3. CAIRO — Pyramids of Giza + Sphinx + palms ────────────────────────
 function _mnDrawCityCairo(ctx, W, H, baseY, season, dayMix, night, ts, horiz) {
   if (_mnDrawSkylineImage(ctx, W, H, baseY, 'cairo', dayMix, night, season)) return;
-  _mnDrawCityCairoProcedural(ctx, W, H, baseY, season, dayMix, night, ts, horiz);
+  _mnDrawSkylinePlaceholder(ctx, W, H, baseY, season, night);
 }
 function _mnDrawCityCairoProcedural(ctx, W, H, baseY, season, dayMix, night, ts, horiz) {
   const SH = H * 0.55;
@@ -10632,7 +10665,7 @@ function _mnDrawCityCairoProcedural(ctx, W, H, baseY, season, dayMix, night, ts,
 // ─── 4. BEIJING — Great Wall winding over mountains + pagoda towers ──────
 function _mnDrawCityBeijing(ctx, W, H, baseY, season, dayMix, night, ts, horiz) {
   if (_mnDrawSkylineImage(ctx, W, H, baseY, 'beijing', dayMix, night, season)) return;
-  _mnDrawCityBeijingProcedural(ctx, W, H, baseY, season, dayMix, night, ts, horiz);
+  _mnDrawSkylinePlaceholder(ctx, W, H, baseY, season, night);
 }
 function _mnDrawCityBeijingProcedural(ctx, W, H, baseY, season, dayMix, night, ts, horiz) {
   const SH = H * 0.55;
@@ -10805,7 +10838,7 @@ function _mnDrawCityBeijingProcedural(ctx, W, H, baseY, season, dayMix, night, t
 // ─── 5. JAIPUR — Hawa Mahal pink lattice façade + chhatris ───────────────
 function _mnDrawCityJaipur(ctx, W, H, baseY, season, dayMix, night, ts, horiz) {
   if (_mnDrawSkylineImage(ctx, W, H, baseY, 'jaipur', dayMix, night, season)) return;
-  _mnDrawCityJaipurProcedural(ctx, W, H, baseY, season, dayMix, night, ts, horiz);
+  _mnDrawSkylinePlaceholder(ctx, W, H, baseY, season, night);
 }
 function _mnDrawCityJaipurProcedural(ctx, W, H, baseY, season, dayMix, night, ts, horiz) {
   const SH = H * 0.55;
@@ -11014,7 +11047,7 @@ function placeChhatriRow(ctx, x1, x2, topY, trimColor, shadeColor) {
 // ─── 6. RIO — Christ the Redeemer on Corcovado + Sugarloaf + ocean ───────
 function _mnDrawCityRio(ctx, W, H, baseY, season, dayMix, night, ts, horiz) {
   if (_mnDrawSkylineImage(ctx, W, H, baseY, 'rio', dayMix, night, season)) return;
-  _mnDrawCityRioProcedural(ctx, W, H, baseY, season, dayMix, night, ts, horiz);
+  _mnDrawSkylinePlaceholder(ctx, W, H, baseY, season, night);
 }
 function _mnDrawCityRioProcedural(ctx, W, H, baseY, season, dayMix, night, ts, horiz) {
   const SH = H * 0.55;
@@ -11163,7 +11196,7 @@ function _mnDrawCityRioProcedural(ctx, W, H, baseY, season, dayMix, night, ts, h
 // ─── 7. REYKJAVIK — Hallgrímskirkja stepped basalt church + fjord ────────
 function _mnDrawCityReykjavik(ctx, W, H, baseY, season, dayMix, night, ts, horiz) {
   if (_mnDrawSkylineImage(ctx, W, H, baseY, 'reykjavik', dayMix, night, season)) return;
-  _mnDrawCityReykjavikProcedural(ctx, W, H, baseY, season, dayMix, night, ts, horiz);
+  _mnDrawSkylinePlaceholder(ctx, W, H, baseY, season, night);
 }
 function _mnDrawCityReykjavikProcedural(ctx, W, H, baseY, season, dayMix, night, ts, horiz) {
   const SH = H * 0.55;
@@ -11287,7 +11320,7 @@ function _mnDrawCityReykjavikProcedural(ctx, W, H, baseY, season, dayMix, night,
 // ─── 8. MARRAKECH — Koutoubia minaret + medina walls + palm grove ───────
 function _mnDrawCityMarrakech(ctx, W, H, baseY, season, dayMix, night, ts, horiz) {
   if (_mnDrawSkylineImage(ctx, W, H, baseY, 'marrakech', dayMix, night, season)) return;
-  _mnDrawCityMarrakechProcedural(ctx, W, H, baseY, season, dayMix, night, ts, horiz);
+  _mnDrawSkylinePlaceholder(ctx, W, H, baseY, season, night);
 }
 function _mnDrawCityMarrakechProcedural(ctx, W, H, baseY, season, dayMix, night, ts, horiz) {
   const SH = H * 0.55;
@@ -11419,7 +11452,7 @@ function _mnDrawCityMarrakechProcedural(ctx, W, H, baseY, season, dayMix, night,
 // ─── 9. SYDNEY — Opera House sails + Harbour Bridge arch ────────────────
 function _mnDrawCitySydney(ctx, W, H, baseY, season, dayMix, night, ts, horiz) {
   if (_mnDrawSkylineImage(ctx, W, H, baseY, 'sydney', dayMix, night, season)) return;
-  _mnDrawCitySydneyProcedural(ctx, W, H, baseY, season, dayMix, night, ts, horiz);
+  _mnDrawSkylinePlaceholder(ctx, W, H, baseY, season, night);
 }
 function _mnDrawCitySydneyProcedural(ctx, W, H, baseY, season, dayMix, night, ts, horiz) {
   const SH = H * 0.55;
