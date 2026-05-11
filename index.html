@@ -9677,8 +9677,70 @@ function _mnNightWindows(ctx, W, H, baseY, dayMix, night, ts, rects) {
   ctx.restore();
 }
 
-// ─── 1. PRAGUE — Charles Bridge, Týn Church twin spires, Vltava ──────────
+// ─── Image-based skyline support (lazy-loaded illustration assets) ─────────
+// Each city can opt into using a pre-rendered illustration instead of
+// procedural canvas drawing. Loads on first request, caches forever, draws
+// stretched to fill (0..W, 0..baseY+slack), with day/night tint overlay.
+const _mnSkylineImgCache = Object.create(null);
+function _mnGetSkylineImage(id) {
+  if (_mnSkylineImgCache[id]) return _mnSkylineImgCache[id];
+  const img = new Image();
+  img.crossOrigin = 'anonymous';
+  img.decoding = 'async';
+  img._mnLoaded = false;
+  img.onload  = () => { img._mnLoaded = true; };
+  img.onerror = () => { img._mnError  = true; };
+  img.src = 'assets/skylines/' + id + '.jpg';
+  _mnSkylineImgCache[id] = img;
+  return img;
+}
+// Returns true if it drew the image, false if the image is not ready yet.
+function _mnDrawSkylineImage(ctx, W, H, baseY, id, dayMix, night, season) {
+  const img = _mnGetSkylineImage(id);
+  if (!img._mnLoaded || img._mnError) return false;
+  // Image fills full canvas: it already contains sky + ground.
+  ctx.save();
+  // Cover-fit (centered): scale so image covers W×H, crop overflow
+  const iw = img.naturalWidth, ih = img.naturalHeight;
+  const scale = Math.max(W / iw, H / ih);
+  const dw = iw * scale, dh = ih * scale;
+  const dx = (W - dw) / 2, dy = (H - dh) / 2;
+  ctx.drawImage(img, dx, dy, dw, dh);
+  // Night dim overlay
+  if (night > 0.05) {
+    ctx.fillStyle = `rgba(8, 12, 32, ${Math.min(0.55, night * 0.55)})`;
+    ctx.fillRect(0, 0, W, H);
+  }
+  // Daytime brighten (subtle, only when very bright)
+  if (dayMix > 0.85 && night < 0.1) {
+    ctx.fillStyle = `rgba(255, 240, 200, ${(dayMix - 0.85) * 0.2})`;
+    ctx.fillRect(0, 0, W, H);
+  }
+  // Season tints (very subtle, preserve the illustration's mood)
+  if (season === 'winter') {
+    ctx.fillStyle = 'rgba(180, 210, 235, 0.10)';
+    ctx.fillRect(0, 0, W, H);
+  } else if (season === 'spring') {
+    ctx.fillStyle = 'rgba(255, 200, 215, 0.06)';
+    ctx.fillRect(0, 0, W, H);
+  } else if (season === 'summer') {
+    ctx.fillStyle = 'rgba(255, 220, 130, 0.06)';
+    ctx.fillRect(0, 0, W, H);
+  }
+  ctx.restore();
+  return true;
+}
+
+// ─── 1. PRAGUE — illustration-based ──────────────────────────────────────
 function _mnDrawCityPrague(ctx, W, H, baseY, season, dayMix, night, ts, horiz) {
+  // Try image first; fall back to procedural drawing if asset not loaded yet.
+  if (_mnDrawSkylineImage(ctx, W, H, baseY, 'prague', dayMix, night, season)) {
+    return;
+  }
+  _mnDrawCityPragueProcedural(ctx, W, H, baseY, season, dayMix, night, ts, horiz);
+}
+
+function _mnDrawCityPragueProcedural(ctx, W, H, baseY, season, dayMix, night, ts, horiz) {
   const SH = H * 0.55;
   _mnDrawGroundBand(ctx, W, H, baseY, 'river', dayMix, horiz);
 
