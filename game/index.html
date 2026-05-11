@@ -9725,6 +9725,19 @@ function _mnGetSkylineImage(id) {
 // reflection — we override BOTH so a summer scene gets a blue sky AND blue
 // Thames, an autumn scene gets a grey-green river, a winter scene gets pale
 // frozen water, etc. Returns {top,bot,water} all as [r,g,b].
+// Returns per-season brightness lift to apply during the day. Summer is
+// strongest because the baked image's luminance is moody dusk — without a
+// lift, summer still reads gloomy even with bright blue chroma.
+function _mnDayBrightness(season) {
+  switch (season) {
+    case 'summer': return 0.45;  // strong lift — actually sunny
+    case 'spring': return 0.28;
+    case 'winter': return 0.22;  // cool/bright but not as warm as summer
+    case 'autumn': return 0.10;  // intentionally moody, just a touch
+    default:       return 0.20;
+  }
+}
+
 function _mnSkyPalette(season, night) {
   // Day palettes (night = 0)
   const dayPal = {
@@ -9817,43 +9830,43 @@ function _mnDrawSkylineImage(ctx, W, H, baseY, id, dayMix, night, season) {
   // dark, sun stays bright, reflections keep their shimmer) but the
   // chromaticity is forced to the season palette.
   //
-  // Layout:
-  //   y  0→ H*0.55  → sky colour (top → bot)
-  //   y  H*0.55→ H  → water colour
+  // CRITICAL: use ONE smooth gradient over the whole canvas (no hard band
+  // boundaries). Previously we used three separate bands which produced
+  // visible horizontal seams at the boundary y-values — the user saw these
+  // as "strange stripes".
   const pal = _mnSkyPalette(season, night);
-  const horizonY = H * 0.55;
-  // Sky band gradient
-  const skyGrad = ctx.createLinearGradient(0, 0, 0, horizonY);
-  skyGrad.addColorStop(0,    `rgb(${pal.top[0]}, ${pal.top[1]}, ${pal.top[2]})`);
-  skyGrad.addColorStop(0.85, `rgb(${pal.bot[0]}, ${pal.bot[1]}, ${pal.bot[2]})`);
-  skyGrad.addColorStop(1,    `rgb(${pal.bot[0]}, ${pal.bot[1]}, ${pal.bot[2]})`);
+  const fullGrad = ctx.createLinearGradient(0, 0, 0, H);
+  fullGrad.addColorStop(0.00, `rgb(${pal.top[0]}, ${pal.top[1]}, ${pal.top[2]})`);
+  fullGrad.addColorStop(0.45, `rgb(${pal.bot[0]}, ${pal.bot[1]}, ${pal.bot[2]})`);
+  // Smooth blend from sky-bottom hue to water hue across the bridge band so
+  // there's no visible horizontal seam.
+  fullGrad.addColorStop(0.62, `rgb(${Math.round((pal.bot[0]+pal.water[0])/2)}, ${Math.round((pal.bot[1]+pal.water[1])/2)}, ${Math.round((pal.bot[2]+pal.water[2])/2)})`);
+  fullGrad.addColorStop(0.78, `rgb(${pal.water[0]}, ${pal.water[1]}, ${pal.water[2]})`);
+  fullGrad.addColorStop(1.00, `rgb(${Math.max(0,pal.water[0]-15)}, ${Math.max(0,pal.water[1]-12)}, ${Math.max(0,pal.water[2]-8)})`);
   ctx.globalCompositeOperation = 'color';
-  ctx.fillStyle = skyGrad;
-  ctx.fillRect(0, 0, W, horizonY);
-  // Water band — single hue, optionally darker near the bottom for depth
-  const waterGrad = ctx.createLinearGradient(0, horizonY, 0, H);
-  waterGrad.addColorStop(0, `rgb(${pal.water[0]}, ${pal.water[1]}, ${pal.water[2]})`);
-  waterGrad.addColorStop(1, `rgb(${Math.max(0,pal.water[0]-20)}, ${Math.max(0,pal.water[1]-15)}, ${Math.max(0,pal.water[2]-10)})`);
-  ctx.fillStyle = waterGrad;
-  ctx.fillRect(0, horizonY, W, H - horizonY);
+  ctx.fillStyle = fullGrad;
+  ctx.fillRect(0, 0, W, H);
   ctx.globalCompositeOperation = 'source-over';
 
-  // ── 2b. Sky deepening pass — 'color' alone leaves the sky pale because the
-  // baked sky was light. Add a translucent top gradient with the season hue
-  // so the upper sky reads more saturated.
-  const topGrad = ctx.createLinearGradient(0, 0, 0, H * 0.28);
-  topGrad.addColorStop(0, `rgba(${pal.top[0]}, ${pal.top[1]}, ${pal.top[2]}, 0.55)`);
-  topGrad.addColorStop(1, `rgba(${pal.top[0]}, ${pal.top[1]}, ${pal.top[2]}, 0)`);
-  ctx.fillStyle = topGrad;
-  ctx.fillRect(0, 0, W, H * 0.28);
-
-  // ── 2c. Water depth tint — same idea, adds saturation to the river so it
-  // doesn't look washed out.
-  const waterTint = ctx.createLinearGradient(0, horizonY, 0, H);
-  waterTint.addColorStop(0, `rgba(${pal.water[0]}, ${pal.water[1]}, ${pal.water[2]}, 0.30)`);
-  waterTint.addColorStop(1, `rgba(${pal.water[0]}, ${pal.water[1]}, ${pal.water[2]}, 0.50)`);
-  ctx.fillStyle = waterTint;
-  ctx.fillRect(0, horizonY, W, H - horizonY);
+  // ── 2b. Daytime brightness lift — the baked image has a moody dusk
+  // luminance, so even with bright blue chroma summer reads gloomy. For
+  // bright-day seasons we add a 'screen' wash to lift overall lightness.
+  // (Skipped at night.)
+  if (night < 0.35) {
+    const lift = _mnDayBrightness(season) * (1 - night / 0.35);
+    if (lift > 0.01) {
+      ctx.save();
+      ctx.globalCompositeOperation = 'screen';
+      // Stronger in the sky, fading toward the water (single smooth gradient)
+      const liftGrad = ctx.createLinearGradient(0, 0, 0, H);
+      liftGrad.addColorStop(0,    `rgba(255, 250, 235, ${lift})`);
+      liftGrad.addColorStop(0.55, `rgba(255, 250, 235, ${lift * 0.55})`);
+      liftGrad.addColorStop(1,    `rgba(255, 250, 235, ${lift * 0.20})`);
+      ctx.fillStyle = liftGrad;
+      ctx.fillRect(0, 0, W, H);
+      ctx.restore();
+    }
+  }
 
   // ── 3. Night enhancements ──
   if (night > 0.35) {
@@ -9889,14 +9902,10 @@ function _mnDrawSkylineImage(ctx, W, H, baseY, id, dayMix, night, season) {
       ctx.beginPath(); ctx.arc(mx, my, mr, 0, Math.PI * 2); ctx.fill();
       ctx.restore();
     }
-  } else if (dayMix > 0.85) {
-    // Bright midday — gentle screen brighten on sky band only
-    ctx.save();
-    ctx.globalCompositeOperation = 'screen';
-    ctx.fillStyle = `rgba(255, 250, 220, ${(dayMix - 0.85) * 0.35})`;
-    ctx.fillRect(0, 0, W, horizonY);
-    ctx.restore();
   }
+  // (Removed legacy mid-day sky-only brighten — the smooth lift gradient
+  // above already handles this without producing a hard seam at the
+  // horizon line.)
 
   ctx.restore();
   return true;
