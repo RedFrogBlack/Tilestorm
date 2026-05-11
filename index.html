@@ -8577,8 +8577,15 @@ function startMonumentsGame(levelIdx) {
   if (typeof _mnGenerateBrickTray === 'function') _mnGenerateBrickTray();
 
   const seasonEmoji = { spring:'🌸', summer:'☀️', autumn:'🍂', winter:'❄️' }[lv.season] || '';
+  // Per-city climate-appropriate season label (Accra → HARMATTAN, not AUTUMN).
+  const _cityIdForBanner = (typeof _mnCurrentCity === 'function')
+    ? (_mnCurrentCity() && _mnCurrentCity().skyId) || ''
+    : '';
+  const _bannerSeasonLbl = (typeof _mnCitySeasonLabel === 'function')
+    ? _mnCitySeasonLabel(_cityIdForBanner, lv.season)
+    : (lv.season || '');
   setTimeout(() => showEventBanner(
-    seasonEmoji + ' ' + lv.name.toUpperCase() + ' · ' + (lv.season || '').toUpperCase()
+    seasonEmoji + ' ' + lv.name.toUpperCase() + ' · ' + _bannerSeasonLbl.toUpperCase()
   ), 300);
   // Tutor: tier intro (first time the player ever enters Monuments).
   // Detect whether the tier_monuments tutor will actually fire — it's skipped
@@ -8727,6 +8734,18 @@ function _mnDrawScene(ts) {
   const night = (typeof _skyNight === 'function') ? _skyNight(t) : ((Math.cos(t*Math.PI*2)+1)/2);
   const dayMix = 1 - night;
 
+  // ── Image-mode probe ──────────────────────────────────────────────────
+  // If a skyline JPEG is available for this city, it draws full-bleed and
+  // covers the whole scene. The JPEG already contains its OWN sun/moon/
+  // clouds/stars/seasonal mood baked in, so we MUST skip the procedural
+  // sun/moon, procedural clouds, stars, season particles and city
+  // season overlays — otherwise they ghost on top of the image as a second
+  // sun/moon, falling autumn leaves over a spring JPEG, etc.
+  const _probeCityMeta = (typeof _mnCurrentCity === 'function') ? _mnCurrentCity() : null;
+  const _probeCityId = (_probeCityMeta && _probeCityMeta.skyId) ? _probeCityMeta.skyId : 'london';
+  const _probeImg = (typeof _mnGetSkylineImage === 'function') ? _mnGetSkylineImage(_probeCityId) : null;
+  const _mnUsingImage = !!(_probeImg && _probeImg._mnLoaded && !_probeImg._mnError);
+
   // City+season DISTINCT base palettes. Each city has its own colour family
   // so cities don't all look like the same orange-sunset; within each city
   // the 4 seasons remain visually distinct.
@@ -8860,7 +8879,8 @@ function _mnDrawScene(ts) {
   ctx.fillRect(0, _hYsky, W, H - _hYsky);
 
   // Stars at night — above the horizon only
-  if (night > 0.4) {
+  // SKIP when using a skyline JPEG (it has its own stars baked in).
+  if (night > 0.4 && !_mnUsingImage) {
     ctx.save();
     const _hYst = H * 0.70;
     for (const s of _mnStars) {
@@ -8872,7 +8892,10 @@ function _mnDrawScene(ts) {
     ctx.restore();
   }
 
-  // Sun / moon arc — constrained to the SKY (above the play-board horizon)
+  // Sun / moon arc — constrained to the SKY (above the play-board horizon).
+  // SKIP when using a skyline JPEG (it has its own sun/moon baked in,
+  // and the procedural one ghosts as a SECOND sun/moon on top of the image).
+  if (!_mnUsingImage) {
   const _hYsun = H * 0.70;
   const sunY = _hYsun * (0.15 + 0.55 * (1 - Math.sin(t * Math.PI))); // higher when t near 0/1, lower (still above horizon) at noon
   // Better: arc that peaks near noon. Re-do clearly.
@@ -8903,8 +8926,11 @@ function _mnDrawScene(ts) {
     }
     ctx.restore();
   }
+  } // end !_mnUsingImage gate for sun/moon
 
-  // Soft drifting clouds (4-5 across the sky) — above the horizon only
+  // Soft drifting clouds (4-5 across the sky) — above the horizon only.
+  // SKIP when using a skyline JPEG (it has its own clouds baked in).
+  if (!_mnUsingImage) {
   ctx.save();
   const _hYcl = H * 0.70;
   ctx.globalAlpha = 0.28 + dayMix * 0.18;
@@ -8921,6 +8947,7 @@ function _mnDrawScene(ts) {
     ctx.fill();
   }
   ctx.restore();
+  } // end !_mnUsingImage gate for clouds
 
   // ─── City skyline dispatch ───
   // London uses the detailed bespoke art below. All other cities go through
@@ -9414,7 +9441,13 @@ function _mnDrawScene(ts) {
   // - summer  → bright sun-rays / heat shimmer
   // - autumn  → orange/red falling leaves (denser than default)
   // - winter  → snow (kept from default)
-  (function _mnDrawSeasonParticles() {
+  //
+  // SKIP entirely when using a skyline JPEG. The JPEG carries the seasonal
+  // mood (cherry blossoms in spring, golden hour in autumn, snow in winter)
+  // baked into the illustration. Drawing the procedural cherry-blossom
+  // branches + falling leaves + giant summer sun on TOP of the JPEG was
+  // the source of \"two suns\" and \"autumn leaves falling on spring scenes\".
+  if (!_mnUsingImage) (function _mnDrawSeasonParticles() {
     if (typeof _gfSeasonInitParticles === 'function' && _gfSeasonParticles && _gfSeasonParticles.length === 0) {
       _gfSeasonInitParticles(season);
     }
@@ -9645,7 +9678,10 @@ function _mnDrawScene(ts) {
 
   // City-specific seasonal overlay (Nile flood / Holi powder / aurora / etc.)
   // Drawn AFTER the generic season particles so it sits on top.
-  if (!_isLondon && typeof _mnDrawCitySeasonOverlay === 'function') {
+  // SKIP when using a skyline JPEG — the JPEG already conveys the seasonal
+  // city mood (harmattan haze, aurora, Nile flood, etc.) baked into the
+  // illustration. Drawing the procedural overlay on top of the JPEG ghosts.
+  if (!_isLondon && !_mnUsingImage && typeof _mnDrawCitySeasonOverlay === 'function') {
     _mnDrawCitySeasonOverlay(ctx, W, H, baseY, _mnCityMeta, season, dayMix, night, ts);
   }
 }
@@ -11945,6 +11981,33 @@ function _mnSayHazardOnce(season, color, pool, ribbit) {
 //               confetti, aurora). Drives _mnDrawHazards.
 //   tint      : optional color string passed through to renderer for re-skinning.
 // ─────────────────────────────────────────────────────────────────────
+// ── Per-city climate-appropriate season labels ───────────────────────────
+// Equatorial cities (Accra) don't have spring/autumn — they have dry/rainy/
+// harmattan/green. Desert cities have khamsin/flood/cool. The hazards already
+// match (harmattan dust / nile flood / etc.) but the HUD label still said
+// SPRING/SUMMER/AUTUMN/WINTER generically. This map fixes the labels.
+//
+// Maps: cityId → { spring, summer, autumn, winter } → display label.
+// London/Prague/Beijing keep temperate names. Sydney keeps temperate names
+// but the player intuitively understands hemispheres are flipped.
+const _MN_CITY_SEASON_LABELS = {
+  london:    { spring:'spring',     summer:'summer',          autumn:'autumn',      winter:'winter' },
+  prague:    { spring:'spring',     summer:'summer',          autumn:'autumn',      winter:'winter' },
+  beijing:   { spring:'spring',     summer:'summer',          autumn:'autumn',      winter:'winter' },
+  sydney:    { spring:'spring',     summer:'summer',          autumn:'autumn',      winter:'winter' },
+  reykjavik: { spring:'spring',     summer:'midnight sun',    autumn:'aurora',      winter:'arctic' },
+  accra:     { spring:'mango',      summer:'rainy',           autumn:'harmattan',   winter:'dry' },
+  cairo:     { spring:'bloom',      summer:'nile flood',      autumn:'khamsin',     winter:'cool' },
+  jaipur:    { spring:'holi',       summer:'monsoon',         autumn:'post-monsoon',winter:'cool' },
+  rio:       { spring:'jacaranda',  summer:'carnival',        autumn:'cool',        winter:'dry' },
+  marrakech: { spring:'bloom',      summer:'sirocco',         autumn:'harvest',     winter:'atlas frost' },
+};
+function _mnCitySeasonLabel(cityId, season) {
+  const m = _MN_CITY_SEASON_LABELS[cityId];
+  if (m && m[season]) return m[season];
+  return season || '';
+}
+
 const _MN_HAZARD_LABEL_MAP = {
   // Prague — distinct from London via colour + behaviour
   'chestnut leaves':   { archetype:'autumn', type:'leaves',    tint:'gingko' },   // bohemian gold linden leaves
@@ -13377,7 +13440,15 @@ function _monumentsHudUpdate() {
     if (curLv) {
       const seasonEmoji = ({spring:'🌸', summer:'☀️', autumn:'🍂', winter:'❄️'})[curLv.season] || '';
       const cityName = (curLv.name || '').toUpperCase();
-      const seasonName = (curLv.season || '').toUpperCase();
+      // Per-city climate-appropriate season label — Accra shows HARMATTAN/MANGO
+      // not generic AUTUMN/SPRING. Falls back to the original season name.
+      const _cityIdForLbl = (typeof _mnCurrentCity === 'function')
+        ? (_mnCurrentCity() && _mnCurrentCity().skyId) || ''
+        : '';
+      const _seasonLbl = (typeof _mnCitySeasonLabel === 'function')
+        ? _mnCitySeasonLabel(_cityIdForLbl, curLv.season)
+        : (curLv.season || '');
+      const seasonName = _seasonLbl.toUpperCase();
       const lpbLevel = document.getElementById('lpb-level-label');
       const lpbLines = document.getElementById('lpb-lines-label');
       if (lpbLevel) lpbLevel.textContent = seasonEmoji + ' ' + cityName + ' · ' + seasonName;
@@ -13476,6 +13547,7 @@ function advanceMonumentsLevel() {
     if (typeof _mnHazards !== 'undefined' && _mnHazards && _mnHazards.clear) _mnHazards.clear();
     // Reset particle pool so old leaves / snow / petals don't bleed into the new season.
     _gfSeasonParticles = [];
+    if (typeof _mnSeasonParticles !== 'undefined') _mnSeasonParticles = [];
     // Reset per-level hazard-hint memory so the new season's first hint speaks once.
     if (typeof _mnHazardHintReset === 'function') _mnHazardHintReset();
     // Kick off fresh seasonal hazards for the new season.
