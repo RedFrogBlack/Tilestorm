@@ -9359,7 +9359,13 @@ function _mnDrawScene(ts) {
   // ── Thames river / waterfront band — only for cities with groundType:'river' ──
   // (London / Prague). Cairo / Reykjavik etc. paint their own ground band
   // inside _mnDrawGenericSkyline (sand / snow / harbour / etc.) so we skip this.
-  if (_isLondon || (_mnCityMeta && _mnCityMeta.groundType === 'river')) {
+  // Skip entirely when the photo skyline image is loaded — the photo already
+  // shows the river, and overlaying our procedural strip creates a visible
+  // horizontal seam across the middle of the board.
+  const _skyId = _isLondon ? 'london' : (_mnCityMeta && _mnCityMeta.skyId);
+  const _skyImg = _skyId && typeof _mnGetSkylineImage === 'function' ? _mnGetSkylineImage(_skyId) : null;
+  const _imageLoaded = !!(_skyImg && _skyImg._mnLoaded && !_skyImg._mnError);
+  if (!_imageLoaded && (_isLondon || (_mnCityMeta && _mnCityMeta.groundType === 'river'))) {
   ctx.save();
   const riverTop = baseY;
   const riverH   = Math.min(40, Math.max(18, H * 0.04));
