@@ -9836,26 +9836,109 @@ function _mnSkyPalette(season, night) {
 
 // Deterministic pseudo-random window positions for night-lit windows.
 // Seeded by city id so positions are stable across frames per city.
+// Cached silhouette mask: a canvas containing ONLY the dark building shapes
+// of the source JPEG (everything else transparent). Used to redraw the city
+// ON TOP of the procedural sun/moon so the celestial bodies appear to set
+// behind buildings instead of in front of them.
+function _mnSilhouetteMaskFor(id, W, H) {
+  if (!_mnSilhouetteMaskFor._cache) _mnSilhouetteMaskFor._cache = Object.create(null);
+  const key = id + ':' + Math.round(W) + 'x' + Math.round(H);
+  if (_mnSilhouetteMaskFor._cache[key]) return _mnSilhouetteMaskFor._cache[key];
+  const img = _mnGetSkylineImage(id);
+  if (!img || !img._mnLoaded || img._mnError || typeof document === 'undefined') return null;
+  try {
+    const off = document.createElement('canvas');
+    off.width = Math.round(W); off.height = Math.round(H);
+    const octx = off.getContext('2d');
+    const iw = img.naturalWidth, ih = img.naturalHeight;
+    const scale = Math.max(W / iw, H / ih);  // matches main 'cover' fit
+    const dw = iw * scale, dh = ih * scale;
+    const dx = (W - dw) / 2, dy = (H - dh) / 2;
+    octx.drawImage(img, dx, dy, dw, dh);
+    // Convert: dark pixels → keep, bright pixels → transparent.
+    // Threshold matches the windows mask (sum < 200 = silhouette).
+    const id2 = octx.getImageData(0, 0, off.width, off.height);
+    const data = id2.data;
+    for (let i = 0; i < data.length; i += 4) {
+      const sum = data[i] + data[i+1] + data[i+2];
+      if (sum >= 200) {
+        data[i+3] = 0;  // transparent (sky / water)
+      }
+      // dark pixels keep their original colour & alpha (the silhouettes)
+    }
+    octx.putImageData(id2, 0, 0);
+    _mnSilhouetteMaskFor._cache[key] = off;
+    return off;
+  } catch (e) {
+    return null;
+  }
+}
+
 function _mnNightWindowsFor(id, W, H, baseY) {
   if (!_mnNightWindowsFor._cache) _mnNightWindowsFor._cache = Object.create(null);
   const key = id + ':' + Math.round(W) + 'x' + Math.round(H);
-  if (_mnNightWindowsFor._cache[key]) return _mnNightWindowsFor._cache[key];
+  // Only return cached if it was built WITH a valid mask. If we cached early
+  // (before image loaded) with no mask, the points are sky-fireflies — redo.
+  const cached = _mnNightWindowsFor._cache[key];
+  if (cached && cached._maskValid) return cached;
   // Simple hash
   let s = 0; for (let i=0;i<id.length;i++) s = (s*31 + id.charCodeAt(i)) >>> 0;
   const rng = () => { s = (s * 1664525 + 1013904223) >>> 0; return s / 0xffffffff; };
+
+  // ── Sample the source JPEG to keep windows ONLY on dark building pixels ──
+  // Without this, windows would spawn in the open sky (looks like fireflies)
+  // because the random points didn't know where the silhouettes actually are.
+  // We rasterise the JPEG into a tiny offscreen canvas (matched to the target
+  // W×H), read its pixels and accept candidate points only when the pixel is
+  // sufficiently dark (= a building silhouette).
+  let darkMask = null;
+  const img = _mnGetSkylineImage(id);
+  if (img && img._mnLoaded && !img._mnError && typeof document !== 'undefined') {
+    try {
+      const off = document.createElement('canvas');
+      // Downsample for speed — we only need a coarse mask. Keep aspect.
+      const sampleW = Math.max(120, Math.min(320, Math.round(W)));
+      const sampleH = Math.max(120, Math.min(320, Math.round(H)));
+      off.width = sampleW; off.height = sampleH;
+      const octx = off.getContext('2d');
+      // Cover-fit (matches main drawImage path) so x/y in pts map to image px
+      const iw = img.naturalWidth, ih = img.naturalHeight;
+      const scale = Math.max(sampleW / iw, sampleH / ih);
+      const dw = iw * scale, dh = ih * scale;
+      const dx = (sampleW - dw) / 2, dy = (sampleH - dh) / 2;
+      octx.drawImage(img, dx, dy, dw, dh);
+      const data = octx.getImageData(0, 0, sampleW, sampleH).data;
+      darkMask = { data, w: sampleW, h: sampleH };
+    } catch (e) { darkMask = null; /* canvas tainted or unavailable */ }
+  }
+  const isDark = (xPx, yPx) => {
+    if (!darkMask) return true; // fall back to no filtering
+    const sx = Math.min(darkMask.w - 1, Math.max(0, Math.round(xPx / W * darkMask.w)));
+    const sy = Math.min(darkMask.h - 1, Math.max(0, Math.round(yPx / H * darkMask.h)));
+    const i = (sy * darkMask.w + sx) * 4;
+    const r = darkMask.data[i], g = darkMask.data[i+1], b = darkMask.data[i+2];
+    // Building silhouettes in london.jpg are deep navy (~ #1a2540 → sum ≈ 120).
+    // Sky is bright (~ #9fd6f0 → sum ≈ 600). Threshold at 200 splits cleanly.
+    return (r + g + b) < 200;
+  };
+
   const pts = [];
   // Window band: where buildings live (between sky and ground reflection)
   const yTop = H * 0.30;
   const yBot = baseY - 4;
-  const count = Math.round(W * 0.06);
-  for (let i = 0; i < count; i++) {
-    pts.push({
-      x: rng() * W,
-      y: yTop + rng() * (yBot - yTop),
-      r: 0.6 + rng() * 1.4,
-      flick: rng(),
-    });
+  // Generate MORE candidates than needed and accept only those landing on a
+  // dark silhouette pixel. Caps total kept points to keep render cheap.
+  const targetCount = Math.round(W * 0.08);
+  const maxAttempts = targetCount * 12;
+  let attempts = 0;
+  while (pts.length < targetCount && attempts < maxAttempts) {
+    attempts++;
+    const x = rng() * W;
+    const y = yTop + rng() * (yBot - yTop);
+    if (!isDark(x, y)) continue;
+    pts.push({ x, y, r: 0.6 + rng() * 1.4, flick: rng() });
   }
+  pts._maskValid = !!darkMask;
   _mnNightWindowsFor._cache[key] = pts;
   return pts;
 }
@@ -10093,6 +10176,11 @@ function _mnDrawLondonAnimation(ctx, W, H, baseY, id, night, tnow) {
         ctx.restore();
       }
     }
+    // Sun arc may dip behind buildings near the horizon. We render the dark
+    // silhouette mask AFTER the sun (and after the moon below) so the city
+    // appears in front of the celestial bodies. See block below for the
+    // mask redraw.
+
     // Moon phase — visible 0.72..1.0 + 0.0..0.28 (sets after sunrise, rises
     // after sunset). Single sweep across the night sky.
     const moonT = (t >= 0.72) ? (t - 0.72) / 0.56
@@ -10126,6 +10214,22 @@ function _mnDrawLondonAnimation(ctx, W, H, baseY, id, night, tnow) {
         ctx.beginPath(); ctx.arc(mx + 5, my - 1, 12, 0, Math.PI*2); ctx.fill();
         ctx.restore();
       }
+    }
+
+    // ── Building silhouette over-paint ─────────────────────────────────────
+    // The procedural sun/moon was drawn over the JPEG — which means at the
+    // horizon the disc crosses IN FRONT of Big Ben, the Shard, Tower Bridge
+    // towers, etc. Redraw the dark silhouette mask on top so the city is in
+    // front of the celestial bodies ("sun setting behind the skyline").
+    // The mask is the original JPEG with bright pixels made transparent.
+    // Re-applying the night tint over the mask would re-darken everything;
+    // instead we apply a fresh darkening only to the silhouette pixels so
+    // they match the surrounding night tone.
+    const mask = _mnSilhouetteMaskFor(id, W, H);
+    if (mask) {
+      ctx.save();
+      ctx.drawImage(mask, 0, 0, W, H);
+      ctx.restore();
     }
   }
 
