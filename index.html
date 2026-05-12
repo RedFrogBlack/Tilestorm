@@ -9985,7 +9985,7 @@ function _mnDrawSkylinePlaceholder(ctx, W, H, baseY, season, night) {
 // having two distinct day/night JPEGs with different compositions produces
 // ghosting (two skylines visible at once during transition) since each image
 // has its own building/sun/moon positions. Single-image cities sidestep this.
-const _MN_SINGLE_IMAGE = { london: true, prague: true, accra: true };
+const _MN_SINGLE_IMAGE = { london: true, prague: true };
 
 // Per-city horizon/water-line as a fraction of canvas height. Used by the
 // procedural sun/moon arc so celestial bodies rise from / set into the right
@@ -10000,7 +10000,7 @@ const _MN_HORIZON_FRAC = {
 // the tint goes the OPPOSITE direction: we BRIGHTEN/warm at noon and leave
 // the source untouched at midnight. Default (false) is day-source cities
 // which darken toward night.
-const _MN_SOURCE_IS_NIGHT = { accra: true };
+const _MN_SOURCE_IS_NIGHT = {};
 
 // Returns true if it drew the image, false if the image is not ready yet.
 function _mnDrawSkylineImage(ctx, W, H, baseY, id, dayMix, night, season) {
