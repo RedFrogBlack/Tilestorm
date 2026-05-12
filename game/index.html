@@ -10055,32 +10055,31 @@ function _mnDrawSkylineImage(ctx, W, H, baseY, id, dayMix, night, season) {
         ctx.globalCompositeOperation = 'source-over';
       }
       // Stage 2: night MULTIPLY — ramps from night=0.45 to night=0.95.
-      // Tones the bright sky into evening/night blues while keeping enough
-      // luminance that the building silhouettes stay clearly readable.
-      // (Previously crushed to near-black navy which made everything vanish.)
+      // Light "blue hour" target so buildings + cables + windows remain
+      // clearly visible. Aims for a deep-twilight feel, not midnight black.
       const nightA = Math.max(0, Math.min(1, (night - 0.45) / 0.50));
       if (nightA > 0.01) {
         ctx.globalCompositeOperation = 'multiply';
-        // Soft navy multiplier: 1 → (0.30, 0.36, 0.58) at full night —
-        // ~3× brighter than before so the skyline never goes black.
-        const mr = Math.round(_skyLerp(255,  76, nightA));
-        const mg = Math.round(_skyLerp(255,  92, nightA));
-        const mb = Math.round(_skyLerp(255, 148, nightA));
+        // Light blue-hour multiplier: 1 → (0.51, 0.55, 0.71) at full night.
+        // The image's bright sky (~#7BB8E0) becomes ~#3F66B5 (deep blue),
+        // and the navy buildings (~#1B2547) stay near their original tone
+        // so they don't dissolve into the sky.
+        const mr = Math.round(_skyLerp(255, 130, nightA));
+        const mg = Math.round(_skyLerp(255, 140, nightA));
+        const mb = Math.round(_skyLerp(255, 180, nightA));
         ctx.fillStyle = `rgb(${mr},${mg},${mb})`;
         ctx.fillRect(0, 0, W, H);
         ctx.globalCompositeOperation = 'source-over';
       }
-      // Stage 3: subtle cool navy wash at the top of frame only, fading to
-      // zero near the horizon so the buildings and water keep their detail.
-      // Reduced alpha and steeper falloff vs prior implementation.
-      if (nightA > 0.35) {
-        const skyWash = ctx.createLinearGradient(0, 0, 0, H);
-        const aTop = 0.22 * Math.min(1, (nightA - 0.35) / 0.65);
-        skyWash.addColorStop(0,   `rgba(8, 12, 30, ${aTop})`);
-        skyWash.addColorStop(0.45,`rgba(8, 12, 30, ${aTop * 0.4})`);
-        skyWash.addColorStop(1,   `rgba(8, 12, 30, 0)`);
+      // Stage 3: very subtle cool sky tint at the top only — sells "it's
+      // night" without crushing the lower frame. Greatly reduced alpha.
+      if (nightA > 0.5) {
+        const skyWash = ctx.createLinearGradient(0, 0, 0, H * 0.55);
+        const aTop = 0.12 * Math.min(1, (nightA - 0.5) / 0.5);
+        skyWash.addColorStop(0,   `rgba(15, 25, 55, ${aTop})`);
+        skyWash.addColorStop(1,   `rgba(15, 25, 55, 0)`);
         ctx.fillStyle = skyWash;
-        ctx.fillRect(0, 0, W, H);
+        ctx.fillRect(0, 0, W, H * 0.55);
       }
       ctx.restore();
     }
