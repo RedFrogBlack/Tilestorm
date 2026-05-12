@@ -10054,30 +10054,30 @@ function _mnDrawSkylineImage(ctx, W, H, baseY, id, dayMix, night, season) {
         ctx.fillRect(0, 0, W, H);
         ctx.globalCompositeOperation = 'source-over';
       }
-      // Stage 2: deep night MULTIPLY — ramps from night=0.40 to night=0.85,
-      // crushes the bright sky/sun into a near-black navy. Using multiply
-      // (not source-over) preserves colour relationships so windows still
-      // pop when drawn additively on top.
-      const nightA = Math.max(0, Math.min(1, (night - 0.40) / 0.45));
+      // Stage 2: night MULTIPLY — ramps from night=0.45 to night=0.95.
+      // Tones the bright sky into evening/night blues while keeping enough
+      // luminance that the building silhouettes stay clearly readable.
+      // (Previously crushed to near-black navy which made everything vanish.)
+      const nightA = Math.max(0, Math.min(1, (night - 0.45) / 0.50));
       if (nightA > 0.01) {
         ctx.globalCompositeOperation = 'multiply';
-        // Dark navy multiplier: 1 → (0.10, 0.13, 0.32) at full night.
-        const mr = Math.round(_skyLerp(255,  26, nightA));
-        const mg = Math.round(_skyLerp(255,  34, nightA));
-        const mb = Math.round(_skyLerp(255,  82, nightA));
+        // Soft navy multiplier: 1 → (0.30, 0.36, 0.58) at full night —
+        // ~3× brighter than before so the skyline never goes black.
+        const mr = Math.round(_skyLerp(255,  76, nightA));
+        const mg = Math.round(_skyLerp(255,  92, nightA));
+        const mb = Math.round(_skyLerp(255, 148, nightA));
         ctx.fillStyle = `rgb(${mr},${mg},${mb})`;
         ctx.fillRect(0, 0, W, H);
         ctx.globalCompositeOperation = 'source-over';
       }
-      // Stage 3: cool navy on-top wash so the deep-night sky reads as proper
-      // midnight rather than just dim-day. Source-over with low alpha at the
-      // top of frame, fading to nothing near the horizon so the water still
-      // catches some moonlight.
-      if (nightA > 0.3) {
+      // Stage 3: subtle cool navy wash at the top of frame only, fading to
+      // zero near the horizon so the buildings and water keep their detail.
+      // Reduced alpha and steeper falloff vs prior implementation.
+      if (nightA > 0.35) {
         const skyWash = ctx.createLinearGradient(0, 0, 0, H);
-        const aTop = 0.45 * Math.min(1, (nightA - 0.3) / 0.7);
+        const aTop = 0.22 * Math.min(1, (nightA - 0.35) / 0.65);
         skyWash.addColorStop(0,   `rgba(8, 12, 30, ${aTop})`);
-        skyWash.addColorStop(0.65,`rgba(8, 12, 30, ${aTop * 0.6})`);
+        skyWash.addColorStop(0.45,`rgba(8, 12, 30, ${aTop * 0.4})`);
         skyWash.addColorStop(1,   `rgba(8, 12, 30, 0)`);
         ctx.fillStyle = skyWash;
         ctx.fillRect(0, 0, W, H);
