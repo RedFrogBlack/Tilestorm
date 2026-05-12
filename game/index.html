@@ -10046,16 +10046,17 @@ function _mnDrawSkylineImage(ctx, W, H, baseY, id, dayMix, night, season) {
   // day until twilight, twilight is a narrow blended dusk band, then night.
   if (nightReady && night > 0.01) {
     const t = Math.max(0, Math.min(1, night));
-    // Dead zones: pure day below 0.55, pure night above 0.80. Between those
-    // a narrow band is blended via smoothstep, but kept short so the double
-    // sun+moon never lingers long enough to be noticed.
+    // WIDER night window: pure day below 0.30, pure night above 0.55.
+    // Previously night didn't dominate until t > 0.80 — which meant during
+    // most of the cycle you'd see the bright day JPEG with only a faint
+    // tint, never the dark night JPEG. Now night arrives earlier and lasts.
     let nightAlpha;
-    if (t < 0.55) {
+    if (t < 0.30) {
       nightAlpha = 0;
-    } else if (t > 0.80) {
+    } else if (t > 0.55) {
       nightAlpha = 1;
     } else {
-      const u = (t - 0.55) / 0.25; // 0..1 across the twilight band
+      const u = (t - 0.30) / 0.25; // 0..1 across the twilight band
       nightAlpha = u * u * (3 - 2 * u); // smoothstep
     }
     ctx.globalAlpha = 1;
@@ -10254,10 +10255,12 @@ function _mnDrawLondonAnimation(ctx, W, H, baseY, id, night, tnow) {
   // so the visible celestial body during night will be the procedural moon.
   if (typeof _mnSceneT !== 'undefined') {
     const t = _mnSceneT; // 0..1, 0 = midnight, 0.5 = noon
-    // Sun phase — visible 0.25..0.75 (sunrise..sunset). Arc parameter sx ∈ [0,1]
-    const sunVis = (t > 0.22 && t < 0.78);
+    // Sun phase — visible 0.30..0.70 (matched to the wider night window in
+    // the dual-image crossfade). At t > 0.70 we're already crossfading to
+    // the night JPEG; the sun should be down by then.
+    const sunVis = (t > 0.30 && t < 0.70);
     if (sunVis) {
-      const sx = (t - 0.22) / 0.56;             // 0..1 across sky
+      const sx = (t - 0.30) / 0.40;             // 0..1 across sky
       const ax = Math.PI * sx;                  // 0..π (left → right semicircle)
       const cx = W * (0.10 + 0.80 * sx);        // x sweeps L→R
       const horizon = H * horizonFrac;          // river/water line
@@ -25248,4 +25251,4 @@ function updateHomeSubtitles() {
 </body>
 </html>
 
-<!-- rebuild 1778608582 -->
+<!-- rebuild 1778608851 -->
