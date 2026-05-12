@@ -10059,40 +10059,81 @@ function _mnDrawSkylineImage(ctx, W, H, baseY, id, dayMix, night, season) {
     ctx.drawImage(dayImg, dx, dy, dw, dh);
     const sourceIsNight = !!_MN_SOURCE_IS_NIGHT[id];
     if (sourceIsNight) {
-      // ─── NIGHT-SOURCE TINT PATH ───
+      // ─── NIGHT-SOURCE TINT PATH (Accra) ───
       // Source JPEG is already a night composition (dark sky, lit windows,
-      // illuminated monument). At midnight (night=1) leave it alone. At noon
-      // (night=0) brighten/warm the whole frame so it reads as daytime.
+      // illuminated monument, palm silhouettes). At midnight (night=1)
+      // leave it untouched — that's the hero look. As day rises, we have
+      // to do TWO things:
+      //   1. Paint a bright daytime sky ABOVE the horizon (so noon looks
+      //      like noon, not eternal twilight).
+      //   2. DIM the baked-in warm lights (windows, monument floods, lamps)
+      //      so they don't keep glowing in broad daylight.
       const day = 1 - night; // 1 at noon, 0 at midnight
       if (day > 0.01) {
         ctx.save();
-        // Stage A: SCREEN with a warm sky-blue at noon — lifts the dark
-        // sky toward a daytime blue without losing the silhouette/star
-        // detail. Peaks at noon, fades at twilight.
-        const screenA = day * 0.78;
-        ctx.globalCompositeOperation = 'screen';
-        ctx.fillStyle = `rgba(140, 180, 235, ${screenA})`;
-        ctx.fillRect(0, 0, W, H);
-        ctx.globalCompositeOperation = 'source-over';
-        // Stage B: warm dusk wash at golden hour (night ≈ 0.35) to push the
-        // sky toward orange when sun is near the horizon.
-        const duskA = Math.max(0, Math.min(1, 1 - Math.abs(night - 0.35) / 0.30)) * 0.25;
+        const horizonFrac = _MN_HORIZON_FRAC[id] || 0.78;
+        const horizonY = baseY + dh * horizonFrac;
+
+        // Stage A: DESATURATE / DARKEN the baked lights BEFORE we touch the
+        // sky. Multiply with a cool grey reduces the punch of the orange
+        // monument floods + lamp glows when daylight is high. Stronger as
+        // day approaches noon. Skip the upper sky (we want the sky bright,
+        // not multiplied dark) by clipping to BELOW horizon and the building
+        // silhouettes ABOVE horizon (so building tops also lose their hot
+        // floodlight edges).
+        const dimA = Math.max(0, (day - 0.20) / 0.80) * 0.55; // 0 until day>0.20, ramps to 0.55 at noon
+        if (dimA > 0.01) {
+          ctx.globalCompositeOperation = 'multiply';
+          // Cool daylight grey — leaves blues mostly alone, kills warm glow.
+          const r = Math.round(255 - 105 * dimA);
+          const g = Math.round(255 -  75 * dimA);
+          const b = Math.round(255 -  45 * dimA);
+          ctx.fillStyle = `rgb(${r},${g},${b})`;
+          ctx.fillRect(0, 0, W, H);
+          ctx.globalCompositeOperation = 'source-over';
+        }
+
+        // Stage B: BRIGHT DAYTIME SKY above horizon only (don't wash out
+        // the water + skyline silhouette). Use source-atop NO — just paint
+        // a gradient ABOVE horizonY. The building silhouettes are mostly
+        // dark, so a screen-blend sky-blue gradient above horizon mostly
+        // affects the (currently dark) sky pixels — exactly what we want.
+        // We use 'screen' so the bright blue lifts the dark sky strongly,
+        // and we cap the rect at horizonY so water + foreground stay rich.
+        const skyA = day * 0.92; // very strong at noon
+        if (skyA > 0.01 && horizonY > baseY + 4) {
+          ctx.globalCompositeOperation = 'screen';
+          const skyGrad = ctx.createLinearGradient(0, baseY, 0, horizonY);
+          // Top of sky: vivid daylight blue; near horizon: paler haze
+          skyGrad.addColorStop(0,    `rgba(110, 175, 240, ${skyA})`);
+          skyGrad.addColorStop(0.75, `rgba(170, 205, 240, ${skyA * 0.85})`);
+          skyGrad.addColorStop(1,    `rgba(220, 230, 240, ${skyA * 0.55})`);
+          ctx.fillStyle = skyGrad;
+          ctx.fillRect(0, baseY, W, horizonY - baseY);
+          ctx.globalCompositeOperation = 'source-over';
+        }
+
+        // Stage C: lift the WATER / FOREGROUND below horizon a little so
+        // it doesn't look like night water under a noon sky. Softer screen.
+        const waterA = day * 0.35;
+        if (waterA > 0.01 && horizonY < baseY + dh - 4) {
+          ctx.globalCompositeOperation = 'screen';
+          ctx.fillStyle = `rgba(120, 165, 210, ${waterA})`;
+          ctx.fillRect(0, horizonY, W, (baseY + dh) - horizonY);
+          ctx.globalCompositeOperation = 'source-over';
+        }
+
+        // Stage D: GOLDEN-HOUR warm wash near twilight (night ≈ 0.30).
+        // Adds a warm orange screen across the whole frame for that
+        // dawn/dusk pop. Peaks at twilight, zero at noon AND midnight.
+        const duskA = Math.max(0, Math.min(1, 1 - Math.abs(night - 0.30) / 0.18)) * 0.30;
         if (duskA > 0.01) {
           ctx.globalCompositeOperation = 'screen';
           ctx.fillStyle = `rgba(255, 165, 100, ${duskA})`;
           ctx.fillRect(0, 0, W, H);
           ctx.globalCompositeOperation = 'source-over';
         }
-        // Stage C: at full daytime, hide the lit-window / lamp glow that
-        // looks weird in daylight by overlaying a faint cool wash that
-        // desaturates those warm pinpoints.
-        if (day > 0.5) {
-          const lampA = (day - 0.5) * 0.18;
-          ctx.globalCompositeOperation = 'overlay';
-          ctx.fillStyle = `rgba(220, 235, 255, ${lampA})`;
-          ctx.fillRect(0, 0, W, H);
-          ctx.globalCompositeOperation = 'source-over';
-        }
+
         ctx.restore();
       }
     } else if (night > 0.01) {
