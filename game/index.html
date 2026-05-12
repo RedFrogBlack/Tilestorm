@@ -9985,13 +9985,11 @@ function _mnDrawSkylinePlaceholder(ctx, W, H, baseY, season, night) {
 // having two distinct day/night JPEGs with different compositions produces
 // ghosting (two skylines visible at once during transition) since each image
 // has its own building/sun/moon positions. Single-image cities sidestep this.
-// ALL 10 cities use single-image: one bright daylight JPEG, tinted DARK at
-// night with procedural lit windows on building silhouettes. Same engine
-// as London/Prague — night JPEGs are no longer used.
-const _MN_SINGLE_IMAGE = {
-  london: true, prague: true, accra: true, cairo: true, beijing: true,
-  jaipur: true, rio: true, reykjavik: true, marrakech: true, sydney: true
-};
+// London + Prague: single-image (one JPEG, tinted toward night).
+// All other 8 cities: dual-image — they have a separate <id>_night.jpg with
+// the SAME skyline composition lit at night (dark buildings, lit windows,
+// moon, stars). Crossfade between day and night JPEGs at twilight.
+const _MN_SINGLE_IMAGE = { london: true, prague: true };
 
 // Per-city horizon/water-line as a fraction of canvas height. Used by the
 // procedural sun/moon arc so celestial bodies rise from / set into the right
@@ -10236,10 +10234,14 @@ function _mnSeasonTint(season, night) {
 // drifting on the Thames, animated traffic dots on Tower Bridge, and gentle
 // window-light flicker at night. Generic for other cities = no-op.
 function _mnDrawLondonAnimation(ctx, W, H, baseY, id, night, tnow) {
-  // Run the SUN/MOON arc + silhouette mask + water shimmer for ALL 10
-  // cities. The London-only procedural ferries and Tower Bridge traffic
-  // were removed — they were drawing fake boats/cars over the JPEG.
+  // Procedural sun arc + water shimmer run for ALL 10 cities.
+  // Procedural MOON only runs for single-image cities (london/prague):
+  // dual-image cities have a baked-in moon in their night JPEG, so adding
+  // a procedural one on top produces two moons — and the procedural one
+  // can drift in front of buildings since the silhouette mask is derived
+  // from the day JPEG, not the night JPEG, and they're not pixel-identical.
   const horizonFrac = _MN_HORIZON_FRAC[id] || 0.66;
+  const drawProceduralMoon = !!_MN_SINGLE_IMAGE[id];
 
   // ── Animated SUN ↔ MOON arc ─────────────────────────────────────────────────
   // London uses a single base JPEG — it cannot show a moving sun/moon on its
@@ -10295,10 +10297,11 @@ function _mnDrawLondonAnimation(ctx, W, H, baseY, id, night, tnow) {
 
     // Moon phase — visible 0.72..1.0 + 0.0..0.28 (sets after sunrise, rises
     // after sunset). Single sweep across the night sky.
+    // Only for single-image cities; dual-image cities have a baked moon.
     const moonT = (t >= 0.72) ? (t - 0.72) / 0.56
                  : (t <= 0.28) ? (0.28 + t) / 0.56
                  : -1;
-    if (moonT >= 0 && moonT <= 1) {
+    if (drawProceduralMoon && moonT >= 0 && moonT <= 1) {
       const mx = W * (0.10 + 0.80 * moonT);
       const horizon = H * horizonFrac;
       const peak    = H * 0.14;
@@ -25245,4 +25248,4 @@ function updateHomeSubtitles() {
 </body>
 </html>
 
-<!-- rebuild 1778608428 -->
+<!-- rebuild 1778608582 -->
