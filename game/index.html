@@ -9985,7 +9985,7 @@ function _mnDrawSkylinePlaceholder(ctx, W, H, baseY, season, night) {
 // having two distinct day/night JPEGs with different compositions produces
 // ghosting (two skylines visible at once during transition) since each image
 // has its own building/sun/moon positions. Single-image cities sidestep this.
-const _MN_SINGLE_IMAGE = { london: true, prague: true };
+const _MN_SINGLE_IMAGE = { london: true, prague: true, accra: true };
 
 // Per-city horizon/water-line as a fraction of canvas height. Used by the
 // procedural sun/moon arc so celestial bodies rise from / set into the right
@@ -9993,7 +9993,14 @@ const _MN_SINGLE_IMAGE = { london: true, prague: true };
 const _MN_HORIZON_FRAC = {
   london: 0.66,
   prague: 0.83,
+  accra:  0.78,
 };
+
+// Cities whose single source JPEG is already a NIGHT composition. For these
+// the tint goes the OPPOSITE direction: we BRIGHTEN/warm at noon and leave
+// the source untouched at midnight. Default (false) is day-source cities
+// which darken toward night.
+const _MN_SOURCE_IS_NIGHT = { accra: true };
 
 // Returns true if it drew the image, false if the image is not ready yet.
 function _mnDrawSkylineImage(ctx, W, H, baseY, id, dayMix, night, season) {
@@ -10050,8 +10057,47 @@ function _mnDrawSkylineImage(ctx, W, H, baseY, id, dayMix, night, season) {
     // and shift day↔night via tinting only. This eliminates all ghosting
     // because there is only ever one skyline drawn.
     ctx.drawImage(dayImg, dx, dy, dw, dh);
-    if (night > 0.01) {
-      // Three-stop tint: noon (clear) → dusk (warm) → night (deep dark navy).
+    const sourceIsNight = !!_MN_SOURCE_IS_NIGHT[id];
+    if (sourceIsNight) {
+      // ─── NIGHT-SOURCE TINT PATH ───
+      // Source JPEG is already a night composition (dark sky, lit windows,
+      // illuminated monument). At midnight (night=1) leave it alone. At noon
+      // (night=0) brighten/warm the whole frame so it reads as daytime.
+      const day = 1 - night; // 1 at noon, 0 at midnight
+      if (day > 0.01) {
+        ctx.save();
+        // Stage A: SCREEN with a warm sky-blue at noon — lifts the dark
+        // sky toward a daytime blue without losing the silhouette/star
+        // detail. Peaks at noon, fades at twilight.
+        const screenA = day * 0.78;
+        ctx.globalCompositeOperation = 'screen';
+        ctx.fillStyle = `rgba(140, 180, 235, ${screenA})`;
+        ctx.fillRect(0, 0, W, H);
+        ctx.globalCompositeOperation = 'source-over';
+        // Stage B: warm dusk wash at golden hour (night ≈ 0.35) to push the
+        // sky toward orange when sun is near the horizon.
+        const duskA = Math.max(0, Math.min(1, 1 - Math.abs(night - 0.35) / 0.30)) * 0.25;
+        if (duskA > 0.01) {
+          ctx.globalCompositeOperation = 'screen';
+          ctx.fillStyle = `rgba(255, 165, 100, ${duskA})`;
+          ctx.fillRect(0, 0, W, H);
+          ctx.globalCompositeOperation = 'source-over';
+        }
+        // Stage C: at full daytime, hide the lit-window / lamp glow that
+        // looks weird in daylight by overlaying a faint cool wash that
+        // desaturates those warm pinpoints.
+        if (day > 0.5) {
+          const lampA = (day - 0.5) * 0.18;
+          ctx.globalCompositeOperation = 'overlay';
+          ctx.fillStyle = `rgba(220, 235, 255, ${lampA})`;
+          ctx.fillRect(0, 0, W, H);
+          ctx.globalCompositeOperation = 'source-over';
+        }
+        ctx.restore();
+      }
+    } else if (night > 0.01) {
+      // ─── DAY-SOURCE TINT PATH (London / Prague) ───
+      // Three-stop tint: noon (clear) → dusk (warm) → night (deep blue hour).
       ctx.save();
       // Stage 1: warm dusk multiply, peaks around night ≈ 0.35 (golden hour),
       // gives the JPEG sky a sunset hue.
