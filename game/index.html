@@ -9985,15 +9985,34 @@ function _mnDrawSkylinePlaceholder(ctx, W, H, baseY, season, night) {
 // having two distinct day/night JPEGs with different compositions produces
 // ghosting (two skylines visible at once during transition) since each image
 // has its own building/sun/moon positions. Single-image cities sidestep this.
-const _MN_SINGLE_IMAGE = { london: true, prague: true };
+// All 10 cities now use the single-image animation engine. The procedural
+// sun/moon arc, drifting clouds, twinkling stars, lit-window flicker (behind
+// buildings via silhouette mask), water shimmer, and dusk/night tint all
+// run on the day JPEG. Night JPEGs are no longer used — having two distinct
+// JPEGs per city produced day/night composition mismatches the user kept
+// rejecting. Single-source-of-truth fixes that and gives a consistent live
+// feel across all 10 levels.
+const _MN_SINGLE_IMAGE = {
+  london: true, prague: true, accra: true, cairo: true, beijing: true,
+  jaipur: true, rio: true, reykjavik: true, marrakech: true, sydney: true
+};
 
 // Per-city horizon/water-line as a fraction of canvas height. Used by the
 // procedural sun/moon arc so celestial bodies rise from / set into the right
 // place (the water surface, not the middle of the sky). Defaults to 0.66.
+// Tuned to each city's JPEG: water-front cities (london, prague, rio, sydney,
+// reykjavik) have lower horizons; desert/savannah/inland cities have higher.
 const _MN_HORIZON_FRAC = {
-  london: 0.66,
-  prague: 0.83,
-  accra:  0.78,
+  london:    0.66,
+  prague:    0.83,
+  accra:     0.78,
+  cairo:     0.72,
+  beijing:   0.70,
+  jaipur:    0.74,
+  rio:       0.70,
+  reykjavik: 0.72,
+  marrakech: 0.78,
+  sydney:    0.68,
 };
 
 // Cities whose single source JPEG is already a NIGHT composition. For these
@@ -10221,8 +10240,9 @@ function _mnSeasonTint(season, night) {
 // drifting on the Thames, animated traffic dots on Tower Bridge, and gentle
 // window-light flicker at night. Generic for other cities = no-op.
 function _mnDrawLondonAnimation(ctx, W, H, baseY, id, night, tnow) {
-  // Animation runs for any single-image city. London-specific extras
-  // (Tower Bridge traffic, Thames ferries) are gated below.
+  // Animation runs for every city — all 10 are in _MN_SINGLE_IMAGE. The
+  // London-only extras (Tower Bridge traffic, Thames ferries) stay gated
+  // by `id === 'london'` below.
   if (!_MN_SINGLE_IMAGE[id]) return;
   const horizonFrac = _MN_HORIZON_FRAC[id] || 0.66;
 
@@ -25302,4 +25322,5 @@ function updateHomeSubtitles() {
   </script>
 </body>
 </html>
-<!-- rebuild 1778598161.4393108 -->
+
+<!-- rebuild 1778605020 -->
