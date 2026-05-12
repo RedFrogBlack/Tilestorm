@@ -9985,13 +9985,9 @@ function _mnDrawSkylinePlaceholder(ctx, W, H, baseY, season, night) {
 // having two distinct day/night JPEGs with different compositions produces
 // ghosting (two skylines visible at once during transition) since each image
 // has its own building/sun/moon positions. Single-image cities sidestep this.
-// All 10 cities now use the single-image animation engine. The procedural
-// sun/moon arc, drifting clouds, twinkling stars, lit-window flicker (behind
-// buildings via silhouette mask), water shimmer, and dusk/night tint all
-// run on the day JPEG. Night JPEGs are no longer used — having two distinct
-// JPEGs per city produced day/night composition mismatches the user kept
-// rejecting. Single-source-of-truth fixes that and gives a consistent live
-// feel across all 10 levels.
+// ALL 10 cities use single-image: one bright daylight JPEG, tinted DARK at
+// night with procedural lit windows on building silhouettes. Same engine
+// as London/Prague — night JPEGs are no longer used.
 const _MN_SINGLE_IMAGE = {
   london: true, prague: true, accra: true, cairo: true, beijing: true,
   jaipur: true, rio: true, reykjavik: true, marrakech: true, sydney: true
@@ -10169,31 +10165,31 @@ function _mnDrawSkylineImage(ctx, W, H, baseY, id, dayMix, night, season) {
         ctx.globalCompositeOperation = 'source-over';
       }
       // Stage 2: night MULTIPLY — ramps from night=0.45 to night=0.95.
-      // Light "blue hour" target so buildings + cables + windows remain
-      // clearly visible. Aims for a deep-twilight feel, not midnight black.
+      // STRONG dark multiplier so the bright daylight JPEG becomes a proper
+      // night scene: sky goes deep navy, buildings become black/grey
+      // silhouettes. The procedural window flicker pass below adds the lit
+      // yellow windows on top of those silhouettes.
       const nightA = Math.max(0, Math.min(1, (night - 0.45) / 0.50));
       if (nightA > 0.01) {
         ctx.globalCompositeOperation = 'multiply';
-        // Light blue-hour multiplier: 1 → (0.51, 0.55, 0.71) at full night.
-        // The image's bright sky (~#7BB8E0) becomes ~#3F66B5 (deep blue),
-        // and the navy buildings (~#1B2547) stay near their original tone
-        // so they don't dissolve into the sky.
-        const mr = Math.round(_skyLerp(255, 130, nightA));
-        const mg = Math.round(_skyLerp(255, 140, nightA));
-        const mb = Math.round(_skyLerp(255, 180, nightA));
+        // Strong dark multiplier: 1 → (0.18, 0.22, 0.35) at full night.
+        // Bright cyan sky (~#7BB8E0) becomes deep navy (~#16334E).
+        // Daytime building facades become near-black silhouettes.
+        const mr = Math.round(_skyLerp(255, 45,  nightA));
+        const mg = Math.round(_skyLerp(255, 55,  nightA));
+        const mb = Math.round(_skyLerp(255, 90,  nightA));
         ctx.fillStyle = `rgb(${mr},${mg},${mb})`;
         ctx.fillRect(0, 0, W, H);
         ctx.globalCompositeOperation = 'source-over';
       }
-      // Stage 3: very subtle cool sky tint at the top only — sells "it's
-      // night" without crushing the lower frame. Greatly reduced alpha.
-      if (nightA > 0.5) {
-        const skyWash = ctx.createLinearGradient(0, 0, 0, H * 0.55);
-        const aTop = 0.12 * Math.min(1, (nightA - 0.5) / 0.5);
-        skyWash.addColorStop(0,   `rgba(15, 25, 55, ${aTop})`);
-        skyWash.addColorStop(1,   `rgba(15, 25, 55, 0)`);
+      // Stage 3: deep navy sky wash at the top to sell "night sky".
+      if (nightA > 0.3) {
+        const skyWash = ctx.createLinearGradient(0, 0, 0, H * 0.65);
+        const aTop = 0.55 * Math.min(1, (nightA - 0.3) / 0.7);
+        skyWash.addColorStop(0,   `rgba(8, 14, 38, ${aTop})`);
+        skyWash.addColorStop(1,   `rgba(8, 14, 38, 0)`);
         ctx.fillStyle = skyWash;
-        ctx.fillRect(0, 0, W, H * 0.55);
+        ctx.fillRect(0, 0, W, H * 0.65);
       }
       ctx.restore();
     }
@@ -10240,10 +10236,9 @@ function _mnSeasonTint(season, night) {
 // drifting on the Thames, animated traffic dots on Tower Bridge, and gentle
 // window-light flicker at night. Generic for other cities = no-op.
 function _mnDrawLondonAnimation(ctx, W, H, baseY, id, night, tnow) {
-  // Animation runs for every city — all 10 are in _MN_SINGLE_IMAGE. The
-  // London-only extras (Tower Bridge traffic, Thames ferries) stay gated
-  // by `id === 'london'` below.
-  if (!_MN_SINGLE_IMAGE[id]) return;
+  // Run the SUN/MOON arc + silhouette mask + water shimmer for ALL 10
+  // cities. The London-only procedural ferries and Tower Bridge traffic
+  // were removed — they were drawing fake boats/cars over the JPEG.
   const horizonFrac = _MN_HORIZON_FRAC[id] || 0.66;
 
   // ── Animated SUN ↔ MOON arc ─────────────────────────────────────────────────
@@ -10370,84 +10365,11 @@ function _mnDrawLondonAnimation(ctx, W, H, baseY, id, night, tnow) {
   }
   ctx.restore();
 
-  // ── London-only river boats + Tower Bridge traffic (skipped for other cities) ──
-  if (id === 'london') {
-  // ── Ferries on the Thames: two boats drifting at different speeds ──
-  // Drawn as simple silhouettes so they always read clearly over the water
-  // regardless of day/night base image.
-  const drawFerry = (xPct, speed, scale, phase) => {
-    const cycleX = ((tnow * speed + phase) % 1.3) - 0.15;     // -0.15..1.15 loop
-    const x = cycleX * W;
-    const y = H * (0.74 + 0.005 * Math.sin(tnow * 1.2 + phase * 6));  // tiny bob
-    const fw = W * 0.06 * scale;
-    const fh = fw * 0.42;
-    ctx.save();
-    // Hull
-    ctx.fillStyle = night > 0.5 ? 'rgba(28, 32, 48, 0.92)' : 'rgba(40, 50, 78, 0.92)';
-    ctx.beginPath();
-    ctx.moveTo(x, y);
-    ctx.lineTo(x + fw * 0.85, y);
-    ctx.lineTo(x + fw,        y - fh * 0.45);
-    ctx.lineTo(x + fw * 0.15, y - fh * 0.45);
-    ctx.closePath();
-    ctx.fill();
-    // Cabin
-    ctx.fillRect(x + fw * 0.25, y - fh, fw * 0.55, fh * 0.55);
-    // Lit windows on cabin
-    ctx.fillStyle = night > 0.4
-      ? `rgba(255, 220, 140, ${0.85 + 0.15 * Math.sin(tnow * 3 + phase * 4)})`
-      : 'rgba(220, 235, 250, 0.85)';
-    for (let i = 0; i < 4; i++) {
-      ctx.fillRect(x + fw * (0.30 + i * 0.13), y - fh * 0.82, fw * 0.07, fh * 0.30);
-    }
-    // Wake (small ripple behind hull)
-    ctx.fillStyle = `rgba(255, 255, 255, ${night > 0.5 ? 0.20 : 0.45})`;
-    ctx.fillRect(x - fw * 0.10, y - 1, fw * 0.18, 2);
-    ctx.restore();
-  };
-  drawFerry(0,    0.020, 1.00, 0.0);   // slow boat L→R
-  drawFerry(0.5,  0.014, 0.78, 0.6);   // smaller boat further out
-
-  }
-
-  // ── Traffic on Tower Bridge (London only) ──
-  // The bridge in london.jpg has TWO horizontal spans:
-  //   - upper walkway at image-y ≈ 460/900 (≈ H * 0.51 on canvas) — this is
-  //     just the suspension cables / pedestrian walkway. NO traffic here.
-  //   - lower roadway at image-y ≈ 595/900 (≈ H * 0.66 on canvas) — this is
-  //     the actual road deck and where traffic should run.
-  if (id === 'london') {
-    const deckY = H * 0.66;
-    const bridgeL = W * 0.40;
-    const bridgeR = W * 0.62;
-    const bridgeSpan = bridgeR - bridgeL;
-    ctx.save();
-    for (let i = 0; i < 3; i++) {
-      // Two lanes — even i = left-to-right, odd i = right-to-left
-      const rightward = i % 2 === 0;
-      const speed = 0.10 + i * 0.04;
-      const phase = i * 0.33;
-      const cycle = (tnow * speed + phase) % 1.15;
-      const t = rightward ? cycle : 1 - cycle;
-      if (t < -0.05 || t > 1.05) continue;
-      const x = bridgeL + t * bridgeSpan;
-      const y = deckY + (rightward ? -2 : 1.5);
-      // Car body
-      ctx.fillStyle = night > 0.4 ? 'rgba(20, 22, 30, 0.95)' : 'rgba(30, 38, 60, 0.9)';
-      ctx.fillRect(x, y - 2.5, 4.5, 2);
-      // Headlight / tail
-      if (night > 0.4) {
-        ctx.fillStyle = rightward ? 'rgba(255, 240, 180, 0.9)' : 'rgba(255, 90, 80, 0.9)';
-        ctx.fillRect(x + (rightward ? 4 : -1), y - 1.8, 1.2, 1);
-      }
-    }
-    ctx.restore();
-  }
-
   // ── Window flicker on the buildings (evening + night) ──
-  // Buildings in the JPEG are dark silhouettes. We add bright windows that
-  // begin to switch on as twilight falls (night > 0.25), peaking at full night,
-  // and each flickers on its own schedule so the city looks alive.
+  // Buildings in the JPEG are dark silhouettes at night (after the multiply
+  // tint above). We add bright windows that begin to switch on as twilight
+  // falls (night > 0.25), peaking at full night, each flickering on its own
+  // schedule so the city looks alive.
   if (night > 0.25) {
     ctx.save();
     ctx.globalCompositeOperation = 'lighter';
@@ -25323,4 +25245,4 @@ function updateHomeSubtitles() {
 </body>
 </html>
 
-<!-- rebuild 1778605020 -->
+<!-- rebuild 1778608428 -->
