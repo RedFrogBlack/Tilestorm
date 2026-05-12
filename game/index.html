@@ -9985,7 +9985,15 @@ function _mnDrawSkylinePlaceholder(ctx, W, H, baseY, season, night) {
 // having two distinct day/night JPEGs with different compositions produces
 // ghosting (two skylines visible at once during transition) since each image
 // has its own building/sun/moon positions. Single-image cities sidestep this.
-const _MN_SINGLE_IMAGE = { london: true };
+const _MN_SINGLE_IMAGE = { london: true, prague: true };
+
+// Per-city horizon/water-line as a fraction of canvas height. Used by the
+// procedural sun/moon arc so celestial bodies rise from / set into the right
+// place (the water surface, not the middle of the sky). Defaults to 0.66.
+const _MN_HORIZON_FRAC = {
+  london: 0.66,
+  prague: 0.83,
+};
 
 // Returns true if it drew the image, false if the image is not ready yet.
 function _mnDrawSkylineImage(ctx, W, H, baseY, id, dayMix, night, season) {
@@ -10126,7 +10134,10 @@ function _mnSeasonTint(season, night) {
 // drifting on the Thames, animated traffic dots on Tower Bridge, and gentle
 // window-light flicker at night. Generic for other cities = no-op.
 function _mnDrawLondonAnimation(ctx, W, H, baseY, id, night, tnow) {
-  if (id !== 'london') return;
+  // Animation runs for any single-image city. London-specific extras
+  // (Tower Bridge traffic, Thames ferries) are gated below.
+  if (!_MN_SINGLE_IMAGE[id]) return;
+  const horizonFrac = _MN_HORIZON_FRAC[id] || 0.66;
 
   // ── Animated SUN ↔ MOON arc ─────────────────────────────────────────────────
   // London uses a single base JPEG — it cannot show a moving sun/moon on its
@@ -10145,7 +10156,7 @@ function _mnDrawLondonAnimation(ctx, W, H, baseY, id, night, tnow) {
       const sx = (t - 0.22) / 0.56;             // 0..1 across sky
       const ax = Math.PI * sx;                  // 0..π (left → right semicircle)
       const cx = W * (0.10 + 0.80 * sx);        // x sweeps L→R
-      const horizon = H * 0.66;                 // river/water line
+      const horizon = H * horizonFrac;          // river/water line
       const peak    = H * 0.18;                 // top of arc
       const cy = horizon - (horizon - peak) * Math.sin(ax);
       // Fade in at rise & out at set so the sun appears to come up through
@@ -10187,7 +10198,7 @@ function _mnDrawLondonAnimation(ctx, W, H, baseY, id, night, tnow) {
                  : -1;
     if (moonT >= 0 && moonT <= 1) {
       const mx = W * (0.10 + 0.80 * moonT);
-      const horizon = H * 0.66;
+      const horizon = H * horizonFrac;
       const peak    = H * 0.14;
       const ax = Math.PI * moonT;
       const my = horizon - (horizon - peak) * Math.sin(ax);
@@ -10233,7 +10244,7 @@ function _mnDrawLondonAnimation(ctx, W, H, baseY, id, night, tnow) {
   }
 
   // ── Water shimmer: a few horizontal highlight streaks that drift slowly ──
-  const waterTop = H * 0.66;
+  const waterTop = H * horizonFrac;
   ctx.save();
   ctx.globalCompositeOperation = 'lighter';
   for (let i = 0; i < 6; i++) {
@@ -10252,6 +10263,8 @@ function _mnDrawLondonAnimation(ctx, W, H, baseY, id, night, tnow) {
   }
   ctx.restore();
 
+  // ── London-only river boats + Tower Bridge traffic (skipped for other cities) ──
+  if (id === 'london') {
   // ── Ferries on the Thames: two boats drifting at different speeds ──
   // Drawn as simple silhouettes so they always read clearly over the water
   // regardless of day/night base image.
@@ -10288,40 +10301,41 @@ function _mnDrawLondonAnimation(ctx, W, H, baseY, id, night, tnow) {
   drawFerry(0,    0.020, 1.00, 0.0);   // slow boat L→R
   drawFerry(0.5,  0.014, 0.78, 0.6);   // smaller boat further out
 
-  // ── Traffic on Tower Bridge: 3 tiny moving headlight dots crossing deck ──
+  }
+
+  // ── Traffic on Tower Bridge (London only) ──
   // The bridge in london.jpg has TWO horizontal spans:
   //   - upper walkway at image-y ≈ 460/900 (≈ H * 0.51 on canvas) — this is
   //     just the suspension cables / pedestrian walkway. NO traffic here.
   //   - lower roadway at image-y ≈ 595/900 (≈ H * 0.66 on canvas) — this is
   //     the actual road deck and where traffic should run.
-  // We previously had cars at H*0.575 which placed them on the cable walkway
-  // — looked silly (cars driving through suspension cables). Moved to the
-  // lower roadway. x-range is the central bridge span between the two towers.
-  const deckY = H * 0.66;
-  const bridgeL = W * 0.40;
-  const bridgeR = W * 0.62;
-  const bridgeSpan = bridgeR - bridgeL;
-  ctx.save();
-  for (let i = 0; i < 3; i++) {
-    // Two lanes — even i = left-to-right, odd i = right-to-left
-    const rightward = i % 2 === 0;
-    const speed = 0.10 + i * 0.04;
-    const phase = i * 0.33;
-    const cycle = (tnow * speed + phase) % 1.15;
-    const t = rightward ? cycle : 1 - cycle;
-    if (t < -0.05 || t > 1.05) continue;
-    const x = bridgeL + t * bridgeSpan;
-    const y = deckY + (rightward ? -2 : 1.5);
-    // Car body
-    ctx.fillStyle = night > 0.4 ? 'rgba(20, 22, 30, 0.95)' : 'rgba(30, 38, 60, 0.9)';
-    ctx.fillRect(x, y - 2.5, 4.5, 2);
-    // Headlight / tail
-    if (night > 0.4) {
-      ctx.fillStyle = rightward ? 'rgba(255, 240, 180, 0.9)' : 'rgba(255, 90, 80, 0.9)';
-      ctx.fillRect(x + (rightward ? 4 : -1), y - 1.8, 1.2, 1);
+  if (id === 'london') {
+    const deckY = H * 0.66;
+    const bridgeL = W * 0.40;
+    const bridgeR = W * 0.62;
+    const bridgeSpan = bridgeR - bridgeL;
+    ctx.save();
+    for (let i = 0; i < 3; i++) {
+      // Two lanes — even i = left-to-right, odd i = right-to-left
+      const rightward = i % 2 === 0;
+      const speed = 0.10 + i * 0.04;
+      const phase = i * 0.33;
+      const cycle = (tnow * speed + phase) % 1.15;
+      const t = rightward ? cycle : 1 - cycle;
+      if (t < -0.05 || t > 1.05) continue;
+      const x = bridgeL + t * bridgeSpan;
+      const y = deckY + (rightward ? -2 : 1.5);
+      // Car body
+      ctx.fillStyle = night > 0.4 ? 'rgba(20, 22, 30, 0.95)' : 'rgba(30, 38, 60, 0.9)';
+      ctx.fillRect(x, y - 2.5, 4.5, 2);
+      // Headlight / tail
+      if (night > 0.4) {
+        ctx.fillStyle = rightward ? 'rgba(255, 240, 180, 0.9)' : 'rgba(255, 90, 80, 0.9)';
+        ctx.fillRect(x + (rightward ? 4 : -1), y - 1.8, 1.2, 1);
+      }
     }
+    ctx.restore();
   }
-  ctx.restore();
 
   // ── Window flicker on the buildings (evening + night) ──
   // Buildings in the JPEG are dark silhouettes. We add bright windows that
