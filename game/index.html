@@ -13880,15 +13880,22 @@ function stopMonumentsGame() {
 // When the next level is a DIFFERENT monument, we fall back to the original
 // stop+start flow (since the silhouette must be replaced).
 function advanceMonumentsLevel() {
-  // Wrap WITHIN the current city's 4-season block so each picker tile is a
-  // self-contained 4-season loop. Picking "Prague" cycles through Prague's
-  // 4 seasons forever — it never escapes into Accra.
+  // Advance season-by-season within the current city; when the 4th season of
+  // a city finishes, move on to season 1 of the NEXT city. After Sydney (last
+  // city) season 4, wrap around to London. This matches user expectation of
+  // sequential city progression rather than looping a single city forever.
   let next;
   if (typeof _mnLvIdxToCityLv === 'function' && typeof _mnCityStartIdx === 'function') {
     const cityLv = _mnLvIdxToCityLv(monumentsLevelIdx);
     const startIdx = _mnCityStartIdx(cityLv);
-    const offsetInCity = ((monumentsLevelIdx - startIdx + 1) % 4 + 4) % 4;
-    next = startIdx + offsetInCity;
+    const offsetInCity = (monumentsLevelIdx - startIdx + 1);
+    if (offsetInCity < 4) {
+      // Still inside current city — advance to next season.
+      next = startIdx + offsetInCity;
+    } else {
+      // Finished season 4 — jump to first season of next city.
+      next = (startIdx + 4) % MONUMENTS_LEVELS.length;
+    }
   } else {
     next = (monumentsLevelIdx + 1) % MONUMENTS_LEVELS.length;
   }
