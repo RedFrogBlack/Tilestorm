@@ -8244,25 +8244,82 @@ function _drawPondAmbient(ctx, W, H, rand, lerp) {
 // frog mascot hopping across lily pads in the bottom-right corner.
 // Board fades in over ~1.2s on first draw of the level.
 // ──────────────────────────────────────────────────────────────────
-// ─── POND TIME-OF-DAY / SEASON HELPERS ──────────────────────────────────────
-// Uses the user's local clock so the pond reflects their actual time of day.
+// ─── POND PHASE CYCLE (monument hazard model) ─────────────────────────
+// Like Paris blackout: discrete timed phases that cycle in sequence with banners.
+// Two parallel cycles:
+//   DAY/NIGHT: day(20s) → dusk(8s) → night(20s) → dawn(8s) → repeat (≈56s loop)
+//   SEASONS:   spring(15s) → summer(15s) → autumn(15s) → winter(15s) → repeat (60s loop)
+// Each phase exposes a stable phase name + a 0..1 progress fraction so renderers
+// can interpolate smoothly between adjacent phases.
+const _POND_DN_PHASES = [
+  { name: 'day',   ms: 20000 },
+  { name: 'dusk',  ms:  8000 },
+  { name: 'night', ms: 20000 },
+  { name: 'dawn',  ms:  8000 },
+];
+const _POND_SEASON_PHASES = [
+  { name: 'spring', ms: 15000 },
+  { name: 'summer', ms: 15000 },
+  { name: 'autumn', ms: 15000 },
+  { name: 'winter', ms: 15000 },
+];
+let _pondCycleStartTS = 0;
+let _pondLastDNPhase  = null;     // for banner-on-change
+let _pondLastSeasonPhase = null;
+function _pondCycleLookup(phases, elapsed) {
+  const total = phases.reduce((s,p)=>s+p.ms, 0);
+  let t = elapsed % total;
+  for (let i = 0; i < phases.length; i++) {
+    if (t < phases[i].ms) {
+      const next = phases[(i+1) % phases.length];
+      return { name: phases[i].name, nextName: next.name, progress: t / phases[i].ms };
+    }
+    t -= phases[i].ms;
+  }
+  return { name: phases[0].name, nextName: phases[1].name, progress: 0 };
+}
 function _pondClock() {
-  const d = new Date();
-  const h = d.getHours() + d.getMinutes()/60 + d.getSeconds()/3600;
-  // Phase fractions: 0..1 across the 24h cycle
-  const f24 = h / 24;
-  // Five named phases
-  let phase = 'day';
-  if (h < 5)            phase = 'night';
-  else if (h < 7)       phase = 'dawn';
-  else if (h < 17)      phase = 'day';
-  else if (h < 19.5)    phase = 'dusk';
-  else if (h < 21)      phase = 'evening';
-  else                   phase = 'night';
-  // Smooth 0=full-day, 1=full-night curve
-  // Day brightest 12:00, night darkest 02:00
-  const dayness = Math.max(0, Math.min(1, Math.cos((h - 13) / 24 * Math.PI * 2) * 0.5 + 0.5));
-  return { h, f24, phase, dayness, month: d.getMonth() }; // month 0-11
+  // Smoke-test override
+  if (typeof window !== 'undefined' && window._POND_CLOCK_OVERRIDE) {
+    const o = window._POND_CLOCK_OVERRIDE;
+    const seasonName = o.season || 'spring';
+    const phaseName  = o.phase  || 'day';
+    return {
+      phase: phaseName, nextPhase: phaseName, phaseProgress: 0,
+      season: seasonName, nextSeason: seasonName, seasonProgress: 0,
+      isNight: phaseName === 'night',
+      isDusk:  phaseName === 'dusk',
+      isDawn:  phaseName === 'dawn',
+      isDay:   phaseName === 'day',
+    };
+  }
+  if (!_pondCycleStartTS) _pondCycleStartTS = performance.now();
+  const elapsed = performance.now() - _pondCycleStartTS;
+  const dn     = _pondCycleLookup(_POND_DN_PHASES,     elapsed);
+  const season = _pondCycleLookup(_POND_SEASON_PHASES, elapsed);
+  // Phase-change banners (only when actively in Fog LV1)
+  if (typeof activeChallengeMode !== 'undefined' && activeChallengeMode === 'fog'
+      && typeof cm_fogLevel !== 'undefined' && (cm_fogLevel|0) === 1
+      && typeof showEventBanner === 'function') {
+    if (_pondLastDNPhase !== null && _pondLastDNPhase !== dn.name) {
+      const bn = {day:'☀️ DAY', dusk:'🌇 DUSK', night:'🌙 NIGHT', dawn:'🌅 DAWN'}[dn.name];
+      if (bn) showEventBanner(bn);
+    }
+    if (_pondLastSeasonPhase !== null && _pondLastSeasonPhase !== season.name) {
+      const bn = {spring:'🌸 SPRING', summer:'☀️ SUMMER', autumn:'🍂 AUTUMN', winter:'❄️ WINTER'}[season.name];
+      if (bn) showEventBanner(bn);
+    }
+  }
+  _pondLastDNPhase     = dn.name;
+  _pondLastSeasonPhase = season.name;
+  return {
+    phase: dn.name, nextPhase: dn.nextName, phaseProgress: dn.progress,
+    season: season.name, nextSeason: season.nextName, seasonProgress: season.progress,
+    isNight: dn.name === 'night',
+    isDusk:  dn.name === 'dusk',
+    isDawn:  dn.name === 'dawn',
+    isDay:   dn.name === 'day',
+  };
 }
 
 function _pondLerpC(c1, c2, t) {
@@ -8291,16 +8348,11 @@ function _pondPalette(clock) {
              sun:[255,160,110], sunA:0.60,
              seaweed:[50,100,80], dragonfly:[180,150,140] },
   };
-  // Pick interpolation pair by hour
-  const h = clock.h;
-  let a, b, t;
-  if      (h < 5)      { a=PAL.night; b=PAL.night; t=0; }
-  else if (h < 7)      { a=PAL.night; b=PAL.dawn;  t=(h-5)/2; }
-  else if (h < 9)      { a=PAL.dawn;  b=PAL.day;   t=(h-7)/2; }
-  else if (h < 17)     { a=PAL.day;   b=PAL.day;   t=0; }
-  else if (h < 19.5)   { a=PAL.day;   b=PAL.dusk;  t=(h-17)/2.5; }
-  else if (h < 21)     { a=PAL.dusk;  b=PAL.night; t=(h-19.5)/1.5; }
-  else                  { a=PAL.night; b=PAL.night; t=0; }
+  // New shape: clock.phase + clock.phaseProgress (0..1 within that phase)
+  // Linear interp from current phase's palette → next phase's palette.
+  const a = PAL[clock.phase]     || PAL.day;
+  const b = PAL[clock.nextPhase] || a;
+  const t = Math.max(0, Math.min(1, clock.phaseProgress || 0));
   return {
     top: _pondLerpC(a.top,b.top,t),
     mid: _pondLerpC(a.mid,b.mid,t),
@@ -8312,7 +8364,26 @@ function _pondPalette(clock) {
   };
 }
 
-// Northern-hemisphere season from month index (0=Jan)
+// Seasonal water tint — multiplied on top of base water palette.
+// Returns { rgb:[r,g,b], alpha } that overlays the gradient to visibly shift
+// the pond color: spring=fresh green, summer=warm murky, autumn=amber, winter=icy.
+function _pondSeasonTint(clock) {
+  const TINT = {
+    spring: { rgb:[160, 220, 170], alpha: 0.10 }, // fresh green
+    summer: { rgb:[180, 200, 100], alpha: 0.18 }, // warm yellow-green murky
+    autumn: { rgb:[210, 150,  80], alpha: 0.16 }, // amber / rust
+    winter: { rgb:[180, 215, 235], alpha: 0.22 }, // pale icy blue
+  };
+  const a = TINT[clock.season]     || TINT.spring;
+  const b = TINT[clock.nextSeason] || a;
+  const t = Math.max(0, Math.min(1, clock.seasonProgress || 0));
+  return {
+    rgb: _pondLerpC(a.rgb, b.rgb, t),
+    alpha: a.alpha + (b.alpha - a.alpha) * t,
+  };
+}
+
+// Back-compat shim — some code may still call _pondSeason(monthIdx).
 function _pondSeason(monthIdx) {
   if (monthIdx <= 1 || monthIdx === 11) return 'winter';
   if (monthIdx <= 4) return 'spring';
@@ -8331,38 +8402,55 @@ function _drawMysticPondAmbient(ctx, W, H, rand, lerp) {
   const fadeIn = Math.min(1, (now - _fogLv1StartTS) / 1200);
   const clock = _pondClock();
   const pal = _pondPalette(clock);
-  const season = _pondSeason(clock.month);
-  const isNight = clock.h >= 21 || clock.h < 5;
-  const isDusk  = clock.h >= 17 && clock.h < 21;
-  const isDawn  = clock.h >= 5 && clock.h < 9;
+  const season = clock.season;
+  const isNight = clock.isNight;
+  const isDusk  = clock.isDusk;
+  const isDawn  = clock.isDawn;
 
-  // 1. Water gradient — palette interpolated by time of day
+  // 1. Water gradient — palette interpolated by phase, then tinted by season.
   const sg = ctx.createLinearGradient(0, 0, 0, H);
   sg.addColorStop(0,    _pondRgb(pal.top));
   sg.addColorStop(0.4,  _pondRgb(pal.mid));
   sg.addColorStop(1,    _pondRgb(pal.bot));
   ctx.fillStyle = sg; ctx.fillRect(0, 0, W, H);
+  // 1b. Seasonal tint overlay — visibly shifts water color each season.
+  const tint = _pondSeasonTint(clock);
+  ctx.save();
+  ctx.globalCompositeOperation = 'overlay';
+  ctx.globalAlpha = tint.alpha;
+  ctx.fillStyle = _pondRgb(tint.rgb);
+  ctx.fillRect(0, 0, W, H);
+  ctx.restore();
 
-  // 2. Sun OR moon glow — position arcs across top during day, sets at dusk.
-  //    Place light source by hour: 6am=left, noon=center, 6pm=right.
-  //    At night → cool moon glow upper-right instead.
+  // 2. Sun OR moon glow — position arcs based on phase progress.
+  //    Day: arc left→right with progress. Night: moon parks upper-right.
+  //    Dawn: sun rising on left. Dusk: sun setting on right.
   let lx, ly;
   if (isNight) {
     lx = W * 0.78;
     ly = H * 0.14;
+  } else if (isDawn) {
+    // Sun emerging from horizon on the left as dawn progresses
+    const p = clock.phaseProgress;
+    lx = W * (0.10 + 0.10 * p);
+    ly = H * (0.30 - 0.15 * p);
+  } else if (isDusk) {
+    // Sun sinking to horizon on the right
+    const p = clock.phaseProgress;
+    lx = W * (0.80 + 0.08 * p);
+    ly = H * (0.15 + 0.18 * p);
   } else {
-    // Arc from sunrise (h=6) at left to sunset (h=18) at right
-    const hh = Math.max(5, Math.min(19, clock.h));
-    const sunFrac = (hh - 5) / 14;          // 0..1 across day
-    lx = W * (0.15 + 0.70 * sunFrac);
-    ly = H * (0.08 + 0.18 * Math.sin(sunFrac * Math.PI)*0.5);
+    // Day: arc across the sky based on phase progress
+    const p = clock.phaseProgress;
+    lx = W * (0.20 + 0.60 * p);
+    ly = H * (0.08 + 0.10 * Math.sin(p * Math.PI));
   }
   const lg = ctx.createRadialGradient(lx, ly, 5, lx, ly, Math.max(W,H)*0.65);
   lg.addColorStop(0,   _pondRgba(pal.sun, pal.sunA));
   lg.addColorStop(0.4, _pondRgba(pal.sun, pal.sunA*0.32));
   lg.addColorStop(1,   _pondRgba(pal.sun, 0));
   ctx.fillStyle = lg; ctx.fillRect(0, 0, W, H);
-  // Moon disc at night (small soft circle)
+  // Moon disc at night, sun disc during day/dawn/dusk
   if (isNight) {
     ctx.save();
     ctx.globalAlpha = 0.65;
@@ -8371,11 +8459,11 @@ function _drawMysticPondAmbient(ctx, W, H, rand, lerp) {
     ctx.globalAlpha = 0.20;
     ctx.beginPath(); ctx.arc(lx, ly, 14, 0, Math.PI*2); ctx.fill();
     ctx.restore();
-  } else if (clock.h >= 7 && clock.h <= 17) {
-    // Subtle sun disc during day
+  } else {
+    // Subtle sun disc during day/dawn/dusk
     ctx.save();
-    ctx.globalAlpha = 0.45;
-    ctx.fillStyle = `rgba(255,250,225,1)`;
+    ctx.globalAlpha = isDusk || isDawn ? 0.55 : 0.45;
+    ctx.fillStyle = isDusk ? `rgba(255,200,150,1)` : (isDawn ? `rgba(255,220,180,1)` : `rgba(255,250,225,1)`);
     ctx.beginPath(); ctx.arc(lx, ly, 7, 0, Math.PI*2); ctx.fill();
     ctx.restore();
   }
