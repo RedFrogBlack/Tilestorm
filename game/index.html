@@ -8244,30 +8244,141 @@ function _drawPondAmbient(ctx, W, H, rand, lerp) {
 // frog mascot hopping across lily pads in the bottom-right corner.
 // Board fades in over ~1.2s on first draw of the level.
 // ──────────────────────────────────────────────────────────────────
+// ─── POND TIME-OF-DAY / SEASON HELPERS ──────────────────────────────────────
+// Uses the user's local clock so the pond reflects their actual time of day.
+function _pondClock() {
+  const d = new Date();
+  const h = d.getHours() + d.getMinutes()/60 + d.getSeconds()/3600;
+  // Phase fractions: 0..1 across the 24h cycle
+  const f24 = h / 24;
+  // Five named phases
+  let phase = 'day';
+  if (h < 5)            phase = 'night';
+  else if (h < 7)       phase = 'dawn';
+  else if (h < 17)      phase = 'day';
+  else if (h < 19.5)    phase = 'dusk';
+  else if (h < 21)      phase = 'evening';
+  else                   phase = 'night';
+  // Smooth 0=full-day, 1=full-night curve
+  // Day brightest 12:00, night darkest 02:00
+  const dayness = Math.max(0, Math.min(1, Math.cos((h - 13) / 24 * Math.PI * 2) * 0.5 + 0.5));
+  return { h, f24, phase, dayness, month: d.getMonth() }; // month 0-11
+}
+
+function _pondLerpC(c1, c2, t) {
+  return [Math.round(c1[0] + (c2[0]-c1[0])*t),
+          Math.round(c1[1] + (c2[1]-c1[1])*t),
+          Math.round(c1[2] + (c2[2]-c1[2])*t)];
+}
+function _pondRgba(c, a) { return `rgba(${c[0]},${c[1]},${c[2]},${a})`; }
+function _pondRgb(c) { return `rgb(${c[0]},${c[1]},${c[2]})`; }
+
+// Returns interpolated palette for the current time of day.
+// Each entry is an RGB triplet.
+function _pondPalette(clock) {
+  // Anchor palettes at: night, dawn, day, dusk
+  const PAL = {
+    night: { top:[28,40,62], mid:[20,52,70], bot:[8,22,38],
+             sun:[180,200,255], sunA:0.18, // moonglow
+             seaweed:[28,72,58], dragonfly:[120,200,210] },
+    dawn:  { top:[230,180,170], mid:[180,180,170], bot:[80,110,110],
+             sun:[255,210,170], sunA:0.55,
+             seaweed:[60,120,90], dragonfly:[160,210,200] },
+    day:   { top:[207,230,221], mid:[126,182,170], bot:[47,90,85],
+             sun:[255,248,220], sunA:0.55,
+             seaweed:[55,130,90], dragonfly:[90,180,170] },
+    dusk:  { top:[255,180,140], mid:[200,140,130], bot:[60,50,80],
+             sun:[255,160,110], sunA:0.60,
+             seaweed:[50,100,80], dragonfly:[180,150,140] },
+  };
+  // Pick interpolation pair by hour
+  const h = clock.h;
+  let a, b, t;
+  if      (h < 5)      { a=PAL.night; b=PAL.night; t=0; }
+  else if (h < 7)      { a=PAL.night; b=PAL.dawn;  t=(h-5)/2; }
+  else if (h < 9)      { a=PAL.dawn;  b=PAL.day;   t=(h-7)/2; }
+  else if (h < 17)     { a=PAL.day;   b=PAL.day;   t=0; }
+  else if (h < 19.5)   { a=PAL.day;   b=PAL.dusk;  t=(h-17)/2.5; }
+  else if (h < 21)     { a=PAL.dusk;  b=PAL.night; t=(h-19.5)/1.5; }
+  else                  { a=PAL.night; b=PAL.night; t=0; }
+  return {
+    top: _pondLerpC(a.top,b.top,t),
+    mid: _pondLerpC(a.mid,b.mid,t),
+    bot: _pondLerpC(a.bot,b.bot,t),
+    sun: _pondLerpC(a.sun,b.sun,t),
+    sunA: a.sunA + (b.sunA - a.sunA) * t,
+    seaweed: _pondLerpC(a.seaweed,b.seaweed,t),
+    dragonfly: _pondLerpC(a.dragonfly,b.dragonfly,t),
+  };
+}
+
+// Northern-hemisphere season from month index (0=Jan)
+function _pondSeason(monthIdx) {
+  if (monthIdx <= 1 || monthIdx === 11) return 'winter';
+  if (monthIdx <= 4) return 'spring';
+  if (monthIdx <= 7) return 'summer';
+  return 'autumn';
+}
+
+// Heron hazard state — periodically swoops in, koi scatter briefly.
+let _fogLv1Heron = null;     // { startMs, durMs, side:'l'|'r', y:fraction }
+let _fogLv1NextHeron = 0;    // ms timestamp of next heron event
+
 function _drawMysticPondAmbient(ctx, W, H, rand, lerp) {
   const t = _ambientT;
   const now = performance.now();
   if (!_fogLv1StartTS) _fogLv1StartTS = now;
   const fadeIn = Math.min(1, (now - _fogLv1StartTS) / 1200);
+  const clock = _pondClock();
+  const pal = _pondPalette(clock);
+  const season = _pondSeason(clock.month);
+  const isNight = clock.h >= 21 || clock.h < 5;
+  const isDusk  = clock.h >= 17 && clock.h < 21;
+  const isDawn  = clock.h >= 5 && clock.h < 9;
 
-  // 1. Soft morning water gradient
-  //    Top: pale cool teal where the surface meets soft morning light.
-  //    Bottom: deeper murky teal-green where vegetation rises from the bed.
+  // 1. Water gradient — palette interpolated by time of day
   const sg = ctx.createLinearGradient(0, 0, 0, H);
-  sg.addColorStop(0,    '#cfe6dd');
-  sg.addColorStop(0.35, '#9ec9bd');
-  sg.addColorStop(0.7,  '#5e9a90');
-  sg.addColorStop(1,    '#2f5a55');
+  sg.addColorStop(0,    _pondRgb(pal.top));
+  sg.addColorStop(0.4,  _pondRgb(pal.mid));
+  sg.addColorStop(1,    _pondRgb(pal.bot));
   ctx.fillStyle = sg; ctx.fillRect(0, 0, W, H);
 
-  // 2. Soft morning light — cream sun-glow patch top-left, drifting slowly.
-  const lx = W * (0.18 + 0.04*Math.sin(t*0.004));
-  const ly = H * 0.10;
+  // 2. Sun OR moon glow — position arcs across top during day, sets at dusk.
+  //    Place light source by hour: 6am=left, noon=center, 6pm=right.
+  //    At night → cool moon glow upper-right instead.
+  let lx, ly;
+  if (isNight) {
+    lx = W * 0.78;
+    ly = H * 0.14;
+  } else {
+    // Arc from sunrise (h=6) at left to sunset (h=18) at right
+    const hh = Math.max(5, Math.min(19, clock.h));
+    const sunFrac = (hh - 5) / 14;          // 0..1 across day
+    lx = W * (0.15 + 0.70 * sunFrac);
+    ly = H * (0.08 + 0.18 * Math.sin(sunFrac * Math.PI)*0.5);
+  }
   const lg = ctx.createRadialGradient(lx, ly, 5, lx, ly, Math.max(W,H)*0.65);
-  lg.addColorStop(0,   'rgba(255,248,220,0.55)');
-  lg.addColorStop(0.4, 'rgba(255,238,200,0.18)');
-  lg.addColorStop(1,   'rgba(255,235,200,0)');
+  lg.addColorStop(0,   _pondRgba(pal.sun, pal.sunA));
+  lg.addColorStop(0.4, _pondRgba(pal.sun, pal.sunA*0.32));
+  lg.addColorStop(1,   _pondRgba(pal.sun, 0));
   ctx.fillStyle = lg; ctx.fillRect(0, 0, W, H);
+  // Moon disc at night (small soft circle)
+  if (isNight) {
+    ctx.save();
+    ctx.globalAlpha = 0.65;
+    ctx.fillStyle = `rgba(240,242,255,1)`;
+    ctx.beginPath(); ctx.arc(lx, ly, 9, 0, Math.PI*2); ctx.fill();
+    ctx.globalAlpha = 0.20;
+    ctx.beginPath(); ctx.arc(lx, ly, 14, 0, Math.PI*2); ctx.fill();
+    ctx.restore();
+  } else if (clock.h >= 7 && clock.h <= 17) {
+    // Subtle sun disc during day
+    ctx.save();
+    ctx.globalAlpha = 0.45;
+    ctx.fillStyle = `rgba(255,250,225,1)`;
+    ctx.beginPath(); ctx.arc(lx, ly, 7, 0, Math.PI*2); ctx.fill();
+    ctx.restore();
+  }
 
   // 3. Surface caustics — a few faint horizontal shimmer bands drifting down.
   ctx.save();
@@ -8337,9 +8448,11 @@ function _drawMysticPondAmbient(ctx, W, H, rand, lerp) {
   }
 
   // 6. Koi swimming SLOWLY beneath the surface (low alpha, blurred feel).
+  //    At night, 1–2 koi become FLUORESCENT — neon cyan body + soft halo glow.
   ctx.save();
   ctx.globalCompositeOperation = 'source-over';
-  for (const k of _fogLv1Koi) {
+  for (let ki = 0; ki < _fogLv1Koi.length; ki++) {
+    const k = _fogLv1Koi[ki];
     k.x += k.speed * k.dir;
     const offRight =  W * 1.4, offLeft = -W * 0.4;
     if (k.dir > 0 && k.x > offRight) k.x = offLeft;
@@ -8347,32 +8460,73 @@ function _drawMysticPondAmbient(ctx, W, H, rand, lerp) {
     const yy = H * k.y01 + Math.sin(t*0.018 + k.phase) * 10;
     const len = 46 * k.size;
     const hgt = 16 * k.size;
+    // First koi is fluorescent at night/dusk; second one glows cyan-magenta
+    const isFluo = isNight && (ki === 0 || ki === 2);
     ctx.save();
     ctx.translate(k.x, yy);
     ctx.scale(k.dir, 1);
-    // soft underwater shadow
-    ctx.globalAlpha = 0.35;
-    ctx.fillStyle = 'rgba(0,30,40,0.45)';
-    ctx.beginPath(); ctx.ellipse(2, 3, len*0.55, hgt*0.55, 0, 0, Math.PI*2); ctx.fill();
-    // body
-    ctx.globalAlpha = 1;
-    ctx.fillStyle = k.color;
-    ctx.beginPath(); ctx.ellipse(0, 0, len*0.5, hgt*0.5, 0, 0, Math.PI*2); ctx.fill();
-    // belly highlight
-    ctx.fillStyle = k.belly;
-    ctx.beginPath(); ctx.ellipse(2, 2, len*0.32, hgt*0.22, 0, 0, Math.PI*2); ctx.fill();
-    // tail
-    const tailWiggle = Math.sin(t*0.18 + k.phase) * 0.35;
-    ctx.fillStyle = k.color;
-    ctx.beginPath();
-    ctx.moveTo(-len*0.45, 0);
-    ctx.quadraticCurveTo(-len*0.75, -hgt*0.6 + tailWiggle*4, -len*0.85, -hgt*0.35);
-    ctx.quadraticCurveTo(-len*0.62, 0, -len*0.85, hgt*0.35);
-    ctx.quadraticCurveTo(-len*0.75, hgt*0.6 - tailWiggle*4, -len*0.45, 0);
-    ctx.closePath(); ctx.fill();
+    if (isFluo) {
+      // Glow halo before body
+      const fluoCol = (ki === 0) ? [80,255,235] : [255,120,220];
+      const halo = ctx.createRadialGradient(0, 0, 1, 0, 0, len*0.9);
+      halo.addColorStop(0, `rgba(${fluoCol[0]},${fluoCol[1]},${fluoCol[2]},0.85)`);
+      halo.addColorStop(0.4, `rgba(${fluoCol[0]},${fluoCol[1]},${fluoCol[2]},0.30)`);
+      halo.addColorStop(1, `rgba(${fluoCol[0]},${fluoCol[1]},${fluoCol[2]},0)`);
+      ctx.fillStyle = halo;
+      ctx.beginPath(); ctx.ellipse(0, 0, len*0.9, hgt*1.4, 0, 0, Math.PI*2); ctx.fill();
+      // body — bright fluo
+      ctx.fillStyle = `rgb(${fluoCol[0]},${fluoCol[1]},${fluoCol[2]})`;
+      ctx.beginPath(); ctx.ellipse(0, 0, len*0.5, hgt*0.5, 0, 0, Math.PI*2); ctx.fill();
+      // belly highlight — white-ish
+      ctx.fillStyle = 'rgba(255,255,255,0.85)';
+      ctx.beginPath(); ctx.ellipse(2, 2, len*0.32, hgt*0.22, 0, 0, Math.PI*2); ctx.fill();
+      // tail
+      const tailWiggle = Math.sin(t*0.18 + k.phase) * 0.35;
+      ctx.fillStyle = `rgba(${fluoCol[0]},${fluoCol[1]},${fluoCol[2]},0.95)`;
+      ctx.beginPath();
+      ctx.moveTo(-len*0.45, 0);
+      ctx.quadraticCurveTo(-len*0.75, -hgt*0.6 + tailWiggle*4, -len*0.85, -hgt*0.35);
+      ctx.quadraticCurveTo(-len*0.62, 0, -len*0.85, hgt*0.35);
+      ctx.quadraticCurveTo(-len*0.75, hgt*0.6 - tailWiggle*4, -len*0.45, 0);
+      ctx.closePath(); ctx.fill();
+    } else {
+      // Daytime / dusk normal koi (slightly desaturated when dark)
+      const dim = isNight ? 0.55 : (isDusk ? 0.85 : 1);
+      ctx.globalAlpha = 0.35 * dim;
+      ctx.fillStyle = 'rgba(0,30,40,0.45)';
+      ctx.beginPath(); ctx.ellipse(2, 3, len*0.55, hgt*0.55, 0, 0, Math.PI*2); ctx.fill();
+      ctx.globalAlpha = dim;
+      ctx.fillStyle = k.color;
+      ctx.beginPath(); ctx.ellipse(0, 0, len*0.5, hgt*0.5, 0, 0, Math.PI*2); ctx.fill();
+      ctx.fillStyle = k.belly;
+      ctx.beginPath(); ctx.ellipse(2, 2, len*0.32, hgt*0.22, 0, 0, Math.PI*2); ctx.fill();
+      const tailWiggle = Math.sin(t*0.18 + k.phase) * 0.35;
+      ctx.fillStyle = k.color;
+      ctx.beginPath();
+      ctx.moveTo(-len*0.45, 0);
+      ctx.quadraticCurveTo(-len*0.75, -hgt*0.6 + tailWiggle*4, -len*0.85, -hgt*0.35);
+      ctx.quadraticCurveTo(-len*0.62, 0, -len*0.85, hgt*0.35);
+      ctx.quadraticCurveTo(-len*0.75, hgt*0.6 - tailWiggle*4, -len*0.45, 0);
+      ctx.closePath(); ctx.fill();
+    }
     ctx.restore();
   }
   ctx.restore();
+
+  // 6b. Stars overlay at night (subtle twinkling above water surface)
+  if (isNight) {
+    ctx.save();
+    const starCount = 14;
+    for (let s = 0; s < starCount; s++) {
+      const sx = (s * 73.31) % W;
+      const sy = ((s * 41.17) % (H * 0.35));
+      const tw = 0.45 + 0.45 * Math.sin(t * 0.02 + s * 1.3);
+      ctx.globalAlpha = tw * 0.8;
+      ctx.fillStyle = '#ffffff';
+      ctx.beginPath(); ctx.arc(sx, sy, 0.8, 0, Math.PI*2); ctx.fill();
+    }
+    ctx.restore();
+  }
 
   // 7. Dragonflies on the OUTER EDGE of the board — occasional crossings.
   for (const d of _fogLv1Dragonflies) {
@@ -8519,6 +8673,187 @@ function _drawMysticPondAmbient(ctx, W, H, rand, lerp) {
     ctx.fillStyle = '#000';
     ctx.beginPath(); ctx.arc(4, -3, 0.8, 0, Math.PI*2); ctx.fill();
     ctx.restore();
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────
+  //  9b. SEASONAL HAZARDS — mirrors the city monument hazard model
+  // ─────────────────────────────────────────────────────────────────────────
+  // Summer (Jun–Aug)  → choking algae crowd in from edges, slowly drift across
+  // Winter (Dec–Feb)  → ice crystal patches form on surface, frosted blue tint
+  // Spring/Autumn    → occasional heron silhouette swoops in, koi scatter
+  // All hazards are AMBIENT only — they do not block gameplay tiles.
+  if (season === 'summer') {
+    // Algae blobs — procedural noisy green clumps drifting from the edges inward.
+    // Use 4 anchored blobs that pulse slowly so they read as living vegetation.
+    ctx.save();
+    ctx.globalAlpha = 0.55;
+    const algaeAnchors = [
+      { x: 0.06, y: 0.18, drift: 0.6 },
+      { x: 0.94, y: 0.32, drift: -0.5 },
+      { x: 0.12, y: 0.78, drift: 0.4 },
+      { x: 0.88, y: 0.86, drift: -0.7 },
+    ];
+    for (let ai = 0; ai < algaeAnchors.length; ai++) {
+      const a = algaeAnchors[ai];
+      const cxA = W * a.x + Math.sin(t*0.006 + ai) * 16 * a.drift;
+      const cyA = H * a.y + Math.cos(t*0.004 + ai*1.7) * 10;
+      const baseR = 32 + Math.sin(t*0.012 + ai*1.3) * 4;
+      // Cluster of tendrils — each blob is 8 smaller ovals around a center
+      for (let b = 0; b < 9; b++) {
+        const ang = (b/9) * Math.PI*2 + t*0.0008 * (ai%2?1:-1);
+        const dist = baseR * (0.4 + 0.4*Math.sin(t*0.01 + b*1.3 + ai));
+        const bx = cxA + Math.cos(ang) * dist;
+        const by = cyA + Math.sin(ang) * dist * 0.7;
+        const rr = 8 + Math.sin(t*0.018 + b + ai) * 2.5;
+        // Multi-tone green for organic feel
+        const g = 100 + (b%3)*22;
+        const col = `rgba(60,${g},${70 + b*4},0.65)`;
+        ctx.fillStyle = col;
+        ctx.beginPath(); ctx.ellipse(bx, by, rr, rr*0.85, ang, 0, Math.PI*2); ctx.fill();
+      }
+      // Central darker core
+      ctx.fillStyle = 'rgba(40,80,55,0.45)';
+      ctx.beginPath(); ctx.ellipse(cxA, cyA, baseR*0.65, baseR*0.45, 0, 0, Math.PI*2); ctx.fill();
+    }
+    // Yellow algae-flower specks ("bad flowers")
+    for (let f = 0; f < 14; f++) {
+      const fx = (f * 89.7 + t*0.15) % W;
+      const fy = (f * 53.3) % H;
+      ctx.fillStyle = `rgba(220,210,80,0.45)`;
+      ctx.beginPath(); ctx.arc(fx, fy, 1.6, 0, Math.PI*2); ctx.fill();
+    }
+    ctx.restore();
+  } else if (season === 'winter') {
+    // Ice patches — frosted blue-white crystalline shapes at edges/corners.
+    ctx.save();
+    // Cool blue tint wash
+    ctx.globalAlpha = 0.22;
+    const iceTint = ctx.createLinearGradient(0, 0, 0, H);
+    iceTint.addColorStop(0, 'rgba(220,240,255,0.5)');
+    iceTint.addColorStop(1, 'rgba(180,210,240,0.1)');
+    ctx.fillStyle = iceTint;
+    ctx.fillRect(0, 0, W, H);
+    // Frost patches — jagged polygons at 4 anchors
+    ctx.globalAlpha = 0.78;
+    const iceAnchors = [
+      { x: 0.05, y: 0.10, r: 38 },
+      { x: 0.92, y: 0.22, r: 32 },
+      { x: 0.08, y: 0.82, r: 30 },
+      { x: 0.88, y: 0.92, r: 36 },
+      { x: 0.50, y: 0.04, r: 26 },
+    ];
+    for (let ii = 0; ii < iceAnchors.length; ii++) {
+      const a = iceAnchors[ii];
+      const cxI = W * a.x;
+      const cyI = H * a.y;
+      // Slow growth pulse
+      const r = a.r * (0.85 + 0.15*Math.sin(t*0.003 + ii));
+      // Jagged polygon
+      ctx.beginPath();
+      const points = 9;
+      for (let p = 0; p < points; p++) {
+        const ang = (p/points) * Math.PI*2;
+        const jitter = 0.7 + 0.3*Math.sin(t*0.002 + ii*1.4 + p);
+        const rr = r * jitter;
+        const px = cxI + Math.cos(ang) * rr;
+        const py = cyI + Math.sin(ang) * rr * 0.85;
+        if (p === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
+      }
+      ctx.closePath();
+      const ig = ctx.createRadialGradient(cxI, cyI, 1, cxI, cyI, r);
+      ig.addColorStop(0, 'rgba(245,250,255,0.95)');
+      ig.addColorStop(0.6, 'rgba(200,225,245,0.7)');
+      ig.addColorStop(1, 'rgba(160,200,230,0.0)');
+      ctx.fillStyle = ig;
+      ctx.fill();
+      // Crystalline crack lines
+      ctx.strokeStyle = 'rgba(255,255,255,0.55)';
+      ctx.lineWidth = 0.6;
+      for (let k = 0; k < 4; k++) {
+        const ang = (k/4)*Math.PI*2 + ii*0.5;
+        ctx.beginPath();
+        ctx.moveTo(cxI, cyI);
+        ctx.lineTo(cxI + Math.cos(ang)*r*0.85, cyI + Math.sin(ang)*r*0.65);
+        ctx.stroke();
+      }
+    }
+    // Snow specks drifting
+    ctx.globalAlpha = 0.85;
+    for (let s = 0; s < 18; s++) {
+      const sx = ((s * 67.3 + t*0.3) % (W + 20)) - 10;
+      const sy = ((s * 41.7 + t*0.6) % (H + 20));
+      const rr = 0.8 + (s%3)*0.3;
+      ctx.fillStyle = 'rgba(255,255,255,0.85)';
+      ctx.beginPath(); ctx.arc(sx, sy, rr, 0, Math.PI*2); ctx.fill();
+    }
+    ctx.restore();
+  }
+
+  // Heron hazard — fires occasionally (any season). A grey heron silhouette
+  // glides in from one edge over the water surface. Koi scatter is implicit:
+  // the swooping shape is at the surface above the water.
+  if (!_fogLv1NextHeron) _fogLv1NextHeron = now + 18000 + Math.random()*15000;
+  if (!_fogLv1Heron && now >= _fogLv1NextHeron) {
+    _fogLv1Heron = {
+      startMs: now,
+      durMs: 5200 + Math.random()*1800,
+      side: Math.random() < 0.5 ? 'l' : 'r',
+      y: 0.18 + Math.random() * 0.32,
+    };
+    _fogLv1NextHeron = now + 28000 + Math.random()*22000;
+  }
+  if (_fogLv1Heron) {
+    const her = _fogLv1Heron;
+    const p = (now - her.startMs) / her.durMs;
+    if (p >= 1) {
+      _fogLv1Heron = null;
+    } else {
+      // Glide path: parabolic dip then rise back up
+      const x = (her.side === 'l') ? (-50 + p * (W + 100)) : (W + 50 - p * (W + 100));
+      const dipY = H * her.y + Math.sin(p * Math.PI) * 28; // dips to peck
+      const facing = (her.side === 'l') ? 1 : -1;
+      ctx.save();
+      ctx.globalAlpha = 0.65;
+      ctx.translate(x, dipY);
+      ctx.scale(facing, 1);
+      // Body (elongated grey ellipse)
+      ctx.fillStyle = 'rgba(70,80,95,0.85)';
+      ctx.beginPath(); ctx.ellipse(0, 0, 16, 5, 0, 0, Math.PI*2); ctx.fill();
+      // Wing (upper)
+      const wingF = Math.sin(t*0.5) * 0.5 + 0.5;
+      ctx.beginPath();
+      ctx.moveTo(-3, -3);
+      ctx.quadraticCurveTo(-2, -8 - wingF*4, 6, -3);
+      ctx.quadraticCurveTo(2, -1, -3, -3);
+      ctx.fill();
+      // Long neck + head
+      ctx.fillStyle = 'rgba(80,90,105,0.9)';
+      ctx.beginPath();
+      ctx.moveTo(14, 0);
+      ctx.quadraticCurveTo(22, -4, 26, -7);
+      ctx.lineTo(28, -5);
+      ctx.quadraticCurveTo(23, -2, 16, 1);
+      ctx.closePath();
+      ctx.fill();
+      // Beak
+      ctx.fillStyle = 'rgba(220,180,80,0.9)';
+      ctx.beginPath();
+      ctx.moveTo(28, -7); ctx.lineTo(34, -5); ctx.lineTo(28, -4);
+      ctx.closePath();
+      ctx.fill();
+      // Trailing legs
+      ctx.strokeStyle = 'rgba(70,80,95,0.8)';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(-5, 3);
+      ctx.lineTo(-15, 5);
+      ctx.stroke();
+      ctx.restore();
+      // Splash ripple at peck moment (mid-glide)
+      if (Math.abs(p - 0.5) < 0.04 && Math.random() < 0.2) {
+        _fogLv1Ripples.push({ x: x, y: dipY + 30, start: now, maxR: 22, dur: 900 });
+      }
+    }
   }
 
   // 10. Board fade-in on level entry — white wash that retreats.
@@ -14612,7 +14947,244 @@ function getTileColor(idx){
   return specialFallbacks[(idx-9)%specialFallbacks.length]||'#ffffff';
 }
 
+// ─── POND TILE RENDERER (Fog LV1 — Mystic Pond) ─────────────────────────────
+// Replaces the default coloured squares with pond-themed pieces:
+//   red    → red lotus bloom
+//   orange → orange koi-belly lotus
+//   yellow → yellow water-lily flower
+//   green  → lily pad (with notch + veins)
+//   blue   → smooth blue river stone
+//   purple → purple iris bud
+//   magenta→ pink lotus blossom
+// Pieces sit on a translucent water highlight + drop shadow so the board
+// reads as objects floating on the pond surface (rather than coloured squares).
+function _drawPondTile(r,c,colorIdx,alpha,glow,gold) {
+  const x = c*CELL+PAD, y = r*CELL+PAD, w = CELL-PAD*2, h = CELL-PAD*2;
+  const cx = x + w/2, cy = y + h/2;
+  const radius = Math.min(w, h) * 0.42;
+  const t = (typeof _ambientT === 'number') ? _ambientT : (performance.now()/16);
+  // Gentle bob driven by cell position so adjacent pieces don't sync
+  const bob = Math.sin(t*0.022 + (r*0.6 + c*0.4)) * 0.9;
+  const cyy = cy + bob;
+
+  ctx.save();
+  ctx.globalAlpha = alpha;
+
+  // Soft water highlight halo behind every piece (so the board reads as water)
+  if (!gold) {
+    const halo = ctx.createRadialGradient(cx, cyy+1, 1, cx, cyy+1, radius*1.25);
+    halo.addColorStop(0, 'rgba(255,255,255,0.18)');
+    halo.addColorStop(1, 'rgba(255,255,255,0)');
+    ctx.fillStyle = halo;
+    ctx.beginPath(); ctx.arc(cx, cyy+2, radius*1.25, 0, Math.PI*2); ctx.fill();
+  }
+  // Drop shadow on water
+  ctx.fillStyle = 'rgba(0,30,40,0.32)';
+  ctx.beginPath();
+  ctx.ellipse(cx+1, cyy + radius*0.78, radius*0.92, radius*0.32, 0, 0, Math.PI*2);
+  ctx.fill();
+
+  // Map color → piece kind. We accept colorIdx as either a hex string
+  // (legacy callers pass getTileColor(v)) or a numeric grid value.
+  let kind, baseHex;
+  if (typeof colorIdx === 'number') {
+    kind = ['lotus','koibelly','lily','pad','stone','iris','pinklotus'][(colorIdx-1) % 7] || 'pad';
+    baseHex = getTileColor(colorIdx);
+  } else {
+    baseHex = colorIdx || '#7ED321';
+    // Hex → kind by hue family
+    const h = baseHex.toUpperCase();
+    if (h === '#CC1212') kind = 'lotus';
+    else if (h === '#F5A623') kind = 'koibelly';
+    else if (h === '#F5E000') kind = 'lily';
+    else if (h === '#7ED321') kind = 'pad';
+    else if (h === '#1B5FDB') kind = 'stone';
+    else if (h === '#7B3FBE') kind = 'iris';
+    else if (h === '#E62298') kind = 'pinklotus';
+    else kind = 'pad';
+  }
+
+  // Gold tier → keep glossy gold disc (don't break the gold tier vibe)
+  if (gold) {
+    if (glow) { ctx.shadowColor = baseHex; ctx.shadowBlur = 28; }
+    const gr = ctx.createRadialGradient(cx-radius*0.3, cyy-radius*0.4, radius*0.1, cx, cyy, radius);
+    gr.addColorStop(0, '#FFF6B5');
+    gr.addColorStop(0.6, '#F5C419');
+    gr.addColorStop(1, '#A87510');
+    ctx.fillStyle = gr;
+    ctx.beginPath(); ctx.arc(cx, cyy, radius, 0, Math.PI*2); ctx.fill();
+    ctx.shadowBlur = 0;
+    ctx.strokeStyle = 'rgba(255,235,140,0.7)'; ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.arc(cx, cyy, radius, 0, Math.PI*2); ctx.stroke();
+    ctx.restore();
+    return;
+  }
+
+  // Subtle glow ring when piece is being placed/dragged-preview
+  if (glow) {
+    ctx.shadowColor = baseHex; ctx.shadowBlur = 18;
+  }
+
+  // ── Piece renderers ────────────────────────────────────────────────────
+  const drawLilyPad = (centerHex, accent) => {
+    // Round disc with V-notch + radial veins
+    ctx.fillStyle = centerHex;
+    ctx.strokeStyle = accent;
+    ctx.lineWidth = 1.1;
+    ctx.beginPath();
+    ctx.moveTo(cx, cyy);
+    ctx.arc(cx, cyy, radius, -Math.PI/2 + 0.32, -Math.PI/2 - 0.32 + Math.PI*2);
+    ctx.closePath();
+    ctx.fill(); ctx.stroke();
+    // Veins
+    ctx.save();
+    ctx.globalAlpha = 0.45;
+    ctx.strokeStyle = accent;
+    ctx.lineWidth = 0.8;
+    for (let v=0; v<6; v++) {
+      const ang = -Math.PI/2 + (v-2.5)*0.30;
+      ctx.beginPath();
+      ctx.moveTo(cx, cyy);
+      ctx.lineTo(cx + Math.cos(ang)*radius*0.92, cyy + Math.sin(ang)*radius*0.92);
+      ctx.stroke();
+    }
+    ctx.restore();
+    // Top highlight curve
+    ctx.save();
+    ctx.globalAlpha = 0.35;
+    ctx.strokeStyle = '#ffffff';
+    ctx.lineWidth = 1.2;
+    ctx.beginPath();
+    ctx.arc(cx, cyy, radius*0.78, -Math.PI*0.9, -Math.PI*0.5);
+    ctx.stroke();
+    ctx.restore();
+  };
+
+  const drawLotus = (petalHex, accentHex) => {
+    // Lily pad base
+    drawLilyPad('rgba(38,108,62,0.9)', 'rgba(80,160,90,0.55)');
+    // Petals on top — 6 petals around a yellow center
+    const petalR = radius * 0.78;
+    ctx.fillStyle = petalHex;
+    ctx.strokeStyle = accentHex;
+    ctx.lineWidth = 0.6;
+    for (let p=0; p<6; p++) {
+      const ang = (p/6) * Math.PI*2;
+      const px = cx + Math.cos(ang) * petalR*0.42;
+      const py = cyy + Math.sin(ang) * petalR*0.42;
+      ctx.beginPath();
+      ctx.ellipse(px, py, petalR*0.42, petalR*0.22, ang, 0, Math.PI*2);
+      ctx.fill(); ctx.stroke();
+    }
+    // Inner ring of smaller petals
+    for (let p=0; p<6; p++) {
+      const ang = (p/6) * Math.PI*2 + Math.PI/6;
+      const px = cx + Math.cos(ang) * petalR*0.22;
+      const py = cyy + Math.sin(ang) * petalR*0.22;
+      ctx.beginPath();
+      ctx.ellipse(px, py, petalR*0.30, petalR*0.16, ang, 0, Math.PI*2);
+      ctx.fillStyle = accentHex;
+      ctx.fill();
+    }
+    // Center pollen
+    ctx.fillStyle = '#F5E000';
+    ctx.beginPath(); ctx.arc(cx, cyy, radius*0.15, 0, Math.PI*2); ctx.fill();
+    ctx.fillStyle = '#A87510';
+    ctx.beginPath(); ctx.arc(cx, cyy, radius*0.07, 0, Math.PI*2); ctx.fill();
+  };
+
+  const drawWaterLily = (petalHex) => {
+    // Like lotus but flatter, 8 narrow petals, no pad underneath (floating on water)
+    ctx.fillStyle = petalHex;
+    ctx.strokeStyle = 'rgba(255,255,255,0.5)';
+    ctx.lineWidth = 0.6;
+    for (let p=0; p<8; p++) {
+      const ang = (p/8) * Math.PI*2;
+      const px = cx + Math.cos(ang) * radius*0.45;
+      const py = cyy + Math.sin(ang) * radius*0.45;
+      ctx.beginPath();
+      ctx.ellipse(px, py, radius*0.52, radius*0.18, ang, 0, Math.PI*2);
+      ctx.fill(); ctx.stroke();
+    }
+    // Center
+    ctx.fillStyle = '#fff';
+    ctx.beginPath(); ctx.arc(cx, cyy, radius*0.20, 0, Math.PI*2); ctx.fill();
+    ctx.fillStyle = '#F5C419';
+    ctx.beginPath(); ctx.arc(cx, cyy, radius*0.10, 0, Math.PI*2); ctx.fill();
+  };
+
+  const drawStone = (stoneHex) => {
+    // Smooth river stone — slightly squashed ellipse with sheen
+    ctx.fillStyle = stoneHex;
+    ctx.beginPath();
+    ctx.ellipse(cx, cyy, radius*0.96, radius*0.82, 0.18, 0, Math.PI*2);
+    ctx.fill();
+    // Highlight
+    const sh = ctx.createRadialGradient(cx-radius*0.4, cyy-radius*0.45, 0, cx-radius*0.4, cyy-radius*0.45, radius*0.85);
+    sh.addColorStop(0, 'rgba(255,255,255,0.5)');
+    sh.addColorStop(1, 'rgba(255,255,255,0)');
+    ctx.fillStyle = sh;
+    ctx.beginPath(); ctx.ellipse(cx, cyy, radius*0.96, radius*0.82, 0.18, 0, Math.PI*2); ctx.fill();
+    // Subtle outline
+    ctx.strokeStyle = 'rgba(0,0,0,0.18)';
+    ctx.lineWidth = 0.9;
+    ctx.beginPath(); ctx.ellipse(cx, cyy, radius*0.96, radius*0.82, 0.18, 0, Math.PI*2); ctx.stroke();
+  };
+
+  const drawIris = (irisHex) => {
+    // Iris bud — vertical taper, three petals top, leaf base
+    // leaf base
+    ctx.fillStyle = 'rgba(38,108,62,0.85)';
+    ctx.beginPath();
+    ctx.ellipse(cx, cyy + radius*0.5, radius*0.55, radius*0.18, 0, 0, Math.PI*2);
+    ctx.fill();
+    // upright petals
+    ctx.fillStyle = irisHex;
+    ctx.strokeStyle = 'rgba(255,255,255,0.4)';
+    ctx.lineWidth = 0.6;
+    // outer two petals (drooping)
+    ctx.beginPath(); ctx.ellipse(cx-radius*0.35, cyy+radius*0.15, radius*0.32, radius*0.55, -0.5, 0, Math.PI*2); ctx.fill(); ctx.stroke();
+    ctx.beginPath(); ctx.ellipse(cx+radius*0.35, cyy+radius*0.15, radius*0.32, radius*0.55,  0.5, 0, Math.PI*2); ctx.fill(); ctx.stroke();
+    // top petal
+    ctx.beginPath(); ctx.ellipse(cx, cyy-radius*0.3, radius*0.38, radius*0.55, 0, 0, Math.PI*2); ctx.fill(); ctx.stroke();
+    // yellow throat
+    ctx.fillStyle = '#F5E000';
+    ctx.beginPath(); ctx.ellipse(cx, cyy, radius*0.15, radius*0.25, 0, 0, Math.PI*2); ctx.fill();
+  };
+
+  // Render by kind
+  if (kind === 'pad') {
+    drawLilyPad('rgba(38,108,62,0.95)', 'rgba(120,200,140,0.7)');
+  } else if (kind === 'lotus') {
+    drawLotus('#E84141', '#FFB0B0');
+  } else if (kind === 'pinklotus') {
+    drawLotus('#F087BC', '#FFD4E6');
+  } else if (kind === 'koibelly') {
+    drawLotus('#F5A623', '#FFD68A');
+  } else if (kind === 'lily') {
+    drawWaterLily('#FFF3A8');
+  } else if (kind === 'stone') {
+    drawStone('#4A6B92');
+  } else if (kind === 'iris') {
+    drawIris('#9B5BD6');
+  }
+
+  ctx.shadowBlur = 0;
+  ctx.restore();
+}
+
 function drawTile(r,c,color,alpha=1,glow=false,gold=false){
+  // ─── Pond tile route: Fog LV1 (Mystic Pond) only ───
+  // We keep this isolated so other modes are 100% untouched.
+  try {
+    if (typeof activeChallengeMode !== 'undefined'
+        && activeChallengeMode === 'fog'
+        && typeof cm_fogLevel !== 'undefined'
+        && ((cm_fogLevel|0) === 1)) {
+      _drawPondTile(r, c, color, alpha, glow, gold);
+      return;
+    }
+  } catch(_e) {}
   const x=c*CELL+PAD,y=r*CELL+PAD,w=CELL-PAD*2,h=CELL-PAD*2;
   const rad=Math.max(4,CELL*0.13);
   ctx.save();
@@ -15087,23 +15659,24 @@ function drawGrid(){
   }
 
   // ─ FOG THE FROG: overlay fog mist on tiles ────────────────────────────────────────
-  // LV1 Mystic Pond uses a softer warm-cream mist to match the new flat-vector art.
+  // LV1 Mystic Pond: thick white/grey fog drifting smoothly across the board.
   // Other levels keep the original green-purple murk for now.
   if (activeChallengeMode === 'fog' && cm_fogTileAlpha.length) {
     const _isMysticPond = ((cm_fogLevel|0) === 1);
+    // Pass 1: per-cell soft cover (uses smoothed cm_fogTileAlpha grid).
     for (let r = 0; r < ROWS; r++) {
       for (let c = 0; c < COLS; c++) {
         const fogAlpha = _fogGetTileOpacity(r, c);
         if (fogAlpha > 0.02) {
           const x = c * CELL, y = r * CELL;
           ctx.save();
-          ctx.globalAlpha = Math.min(fogAlpha * (_isMysticPond ? 0.78 : 0.88), 0.92);
-          const fg = ctx.createRadialGradient(x+CELL/2, y+CELL/2, 0, x+CELL/2, y+CELL/2, CELL*0.8);
+          ctx.globalAlpha = Math.min(fogAlpha * (_isMysticPond ? 0.95 : 0.88), 0.98);
+          const fg = ctx.createRadialGradient(x+CELL/2, y+CELL/2, 0, x+CELL/2, y+CELL/2, CELL*0.9);
           if (_isMysticPond) {
-            // Warm dawn mist — cream center, soft mossy edge
-            fg.addColorStop(0, 'rgba(245,240,220,0.95)');
-            fg.addColorStop(0.5, 'rgba(200,220,180,0.75)');
-            fg.addColorStop(1, 'rgba(110,160,120,0.55)');
+            // THICK white/grey fog — dense center, soft feather to edge
+            fg.addColorStop(0,   'rgba(250,252,255,0.96)');
+            fg.addColorStop(0.5, 'rgba(220,225,232,0.82)');
+            fg.addColorStop(1,   'rgba(195,205,215,0.42)');
           } else {
             fg.addColorStop(0, 'rgba(120,200,100,0.9)');
             fg.addColorStop(0.5, 'rgba(80,140,80,0.7)');
@@ -15111,8 +15684,8 @@ function drawGrid(){
           }
           ctx.fillStyle = fg;
           ctx.beginPath(); ctx.roundRect(x+1, y+1, CELL-2, CELL-2, 3); ctx.fill();
-          // Rare frog-eye blink in dense fog
-          if (fogAlpha > 0.5 && Math.random() < 0.001) {
+          // Rare frog-eye blink in dense fog (skip in Mystic Pond — wrong vibe)
+          if (!_isMysticPond && fogAlpha > 0.5 && Math.random() < 0.001) {
             ctx.globalAlpha = 0.6;
             ctx.fillStyle = 'rgba(100,255,60,1)';
             ctx.beginPath(); ctx.arc(x + CELL*0.35, y + CELL*0.45, 2, 0, Math.PI*2); ctx.fill();
@@ -15121,6 +15694,25 @@ function drawGrid(){
           ctx.restore();
         }
       }
+    }
+    // Pass 2 (Mystic Pond only): soft blob halo at each fog patch center so
+    // fog reads as drifting clouds, not per-cell pixels. Blobs are bigger
+    // than a cell and feather smoothly across cell boundaries.
+    if (_isMysticPond && typeof cm_fogPatches !== 'undefined' && cm_fogPatches && cm_fogPatches.length) {
+      ctx.save();
+      for (const p of cm_fogPatches) {
+        const px = p.x * CELL + CELL/2;
+        const py = p.y * CELL + CELL/2;
+        const pr = (p.radius || (COLS * 0.25)) * CELL * 1.05;
+        const bg = ctx.createRadialGradient(px, py, 1, px, py, pr);
+        bg.addColorStop(0,   'rgba(252,253,255,0.55)');
+        bg.addColorStop(0.5, 'rgba(230,235,242,0.32)');
+        bg.addColorStop(0.9, 'rgba(210,218,228,0.10)');
+        bg.addColorStop(1,   'rgba(200,210,220,0)');
+        ctx.fillStyle = bg;
+        ctx.beginPath(); ctx.arc(px, py, pr, 0, Math.PI*2); ctx.fill();
+      }
+      ctx.restore();
     }
   }
 
@@ -21061,17 +21653,21 @@ function initChallengeMode() {
     cm_fogSurvivedSecs = 0;
     // Preserve cm_fogLevel if already set (dev skip bumps it). Only init from game level on first start.
     if (!cm_fogLevel || cm_fogLevel < 1) cm_fogLevel = level || 1;
+    // LV1→10 difficulty curve: progressively thicker fog covering more board.
+    // Coverage values are the per-cell alpha CAP (effective % "can't see"); patches
+    // is the number of concurrent drifting blobs. LV1 is light (~15-20% feel) but
+    // visibly present — the user can see most of the board; LV10 is heavy (~80%).
     const FOG_LEVELS = [
-      { name:'Mystic Pond',        coverage:0.20, speed:0.4,  patches:1, behaviour:'drift_lr' },
-      { name:'Scottish Moors',     coverage:0.30, speed:0.5,  patches:1, behaviour:'swirl' },
-      { name:'Scottish Highlands', coverage:0.40, speed:0.55, patches:2, behaviour:'independent' },
-      { name:'Mediterranean Sea',  coverage:0.50, speed:0.6,  patches:2, behaviour:'opposite' },
-      { name:'Coral Reef',         coverage:0.55, speed:0.65, patches:2, behaviour:'pulse' },
-      { name:'Amazon',             coverage:0.60, speed:0.7,  patches:3, behaviour:'random' },
-      { name:'Sahara Night',       coverage:0.65, speed:0.75, patches:3, behaviour:'flash' },
-      { name:'Arctic',             coverage:0.70, speed:0.9,  patches:3, behaviour:'fast_swirl' },
-      { name:'Deep Ocean',         coverage:0.75, speed:0.95, patches:4, behaviour:'smothered' },
-      { name:'Above the Clouds',   coverage:0.80, speed:1.0,  patches:4, behaviour:'chase' },
+      { name:'Mystic Pond',        coverage:0.22, speed:0.55, patches:2, behaviour:'drift_lr' },
+      { name:'Scottish Moors',     coverage:0.32, speed:0.55, patches:2, behaviour:'swirl' },
+      { name:'Scottish Highlands', coverage:0.42, speed:0.60, patches:3, behaviour:'independent' },
+      { name:'Mediterranean Sea',  coverage:0.52, speed:0.65, patches:3, behaviour:'opposite' },
+      { name:'Coral Reef',         coverage:0.58, speed:0.70, patches:3, behaviour:'pulse' },
+      { name:'Amazon',             coverage:0.64, speed:0.75, patches:4, behaviour:'random' },
+      { name:'Sahara Night',       coverage:0.68, speed:0.80, patches:4, behaviour:'flash' },
+      { name:'Arctic',             coverage:0.72, speed:0.90, patches:5, behaviour:'fast_swirl' },
+      { name:'Deep Ocean',         coverage:0.76, speed:0.95, patches:5, behaviour:'smothered' },
+      { name:'Above the Clouds',   coverage:0.80, speed:1.00, patches:6, behaviour:'chase' },
     ];
     const fogCfg = FOG_LEVELS[Math.min(cm_fogLevel - 1, 9)];
     cm_fogTileAlpha = Array.from({length:ROWS}, () => new Array(COLS).fill(0));
@@ -21080,7 +21676,7 @@ function initChallengeMode() {
       y: Math.random() * ROWS,
       vx: (Math.random() > 0.5 ? 1 : -1) * fogCfg.speed * (0.5 + Math.random() * 0.5),
       vy: (Math.random() > 0.5 ? 0.3 : -0.3) * fogCfg.speed,
-      radius: COLS * 0.25 + i * 0.5,
+      radius: COLS * 0.32 + i * 0.4,
       behaviour: fogCfg.behaviour,
       phase: i * Math.PI * 0.6,
       flashTimer: 0,
