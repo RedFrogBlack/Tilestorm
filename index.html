@@ -13710,7 +13710,7 @@ function _mnCheckWin() {
           if (typeof _cdProgress.markCompleted === 'function') _cdProgress.markCompleted('monuments', curLv);
         }
       } catch(_e) {}
-      setTimeout(() => { if (typeof advanceMonumentsLevel === 'function') advanceMonumentsLevel(); }, 1500);
+      setTimeout(() => { if (typeof advanceMonumentsLevel === 'function') advanceMonumentsLevel('cityComplete'); }, 1500);
     }, 600);
     _mnZoneCellCount = 0; // prevent retrigger
   }
@@ -13879,22 +13879,24 @@ function stopMonumentsGame() {
 //
 // When the next level is a DIFFERENT monument, we fall back to the original
 // stop+start flow (since the silhouette must be replaced).
-function advanceMonumentsLevel() {
-  // Advance season-by-season within the current city; when the 4th season of
-  // a city finishes, move on to season 1 of the NEXT city. After Sydney (last
-  // city) season 4, wrap around to London. This matches user expectation of
-  // sequential city progression rather than looping a single city forever.
+function advanceMonumentsLevel(reason) {
+  // Two callers:
+  //   reason === 'cityComplete'  — silhouette done, jump to NEXT unlocked city's season 1.
+  //   otherwise (season auto-timer) — cycle WITHIN current city's 4 seasons.
   let next;
   if (typeof _mnLvIdxToCityLv === 'function' && typeof _mnCityStartIdx === 'function') {
-    const cityLv = _mnLvIdxToCityLv(monumentsLevelIdx);
-    const startIdx = _mnCityStartIdx(cityLv);
-    const offsetInCity = (monumentsLevelIdx - startIdx + 1);
-    if (offsetInCity < 4) {
-      // Still inside current city — advance to next season.
-      next = startIdx + offsetInCity;
+    const curCityLv = _mnLvIdxToCityLv(monumentsLevelIdx); // 1..10
+    const startIdx = _mnCityStartIdx(curCityLv);
+    if (reason === 'cityComplete') {
+      const isDev = (typeof _cdProgress !== 'undefined' && _cdProgress.isDevUnlocked && _cdProgress.isDevUnlocked());
+      const unlockedMax = isDev ? 10 : ((typeof _cdProgress !== 'undefined') ? _cdProgress.getUnlocked('monuments') : 10);
+      let nextCityLv = curCityLv + 1;
+      if (nextCityLv > unlockedMax) nextCityLv = (curCityLv >= 10) ? 1 : curCityLv;
+      next = _mnCityStartIdx(nextCityLv);
     } else {
-      // Finished season 4 — jump to first season of next city.
-      next = (startIdx + 4) % MONUMENTS_LEVELS.length;
+      // Season auto-advance within current city's 4-season block.
+      const offsetInCity = ((monumentsLevelIdx - startIdx + 1) % 4 + 4) % 4;
+      next = startIdx + offsetInCity;
     }
   } else {
     next = (monumentsLevelIdx + 1) % MONUMENTS_LEVELS.length;
