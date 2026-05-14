@@ -8007,6 +8007,11 @@ function _ambientDraw(timestamp) {
 
   if (activeChallengeMode === 'standard') {
     _drawPondAmbient(ctx, W, H, rand, lerp);
+  } else if (activeChallengeMode === 'fog' && ((cm_fogLevel|0) === 1)) {
+    // Fog LV1 Mystic Pond: reuse the animated Tadpole pond (day/night cycle,
+    // lily pads, dragonflies, ripples). Matches the approved flat-vector mockup
+    // tone via the warm-cream fog tile tint applied later in drawGrid.
+    _drawPondAmbient(ctx, W, H, rand, lerp);
   } else if (activeChallengeMode === 'frenzy') {
     _drawFrenzyAmbient(ctx, W, H, rand, lerp);
   } else if (activeChallengeMode === 'colourrun') {
@@ -14432,9 +14437,10 @@ function drawGrid(){
   ctx.beginPath();ctx.moveTo(bW/2,H-bLen);ctx.lineTo(bW/2,H-bW/2);ctx.lineTo(bLen,H-bW/2);ctx.stroke();
   ctx.beginPath();ctx.moveTo(W-bLen,H-bW/2);ctx.lineTo(W-bW/2,H-bW/2);ctx.lineTo(W-bW/2,H-bLen);ctx.stroke();
 
-  // Ambient FX: composite behind grid for standard/frenzy/colourrun
+  // Ambient FX: composite behind grid for standard/frenzy/colourrun + Fog LV1 Mystic Pond
   if (!cityPackActive && _ambientInitialized && _ambientCanvas &&
-      (activeChallengeMode === 'standard' || activeChallengeMode === 'frenzy' || activeChallengeMode === 'colourrun')) {
+      (activeChallengeMode === 'standard' || activeChallengeMode === 'frenzy' || activeChallengeMode === 'colourrun' ||
+       (activeChallengeMode === 'fog' && ((cm_fogLevel|0) === 1)))) {
     ctx.drawImage(_ambientCanvas, 0, 0);
   }
 
@@ -14542,6 +14548,10 @@ function drawGrid(){
       }
     }
   }
+  // Fog the Frog LV1 Mystic Pond: animated pond backdrop is composited via the
+  // shared _ambientCanvas pathway above (same system as Tadpole pond). No
+  // static-image draw needed here.
+
   // Golden Frog: composite location scene as full-board background
   if (!cityPackActive && activeChallengeMode === 'goldenfrog' && _gfSceneInitialized && _gfSceneCanvas) {
     ctx.save();
@@ -14741,19 +14751,29 @@ function drawGrid(){
     }
   }
 
-  // ─ FOG THE FROG: overlay green-purple fog mist on tiles ────────────────────────────────────────
+  // ─ FOG THE FROG: overlay fog mist on tiles ────────────────────────────────────────
+  // LV1 Mystic Pond uses a softer warm-cream mist to match the new flat-vector art.
+  // Other levels keep the original green-purple murk for now.
   if (activeChallengeMode === 'fog' && cm_fogTileAlpha.length) {
+    const _isMysticPond = ((cm_fogLevel|0) === 1);
     for (let r = 0; r < ROWS; r++) {
       for (let c = 0; c < COLS; c++) {
         const fogAlpha = _fogGetTileOpacity(r, c);
         if (fogAlpha > 0.02) {
           const x = c * CELL, y = r * CELL;
           ctx.save();
-          ctx.globalAlpha = Math.min(fogAlpha * 0.88, 0.92);
+          ctx.globalAlpha = Math.min(fogAlpha * (_isMysticPond ? 0.78 : 0.88), 0.92);
           const fg = ctx.createRadialGradient(x+CELL/2, y+CELL/2, 0, x+CELL/2, y+CELL/2, CELL*0.8);
-          fg.addColorStop(0, 'rgba(120,200,100,0.9)');
-          fg.addColorStop(0.5, 'rgba(80,140,80,0.7)');
-          fg.addColorStop(1, 'rgba(40,80,60,0.5)');
+          if (_isMysticPond) {
+            // Warm dawn mist — cream center, soft mossy edge
+            fg.addColorStop(0, 'rgba(245,240,220,0.95)');
+            fg.addColorStop(0.5, 'rgba(200,220,180,0.75)');
+            fg.addColorStop(1, 'rgba(110,160,120,0.55)');
+          } else {
+            fg.addColorStop(0, 'rgba(120,200,100,0.9)');
+            fg.addColorStop(0.5, 'rgba(80,140,80,0.7)');
+            fg.addColorStop(1, 'rgba(40,80,60,0.5)');
+          }
           ctx.fillStyle = fg;
           ctx.beginPath(); ctx.roundRect(x+1, y+1, CELL-2, CELL-2, 3); ctx.fill();
           // Rare frog-eye blink in dense fog
@@ -15581,8 +15601,9 @@ function animateParticles(ts){
     _gfSceneTick(ts);
     drawGrid();
   }
-  // Ambient FX: Tadpole pond, Frenzy weather, Golden Frog location
-  if (!cityPackActive && _ambientInitialized && (activeChallengeMode === 'standard' || activeChallengeMode === 'frenzy' || activeChallengeMode === 'colourrun')) {
+  // Ambient FX: Tadpole pond, Frenzy weather, Golden Frog location, Fog LV1 Mystic Pond
+  if (!cityPackActive && _ambientInitialized && (activeChallengeMode === 'standard' || activeChallengeMode === 'frenzy' || activeChallengeMode === 'colourrun' ||
+      (activeChallengeMode === 'fog' && ((cm_fogLevel|0) === 1)))) {
     _ambientDraw(ts);
     drawGrid();
   }
@@ -20537,7 +20558,7 @@ const GF_LINES_PER_LEVEL = 50;
 let cm_gfLinesCleared = 0;     // lines cleared at the current location
 let cm_gfLevelGateActive = false; // true while the COMPLETE overlay is showing
 // Quick lookup of the Fog the Frog location names (for HUD labels)
-const FOG_LOCATION_NAMES = ['Enchanted Woods','Scottish Moors','Scottish Highlands','Mediterranean Sea','Coral Reef','Amazon','Sahara Night','Arctic','Deep Ocean','Above the Clouds'];
+const FOG_LOCATION_NAMES = ['Mystic Pond','Scottish Moors','Scottish Highlands','Mediterranean Sea','Coral Reef','Amazon','Sahara Night','Arctic','Deep Ocean','Above the Clouds'];
 // Each Golden Frog location has its own day/night sky, silhouette skyline (column heights 0-10),
 // accent + edge colours, and atmospheric particle type (sand/blossoms/neon/rain/fireflies/etc.)
 const GF_LOCATIONS_CFG = [
@@ -20706,7 +20727,7 @@ function initChallengeMode() {
     // Preserve cm_fogLevel if already set (dev skip bumps it). Only init from game level on first start.
     if (!cm_fogLevel || cm_fogLevel < 1) cm_fogLevel = level || 1;
     const FOG_LEVELS = [
-      { name:'Enchanted Woods',    coverage:0.20, speed:0.4,  patches:1, behaviour:'drift_lr' },
+      { name:'Mystic Pond',        coverage:0.20, speed:0.4,  patches:1, behaviour:'drift_lr' },
       { name:'Scottish Moors',     coverage:0.30, speed:0.5,  patches:1, behaviour:'swirl' },
       { name:'Scottish Highlands', coverage:0.40, speed:0.55, patches:2, behaviour:'independent' },
       { name:'Mediterranean Sea',  coverage:0.50, speed:0.6,  patches:2, behaviour:'opposite' },
