@@ -10502,7 +10502,51 @@ function _mnDrawLondonAnimation(ctx, W, H, baseY, id, night, tnow) {
     const mask = _mnSilhouetteMaskFor(id, W, H);
     if (mask) {
       ctx.save();
+      // Draw the silhouette mask, then darken it to match the current sky phase.
+      // At noon (night=0), don't tint at all. At dusk, warm tint. At full night,
+      // crush to a near-black silhouette so buildings read as dark shapes.
       ctx.drawImage(mask, 0, 0, W, H);
+      // Now darken only the just-drawn silhouette pixels using 'source-atop'.
+      const _n = (typeof night === 'number') ? night : 0;
+      if (_n > 0.05) {
+        // Phase-based darkening tint:
+        //   night 0.05..0.45 = mild dusk warm tint (preserve light)
+        //   night 0.45..1.00 = strong dark navy multiply (silhouette)
+        ctx.globalCompositeOperation = 'source-atop';
+        if (_n < 0.45) {
+          // Dusk warm tint (gentle)
+          const a = (_n - 0.05) / 0.40 * 0.35;
+          ctx.fillStyle = `rgba(120, 50, 70, ${a})`;
+          ctx.fillRect(0, 0, W, H);
+        } else {
+          // Night: progressively crush to dark navy/black silhouette.
+          // At night=1, alpha ~0.92 of (15, 20, 40) overlays the mask pixels.
+          const nA = Math.min(1, (_n - 0.45) / 0.50);
+          const aDark = 0.55 + 0.40 * nA; // 0.55 .. 0.95
+          ctx.fillStyle = `rgba(12, 18, 38, ${aDark})`;
+          ctx.fillRect(0, 0, W, H);
+          // Add procedural lit-window dots on the silhouette at deep night.
+          if (nA > 0.15) {
+            ctx.globalCompositeOperation = 'lighter';
+            const winA = Math.min(1, (nA - 0.15) / 0.35) * 0.85;
+            // Stable per-id pseudo-random window grid; subtle flicker via time.
+            const ts = (typeof performance !== 'undefined') ? performance.now() / 1000 : 0;
+            const seed = (id || 'x').charCodeAt(0) * 131 + (id || 'x').length * 17;
+            const rng = (i) => { const s = Math.sin(seed + i * 12.9898) * 43758.5453; return s - Math.floor(s); };
+            for (let i = 0; i < 90; i++) {
+              const u = rng(i);
+              const v = rng(i + 500);
+              const wx = u * W;
+              const wy = 0.45 * H + v * 0.40 * H; // windows live in building band
+              const flicker = 0.55 + 0.45 * Math.sin(ts * (1.2 + rng(i+9) * 2.0) + i * 1.7);
+              const a = winA * flicker;
+              if (a < 0.05) continue;
+              ctx.fillStyle = `rgba(255, 210, 130, ${a})`;
+              ctx.fillRect(wx, wy, 1.6, 1.6);
+            }
+          }
+        }
+      }
       ctx.restore();
     }
   }
