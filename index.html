@@ -10571,16 +10571,28 @@ function _mnDrawLondonAnimation(ctx, W, H, baseY, id, night, tnow) {
     }
   }
 
-  // ── Water shimmer: a few horizontal highlight streaks that drift slowly ──
+  // ── Water shimmer: subtle horizontal streaks drifting in ONE direction ──
+  // Previously the streaks moved sinusoidally (back-and-forth) which looked
+  // like a glitchy line oscillating across the bridge. Real water reflections
+  // flow in one direction; we now wrap each streak monotonically L→R and fade
+  // it in/out over its travel so the loop is invisible.
   const waterTop = H * horizonFrac;
   ctx.save();
   ctx.globalCompositeOperation = 'lighter';
   for (let i = 0; i < 6; i++) {
-    const phase = (tnow * 0.15 + i * 0.37) % 1;
-    const y = waterTop + (H - waterTop) * (0.1 + i * 0.14);
-    const dx = (Math.sin(tnow * 0.6 + i) * 0.5 + 0.5) * W * 0.6;
-    const len = W * (0.15 + 0.08 * Math.sin(tnow * 0.5 + i * 2));
-    const alpha = (night > 0.5 ? 0.22 : 0.18) * (1 - phase * 0.4);
+    // Monotonic phase 0..1 that wraps; each streak offset so they don't all
+    // appear at once. Slow drift (full traverse ≈ 14s).
+    const phase = ((tnow * 0.07 + i * 0.37) % 1 + 1) % 1;
+    const y = waterTop + (H - waterTop) * (0.18 + i * 0.13);
+    // Travel across slightly more than the full width so streaks enter from
+    // the left edge and exit past the right edge.
+    const dx = phase * (W + 60) - 30;
+    const len = W * 0.18;
+    // Fade in at start and out at end of the traverse so we never see the
+    // streak suddenly pop or vanish.
+    const ease = Math.min(1, phase / 0.15) * Math.min(1, (1 - phase) / 0.15);
+    const alpha = (night > 0.5 ? 0.18 : 0.14) * ease;
+    if (alpha < 0.01) continue;
     const grad = ctx.createLinearGradient(dx, y, dx + len, y);
     const tint = night > 0.5 ? '255, 220, 150' : '255, 255, 255';
     grad.addColorStop(0,   `rgba(${tint}, 0)`);
