@@ -7509,116 +7509,6 @@ let _ambientLastTS = 0;
 // Tadpole pond state
 let _pondStars = [], _pondClouds = [], _pondLilyPads = [], _pondRipples = [], _pondDragonflies = [], _pondShimmerLines = [], _pondRainDrops = [], _pondSplashes = [];
 let _pondLastRipple = 0, _pondLastSplash = 0;
-
-// ── Fog LV1 Mystic Pond asset system ──────────────────────────
-// Loads Midjourney-painted backdrop, frog mascot, koi, and tile sprites.
-const _fogLv1Assets = {
-  loaded: false,
-  backdrop: null, frog: null,
-  koi: [],
-  tiles: {}
-};
-function _fogLv1AssetsLoad() {
-  if (_fogLv1Assets.loaded) return;
-  const base = 'assets/fog/';
-  const mk = (src) => { const i = new Image(); i.src = src; return i; };
-  _fogLv1Assets.backdrop = mk(base + 'lv01/backdrop.png');
-  _fogLv1Assets.frog     = mk(base + 'shared/frog_idle.png');
-  _fogLv1Assets.tiles[1] = mk(base + 'lv01/tile_lotus_pink.png');
-  _fogLv1Assets.tiles[2] = mk(base + 'lv01/tile_lily.png');
-  _fogLv1Assets.tiles[3] = mk(base + 'lv01/tile_reed.png');
-  _fogLv1Assets.tiles[4] = mk(base + 'lv01/tile_lotus_white.png');
-  _fogLv1Assets.tiles[5] = mk(base + 'lv01/tile_bubble.png');
-  _fogLv1Assets.tiles[6] = mk(base + 'lv01/tile_stone.png');
-  _fogLv1Assets.tiles[7] = _fogLv1Assets.tiles[1];
-  _fogLv1Assets.koi = [
-    { img: mk(base + 'shared/koi_orange.png'), x01: -0.1, y01: 0.18, speed: 0.018, amp: 0.04, phase: 0.0,  dir: 1 },
-    { img: mk(base + 'shared/koi_blue.png'),   x01: 1.1,  y01: 0.55, speed: 0.014, amp: 0.05, phase: 1.8,  dir: -1 },
-    { img: mk(base + 'shared/koi_red.png'),    x01: -0.2, y01: 0.84, speed: 0.020, amp: 0.03, phase: 3.3,  dir: 1 },
-  ];
-  _fogLv1Assets.loaded = true;
-}
-function _drawMysticPondAmbient(ctx, W, H) {
-  _fogLv1AssetsLoad();
-  // 1. Backdrop — cover-fit the painted pond
-  const bg = _fogLv1Assets.backdrop;
-  if (bg && bg.complete && bg.naturalWidth > 0) {
-    const iw = bg.naturalWidth, ih = bg.naturalHeight;
-    const scale = Math.max(W / iw, H / ih);
-    const dw = iw * scale, dh = ih * scale;
-    const dx = (W - dw) / 2, dy = (H - dh) / 2;
-    ctx.drawImage(bg, dx, dy, dw, dh);
-  } else {
-    ctx.fillStyle = '#4a7a78'; ctx.fillRect(0, 0, W, H);
-  }
-  const t = _ambientT;
-  // 2. Soft water shimmer
-  ctx.save();
-  ctx.globalCompositeOperation = 'overlay';
-  ctx.globalAlpha = 0.10 + 0.04 * Math.sin(t * 0.012);
-  ctx.fillStyle = '#ffffff';
-  for (let i = 0; i < 4; i++) {
-    const yy = (((t * 0.4 + i * 80) % (H + 40)) - 20);
-    ctx.fillRect(0, yy, W, 1.5);
-  }
-  ctx.restore();
-  // 3. Koi drift
-  for (const k of _fogLv1Assets.koi) {
-    const img = k.img;
-    if (!img || !img.complete || img.naturalWidth === 0) continue;
-    k.x01 += k.speed * 0.01 * k.dir;
-    if (k.dir > 0 && k.x01 > 1.2) k.x01 = -0.2;
-    if (k.dir < 0 && k.x01 < -0.2) k.x01 = 1.2;
-    const x = k.x01 * W;
-    const y = (k.y01 + Math.sin(t * 0.02 + k.phase) * k.amp) * H;
-    const koiW = W * 0.18, koiH = koiW * (img.naturalHeight / img.naturalWidth);
-    ctx.save();
-    ctx.globalAlpha = 0.85;
-    if (k.dir < 0) {
-      ctx.translate(x + koiW / 2, y);
-      ctx.scale(-1, 1);
-      ctx.drawImage(img, -koiW / 2, -koiH / 2, koiW, koiH);
-    } else {
-      ctx.drawImage(img, x - koiW / 2, y - koiH / 2, koiW, koiH);
-    }
-    ctx.restore();
-  }
-  // 4. Frog idle bob (bottom-right corner)
-  const fg = _fogLv1Assets.frog;
-  if (fg && fg.complete && fg.naturalWidth > 0) {
-    const frogW = W * 0.20;
-    const frogH = frogW * (fg.naturalHeight / fg.naturalWidth);
-    const bob = Math.sin(t * 0.025) * 2.5;
-    const fx = W - frogW * 0.92;
-    const fy = H - frogH * 0.95 + bob;
-    ctx.save();
-    ctx.globalAlpha = 0.95;
-    ctx.drawImage(fg, fx, fy, frogW, frogH);
-    ctx.restore();
-  }
-}
-function _fogLv1DrawTileSprite(r, c, idx, alpha, glow) {
-  const img = _fogLv1Assets.tiles[idx];
-  if (!img || !img.complete || img.naturalWidth === 0) return false;
-  const x = c * CELL + PAD, y = r * CELL + PAD;
-  const w = CELL - PAD * 2, h = CELL - PAD * 2;
-  ctx.save();
-  ctx.globalAlpha = alpha;
-  if (glow) { ctx.shadowColor = 'rgba(255,248,220,0.6)'; ctx.shadowBlur = 14; }
-  const rad = Math.max(4, CELL * 0.42);
-  const cx = x + w / 2, cy = y + h / 2;
-  const grd = ctx.createRadialGradient(cx, cy, rad * 0.2, cx, cy, rad);
-  grd.addColorStop(0, 'rgba(255,248,220,0.32)');
-  grd.addColorStop(1, 'rgba(255,248,220,0)');
-  ctx.fillStyle = grd;
-  ctx.beginPath(); ctx.arc(cx, cy, rad, 0, Math.PI * 2); ctx.fill();
-  ctx.shadowBlur = 0;
-  const pad2 = Math.max(2, CELL * 0.06);
-  ctx.drawImage(img, x + pad2, y + pad2, w - pad2 * 2, h - pad2 * 2);
-  ctx.restore();
-  return true;
-}
-
 // Frenzy weather state  
 let _frenzyRain = [], _frenzyWindStreaks = [], _frenzyDebris = [], _frenzyLightningTimer = 0, _frenzyLightning = null;
 // Golden ambient state
@@ -8118,8 +8008,10 @@ function _ambientDraw(timestamp) {
   if (activeChallengeMode === 'standard') {
     _drawPondAmbient(ctx, W, H, rand, lerp);
   } else if (activeChallengeMode === 'fog' && ((cm_fogLevel|0) === 1)) {
-    // Fog LV1 Mystic Pond: Midjourney-painted backdrop + animated koi & frog.
-    _drawMysticPondAmbient(ctx, W, H);
+    // Fog LV1 Mystic Pond: reuse the animated Tadpole pond (day/night cycle,
+    // lily pads, dragonflies, ripples). Matches the approved flat-vector mockup
+    // tone via the warm-cream fog tile tint applied later in drawGrid.
+    _drawPondAmbient(ctx, W, H, rand, lerp);
   } else if (activeChallengeMode === 'frenzy') {
     _drawFrenzyAmbient(ctx, W, H, rand, lerp);
   } else if (activeChallengeMode === 'colourrun') {
@@ -14725,12 +14617,6 @@ function drawGrid(){
     if (typeof _gfVeniceHiddenSet !== 'undefined' && _gfVeniceHiddenSet && _gfVeniceHiddenSet.has(r*100+c)) continue;
     // Skip cells that are mid-slide (NewYork one-way streets) — the slide overlay draws them
     if (typeof _gfStreetHiddenSet !== 'undefined' && _gfStreetHiddenSet && _gfStreetHiddenSet.has(r*100+c)) continue;
-    // Fog LV1 Mystic Pond: stamp Midjourney sprite per tile instead of coloured rect.
-    if (activeChallengeMode === 'fog' && ((cm_fogLevel|0) === 1)
-        && typeof _fogLv1DrawTileSprite === 'function'
-        && _fogLv1DrawTileSprite(r, c, grid[r][c], 1, false)) {
-      continue;
-    }
     drawTile(r,c,getTileColor(grid[r][c]),1,false,isGold);
   }
   // Maldives conveyor flight: draw L→R wind-blown tiles with optional zig-zag wobble.
