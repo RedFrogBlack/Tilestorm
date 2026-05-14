@@ -10519,30 +10519,39 @@ function _mnDrawLondonAnimation(ctx, W, H, baseY, id, night, tnow) {
           ctx.fillStyle = `rgba(120, 50, 70, ${a})`;
           ctx.fillRect(0, 0, W, H);
         } else {
-          // Night: progressively crush to dark navy/black silhouette.
-          // At night=1, alpha ~0.92 of (15, 20, 40) overlays the mask pixels.
+          // Night: darken silhouette to deep navy but keep building SHAPE readable.
+          // We use 'multiply' (source-atop scope) for a softer crush than alpha-over.
           const nA = Math.min(1, (_n - 0.45) / 0.50);
-          const aDark = 0.55 + 0.40 * nA; // 0.55 .. 0.95
-          ctx.fillStyle = `rgba(12, 18, 38, ${aDark})`;
+          // Multiply factor: darker as night deepens, but never to pure black.
+          // At noon-side of band: ~rgb(160,170,200). At full night: ~rgb(55,70,110).
+          const mr = Math.round(160 - 105 * nA);
+          const mg = Math.round(170 - 100 * nA);
+          const mb = Math.round(200 -  90 * nA);
+          ctx.globalCompositeOperation = 'multiply';
+          // Need to combine multiply with the source-atop scope set above. Re-apply.
+          ctx.globalCompositeOperation = 'source-atop';
+          // Use a dark blend via alpha-over but with a softer alpha so shapes show.
+          const aDark = 0.45 + 0.30 * nA; // 0.45 .. 0.75 (never full crush)
+          ctx.fillStyle = `rgba(${mr - 60}, ${mg - 65}, ${mb - 80}, ${aDark})`;
           ctx.fillRect(0, 0, W, H);
           // Add procedural lit-window dots on the silhouette at deep night.
           if (nA > 0.15) {
             ctx.globalCompositeOperation = 'lighter';
-            const winA = Math.min(1, (nA - 0.15) / 0.35) * 0.85;
+            const winA = Math.min(1, (nA - 0.15) / 0.35) * 1.0;
             // Stable per-id pseudo-random window grid; subtle flicker via time.
             const ts = (typeof performance !== 'undefined') ? performance.now() / 1000 : 0;
             const seed = (id || 'x').charCodeAt(0) * 131 + (id || 'x').length * 17;
             const rng = (i) => { const s = Math.sin(seed + i * 12.9898) * 43758.5453; return s - Math.floor(s); };
-            for (let i = 0; i < 90; i++) {
+            for (let i = 0; i < 140; i++) {
               const u = rng(i);
               const v = rng(i + 500);
               const wx = u * W;
-              const wy = 0.45 * H + v * 0.40 * H; // windows live in building band
-              const flicker = 0.55 + 0.45 * Math.sin(ts * (1.2 + rng(i+9) * 2.0) + i * 1.7);
+              const wy = 0.40 * H + v * 0.45 * H; // windows live in building band
+              const flicker = 0.50 + 0.50 * Math.sin(ts * (1.2 + rng(i+9) * 2.0) + i * 1.7);
               const a = winA * flicker;
               if (a < 0.05) continue;
-              ctx.fillStyle = `rgba(255, 210, 130, ${a})`;
-              ctx.fillRect(wx, wy, 1.6, 1.6);
+              ctx.fillStyle = `rgba(255, 215, 140, ${a})`;
+              ctx.fillRect(wx, wy, 2.2, 2.2);
             }
           }
         }
@@ -25022,21 +25031,46 @@ function updateHomeSubtitles() {
       activateDevUnlock();
     }
 
-    // Attach 5-tap listener to the red badge circle on title screen
-    document.addEventListener('DOMContentLoaded', function() {
-      var badge = document.querySelector('.title-badge-circle');
-      if (!badge) return;
-      badge.addEventListener('click', function() {
-        tapCount++;
-        clearTimeout(tapTimer);
-        tapTimer = setTimeout(function() { tapCount = 0; }, 1500);
-        if (tapCount >= 5) {
-          tapCount = 0;
-          if (isDevUnlocked()) { deactivateDevUnlock(); }
-          else { activateDevUnlock(); }
-        }
+    // Attach 5-tap listener to the red brand frog on the title screen.
+    // Selector list covers the old `.title-badge-circle` and the current
+    // `.home-frog-hero` element (and its inner img) so dev unlock works on
+    // any version of the home layout.
+    function _attachDevTaps() {
+      var targets = [];
+      // Only bind ONE selector per visual element — if we bind both div and inner img,
+      // a click on img triggers BOTH listeners (img directly + parent via bubble) and
+      // double-counts taps, breaking the 5-tap toggle.
+      ['.title-badge-circle', '.home-frog-hero', '.home-logo-badge']
+        .forEach(function(sel) {
+          document.querySelectorAll(sel).forEach(function(el) { if (targets.indexOf(el) < 0) targets.push(el); });
+        });
+      if (!targets.length) return false;
+      targets.forEach(function(el) {
+        if (el.__devTapBound) return;
+        el.__devTapBound = true;
+        el.style.cursor = el.style.cursor || 'pointer';
+        el.addEventListener('click', function(ev) {
+          tapCount++;
+          clearTimeout(tapTimer);
+          tapTimer = setTimeout(function() { tapCount = 0; }, 1500);
+          if (tapCount >= 5) {
+            tapCount = 0;
+            if (isDevUnlocked()) { deactivateDevUnlock(); }
+            else { activateDevUnlock(); }
+            try { if (typeof showToast === 'function') showToast(isDevUnlocked() ? '⚡ DEV MODE ON' : 'DEV MODE OFF'); } catch(_){}
+          }
+        }, { passive: true });
       });
-    });
+      return true;
+    }
+    // Try immediately, on DOMContentLoaded, and again after a short delay
+    // in case the home screen is rendered asynchronously.
+    if (!_attachDevTaps()) {
+      document.addEventListener('DOMContentLoaded', _attachDevTaps);
+      setTimeout(_attachDevTaps, 500);
+      setTimeout(_attachDevTaps, 1500);
+      setTimeout(_attachDevTaps, 3000);
+    }
   })();
 
 // ════════════════════════════════════════════════════════════════════
