@@ -5864,6 +5864,10 @@
     transition:opacity 0.18s ease;
   }
   #city-reveal-overlay.show { opacity:1; pointer-events:auto; animation: cityRevealIn 0.4s ease forwards; }
+  /* When .instant-show is added alongside .show, the overlay snaps opaque in
+     a single frame — no fade-in, no keyframe scale. Used during level-to-level
+     city switches so the previous city is never visible behind the overlay. */
+  #city-reveal-overlay.instant-show { animation: none !important; transition: none !important; opacity: 1 !important; transform: none !important; }
   @keyframes cityRevealIn { from{opacity:0;transform:scale(0.93)} to{opacity:1;transform:scale(1)} }
   #city-pack-hud {
     width:100%; background:rgba(74,158,255,0.08);
@@ -8427,15 +8431,9 @@ function revealCitySkyline(city) {
     if (!overlay) { resolve(); return; }
     nameEl.textContent = city.emoji + '  ' + city.name;
     noteEl.textContent = city.note;
-    // Snap overlay to fully opaque BEFORE any browser paint, so the previous
-    // city is never visible during the level switch. We disable the CSS fade
-    // transition for the show, then re-enable it for the eventual fade-out.
-    overlay.style.transition = 'none';
-    overlay.style.opacity = '1';
-    overlay.classList.add('show');
-    // Clear the previous city's visuals immediately. Even though the overlay
-    // hides them, this prevents the rAF render loop from continuing to paint
-    // the old skyline + grid while the overlay is up.
+    // Clear previous city visuals AND immediately update the HUD city name so
+    // the player never sees the old city's name peeking out behind the reveal
+    // overlay during its fade-in.
     try {
       gridMask = null;
       if (typeof _skyReset === 'function') _skyReset();
@@ -8443,13 +8441,28 @@ function revealCitySkyline(city) {
         const _gctx = gridCanvas.getContext('2d');
         if (_gctx) _gctx.clearRect(0, 0, gridCanvas.width, gridCanvas.height);
       }
+      // Update the city-pack HUD strip to the NEW city so nothing on screen
+      // says the old city's name while the reveal plays.
+      const _hud = document.getElementById('city-pack-hud');
+      if (_hud) {
+        const _nameEl = _hud.querySelector('.cp-city-name');
+        if (_nameEl) _nameEl.textContent = (city.emoji || '') + ' ' + city.name;
+        const _progEl = _hud.querySelector('.cp-progress');
+        if (_progEl) _progEl.textContent = '0 / 0 lines';
+      }
+      // Update the level-nav strip at the bottom too (PREV / NEXT / CITY n/10).
+      if (typeof updateLevelNavStrip === 'function') updateLevelNavStrip();
     } catch(_e) {}
-    // Force a layout flush so the opaque overlay is painted this frame.
+    // Snap overlay to fully opaque INSTANTLY — no fade-in, no keyframe scale.
+    // The .instant-show class kills both the transition and the animation, so
+    // the very first painted frame is fully black.
+    overlay.classList.add('instant-show');
+    overlay.classList.add('show');
+    // Force layout flush so the opaque overlay is painted this frame.
     void overlay.offsetHeight;
     setTimeout(() => {
       // Restore the CSS-driven fade for the OUT transition.
-      overlay.style.transition = '';
-      overlay.style.opacity = '';
+      overlay.classList.remove('instant-show');
       overlay.classList.remove('show');
       setTimeout(resolve, 400);
     }, 2000);
