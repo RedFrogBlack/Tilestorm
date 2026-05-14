@@ -15705,6 +15705,11 @@ function startGame(){
     };
     showEventBanner(msgs[activeChallengeMode] || '🎮 GO!');
   }, 500);
+  // Show the DEV skip button for solo modes (Tadpole included). For challenge
+  // modes initChallengeMode() also calls this; calling it here covers Tadpole
+  // which never runs initChallengeMode. Deferred so activeChallengeMode is
+  // set by the caller before the visibility check runs.
+  setTimeout(() => { if (typeof _showDevSkipIfDev === 'function') _showDevSkipIfDev(); }, 600);
 }
 // Diagnostic snapshot — captures exactly WHY game-over fired so the player
 // (and dev) can see the state instead of being surprised. Renders into the
@@ -23801,51 +23806,46 @@ function _gfRotateBoard() {
   showEventBanner('✨ BALI — BOARD ROTATES!');
 }
 
-// Dev skip — bumps level/score to simulate progression
+// Dev skip — jumps to the next level using the canonical __devSoloSetLevel
+// helper, which handles all solo modes (Tadpole / Tree Frog / Fog the Frog /
+// Golden Frog) consistently: bumps linesCleared to the next threshold, syncs
+// the mode-specific level tracker (cm_fogLevel / cm_gfLevel), wipes the grid
+// where appropriate, and re-inits the challenge mode so the new level's
+// mechanic kicks in immediately. Without this delegation, Tadpole had no
+// skip button at all, Tree Frog only drained its timer (no real level
+// change), and Fog left score/board state inconsistent.
 function _devSkipLevel() {
   if (localStorage.getItem('cd_dev_unlock') !== '1') return;
-  // Simulate clearing 10 lines worth of progress
-  const fakeLines = 10;
-  linesCleared += fakeLines;
-  score += fakeLines * 500;
+  try {
+    // Determine current level using the mode-aware getter so Fog/Golden Frog
+    // stop at 10 and other modes use the global level.
+    const cur = (typeof window.__devGetSoloLevel === 'function')
+      ? (window.__devGetSoloLevel() || level || 1)
+      : (level || 1);
+    const target = cur + 1;
+    if (typeof window.__devSoloSetLevel === 'function') {
+      const newLv = window.__devSoloSetLevel(target);
+      showToast('⏭ DEV: jumped to LV ' + (newLv || target));
+      return;
+    }
+  } catch(_e) {}
+  // Fallback if the helper isn't present — bump line counter only.
+  linesCleared += 10;
   level = calcLevel(linesCleared);
-  if (score > bestScore) bestScore = score;
-  // Frenzy: drain the timer to trigger next round
-  if (activeChallengeMode === 'frenzy') { cm_secsLeft = 1; }
-  // Colour run: boost streak
-  if (activeChallengeMode === 'colourrun') { cm_colourStreak += 4; }
-  // Fog: jump to next fog level by re-initing the mode at level+1 (FOG_LEVELS is local to init,
-  // so simplest reliable way is to bump cm_fogLevel and let the next survived-tick / re-init pick it up)
-  if (activeChallengeMode === 'fog') {
-    cm_fogLevel = Math.min((cm_fogLevel||1) + 1, 10);
-    cm_fogSurvivedSecs += 20;
-    // Re-init the fog mode so the new coverage/behaviour takes effect immediately
-    if (cm_fogTimer) { clearInterval(cm_fogTimer); cm_fogTimer = null; }
-    initChallengeMode();
-  }
-  // Golden Frog: jump to next location
-  if (activeChallengeMode === 'goldenfrog') {
-    if (typeof _gfStopAllMechanics === 'function') { try { _gfStopAllMechanics(); } catch(e){} }
-    cm_gfLevel = Math.min((cm_gfLevel||1) + 1, 10);
-    if (typeof _cdProgress !== 'undefined') _cdProgress.setLastLevel('goldenfrog', cm_gfLevel);
-    try {
-      if (typeof grid !== 'undefined' && grid && grid.length) {
-        for (let r=0;r<grid.length;r++) for (let c=0;c<grid[r].length;c++) grid[r][c] = 0;
-      }
-    } catch(_e2) {}
-    if (cm_gfTimer) { clearInterval(cm_gfTimer); cm_gfTimer = null; }
-    initChallengeMode();
-  }
   updateUI(); drawGrid();
-  showToast('⏭ DEV: +10 lines, +5000 score');
+  showToast('⏭ DEV: +10 lines');
 }
 
-// Show dev skip button when game starts in dev mode
+// Show dev skip button when game starts in dev mode. The button is available
+// for every solo mode (Tadpole, Tree Frog, Fog the Frog, Golden Frog) and
+// hidden for tier-pack modes (City Pack, Monuments) which have their own
+// in-HUD dev tap-to-skip mechanism.
 function _showDevSkipIfDev() {
   const btn = document.getElementById('dev-level-skip');
   if (!btn) return;
   const isDev = localStorage.getItem('cd_dev_unlock') === '1';
-  btn.style.display = isDev && gameActive && activeChallengeMode !== 'standard' ? 'inline-block' : 'none';
+  const isTierPack = (typeof cityPackActive !== 'undefined' && cityPackActive);
+  btn.style.display = (isDev && gameActive && !isTierPack) ? 'inline-block' : 'none';
 }
 
 // ── Pause menu ───────────────────────────────────────────────────
