@@ -9855,16 +9855,84 @@ function _mnSilhouetteMaskFor(id, W, H) {
     const dw = iw * scale, dh = ih * scale;
     const dx = (W - dw) / 2, dy = (H - dh) / 2;
     octx.drawImage(img, dx, dy, dw, dh);
-    // Convert: dark pixels → keep, bright pixels → transparent.
-    // Threshold matches the windows mask (sum < 200 = silhouette).
+    // Detect SKY pixels (blue-dominant) and clear them — everything else is silhouette.
+    // This catches dark, tan, white, and pastel buildings alike.
     const id2 = octx.getImageData(0, 0, off.width, off.height);
     const data = id2.data;
-    for (let i = 0; i < data.length; i += 4) {
-      const sum = data[i] + data[i+1] + data[i+2];
-      if (sum >= 200) {
-        data[i+3] = 0;  // transparent (sky / water)
+    const Wpx = off.width, Hpx = off.height;
+    // Pass 1: mark sky pixels (blue > red AND blue > green AND fairly bright)
+    const isSky = new Uint8Array(Wpx * Hpx);
+    for (let y = 0; y < Hpx; y++) {
+      for (let x = 0; x < Wpx; x++) {
+        const i = (y * Wpx + x) * 4;
+        const r = data[i], g = data[i+1], b = data[i+2];
+        // Sky: strongly blue-dominant OR bright bluish-white (clouds/haze).
+        // Saturated cyan day sky can have sum~350 (e.g. r=1,g=127,b=230) so allow it.
+        const sum = r + g + b;
+        const isBright = sum > 540;  // very bright (cloud/haze)
+        const isStrongBlue = (b >= 180) && (b > r + 40) && (b > g - 10);  // saturated cyan/blue
+        const isBlueish = (b >= 140) && (b >= r - 15) && (b >= g - 30) && (sum > 360);
+        const skyish = isStrongBlue || isBlueish || (isBright && b > 160);
+        // Also pure dark sky (night): not sky for silhouette purpose, but won't matter day
+        isSky[y * Wpx + x] = skyish ? 1 : 0;
       }
-      // dark pixels keep their original colour & alpha (the silhouettes)
+    }
+    // Pass 2: for each column, find the lowest sky pixel from the top — everything BELOW that is building/ground.
+    // This ensures contiguous silhouettes (no holes in buildings due to windows that look sky-ish).
+    const buildingTop = new Int32Array(Wpx);
+    for (let x = 0; x < Wpx; x++) {
+      let topY = Hpx;
+      // scan from top down: track last consecutive sky row
+      let y = 0;
+      while (y < Hpx && isSky[y * Wpx + x]) y++;
+      topY = y;
+      buildingTop[x] = topY;
+    }
+    // Pass 3a: replace narrow outlier columns (a single column much lower than its wider neighbors).
+    // True tall buildings span multiple columns; clouds/haze that fail the sky test usually don't.
+    // For each column, look at neighbor median in a WIDE window (±15). If this column is much
+    // lower than that median AND not supported by adjacent columns, snap to the wide median.
+    const widePassed = new Int32Array(Wpx);
+    for (let x = 0; x < Wpx; x++) {
+      const a = [];
+      for (let dx = -15; dx <= 15; dx++) {
+        const xx = x + dx;
+        if (xx >= 0 && xx < Wpx) a.push(buildingTop[xx]);
+      }
+      a.sort((p, q) => p - q);
+      const m = a[Math.floor(a.length / 2)];
+      // If this column is much higher than wide-window median (smaller y by >25% of H), and immediate
+      // neighbors aren't also high, treat as outlier.
+      const leftN = x > 0 ? buildingTop[x-1] : buildingTop[x];
+      const rightN = x < Wpx-1 ? buildingTop[x+1] : buildingTop[x];
+      const neighborMin = Math.min(leftN, rightN);
+      if (buildingTop[x] < m - Hpx * 0.2 && neighborMin > m - Hpx * 0.15) {
+        widePassed[x] = m;
+      } else {
+        widePassed[x] = buildingTop[x];
+      }
+    }
+    for (let x = 0; x < Wpx; x++) buildingTop[x] = widePassed[x];
+    // Pass 3b: smooth buildingTop horizontally (median of 9) to ignore tiny sky gaps in buildings
+    const smoothed = new Int32Array(Wpx);
+    for (let x = 0; x < Wpx; x++) {
+      const a = [];
+      for (let dx = -4; dx <= 4; dx++) {
+        const xx = x + dx;
+        if (xx >= 0 && xx < Wpx) a.push(buildingTop[xx]);
+      }
+      a.sort((p, q) => p - q);
+      smoothed[x] = a[Math.floor(a.length / 2)];
+    }
+    // Pass 4: build alpha mask — clear pixel if y < buildingTop[x], else keep.
+    for (let y = 0; y < Hpx; y++) {
+      for (let x = 0; x < Wpx; x++) {
+        const i = (y * Wpx + x) * 4;
+        if (y < smoothed[x]) {
+          data[i+3] = 0;  // transparent sky
+        }
+        // else: keep original pixel (silhouette)
+      }
     }
     octx.putImageData(id2, 0, 0);
     _mnSilhouetteMaskFor._cache[key] = off;
