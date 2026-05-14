@@ -24959,21 +24959,60 @@ function updateHomeSubtitles() {
       activateDevUnlock();
     }
 
-    // Attach 5-tap listener to the red badge circle on title screen
-    document.addEventListener('DOMContentLoaded', function() {
-      var badge = document.querySelector('.title-badge-circle');
-      if (!badge) return;
-      badge.addEventListener('click', function() {
-        tapCount++;
-        clearTimeout(tapTimer);
-        tapTimer = setTimeout(function() { tapCount = 0; }, 1500);
-        if (tapCount >= 5) {
-          tapCount = 0;
-          if (isDevUnlocked()) { deactivateDevUnlock(); }
-          else { activateDevUnlock(); }
+    // Attach 5-tap listener to the home-screen frog logo to toggle dev mode.
+    // Routes through window.devOn/devOff so the dev-chip + dev-strip (PREV/END/NEXT
+    // level controls) actually appear. The previous handler targeted '.title-badge-circle'
+    // which no longer exists in the DOM after the home redesign — so the 5-tap silently
+    // bound to nothing, which is why nothing happened when the user tapped.
+    function _handleDevTap() {
+      tapCount++;
+      clearTimeout(tapTimer);
+      tapTimer = setTimeout(function() { tapCount = 0; }, 1500);
+      if (tapCount >= 5) {
+        tapCount = 0;
+        var nowOn = !isDevUnlocked();
+        if (typeof window.devOn === 'function' && typeof window.devOff === 'function') {
+          if (nowOn) window.devOn(); else window.devOff();
+        } else {
+          if (nowOn) { activateDevUnlock(); } else { deactivateDevUnlock(); }
         }
+        if (nowOn) {
+          try {
+            var allTiers = ['tadpole','treefrog','poisondart','goldenfrog','duopack'];
+            var owned = JSON.parse(localStorage.getItem('ts_owned_tiers') || '[]');
+            allTiers.forEach(function(t) { if (!owned.includes(t)) owned.push(t); });
+            localStorage.setItem('ts_owned_tiers', JSON.stringify(owned));
+            if (typeof updateTrialBanner === 'function') updateTrialBanner();
+          } catch(e) {}
+        }
+      }
+    }
+    function _bindDevTapTargets() {
+      // Bind to whichever home-screen logo element is present. We bind to ALL of them
+      // so the 5-tap works regardless of which version of the home screen is showing.
+      var targets = [
+        '.title-badge-circle',  // legacy
+        '.home-logo-text',      // current CROAKDOWN logo
+        '.home-brand',          // "Red Frog Black" label
+        '.home-frog-hero',      // brand frog image wrapper
+        '.home-frog-hero img',  // brand frog image itself
+        '.home-logo-badge'      // alternate logo container
+      ];
+      targets.forEach(function(sel) {
+        var els = document.querySelectorAll(sel);
+        els.forEach(function(el) {
+          if (el && !el.__devTapBound) {
+            el.__devTapBound = true;
+            el.style.cursor = el.style.cursor || 'pointer';
+            el.addEventListener('click', _handleDevTap);
+          }
+        });
       });
-    });
+    }
+    document.addEventListener('DOMContentLoaded', _bindDevTapTargets);
+    // Also try after a short delay in case the home screen is rendered async
+    setTimeout(_bindDevTapTargets, 1000);
+    setTimeout(_bindDevTapTargets, 3000);
   })();
 
 // ════════════════════════════════════════════════════════════════════
