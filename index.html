@@ -10420,9 +10420,11 @@ function _mnDrawLondonAnimation(ctx, W, H, baseY, id, night, tnow) {
       const sx = (t - 0.20) / 0.52;             // 0..1 across sky
       const ax = Math.PI * sx;                  // 0..π (left → right semicircle)
       const cx = W * (0.10 + 0.80 * sx);        // x sweeps L→R
-      const horizon = H * horizonFrac;          // river/water line
-      const peak    = H * 0.18;                 // top of arc
-      const cy = horizon - (horizon - peak) * Math.sin(ax);
+      // Sun stays in the upper sky band — never dips into the building band.
+      // Top peak 0.12*H at noon, edges 0.28*H at sunrise/sunset.
+      const sunTop    = H * 0.12;
+      const sunBottom = H * 0.28;
+      const cy = sunBottom - (sunBottom - sunTop) * Math.sin(ax);
       // Fade in at rise & out at set so the sun appears to come up through
       // the horizon rather than pop in.
       let alpha = 1;
@@ -10462,10 +10464,13 @@ function _mnDrawLondonAnimation(ctx, W, H, baseY, id, night, tnow) {
                  : -1;
     if (drawProceduralMoon && moonT >= 0 && moonT <= 1) {
       const mx = W * (0.10 + 0.80 * moonT);
-      const horizon = H * horizonFrac;
-      const peak    = H * 0.14;
+      // Moon stays HIGH in the sky — never dips into the building band. The
+      // arc lives in the top 25% of the canvas (peak 0.08*H, edges 0.22*H),
+      // matching the reference look the user approved.
+      const moonTop    = H * 0.08; // highest point at center of arc
+      const moonBottom = H * 0.22; // lowest point at the L/R edges
       const ax = Math.PI * moonT;
-      const my = horizon - (horizon - peak) * Math.sin(ax);
+      const my = moonBottom - (moonBottom - moonTop) * Math.sin(ax);
       let alpha = 1;
       if (moonT < 0.08) alpha = moonT / 0.08;
       else if (moonT > 0.92) alpha = (1 - moonT) / 0.08;
@@ -10490,73 +10495,79 @@ function _mnDrawLondonAnimation(ctx, W, H, baseY, id, night, tnow) {
       }
     }
 
-    // ── Building silhouette over-paint ─────────────────────────────────────
-    // The procedural sun/moon was drawn over the JPEG — which means at the
-    // horizon the disc crosses IN FRONT of Big Ben, the Shard, Tower Bridge
-    // towers, etc. Redraw the dark silhouette mask on top so the city is in
-    // front of the celestial bodies ("sun setting behind the skyline").
-    // The mask is the original JPEG with bright pixels made transparent.
-    // Re-applying the night tint over the mask would re-darken everything;
-    // instead we apply a fresh darkening only to the silhouette pixels so
-    // they match the surrounding night tone.
-    const mask = _mnSilhouetteMaskFor(id, W, H);
-    if (mask) {
-      ctx.save();
-      // Draw the silhouette mask, then darken it to match the current sky phase.
-      // At noon (night=0), don't tint at all. At dusk, warm tint. At full night,
-      // crush to a near-black silhouette so buildings read as dark shapes.
-      ctx.drawImage(mask, 0, 0, W, H);
-      // Now darken only the just-drawn silhouette pixels using 'source-atop'.
-      const _n = (typeof night === 'number') ? night : 0;
-      if (_n > 0.05) {
-        // Phase-based darkening tint:
-        //   night 0.05..0.45 = mild dusk warm tint (preserve light)
-        //   night 0.45..1.00 = strong dark navy multiply (silhouette)
-        ctx.globalCompositeOperation = 'source-atop';
-        if (_n < 0.45) {
-          // Dusk warm tint (gentle)
-          const a = (_n - 0.05) / 0.40 * 0.35;
-          ctx.fillStyle = `rgba(120, 50, 70, ${a})`;
-          ctx.fillRect(0, 0, W, H);
-        } else {
-          // Night: darken silhouette to deep navy but keep building SHAPE readable.
-          // We use 'multiply' (source-atop scope) for a softer crush than alpha-over.
-          const nA = Math.min(1, (_n - 0.45) / 0.50);
-          // Multiply factor: darker as night deepens, but never to pure black.
-          // At noon-side of band: ~rgb(160,170,200). At full night: ~rgb(55,70,110).
-          const mr = Math.round(160 - 105 * nA);
-          const mg = Math.round(170 - 100 * nA);
-          const mb = Math.round(200 -  90 * nA);
-          ctx.globalCompositeOperation = 'multiply';
-          // Need to combine multiply with the source-atop scope set above. Re-apply.
-          ctx.globalCompositeOperation = 'source-atop';
-          // Use a dark blend via alpha-over but with a softer alpha so shapes show.
-          const aDark = 0.45 + 0.30 * nA; // 0.45 .. 0.75 (never full crush)
-          ctx.fillStyle = `rgba(${mr - 60}, ${mg - 65}, ${mb - 80}, ${aDark})`;
-          ctx.fillRect(0, 0, W, H);
-          // Add procedural lit-window dots on the silhouette at deep night.
-          if (nA > 0.15) {
-            ctx.globalCompositeOperation = 'lighter';
-            const winA = Math.min(1, (nA - 0.15) / 0.35) * 1.0;
-            // Stable per-id pseudo-random window grid; subtle flicker via time.
-            const ts = (typeof performance !== 'undefined') ? performance.now() / 1000 : 0;
-            const seed = (id || 'x').charCodeAt(0) * 131 + (id || 'x').length * 17;
-            const rng = (i) => { const s = Math.sin(seed + i * 12.9898) * 43758.5453; return s - Math.floor(s); };
-            for (let i = 0; i < 140; i++) {
-              const u = rng(i);
-              const v = rng(i + 500);
-              const wx = u * W;
-              const wy = 0.40 * H + v * 0.45 * H; // windows live in building band
-              const flicker = 0.50 + 0.50 * Math.sin(ts * (1.2 + rng(i+9) * 2.0) + i * 1.7);
-              const a = winA * flicker;
-              if (a < 0.05) continue;
-              ctx.fillStyle = `rgba(255, 215, 140, ${a})`;
-              ctx.fillRect(wx, wy, 2.2, 2.2);
-            }
+    // ── EVENING window flicker (buildings-only) ─────────────────────────
+    // Reference look (user spec): at evening phase, scattered warm window
+    // lights twinkle on the buildings — but ONLY on buildings, never in the
+    // sky or water. We use the silhouette mask (non-sky pixels) as a clip
+    // region so dots fall exclusively on building/ground areas.
+    //
+    // Phase window: night ~0.55..0.85 (peaks at evening ~0.70). Below 0.55
+    // it's still too bright; above 0.85 we're heading to deep midnight and
+    // the night JPEG already conveys the look — no procedural FX needed.
+    //
+    // We do NOT darken/silhouette the buildings any more — the day/night
+    // JPEG crossfade already handles luminance correctly, and the user
+    // explicitly wants midnight readable, not blacked-out.
+    const _n = (typeof night === 'number') ? night : 0;
+    const flickerPeak = Math.max(0, 1 - Math.abs(_n - 0.70) / 0.20); // 0..1 across 0.50..0.90
+    if (flickerPeak > 0.05) {
+      const mask = _mnSilhouetteMaskFor(id, W, H);
+      if (mask) {
+        ctx.save();
+        // Use mask as a clip: draw mask with destination-in won't work here
+        // because we want to ADD lights, not erase. Instead use an offscreen
+        // pass: draw lights to a temp canvas, then composite via source-in
+        // with the mask to restrict them to building pixels.
+        const off = (typeof document !== 'undefined') ? document.createElement('canvas') : null;
+        if (off) {
+          off.width = W; off.height = H;
+          const oc = off.getContext('2d');
+          // Stable per-city RNG so windows stay in the same spots between frames
+          const seed = (id || 'x').charCodeAt(0) * 131 + (id || 'x').length * 17;
+          const rng = (i) => { const s = Math.sin(seed + i * 12.9898) * 43758.5453; return s - Math.floor(s); };
+          const ts = (typeof performance !== 'undefined') ? performance.now() / 1000 : 0;
+          // ~90 candidate windows in the BUILDING BAND only — above the
+          // horizon (so they never appear on water/river) and below sky.
+          // Per-city horizon fraction matches the JPEG composition.
+          const horizonFrac = _MN_HORIZON_FRAC[id] || 0.66;
+          const bandTop    = 0.30 * H;      // a little below sky top
+          const bandBottom = horizonFrac * H - 4; // stop just above horizon
+          oc.globalCompositeOperation = 'source-over';
+          for (let i = 0; i < 90; i++) {
+            const u = rng(i);
+            const v = rng(i + 500);
+            const wx = u * W;
+            const wy = bandTop + v * (bandBottom - bandTop);
+            // Each window has its own flicker speed + phase so they don't blink in unison
+            const speed = 0.8 + rng(i + 200) * 1.8;
+            const phase = rng(i + 300) * Math.PI * 2;
+            // Most windows are mostly-on with subtle flicker; ~20% strongly twinkle
+            const isTwinkly = rng(i + 400) > 0.80;
+            const base = isTwinkly ? 0.20 : 0.55;
+            const amp  = isTwinkly ? 0.80 : 0.45;
+            const f = base + amp * (0.5 + 0.5 * Math.sin(ts * speed + phase));
+            const a = flickerPeak * f * 0.90;
+            if (a < 0.04) continue;
+            // Slight warm-yellow variation
+            const warm = rng(i + 600);
+            const r = 255;
+            const g = Math.round(210 + 25 * warm);
+            const b = Math.round(120 + 60 * warm);
+            oc.fillStyle = `rgba(${r},${g},${b},${a})`;
+            // Window size: 1.5–2.5px (small, distant city lights)
+            const s = 1.5 + rng(i + 700) * 1.0;
+            oc.fillRect(wx, wy, s, s);
           }
+          // Constrain dots to the mask (buildings only) — source-in keeps only
+          // pixels of the dot canvas that overlap mask pixels.
+          oc.globalCompositeOperation = 'destination-in';
+          oc.drawImage(mask, 0, 0, W, H);
+          // Composite the masked lights additively onto the scene so they glow.
+          ctx.globalCompositeOperation = 'lighter';
+          ctx.drawImage(off, 0, 0);
         }
+        ctx.restore();
       }
-      ctx.restore();
     }
   }
 
