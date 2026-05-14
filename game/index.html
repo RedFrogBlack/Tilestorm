@@ -9855,84 +9855,16 @@ function _mnSilhouetteMaskFor(id, W, H) {
     const dw = iw * scale, dh = ih * scale;
     const dx = (W - dw) / 2, dy = (H - dh) / 2;
     octx.drawImage(img, dx, dy, dw, dh);
-    // Detect SKY pixels (blue-dominant) and clear them — everything else is silhouette.
-    // This catches dark, tan, white, and pastel buildings alike.
+    // Convert: dark pixels → keep, bright pixels → transparent.
+    // Threshold matches the windows mask (sum < 200 = silhouette).
     const id2 = octx.getImageData(0, 0, off.width, off.height);
     const data = id2.data;
-    const Wpx = off.width, Hpx = off.height;
-    // Pass 1: mark sky pixels (blue > red AND blue > green AND fairly bright)
-    const isSky = new Uint8Array(Wpx * Hpx);
-    for (let y = 0; y < Hpx; y++) {
-      for (let x = 0; x < Wpx; x++) {
-        const i = (y * Wpx + x) * 4;
-        const r = data[i], g = data[i+1], b = data[i+2];
-        // Sky: strongly blue-dominant OR bright bluish-white (clouds/haze).
-        // Saturated cyan day sky can have sum~350 (e.g. r=1,g=127,b=230) so allow it.
-        const sum = r + g + b;
-        const isBright = sum > 540;  // very bright (cloud/haze)
-        const isStrongBlue = (b >= 180) && (b > r + 40) && (b > g - 10);  // saturated cyan/blue
-        const isBlueish = (b >= 140) && (b >= r - 15) && (b >= g - 30) && (sum > 360);
-        const skyish = isStrongBlue || isBlueish || (isBright && b > 160);
-        // Also pure dark sky (night): not sky for silhouette purpose, but won't matter day
-        isSky[y * Wpx + x] = skyish ? 1 : 0;
+    for (let i = 0; i < data.length; i += 4) {
+      const sum = data[i] + data[i+1] + data[i+2];
+      if (sum >= 200) {
+        data[i+3] = 0;  // transparent (sky / water)
       }
-    }
-    // Pass 2: for each column, find the lowest sky pixel from the top — everything BELOW that is building/ground.
-    // This ensures contiguous silhouettes (no holes in buildings due to windows that look sky-ish).
-    const buildingTop = new Int32Array(Wpx);
-    for (let x = 0; x < Wpx; x++) {
-      let topY = Hpx;
-      // scan from top down: track last consecutive sky row
-      let y = 0;
-      while (y < Hpx && isSky[y * Wpx + x]) y++;
-      topY = y;
-      buildingTop[x] = topY;
-    }
-    // Pass 3a: replace narrow outlier columns (a single column much lower than its wider neighbors).
-    // True tall buildings span multiple columns; clouds/haze that fail the sky test usually don't.
-    // For each column, look at neighbor median in a WIDE window (±15). If this column is much
-    // lower than that median AND not supported by adjacent columns, snap to the wide median.
-    const widePassed = new Int32Array(Wpx);
-    for (let x = 0; x < Wpx; x++) {
-      const a = [];
-      for (let dx = -15; dx <= 15; dx++) {
-        const xx = x + dx;
-        if (xx >= 0 && xx < Wpx) a.push(buildingTop[xx]);
-      }
-      a.sort((p, q) => p - q);
-      const m = a[Math.floor(a.length / 2)];
-      // If this column is much higher than wide-window median (smaller y by >25% of H), and immediate
-      // neighbors aren't also high, treat as outlier.
-      const leftN = x > 0 ? buildingTop[x-1] : buildingTop[x];
-      const rightN = x < Wpx-1 ? buildingTop[x+1] : buildingTop[x];
-      const neighborMin = Math.min(leftN, rightN);
-      if (buildingTop[x] < m - Hpx * 0.2 && neighborMin > m - Hpx * 0.15) {
-        widePassed[x] = m;
-      } else {
-        widePassed[x] = buildingTop[x];
-      }
-    }
-    for (let x = 0; x < Wpx; x++) buildingTop[x] = widePassed[x];
-    // Pass 3b: smooth buildingTop horizontally (median of 9) to ignore tiny sky gaps in buildings
-    const smoothed = new Int32Array(Wpx);
-    for (let x = 0; x < Wpx; x++) {
-      const a = [];
-      for (let dx = -4; dx <= 4; dx++) {
-        const xx = x + dx;
-        if (xx >= 0 && xx < Wpx) a.push(buildingTop[xx]);
-      }
-      a.sort((p, q) => p - q);
-      smoothed[x] = a[Math.floor(a.length / 2)];
-    }
-    // Pass 4: build alpha mask — clear pixel if y < buildingTop[x], else keep.
-    for (let y = 0; y < Hpx; y++) {
-      for (let x = 0; x < Wpx; x++) {
-        const i = (y * Wpx + x) * 4;
-        if (y < smoothed[x]) {
-          data[i+3] = 0;  // transparent sky
-        }
-        // else: keep original pixel (silhouette)
-      }
+      // dark pixels keep their original colour & alpha (the silhouettes)
     }
     octx.putImageData(id2, 0, 0);
     _mnSilhouetteMaskFor._cache[key] = off;
@@ -10420,11 +10352,9 @@ function _mnDrawLondonAnimation(ctx, W, H, baseY, id, night, tnow) {
       const sx = (t - 0.20) / 0.52;             // 0..1 across sky
       const ax = Math.PI * sx;                  // 0..π (left → right semicircle)
       const cx = W * (0.10 + 0.80 * sx);        // x sweeps L→R
-      // Sun stays in the upper sky band — never dips into the building band.
-      // Top peak 0.12*H at noon, edges 0.28*H at sunrise/sunset.
-      const sunTop    = H * 0.12;
-      const sunBottom = H * 0.28;
-      const cy = sunBottom - (sunBottom - sunTop) * Math.sin(ax);
+      const horizon = H * horizonFrac;          // river/water line
+      const peak    = H * 0.18;                 // top of arc
+      const cy = horizon - (horizon - peak) * Math.sin(ax);
       // Fade in at rise & out at set so the sun appears to come up through
       // the horizon rather than pop in.
       let alpha = 1;
@@ -10464,13 +10394,10 @@ function _mnDrawLondonAnimation(ctx, W, H, baseY, id, night, tnow) {
                  : -1;
     if (drawProceduralMoon && moonT >= 0 && moonT <= 1) {
       const mx = W * (0.10 + 0.80 * moonT);
-      // Moon stays HIGH in the sky — never dips into the building band. The
-      // arc lives in the top 25% of the canvas (peak 0.08*H, edges 0.22*H),
-      // matching the reference look the user approved.
-      const moonTop    = H * 0.08; // highest point at center of arc
-      const moonBottom = H * 0.22; // lowest point at the L/R edges
+      const horizon = H * horizonFrac;
+      const peak    = H * 0.14;
       const ax = Math.PI * moonT;
-      const my = moonBottom - (moonBottom - moonTop) * Math.sin(ax);
+      const my = horizon - (horizon - peak) * Math.sin(ax);
       let alpha = 1;
       if (moonT < 0.08) alpha = moonT / 0.08;
       else if (moonT > 0.92) alpha = (1 - moonT) / 0.08;
@@ -10495,104 +10422,33 @@ function _mnDrawLondonAnimation(ctx, W, H, baseY, id, night, tnow) {
       }
     }
 
-    // ── EVENING window flicker (buildings-only) ─────────────────────────
-    // Reference look (user spec): at evening phase, scattered warm window
-    // lights twinkle on the buildings — but ONLY on buildings, never in the
-    // sky or water. We use the silhouette mask (non-sky pixels) as a clip
-    // region so dots fall exclusively on building/ground areas.
-    //
-    // Phase window: night ~0.55..0.85 (peaks at evening ~0.70). Below 0.55
-    // it's still too bright; above 0.85 we're heading to deep midnight and
-    // the night JPEG already conveys the look — no procedural FX needed.
-    //
-    // We do NOT darken/silhouette the buildings any more — the day/night
-    // JPEG crossfade already handles luminance correctly, and the user
-    // explicitly wants midnight readable, not blacked-out.
-    const _n = (typeof night === 'number') ? night : 0;
-    const flickerPeak = Math.max(0, 1 - Math.abs(_n - 0.70) / 0.20); // 0..1 across 0.50..0.90
-    if (flickerPeak > 0.05) {
-      const mask = _mnSilhouetteMaskFor(id, W, H);
-      if (mask) {
-        ctx.save();
-        // Use mask as a clip: draw mask with destination-in won't work here
-        // because we want to ADD lights, not erase. Instead use an offscreen
-        // pass: draw lights to a temp canvas, then composite via source-in
-        // with the mask to restrict them to building pixels.
-        const off = (typeof document !== 'undefined') ? document.createElement('canvas') : null;
-        if (off) {
-          off.width = W; off.height = H;
-          const oc = off.getContext('2d');
-          // Stable per-city RNG so windows stay in the same spots between frames
-          const seed = (id || 'x').charCodeAt(0) * 131 + (id || 'x').length * 17;
-          const rng = (i) => { const s = Math.sin(seed + i * 12.9898) * 43758.5453; return s - Math.floor(s); };
-          const ts = (typeof performance !== 'undefined') ? performance.now() / 1000 : 0;
-          // ~90 candidate windows in the BUILDING BAND only — above the
-          // horizon (so they never appear on water/river) and below sky.
-          // Per-city horizon fraction matches the JPEG composition.
-          const horizonFrac = _MN_HORIZON_FRAC[id] || 0.66;
-          const bandTop    = 0.30 * H;      // a little below sky top
-          const bandBottom = horizonFrac * H - 4; // stop just above horizon
-          oc.globalCompositeOperation = 'source-over';
-          for (let i = 0; i < 90; i++) {
-            const u = rng(i);
-            const v = rng(i + 500);
-            const wx = u * W;
-            const wy = bandTop + v * (bandBottom - bandTop);
-            // Each window has its own flicker speed + phase so they don't blink in unison
-            const speed = 0.8 + rng(i + 200) * 1.8;
-            const phase = rng(i + 300) * Math.PI * 2;
-            // Most windows are mostly-on with subtle flicker; ~20% strongly twinkle
-            const isTwinkly = rng(i + 400) > 0.80;
-            const base = isTwinkly ? 0.20 : 0.55;
-            const amp  = isTwinkly ? 0.80 : 0.45;
-            const f = base + amp * (0.5 + 0.5 * Math.sin(ts * speed + phase));
-            const a = flickerPeak * f * 0.90;
-            if (a < 0.04) continue;
-            // Slight warm-yellow variation
-            const warm = rng(i + 600);
-            const r = 255;
-            const g = Math.round(210 + 25 * warm);
-            const b = Math.round(120 + 60 * warm);
-            oc.fillStyle = `rgba(${r},${g},${b},${a})`;
-            // Window size: 1.5–2.5px (small, distant city lights)
-            const s = 1.5 + rng(i + 700) * 1.0;
-            oc.fillRect(wx, wy, s, s);
-          }
-          // Constrain dots to the mask (buildings only) — source-in keeps only
-          // pixels of the dot canvas that overlap mask pixels.
-          oc.globalCompositeOperation = 'destination-in';
-          oc.drawImage(mask, 0, 0, W, H);
-          // Composite the masked lights additively onto the scene so they glow.
-          ctx.globalCompositeOperation = 'lighter';
-          ctx.drawImage(off, 0, 0);
-        }
-        ctx.restore();
-      }
+    // ── Building silhouette over-paint ─────────────────────────────────────
+    // The procedural sun/moon was drawn over the JPEG — which means at the
+    // horizon the disc crosses IN FRONT of Big Ben, the Shard, Tower Bridge
+    // towers, etc. Redraw the dark silhouette mask on top so the city is in
+    // front of the celestial bodies ("sun setting behind the skyline").
+    // The mask is the original JPEG with bright pixels made transparent.
+    // Re-applying the night tint over the mask would re-darken everything;
+    // instead we apply a fresh darkening only to the silhouette pixels so
+    // they match the surrounding night tone.
+    const mask = _mnSilhouetteMaskFor(id, W, H);
+    if (mask) {
+      ctx.save();
+      ctx.drawImage(mask, 0, 0, W, H);
+      ctx.restore();
     }
   }
 
-  // ── Water shimmer: subtle horizontal streaks drifting in ONE direction ──
-  // Previously the streaks moved sinusoidally (back-and-forth) which looked
-  // like a glitchy line oscillating across the bridge. Real water reflections
-  // flow in one direction; we now wrap each streak monotonically L→R and fade
-  // it in/out over its travel so the loop is invisible.
+  // ── Water shimmer: a few horizontal highlight streaks that drift slowly ──
   const waterTop = H * horizonFrac;
   ctx.save();
   ctx.globalCompositeOperation = 'lighter';
   for (let i = 0; i < 6; i++) {
-    // Monotonic phase 0..1 that wraps; each streak offset so they don't all
-    // appear at once. Slow drift (full traverse ≈ 14s).
-    const phase = ((tnow * 0.07 + i * 0.37) % 1 + 1) % 1;
-    const y = waterTop + (H - waterTop) * (0.18 + i * 0.13);
-    // Travel across slightly more than the full width so streaks enter from
-    // the left edge and exit past the right edge.
-    const dx = phase * (W + 60) - 30;
-    const len = W * 0.18;
-    // Fade in at start and out at end of the traverse so we never see the
-    // streak suddenly pop or vanish.
-    const ease = Math.min(1, phase / 0.15) * Math.min(1, (1 - phase) / 0.15);
-    const alpha = (night > 0.5 ? 0.18 : 0.14) * ease;
-    if (alpha < 0.01) continue;
+    const phase = (tnow * 0.15 + i * 0.37) % 1;
+    const y = waterTop + (H - waterTop) * (0.1 + i * 0.14);
+    const dx = (Math.sin(tnow * 0.6 + i) * 0.5 + 0.5) * W * 0.6;
+    const len = W * (0.15 + 0.08 * Math.sin(tnow * 0.5 + i * 2));
+    const alpha = (night > 0.5 ? 0.22 : 0.18) * (1 - phase * 0.4);
     const grad = ctx.createLinearGradient(dx, y, dx + len, y);
     const tint = night > 0.5 ? '255, 220, 150' : '255, 255, 255';
     grad.addColorStop(0,   `rgba(${tint}, 0)`);
@@ -25054,46 +24910,21 @@ function updateHomeSubtitles() {
       activateDevUnlock();
     }
 
-    // Attach 5-tap listener to the red brand frog on the title screen.
-    // Selector list covers the old `.title-badge-circle` and the current
-    // `.home-frog-hero` element (and its inner img) so dev unlock works on
-    // any version of the home layout.
-    function _attachDevTaps() {
-      var targets = [];
-      // Only bind ONE selector per visual element — if we bind both div and inner img,
-      // a click on img triggers BOTH listeners (img directly + parent via bubble) and
-      // double-counts taps, breaking the 5-tap toggle.
-      ['.title-badge-circle', '.home-frog-hero', '.home-logo-badge']
-        .forEach(function(sel) {
-          document.querySelectorAll(sel).forEach(function(el) { if (targets.indexOf(el) < 0) targets.push(el); });
-        });
-      if (!targets.length) return false;
-      targets.forEach(function(el) {
-        if (el.__devTapBound) return;
-        el.__devTapBound = true;
-        el.style.cursor = el.style.cursor || 'pointer';
-        el.addEventListener('click', function(ev) {
-          tapCount++;
-          clearTimeout(tapTimer);
-          tapTimer = setTimeout(function() { tapCount = 0; }, 1500);
-          if (tapCount >= 5) {
-            tapCount = 0;
-            if (isDevUnlocked()) { deactivateDevUnlock(); }
-            else { activateDevUnlock(); }
-            try { if (typeof showToast === 'function') showToast(isDevUnlocked() ? '⚡ DEV MODE ON' : 'DEV MODE OFF'); } catch(_){}
-          }
-        }, { passive: true });
+    // Attach 5-tap listener to the red badge circle on title screen
+    document.addEventListener('DOMContentLoaded', function() {
+      var badge = document.querySelector('.title-badge-circle');
+      if (!badge) return;
+      badge.addEventListener('click', function() {
+        tapCount++;
+        clearTimeout(tapTimer);
+        tapTimer = setTimeout(function() { tapCount = 0; }, 1500);
+        if (tapCount >= 5) {
+          tapCount = 0;
+          if (isDevUnlocked()) { deactivateDevUnlock(); }
+          else { activateDevUnlock(); }
+        }
       });
-      return true;
-    }
-    // Try immediately, on DOMContentLoaded, and again after a short delay
-    // in case the home screen is rendered asynchronously.
-    if (!_attachDevTaps()) {
-      document.addEventListener('DOMContentLoaded', _attachDevTaps);
-      setTimeout(_attachDevTaps, 500);
-      setTimeout(_attachDevTaps, 1500);
-      setTimeout(_attachDevTaps, 3000);
-    }
+    });
   })();
 
 // ════════════════════════════════════════════════════════════════════
