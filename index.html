@@ -8460,11 +8460,14 @@ function revealCitySkyline(city) {
     overlay.classList.add('show');
     // Force layout flush so the opaque overlay is painted this frame.
     void overlay.offsetHeight;
+    // Resolve EARLY (while overlay is still fully opaque) so the caller can
+    // start the game + init the sky engine BEHIND the overlay. The overlay
+    // stays up for the full 2s, then fades out — by which time the new city
+    // is fully painted underneath, so there's no empty red-board flash.
+    setTimeout(resolve, 50);
     setTimeout(() => {
-      // Restore the CSS-driven fade for the OUT transition.
       overlay.classList.remove('instant-show');
       overlay.classList.remove('show');
-      setTimeout(resolve, 400);
     }, 2000);
   });
 }
