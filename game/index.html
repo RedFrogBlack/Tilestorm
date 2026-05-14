@@ -15670,20 +15670,26 @@ function drawGrid(){
         if (fogAlpha > 0.02) {
           const x = c * CELL, y = r * CELL;
           ctx.save();
-          ctx.globalAlpha = Math.min(fogAlpha * (_isMysticPond ? 0.95 : 0.88), 0.98);
-          const fg = ctx.createRadialGradient(x+CELL/2, y+CELL/2, 0, x+CELL/2, y+CELL/2, CELL*0.9);
+          ctx.globalAlpha = Math.min(fogAlpha * (_isMysticPond ? 1.15 : 0.88), 1.0);
+          const fg = ctx.createRadialGradient(x+CELL/2, y+CELL/2, 0, x+CELL/2, y+CELL/2, CELL*1.0);
           if (_isMysticPond) {
-            // THICK white/grey fog — dense center, soft feather to edge
-            fg.addColorStop(0,   'rgba(250,252,255,0.96)');
-            fg.addColorStop(0.5, 'rgba(220,225,232,0.82)');
-            fg.addColorStop(1,   'rgba(195,205,215,0.42)');
+            // OPAQUE white/grey fog — fully hides tiles underneath, soft only at extreme edge
+            fg.addColorStop(0,    'rgba(248,250,253,1.00)');
+            fg.addColorStop(0.75, 'rgba(228,233,240,1.00)');
+            fg.addColorStop(0.92, 'rgba(210,218,228,0.95)');
+            fg.addColorStop(1,    'rgba(200,210,222,0.70)');
           } else {
             fg.addColorStop(0, 'rgba(120,200,100,0.9)');
             fg.addColorStop(0.5, 'rgba(80,140,80,0.7)');
             fg.addColorStop(1, 'rgba(40,80,60,0.5)');
           }
           ctx.fillStyle = fg;
-          ctx.beginPath(); ctx.roundRect(x+1, y+1, CELL-2, CELL-2, 3); ctx.fill();
+          if (_isMysticPond) {
+            // Fill full cell with slight overdraw so neighboring fogged cells merge seamlessly
+            ctx.fillRect(x-1, y-1, CELL+2, CELL+2);
+          } else {
+            ctx.beginPath(); ctx.roundRect(x+1, y+1, CELL-2, CELL-2, 3); ctx.fill();
+          }
           // Rare frog-eye blink in dense fog (skip in Mystic Pond — wrong vibe)
           if (!_isMysticPond && fogAlpha > 0.5 && Math.random() < 0.001) {
             ctx.globalAlpha = 0.6;
@@ -15703,12 +15709,13 @@ function drawGrid(){
       for (const p of cm_fogPatches) {
         const px = p.x * CELL + CELL/2;
         const py = p.y * CELL + CELL/2;
-        const pr = (p.radius || (COLS * 0.25)) * CELL * 1.05;
+        const pr = (p.radius || (COLS * 0.25)) * CELL * 1.25;
         const bg = ctx.createRadialGradient(px, py, 1, px, py, pr);
-        bg.addColorStop(0,   'rgba(252,253,255,0.55)');
-        bg.addColorStop(0.5, 'rgba(230,235,242,0.32)');
-        bg.addColorStop(0.9, 'rgba(210,218,228,0.10)');
-        bg.addColorStop(1,   'rgba(200,210,220,0)');
+        bg.addColorStop(0,    'rgba(250,252,255,0.95)');
+        bg.addColorStop(0.45, 'rgba(238,242,248,0.78)');
+        bg.addColorStop(0.75, 'rgba(222,228,236,0.45)');
+        bg.addColorStop(0.92, 'rgba(210,218,228,0.15)');
+        bg.addColorStop(1,    'rgba(200,210,220,0)');
         ctx.fillStyle = bg;
         ctx.beginPath(); ctx.arc(px, py, pr, 0, Math.PI*2); ctx.fill();
       }
@@ -22002,23 +22009,33 @@ function _fogAdvancePatches(fogCfg) {
 }
 
 function _fogUpdateTileAlpha(maxCoverage) {
+  // maxCoverage controls the AREA of fog (how far patches reach), not its density.
+  // Inside a patch, fog is fully opaque so tiles underneath are completely hidden.
+  // We use a wider effective radius (scaled by sqrt(maxCoverage)) and a steep
+  // alpha curve: nearly 1.0 across most of the patch, soft only at the very edge.
   for (let r = 0; r < ROWS; r++) {
     for (let c = 0; c < COLS; c++) {
       let maxAlpha = 0;
       for (const p of cm_fogPatches) {
         const dx = c - p.x, dy = r - p.y;
         const dist = Math.sqrt(dx * dx + dy * dy);
-        const rad = p.radius || (COLS * 0.25);
+        // Effective radius scales with coverage so LV10 fog reaches further than LV1
+        const baseRad = p.radius || (COLS * 0.25);
+        const rad = baseRad * (0.85 + maxCoverage * 0.9);
         let alpha;
         if (p.behaviour === 'flash' && (p.flashTimer || 0) > 0) {
-          alpha = dist < rad * 1.5 ? 0.95 : 0;
+          alpha = dist < rad * 1.5 ? 1.0 : 0;
         } else {
-          alpha = Math.max(0, 1 - dist / rad);
+          // Steep falloff: full opacity for the inner ~70%, soft feather over outer 30%
+          const t = dist / rad;
+          if (t <= 0.7) alpha = 1.0;
+          else if (t >= 1.0) alpha = 0;
+          else alpha = 1.0 - ((t - 0.7) / 0.3); // linear feather from 1.0 → 0
         }
         maxAlpha = Math.max(maxAlpha, alpha);
       }
-      const target = Math.min(maxAlpha, maxCoverage * 1.4);
-      cm_fogTileAlpha[r][c] = cm_fogTileAlpha[r][c] * 0.7 + target * 0.3;
+      // Smooth temporal transition so fog drifts in/out, not pops
+      cm_fogTileAlpha[r][c] = cm_fogTileAlpha[r][c] * 0.78 + maxAlpha * 0.22;
     }
   }
 }
