@@ -7513,6 +7513,12 @@ let _pondLastRipple = 0, _pondLastSplash = 0;
 let _frenzyRain = [], _frenzyWindStreaks = [], _frenzyDebris = [], _frenzyLightningTimer = 0, _frenzyLightning = null;
 // Golden ambient state
 let _goldenSandParticles = [], _goldenStars = [], _goldenShimmer = [];
+// Fog LV1 Mystic Pond ambient state — quiet morning pond, koi beneath surface,
+// swaying underwater vegetation, edge dragonflies, hopping corner frog.
+let _fogLv1Seaweed = [], _fogLv1Koi = [], _fogLv1Ripples = [], _fogLv1Dragonflies = [], _fogLv1LotusPads = [];
+let _fogLv1FrogHop = null;        // { from:idx, to:idx, start:ms, dur:ms, nextAt:ms }
+let _fogLv1StartTS = 0;            // for board fade-in on level entry
+let _fogLv1LastRipple = 0;
 
 function _skyLerp(a,b,t){return a+(b-a)*t;}
 function _skyClamp(v,lo,hi){return Math.max(lo,Math.min(hi,v));}
@@ -7984,6 +7990,41 @@ function _ambientInit(W, H) {
   _goldenStars = Array.from({length:20}, () => ({ x:rand(0,W), y:rand(0,H*0.5), r:rand(0.4,1.2), phase:rand(0,Math.PI*2), speed:rand(0.01,0.025) }));
   _goldenShimmer = Array.from({length:5}, (_, i) => ({ y:H*0.62 + i*8, phase:rand(0,Math.PI*2), speed:rand(0.006,0.015), alpha:rand(0.06,0.14) }));
 
+  // Fog LV1 Mystic Pond — quiet morning pond beneath the board
+  _fogLv1Seaweed = Array.from({length:7}, () => ({
+    x:rand(W*0.05, W*0.95),
+    baseY:H,
+    h:rand(H*0.18, H*0.34),
+    sway:rand(0.018, 0.032),
+    phase:rand(0, Math.PI*2),
+    width:rand(2.2, 3.4),
+    hue:rand(0,1) // 0=mossy, 1=teal
+  }));
+  _fogLv1Koi = [
+    { y01:0.34, speed:0.32, size:1.0,  phase:0.0, dir: 1, color:'rgba(220,90,60,0.55)',  belly:'rgba(255,235,210,0.45)' },
+    { y01:0.58, speed:0.22, size:0.85, phase:1.8, dir:-1, color:'rgba(245,160,70,0.55)', belly:'rgba(255,240,210,0.45)' },
+    { y01:0.78, speed:0.28, size:1.1,  phase:3.3, dir: 1, color:'rgba(70,110,150,0.50)', belly:'rgba(220,230,245,0.40)' },
+  ];
+  for (const k of _fogLv1Koi) { k.x = rand(-W*0.2, W*0.2) + (k.dir>0 ? -W*0.3 : W*1.3); }
+  _fogLv1Ripples = []; _fogLv1LastRipple = 0;
+  _fogLv1Dragonflies = Array.from({length:2}, () => ({
+    edgeSide: Math.random()<0.5 ? 'top' : (Math.random()<0.5 ? 'left' : 'right'),
+    t01: Math.random(),
+    speed: rand(0.0009, 0.0016),
+    bob: rand(3, 7),
+    bobFreq: rand(0.04, 0.07),
+    wing: rand(0, Math.PI*2),
+  }));
+  // 4 lily pads in bottom-right corner for the frog hopper
+  _fogLv1LotusPads = [
+    { x:W*0.78, y:H*0.74, r:18, hasFlower:true,  fc:'#ffb0d0' },
+    { x:W*0.90, y:H*0.82, r:16, hasFlower:false },
+    { x:W*0.72, y:H*0.90, r:20, hasFlower:true,  fc:'#fff4a0' },
+    { x:W*0.86, y:H*0.95, r:15, hasFlower:false },
+  ];
+  _fogLv1FrogHop = { from:0, to:1, start: performance.now(), dur:850, nextAt: performance.now() + 3500 };
+  _fogLv1StartTS = performance.now();
+
   _ambientInitialized = true;
 }
 
@@ -8008,10 +8049,9 @@ function _ambientDraw(timestamp) {
   if (activeChallengeMode === 'standard') {
     _drawPondAmbient(ctx, W, H, rand, lerp);
   } else if (activeChallengeMode === 'fog' && ((cm_fogLevel|0) === 1)) {
-    // Fog LV1 Mystic Pond: reuse the animated Tadpole pond (day/night cycle,
-    // lily pads, dragonflies, ripples). Matches the approved flat-vector mockup
-    // tone via the warm-cream fog tile tint applied later in drawGrid.
-    _drawPondAmbient(ctx, W, H, rand, lerp);
+    // Fog LV1 Mystic Pond — quiet morning pond, koi beneath surface, swaying
+    // vegetation, edge dragonflies, hopping corner frog. Pure procedural.
+    _drawMysticPondAmbient(ctx, W, H, rand, lerp);
   } else if (activeChallengeMode === 'frenzy') {
     _drawFrenzyAmbient(ctx, W, H, rand, lerp);
   } else if (activeChallengeMode === 'colourrun') {
@@ -8193,6 +8233,301 @@ function _drawPondAmbient(ctx, W, H, rand, lerp) {
       ctx.beginPath(); ctx.ellipse(-1,2,wf,1.6,0.35,0,Math.PI*2); ctx.fill();
       ctx.restore();
     }
+  }
+}
+
+// ──────────────────────────────────────────────────────────────────
+// Fog LV1 — Mystic Pond ambient.
+// Pure procedural canvas (no images). Quiet morning pond beneath the
+// board: soft light, ripples, swaying underwater vegetation, koi
+// drifting below the surface, dragonflies on the outer edge, a small
+// frog mascot hopping across lily pads in the bottom-right corner.
+// Board fades in over ~1.2s on first draw of the level.
+// ──────────────────────────────────────────────────────────────────
+function _drawMysticPondAmbient(ctx, W, H, rand, lerp) {
+  const t = _ambientT;
+  const now = performance.now();
+  if (!_fogLv1StartTS) _fogLv1StartTS = now;
+  const fadeIn = Math.min(1, (now - _fogLv1StartTS) / 1200);
+
+  // 1. Soft morning water gradient
+  //    Top: pale cool teal where the surface meets soft morning light.
+  //    Bottom: deeper murky teal-green where vegetation rises from the bed.
+  const sg = ctx.createLinearGradient(0, 0, 0, H);
+  sg.addColorStop(0,    '#cfe6dd');
+  sg.addColorStop(0.35, '#9ec9bd');
+  sg.addColorStop(0.7,  '#5e9a90');
+  sg.addColorStop(1,    '#2f5a55');
+  ctx.fillStyle = sg; ctx.fillRect(0, 0, W, H);
+
+  // 2. Soft morning light — cream sun-glow patch top-left, drifting slowly.
+  const lx = W * (0.18 + 0.04*Math.sin(t*0.004));
+  const ly = H * 0.10;
+  const lg = ctx.createRadialGradient(lx, ly, 5, lx, ly, Math.max(W,H)*0.65);
+  lg.addColorStop(0,   'rgba(255,248,220,0.55)');
+  lg.addColorStop(0.4, 'rgba(255,238,200,0.18)');
+  lg.addColorStop(1,   'rgba(255,235,200,0)');
+  ctx.fillStyle = lg; ctx.fillRect(0, 0, W, H);
+
+  // 3. Surface caustics — a few faint horizontal shimmer bands drifting down.
+  ctx.save();
+  ctx.globalCompositeOperation = 'soft-light';
+  for (let i = 0; i < 5; i++) {
+    const yy = (((t*0.6 + i*72) % (H + 30)) - 15);
+    const a  = 0.10 + 0.05*Math.sin(t*0.013 + i);
+    ctx.globalAlpha = a;
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, yy, W, 1.4);
+  }
+  ctx.restore();
+
+  // 4. Underwater vegetation — swaying seaweed strands from the pond bed.
+  ctx.save();
+  ctx.lineCap = 'round';
+  for (const sw of _fogLv1Seaweed) {
+    const segs = 6;
+    const baseSwayX = Math.sin(t*sw.sway + sw.phase) * 14;
+    const mossy = `rgba(${Math.round(40 + sw.hue*20)},${Math.round(90 + sw.hue*30)},${Math.round(70 + sw.hue*40)},0.55)`;
+    ctx.strokeStyle = mossy;
+    ctx.lineWidth = sw.width;
+    ctx.beginPath();
+    ctx.moveTo(sw.x, sw.baseY);
+    for (let i = 1; i <= segs; i++) {
+      const f = i / segs;
+      const dx = sw.x + Math.sin(t*sw.sway + sw.phase + f*2.4) * (baseSwayX * f);
+      const dy = sw.baseY - sw.h * f;
+      ctx.lineTo(dx, dy);
+    }
+    ctx.stroke();
+    // tiny leaf tip
+    const tipF = 1;
+    const tipX = sw.x + Math.sin(t*sw.sway + sw.phase + tipF*2.4) * baseSwayX;
+    const tipY = sw.baseY - sw.h;
+    ctx.fillStyle = mossy;
+    ctx.beginPath(); ctx.ellipse(tipX, tipY, 2.2, 4, 0, 0, Math.PI*2); ctx.fill();
+  }
+  ctx.restore();
+
+  // 5. Water ripples — spawn at random points every ~900–1600ms, expand & fade.
+  if (now - _fogLv1LastRipple > 900 + Math.random()*700) {
+    _fogLv1LastRipple = now;
+    _fogLv1Ripples.push({
+      x: W * (0.15 + Math.random()*0.7),
+      y: H * (0.20 + Math.random()*0.7),
+      start: now,
+      maxR: 28 + Math.random()*22,
+      dur: 1800 + Math.random()*600,
+    });
+  }
+  // Draw + cull ripples
+  for (let i = _fogLv1Ripples.length - 1; i >= 0; i--) {
+    const r = _fogLv1Ripples[i];
+    const p = (now - r.start) / r.dur;
+    if (p >= 1) { _fogLv1Ripples.splice(i, 1); continue; }
+    const rad = r.maxR * p;
+    const a = (1 - p) * 0.45;
+    ctx.save();
+    ctx.globalAlpha = a;
+    ctx.strokeStyle = 'rgba(255,255,255,0.9)';
+    ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.arc(r.x, r.y, rad, 0, Math.PI*2); ctx.stroke();
+    ctx.globalAlpha = a * 0.5;
+    ctx.beginPath(); ctx.arc(r.x, r.y, rad*0.7, 0, Math.PI*2); ctx.stroke();
+    ctx.restore();
+  }
+
+  // 6. Koi swimming SLOWLY beneath the surface (low alpha, blurred feel).
+  ctx.save();
+  ctx.globalCompositeOperation = 'source-over';
+  for (const k of _fogLv1Koi) {
+    k.x += k.speed * k.dir;
+    const offRight =  W * 1.4, offLeft = -W * 0.4;
+    if (k.dir > 0 && k.x > offRight) k.x = offLeft;
+    if (k.dir < 0 && k.x < offLeft)  k.x = offRight;
+    const yy = H * k.y01 + Math.sin(t*0.018 + k.phase) * 10;
+    const len = 46 * k.size;
+    const hgt = 16 * k.size;
+    ctx.save();
+    ctx.translate(k.x, yy);
+    ctx.scale(k.dir, 1);
+    // soft underwater shadow
+    ctx.globalAlpha = 0.35;
+    ctx.fillStyle = 'rgba(0,30,40,0.45)';
+    ctx.beginPath(); ctx.ellipse(2, 3, len*0.55, hgt*0.55, 0, 0, Math.PI*2); ctx.fill();
+    // body
+    ctx.globalAlpha = 1;
+    ctx.fillStyle = k.color;
+    ctx.beginPath(); ctx.ellipse(0, 0, len*0.5, hgt*0.5, 0, 0, Math.PI*2); ctx.fill();
+    // belly highlight
+    ctx.fillStyle = k.belly;
+    ctx.beginPath(); ctx.ellipse(2, 2, len*0.32, hgt*0.22, 0, 0, Math.PI*2); ctx.fill();
+    // tail
+    const tailWiggle = Math.sin(t*0.18 + k.phase) * 0.35;
+    ctx.fillStyle = k.color;
+    ctx.beginPath();
+    ctx.moveTo(-len*0.45, 0);
+    ctx.quadraticCurveTo(-len*0.75, -hgt*0.6 + tailWiggle*4, -len*0.85, -hgt*0.35);
+    ctx.quadraticCurveTo(-len*0.62, 0, -len*0.85, hgt*0.35);
+    ctx.quadraticCurveTo(-len*0.75, hgt*0.6 - tailWiggle*4, -len*0.45, 0);
+    ctx.closePath(); ctx.fill();
+    ctx.restore();
+  }
+  ctx.restore();
+
+  // 7. Dragonflies on the OUTER EDGE of the board — occasional crossings.
+  for (const d of _fogLv1Dragonflies) {
+    d.t01 += d.speed;
+    if (d.t01 > 1.15) {
+      d.t01 = -0.15;
+      const sides = ['top','left','right'];
+      d.edgeSide = sides[Math.floor(Math.random()*sides.length)];
+      d.speed = 0.0009 + Math.random()*0.0007;
+    }
+    let dx, dy;
+    const margin = 14;
+    if (d.edgeSide === 'top') {
+      dx = d.t01 * W;
+      dy = margin + Math.sin(t*d.bobFreq) * d.bob;
+    } else if (d.edgeSide === 'left') {
+      dx = margin + Math.sin(t*d.bobFreq) * d.bob;
+      dy = d.t01 * H;
+    } else {
+      dx = W - margin + Math.sin(t*d.bobFreq) * d.bob;
+      dy = d.t01 * H;
+    }
+    if (dx < -20 || dx > W+20 || dy < -20 || dy > H+20) continue;
+    const dir = (d.edgeSide === 'left') ? 1 : (d.edgeSide === 'right' ? -1 : 1);
+    const wf = Math.sin(t*0.7 + d.wing)*1.8 + 5;
+    ctx.save();
+    ctx.translate(dx, dy);
+    ctx.scale(dir, 1);
+    ctx.globalAlpha = 0.75;
+    ctx.fillStyle = 'rgba(90,180,170,0.85)';
+    ctx.beginPath(); ctx.ellipse(0, 0, 4, 1.1, 0, 0, Math.PI*2); ctx.fill();
+    ctx.fillStyle = 'rgba(220,250,255,0.35)';
+    ctx.beginPath(); ctx.ellipse(-1, -2.2, wf, 1.8, -0.35, 0, Math.PI*2); ctx.fill();
+    ctx.beginPath(); ctx.ellipse(-1,  2.2, wf, 1.8,  0.35, 0, Math.PI*2); ctx.fill();
+    ctx.restore();
+  }
+
+  // 8. Lily pads in bottom-right corner (frog’s landing spots).
+  for (let i = 0; i < _fogLv1LotusPads.length; i++) {
+    const lp = _fogLv1LotusPads[i];
+    const bob = Math.sin(t*0.020 + i*1.3) * 1.6;
+    const ly = lp.y + bob;
+    // shadow under pad
+    ctx.save();
+    ctx.globalAlpha = 0.25;
+    ctx.fillStyle = 'rgba(0,20,30,0.7)';
+    ctx.beginPath(); ctx.ellipse(lp.x+2, ly+3, lp.r*0.95, lp.r*0.45, 0, 0, Math.PI*2); ctx.fill();
+    ctx.restore();
+    // pad with notch (matches Tadpole pond style)
+    ctx.fillStyle = 'rgba(38,108,62,0.95)';
+    ctx.strokeStyle = 'rgba(80,160,90,0.55)';
+    ctx.lineWidth = 1.1;
+    ctx.beginPath(); ctx.moveTo(lp.x, ly);
+    ctx.arc(lp.x, ly, lp.r, -Math.PI/2 + 0.36, -Math.PI/2 - 0.36 + Math.PI*2);
+    ctx.closePath();
+    ctx.fill(); ctx.stroke();
+    // veins
+    ctx.save();
+    ctx.globalAlpha = 0.28;
+    ctx.strokeStyle = 'rgba(130,210,140,0.7)';
+    ctx.lineWidth = 0.8;
+    for (let v = 0; v < 5; v++) {
+      const ang = -Math.PI/2 + (v-2)*0.34;
+      ctx.beginPath();
+      ctx.moveTo(lp.x, ly);
+      ctx.lineTo(lp.x + Math.cos(ang)*lp.r*0.92, ly + Math.sin(ang)*lp.r*0.5);
+      ctx.stroke();
+    }
+    ctx.restore();
+    // flower
+    if (lp.hasFlower) {
+      const fp = 0.85 + 0.15*Math.sin(t*0.04 + i);
+      ctx.save(); ctx.globalAlpha = fp * 0.95;
+      for (let p = 0; p < 5; p++) {
+        const ang = (p/5) * Math.PI*2;
+        ctx.fillStyle = lp.fc;
+        ctx.beginPath();
+        ctx.ellipse(lp.x + Math.cos(ang)*4.5, ly - 5 + Math.sin(ang)*2.6, 3.2, 2.2, ang, 0, Math.PI*2);
+        ctx.fill();
+      }
+      ctx.beginPath(); ctx.arc(lp.x, ly - 5, 2.2, 0, Math.PI*2);
+      ctx.fillStyle = '#ffd966'; ctx.fill();
+      ctx.restore();
+    }
+  }
+
+  // 9. Frog mascot — hops across lily pads on a 6–8s cycle.
+  if (_fogLv1FrogHop) {
+    const hop = _fogLv1FrogHop;
+    let p = (now - hop.start) / hop.dur;
+    let resting = false;
+    if (p >= 1) {
+      p = 1;
+      resting = true;
+      if (now >= hop.nextAt) {
+        // pick a new destination (not the same as current)
+        const padCount = _fogLv1LotusPads.length;
+        let next = (hop.to + 1 + Math.floor(Math.random()*(padCount-1))) % padCount;
+        if (next === hop.to) next = (hop.to + 1) % padCount;
+        hop.from = hop.to;
+        hop.to = next;
+        hop.start = now;
+        hop.dur = 750 + Math.random()*300;
+        hop.nextAt = now + hop.dur + 2800 + Math.random()*2000;
+      }
+    }
+    const a = _fogLv1LotusPads[hop.from];
+    const b = _fogLv1LotusPads[hop.to];
+    // linear x/y interpolation + parabolic arc lift
+    const lerpV = (x,y,tt)=>x+(y-x)*tt;
+    const fx = lerpV(a.x, b.x, p);
+    const fy = lerpV(a.y, b.y, p) - Math.sin(p * Math.PI) * 26; // arc height
+    // brief splash on landing
+    if (resting && (now - hop.start) < hop.dur + 80 && (now - hop.start) > hop.dur - 40) {
+      _fogLv1Ripples.push({ x:b.x, y:b.y + 4, start: now, maxR: 14, dur: 700 });
+    }
+    // shadow on water below the frog
+    ctx.save();
+    ctx.globalAlpha = 0.30 * (1 - Math.sin(p*Math.PI)*0.7);
+    ctx.fillStyle = 'rgba(0,20,30,0.6)';
+    const groundY = lerpV(a.y, b.y, p) + 6;
+    ctx.beginPath(); ctx.ellipse(fx, groundY, 9, 3, 0, 0, Math.PI*2); ctx.fill();
+    ctx.restore();
+    // frog body — small simple red frog (no eyes detail at this scale)
+    const facing = (b.x >= a.x) ? 1 : -1;
+    ctx.save();
+    ctx.translate(fx, fy);
+    ctx.scale(facing, 1);
+    // body
+    ctx.fillStyle = '#c12d2d';
+    ctx.beginPath(); ctx.ellipse(0, 0, 8, 6, 0, 0, Math.PI*2); ctx.fill();
+    // back-leg tuck (compressed mid-air)
+    const legSpread = resting ? 1 : (0.6 + 0.4*Math.cos(p*Math.PI));
+    ctx.beginPath(); ctx.ellipse(-5, 3, 4*legSpread, 2.4, 0.4, 0, Math.PI*2); ctx.fill();
+    ctx.beginPath(); ctx.ellipse( 5, 3, 4*legSpread, 2.4, -0.4, 0, Math.PI*2); ctx.fill();
+    // black polka-dots (signature)
+    ctx.fillStyle = '#1a1a1a';
+    ctx.beginPath(); ctx.arc(-2, -2, 1, 0, Math.PI*2); ctx.fill();
+    ctx.beginPath(); ctx.arc( 2,  1, 0.9, 0, Math.PI*2); ctx.fill();
+    ctx.beginPath(); ctx.arc( 4, -1, 0.7, 0, Math.PI*2); ctx.fill();
+    // eye
+    ctx.fillStyle = '#fff';
+    ctx.beginPath(); ctx.arc(3.5, -3, 1.5, 0, Math.PI*2); ctx.fill();
+    ctx.fillStyle = '#000';
+    ctx.beginPath(); ctx.arc(4, -3, 0.8, 0, Math.PI*2); ctx.fill();
+    ctx.restore();
+  }
+
+  // 10. Board fade-in on level entry — white wash that retreats.
+  if (fadeIn < 1) {
+    ctx.save();
+    ctx.globalAlpha = 1 - fadeIn;
+    ctx.fillStyle = 'rgba(245,248,240,1)';
+    ctx.fillRect(0, 0, W, H);
+    ctx.restore();
   }
 }
 
