@@ -8427,6 +8427,18 @@ function revealCitySkyline(city) {
     if (!overlay) { resolve(); return; }
     nameEl.textContent = city.emoji + '  ' + city.name;
     noteEl.textContent = city.note;
+    // Clear the previous city's visuals BEFORE the overlay fades in, so the
+    // brief 0.35s fade doesn't show the old skyline bleeding through the
+    // semi-opaque overlay. Without this, players see a flash of the old city.
+    try {
+      gridMask = null;
+      if (typeof _skyReset === 'function') _skyReset();
+      // Also wipe the grid canvas immediately so nothing is left behind.
+      if (typeof gridCanvas !== 'undefined' && gridCanvas) {
+        const _gctx = gridCanvas.getContext('2d');
+        if (_gctx) _gctx.clearRect(0, 0, gridCanvas.width, gridCanvas.height);
+      }
+    } catch(_e) {}
     overlay.classList.add('show');
     setTimeout(() => { overlay.classList.remove('show'); setTimeout(resolve, 400); }, 2000);
   });
