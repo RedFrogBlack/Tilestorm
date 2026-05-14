@@ -5858,10 +5858,10 @@
 <style>
   #city-reveal-overlay {
     position:fixed; inset:0; z-index:9998;
-    background:rgba(0,0,0,0.92);
+    background:#000;
     display:flex; align-items:center; justify-content:center; flex-direction:column;
     opacity:0; pointer-events:none;
-    transition:opacity 0.35s ease;
+    transition:opacity 0.18s ease;
   }
   #city-reveal-overlay.show { opacity:1; pointer-events:auto; animation: cityRevealIn 0.4s ease forwards; }
   @keyframes cityRevealIn { from{opacity:0;transform:scale(0.93)} to{opacity:1;transform:scale(1)} }
@@ -8427,20 +8427,32 @@ function revealCitySkyline(city) {
     if (!overlay) { resolve(); return; }
     nameEl.textContent = city.emoji + '  ' + city.name;
     noteEl.textContent = city.note;
-    // Clear the previous city's visuals BEFORE the overlay fades in, so the
-    // brief 0.35s fade doesn't show the old skyline bleeding through the
-    // semi-opaque overlay. Without this, players see a flash of the old city.
+    // Snap overlay to fully opaque BEFORE any browser paint, so the previous
+    // city is never visible during the level switch. We disable the CSS fade
+    // transition for the show, then re-enable it for the eventual fade-out.
+    overlay.style.transition = 'none';
+    overlay.style.opacity = '1';
+    overlay.classList.add('show');
+    // Clear the previous city's visuals immediately. Even though the overlay
+    // hides them, this prevents the rAF render loop from continuing to paint
+    // the old skyline + grid while the overlay is up.
     try {
       gridMask = null;
       if (typeof _skyReset === 'function') _skyReset();
-      // Also wipe the grid canvas immediately so nothing is left behind.
       if (typeof gridCanvas !== 'undefined' && gridCanvas) {
         const _gctx = gridCanvas.getContext('2d');
         if (_gctx) _gctx.clearRect(0, 0, gridCanvas.width, gridCanvas.height);
       }
     } catch(_e) {}
-    overlay.classList.add('show');
-    setTimeout(() => { overlay.classList.remove('show'); setTimeout(resolve, 400); }, 2000);
+    // Force a layout flush so the opaque overlay is painted this frame.
+    void overlay.offsetHeight;
+    setTimeout(() => {
+      // Restore the CSS-driven fade for the OUT transition.
+      overlay.style.transition = '';
+      overlay.style.opacity = '';
+      overlay.classList.remove('show');
+      setTimeout(resolve, 400);
+    }, 2000);
   });
 }
 
