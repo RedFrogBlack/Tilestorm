@@ -7990,20 +7990,25 @@ function _ambientInit(W, H) {
   _goldenStars = Array.from({length:20}, () => ({ x:rand(0,W), y:rand(0,H*0.5), r:rand(0.4,1.2), phase:rand(0,Math.PI*2), speed:rand(0.01,0.025) }));
   _goldenShimmer = Array.from({length:5}, (_, i) => ({ y:H*0.62 + i*8, phase:rand(0,Math.PI*2), speed:rand(0.006,0.015), alpha:rand(0.06,0.14) }));
 
-  // Fog LV1 Mystic Pond — quiet morning pond beneath the board
-  _fogLv1Seaweed = Array.from({length:7}, () => ({
+  // Fog LV1 Mystic Pond — quiet morning pond beneath the board.
+  // IMPORTANT: ambient elements (seaweed, koi, water lilies) are kept LOW-CONTRAST
+  // and SHORT so they read as background, not gameplay pieces. The play grid is
+  // 10×10 cells; ambient pond life lives mostly in the bottom ~1.5 rows or
+  // swims at very low alpha so tiles stay clearly readable.
+  _fogLv1Seaweed = Array.from({length:5}, () => ({
     x:rand(W*0.05, W*0.95),
     baseY:H,
-    h:rand(H*0.18, H*0.34),
+    h:rand(H*0.08, H*0.16),  // was 0.18-0.34 — cut in half so seaweed stays in bottom strip
     sway:rand(0.018, 0.032),
     phase:rand(0, Math.PI*2),
-    width:rand(2.2, 3.4),
-    hue:rand(0,1) // 0=mossy, 1=teal
+    width:rand(1.6, 2.4),    // thinner blades
+    hue:rand(0,1)            // 0=mossy, 1=teal
   }));
+  // Koi swim at reduced alpha so they don't compete with tiles
   _fogLv1Koi = [
-    { y01:0.34, speed:0.32, size:1.0,  phase:0.0, dir: 1, color:'rgba(220,90,60,0.55)',  belly:'rgba(255,235,210,0.45)' },
-    { y01:0.58, speed:0.22, size:0.85, phase:1.8, dir:-1, color:'rgba(245,160,70,0.55)', belly:'rgba(255,240,210,0.45)' },
-    { y01:0.78, speed:0.28, size:1.1,  phase:3.3, dir: 1, color:'rgba(70,110,150,0.50)', belly:'rgba(220,230,245,0.40)' },
+    { y01:0.34, speed:0.32, size:1.0,  phase:0.0, dir: 1, color:'rgba(220,90,60,0.32)',  belly:'rgba(255,235,210,0.28)' },
+    { y01:0.58, speed:0.22, size:0.85, phase:1.8, dir:-1, color:'rgba(245,160,70,0.32)', belly:'rgba(255,240,210,0.28)' },
+    { y01:0.78, speed:0.28, size:1.1,  phase:3.3, dir: 1, color:'rgba(70,110,150,0.30)', belly:'rgba(220,230,245,0.25)' },
   ];
   for (const k of _fogLv1Koi) { k.x = rand(-W*0.2, W*0.2) + (k.dir>0 ? -W*0.3 : W*1.3); }
   _fogLv1Ripples = []; _fogLv1LastRipple = 0;
@@ -8017,10 +8022,12 @@ function _ambientInit(W, H) {
   }));
   // 4 lily pads in bottom-right corner for the frog hopper
   _fogLv1LotusPads = [
-    { x:W*0.78, y:H*0.74, r:18, hasFlower:true,  fc:'#ffb0d0' },
-    { x:W*0.90, y:H*0.82, r:16, hasFlower:false },
-    { x:W*0.72, y:H*0.90, r:20, hasFlower:true,  fc:'#fff4a0' },
-    { x:W*0.86, y:H*0.95, r:15, hasFlower:false },
+    // Pushed to extreme bottom (y ≥ 0.88) so they sit in the decorative
+    // strip below the play grid, not over playable cells.
+    { x:W*0.78, y:H*0.92, r:14, hasFlower:true,  fc:'#ffb0d0' },
+    { x:W*0.90, y:H*0.96, r:12, hasFlower:false },
+    { x:W*0.62, y:H*0.94, r:15, hasFlower:true,  fc:'#fff4a0' },
+    { x:W*0.40, y:H*0.97, r:11, hasFlower:false },
   ];
   _fogLv1FrogHop = { from:0, to:1, start: performance.now(), dur:850, nextAt: performance.now() + 3500 };
   _fogLv1StartTS = performance.now();
@@ -15058,18 +15065,29 @@ function _drawPondTile(r,c,colorIdx,alpha,glow,gold) {
   ctx.save();
   ctx.globalAlpha = alpha;
 
-  // Soft water highlight halo behind every piece (so the board reads as water)
+  // STRONG cell-base disc — anchors the tile visually to its grid cell so it
+  // clearly reads as a placed game piece, not as background pond decoration.
   if (!gold) {
-    const halo = ctx.createRadialGradient(cx, cyy+1, 1, cx, cyy+1, radius*1.25);
-    halo.addColorStop(0, 'rgba(255,255,255,0.18)');
-    halo.addColorStop(1, 'rgba(255,255,255,0)');
+    // Outer halo (soft water glow)
+    const halo = ctx.createRadialGradient(cx, cyy+1, 1, cx, cyy+1, radius*1.45);
+    halo.addColorStop(0,    'rgba(255,255,255,0.28)');
+    halo.addColorStop(0.55, 'rgba(255,255,255,0.10)');
+    halo.addColorStop(1,    'rgba(255,255,255,0)');
     ctx.fillStyle = halo;
-    ctx.beginPath(); ctx.arc(cx, cyy+2, radius*1.25, 0, Math.PI*2); ctx.fill();
+    ctx.beginPath(); ctx.arc(cx, cyy+1, radius*1.45, 0, Math.PI*2); ctx.fill();
+    // Inner cell disc — darker teal water cup the tile sits in.
+    // Brings instant cell separation from the background.
+    const cup = ctx.createRadialGradient(cx, cyy, radius*0.2, cx, cyy, radius*1.08);
+    cup.addColorStop(0,    'rgba(35, 70, 80, 0.35)');
+    cup.addColorStop(0.75, 'rgba(20, 50, 60, 0.28)');
+    cup.addColorStop(1,    'rgba(20, 50, 60, 0)');
+    ctx.fillStyle = cup;
+    ctx.beginPath(); ctx.arc(cx, cyy, radius*1.08, 0, Math.PI*2); ctx.fill();
   }
-  // Drop shadow on water
-  ctx.fillStyle = 'rgba(0,30,40,0.32)';
+  // Drop shadow on water (deeper so it lifts off the surface)
+  ctx.fillStyle = 'rgba(0,30,40,0.42)';
   ctx.beginPath();
-  ctx.ellipse(cx+1, cyy + radius*0.78, radius*0.92, radius*0.32, 0, 0, Math.PI*2);
+  ctx.ellipse(cx+1, cyy + radius*0.78, radius*0.95, radius*0.34, 0, 0, Math.PI*2);
   ctx.fill();
 
   // Map color → piece kind. We accept colorIdx as either a hex string
@@ -21752,17 +21770,19 @@ function initChallengeMode() {
     // Coverage values are the per-cell alpha CAP (effective % "can't see"); patches
     // is the number of concurrent drifting blobs. LV1 is light (~15-20% feel) but
     // visibly present — the user can see most of the board; LV10 is heavy (~80%).
+    // Difficulty curve: LV1 is a gentle warm-up, LV10 is brutal.
+    // patchSize is multiplied with COLS to set patch radius — LV1 is tiny.
     const FOG_LEVELS = [
-      { name:'Mystic Pond',        coverage:0.22, speed:0.55, patches:2, behaviour:'drift_lr' },
-      { name:'Scottish Moors',     coverage:0.32, speed:0.55, patches:2, behaviour:'swirl' },
-      { name:'Scottish Highlands', coverage:0.42, speed:0.60, patches:3, behaviour:'independent' },
-      { name:'Mediterranean Sea',  coverage:0.52, speed:0.65, patches:3, behaviour:'opposite' },
-      { name:'Coral Reef',         coverage:0.58, speed:0.70, patches:3, behaviour:'pulse' },
-      { name:'Amazon',             coverage:0.64, speed:0.75, patches:4, behaviour:'random' },
-      { name:'Sahara Night',       coverage:0.68, speed:0.80, patches:4, behaviour:'flash' },
-      { name:'Arctic',             coverage:0.72, speed:0.90, patches:5, behaviour:'fast_swirl' },
-      { name:'Deep Ocean',         coverage:0.76, speed:0.95, patches:5, behaviour:'smothered' },
-      { name:'Above the Clouds',   coverage:0.80, speed:1.00, patches:6, behaviour:'chase' },
+      { name:'Mystic Pond',        coverage:0.10, speed:1.30, patches:2, patchSize:0.18, behaviour:'drift_lr' },
+      { name:'Scottish Moors',     coverage:0.18, speed:1.20, patches:2, patchSize:0.22, behaviour:'swirl' },
+      { name:'Scottish Highlands', coverage:0.28, speed:1.10, patches:3, patchSize:0.24, behaviour:'independent' },
+      { name:'Mediterranean Sea',  coverage:0.40, speed:1.00, patches:3, patchSize:0.28, behaviour:'opposite' },
+      { name:'Coral Reef',         coverage:0.50, speed:0.95, patches:3, patchSize:0.30, behaviour:'pulse' },
+      { name:'Amazon',             coverage:0.58, speed:0.90, patches:4, patchSize:0.32, behaviour:'random' },
+      { name:'Sahara Night',       coverage:0.64, speed:0.85, patches:4, patchSize:0.34, behaviour:'flash' },
+      { name:'Arctic',             coverage:0.70, speed:0.80, patches:5, patchSize:0.36, behaviour:'fast_swirl' },
+      { name:'Deep Ocean',         coverage:0.75, speed:0.75, patches:5, patchSize:0.38, behaviour:'smothered' },
+      { name:'Above the Clouds',   coverage:0.80, speed:0.70, patches:6, patchSize:0.40, behaviour:'chase' },
     ];
     const fogCfg = FOG_LEVELS[Math.min(cm_fogLevel - 1, 9)];
     cm_fogTileAlpha = Array.from({length:ROWS}, () => new Array(COLS).fill(0));
@@ -21771,7 +21791,7 @@ function initChallengeMode() {
       y: Math.random() * ROWS,
       vx: (Math.random() > 0.5 ? 1 : -1) * fogCfg.speed * (0.5 + Math.random() * 0.5),
       vy: (Math.random() > 0.5 ? 0.3 : -0.3) * fogCfg.speed,
-      radius: COLS * 0.32 + i * 0.4,
+      radius: COLS * fogCfg.patchSize + i * 0.2,
       behaviour: fogCfg.behaviour,
       phase: i * Math.PI * 0.6,
       flashTimer: 0,
