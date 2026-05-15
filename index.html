@@ -8070,6 +8070,14 @@ function _ambientDraw(timestamp) {
     const lvl = (cm_frenzyLevel|0);
     if(lvl >= 1 && lvl <= 10){
       _drawForestBiome(ctx, W, H, rand, lerp, lvl);
+      // Day/night + season overlay on the rendered scene
+      if(typeof _tfApplyPhaseAndSeason === 'function'){
+        _tfApplyPhaseAndSeason(ctx, W, H, lvl);
+      }
+      // Advance hazard state once per ambient frame
+      if(typeof _tfTickHazard === 'function'){
+        _tfTickHazard();
+      }
     } else {
       _drawMysticForestAmbient(ctx, W, H, rand, lerp);
     }
@@ -10854,6 +10862,523 @@ function _getForestTheme(lvl){
   }
 }
 
+// ═════════════════════════════════════════════════════════════════
+//  TREE FROG DAY/NIGHT + SEASON SYSTEM
+// ═════════════════════════════════════════════════════════════════
+// Each level rotates through day → dusk → night → dawn over ~80s real-time.
+// Season is fixed per level (each forest gets its own signature season).
+function _tfGetSeason(lvl){
+  // Map: each level has a signature season for variety across the run.
+  const map = ['summer','spring','autumn','spring','summer','autumn','summer','spring','winter','autumn'];
+  return map[Math.min(Math.max(lvl-1,0),9)];
+}
+// Returns {name, t01, tint:[r,g,b,a], darkness:0..0.7}
+function _tfGetPhase(){
+  // 80s full cycle. Use real wall-clock so it advances even when paused-then-resumed.
+  const cycleSec = 80;
+  const now = (typeof performance !== 'undefined' && performance.now) ? performance.now()/1000 : Date.now()/1000;
+  const u = (now % cycleSec) / cycleSec;  // 0..1
+  // 4 phases, each 25% of cycle: dawn(0-0.25) day(0.25-0.5) dusk(0.5-0.75) night(0.75-1)
+  let name, tint, darkness;
+  if(u < 0.25){
+    const k = u/0.25; // 0..1
+    name = 'dawn';
+    // Warm pink-orange wash, lightens
+    tint = [255, 180+30*k, 150+40*k, 0.20*(1-k)+0.10*k];
+    darkness = 0.18*(1-k);
+  } else if(u < 0.50){
+    name = 'day';
+    tint = [255, 250, 230, 0.05];
+    darkness = 0;
+  } else if(u < 0.75){
+    const k = (u-0.5)/0.25;
+    name = 'dusk';
+    // Warm orange → deep amber
+    tint = [240, 150+30*(1-k), 90+30*(1-k), 0.10+0.18*k];
+    darkness = 0.10 + 0.30*k;
+  } else {
+    const k = (u-0.75)/0.25;
+    name = 'night';
+    // Deep blue-violet
+    tint = [40, 50, 110, 0.30+0.15*(1-Math.abs(k-0.5)*2)];
+    darkness = 0.55 - 0.10*Math.abs(k-0.5)*2;  // mid-night darkest
+  }
+  return {name, t01:u, tint, darkness};
+}
+
+// Apply phase + season overlay over the rendered forest scene
+function _tfApplyPhaseAndSeason(ctx, W, H, lvl){
+  const phase = _tfGetPhase();
+  const season = _tfGetSeason(lvl);
+
+  // 1) Darkness overlay (night-darkening)
+  if(phase.darkness > 0.001){
+    ctx.save();
+    ctx.globalCompositeOperation = 'multiply';
+    const k = 1 - phase.darkness;
+    ctx.fillStyle = `rgba(${Math.round(120+135*k)},${Math.round(120+135*k)},${Math.round(140+115*k)},1)`;
+    ctx.fillRect(0,0,W,H);
+    ctx.restore();
+  }
+  // 2) Tint wash (warm dawn/dusk / cool night)
+  ctx.save();
+  ctx.globalCompositeOperation = 'overlay';
+  ctx.fillStyle = `rgba(${phase.tint[0]},${phase.tint[1]},${phase.tint[2]},${phase.tint[3]})`;
+  ctx.fillRect(0,0,W,H);
+  ctx.restore();
+
+  // 3) Season effect (snow in winter, petals in spring, leaves in autumn, heat shimmer in summer)
+  const t = (typeof _ambientT === 'number') ? _ambientT : 0;
+  if(season === 'winter'){
+    // Cold blue wash + slow snowflakes drifting
+    ctx.save();
+    ctx.globalCompositeOperation = 'overlay';
+    ctx.fillStyle = 'rgba(180,210,235,0.18)';
+    ctx.fillRect(0,0,W,H);
+    ctx.restore();
+    if(!_tfSeasonParticles) _tfSeasonParticles = [];
+    if(_tfSeasonParticles.length < 80){
+      for(let i=_tfSeasonParticles.length;i<80;i++){
+        _tfSeasonParticles.push({x:Math.random()*W,y:Math.random()*H,r:1+Math.random()*2.5,vx:Math.random()*0.4-0.2,vy:0.4+Math.random()*0.8,phase:Math.random()*Math.PI*2});
+      }
+    }
+    ctx.save();
+    ctx.fillStyle = 'rgba(245,250,255,0.85)';
+    for(const p of _tfSeasonParticles){
+      p.x += p.vx + Math.sin(t*0.02+p.phase)*0.3;
+      p.y += p.vy;
+      if(p.y>H) p.y=-5;
+      if(p.x<-5) p.x=W+5; else if(p.x>W+5) p.x=-5;
+      ctx.beginPath(); ctx.arc(p.x,p.y,p.r,0,Math.PI*2); ctx.fill();
+    }
+    ctx.restore();
+  } else if(season === 'spring'){
+    // Pink cherry petals drifting
+    if(!_tfSeasonParticles) _tfSeasonParticles = [];
+    if(_tfSeasonParticles.length < 40){
+      for(let i=_tfSeasonParticles.length;i<40;i++){
+        _tfSeasonParticles.push({x:Math.random()*W,y:Math.random()*H,r:1.5+Math.random()*2,vx:0.3+Math.random()*0.5,vy:0.3+Math.random()*0.5,rot:Math.random()*Math.PI*2,rotV:0.02});
+      }
+    }
+    ctx.save();
+    for(const p of _tfSeasonParticles){
+      p.x += p.vx + Math.sin(t*0.015+p.rot)*0.4;
+      p.y += p.vy;
+      p.rot += p.rotV;
+      if(p.y>H) p.y=-5;
+      if(p.x>W+5) p.x=-5;
+      ctx.save(); ctx.translate(p.x,p.y); ctx.rotate(p.rot);
+      ctx.fillStyle = 'rgba(255,200,215,0.75)';
+      ctx.beginPath(); ctx.ellipse(0,0,p.r*1.8,p.r*0.9,0,0,Math.PI*2); ctx.fill();
+      ctx.restore();
+    }
+    ctx.restore();
+  } else if(season === 'autumn'){
+    // Warm orange tint + drifting autumn leaves
+    ctx.save();
+    ctx.globalCompositeOperation = 'overlay';
+    ctx.fillStyle = 'rgba(220,140,60,0.10)';
+    ctx.fillRect(0,0,W,H);
+    ctx.restore();
+    if(!_tfSeasonParticles) _tfSeasonParticles = [];
+    if(_tfSeasonParticles.length < 30){
+      for(let i=_tfSeasonParticles.length;i<30;i++){
+        _tfSeasonParticles.push({x:Math.random()*W,y:Math.random()*H,r:2.5+Math.random()*2.5,vx:0.4+Math.random()*0.6,vy:0.5+Math.random()*0.8,rot:Math.random()*Math.PI*2,rotV:0.04*(Math.random()-0.5),hue:Math.floor(Math.random()*3)});
+      }
+    }
+    ctx.save();
+    for(const p of _tfSeasonParticles){
+      p.x += p.vx + Math.sin(t*0.02+p.rot)*0.6;
+      p.y += p.vy;
+      p.rot += p.rotV;
+      if(p.y>H) p.y=-5;
+      if(p.x>W+5) p.x=-5;
+      ctx.save(); ctx.translate(p.x,p.y); ctx.rotate(p.rot);
+      const colors = ['rgba(220,120,40,0.80)','rgba(190,70,30,0.78)','rgba(230,170,60,0.78)'];
+      ctx.fillStyle = colors[p.hue];
+      ctx.beginPath(); ctx.ellipse(0,0,p.r*1.5,p.r*0.7,0,0,Math.PI*2); ctx.fill();
+      ctx.restore();
+    }
+    ctx.restore();
+  } else if(season === 'summer'){
+    // Warm golden wash + occasional firefly glow at dusk/night
+    ctx.save();
+    ctx.globalCompositeOperation = 'overlay';
+    ctx.fillStyle = 'rgba(255,220,140,0.06)';
+    ctx.fillRect(0,0,W,H);
+    ctx.restore();
+  }
+}
+let _tfSeasonParticles = null;
+
+// ═════════════════════════════════════════════════════════════════
+//  TREE FROG HAZARD ENGINE — drifting clouds (Fog-style opacity)
+// ═════════════════════════════════════════════════════════════════
+// Each level has 1+ hazard 'cloud' that drifts across the board.
+// Opacity model matches Fog the Frog: opaque core + smooth feathered edges.
+// Some hazards block placement (water, fire, fog, bugs); some only obscure
+// vision; some shake the board.
+let _tfHazardPatches = [];          // array of patches like cm_fogPatches
+let _tfHazardCfg = null;            // current level's hazard config
+let _tfHazardTileAlpha = [];        // [r][c] per-cell opacity 0..1
+let _tfHazardLvlInited = -1;
+let _tfHazardTickAccum = 0;         // 60fps accumulator
+let _tfShakeAmp = 0;                // current board shake amplitude (LV9/10)
+let _tfWaterRiseRows = 0;           // current flooded rows from bottom (LV5/10)
+let _tfWaterTargetRows = 0;
+let _tfLightningTimer = 0;          // frames until next lightning flash
+let _tfLightningFlash = 0;          // flash brightness 0..1, decays
+
+function _tfGetHazardCfg(lvl){
+  // kind controls visual style. blocks=true means placement blocked under opaque core.
+  // patches/size/speed mimic FOG_LEVELS structure.
+  // Each level: gentle to intense.
+  switch(lvl){
+    case 1:  return { kind:'butterflies', name:'Butterfly Drift', patches:1, baseRadius:4.5, speed:0.060, blocks:false, color:[255,180,210], cycleSec:14, activeSec:9 };
+    case 2:  return { kind:'leaves',      name:'Leaf Gust',       patches:1, baseRadius:5.0, speed:0.075, blocks:false, color:[230,200,150], cycleSec:13, activeSec:9 };
+    case 3:  return { kind:'pollen',      name:'Pollen Cloud',    patches:1, baseRadius:5.5, speed:0.060, blocks:false, color:[250,220,130], cycleSec:13, activeSec:10 };
+    case 4:  return { kind:'bugs',        name:'Bug Swarm',       patches:1, baseRadius:5.5, speed:0.075, blocks:true,  color:[120,90,60],   cycleSec:12, activeSec:9 };
+    case 5:  return { kind:'water',       name:'Rising Water',    patches:0, baseRadius:0,   speed:0,     blocks:true,  color:[80,140,200],  cycleSec:14, activeSec:8, maxRiseRows:4 };
+    case 6:  return { kind:'fog',         name:'Drifting Fog',    patches:2, baseRadius:4.8, speed:0.075, blocks:true,  color:[220,225,230], cycleSec:11, activeSec:9 };
+    case 7:  return { kind:'fire',        name:'Wildfire',        patches:2, baseRadius:4.5, speed:0.070, blocks:true,  color:[240,100,40],  cycleSec:11, activeSec:9 };
+    case 8:  return { kind:'fog_shake',   name:'Cloud Tremor',    patches:2, baseRadius:5.0, speed:0.085, blocks:true,  color:[230,235,240], cycleSec:10, activeSec:9, shakeAmp:3 };
+    case 9:  return { kind:'tornado',     name:'Tornado',         patches:1, baseRadius:6.0, speed:0.110, blocks:true,  color:[100,90,80],   cycleSec:10, activeSec:9, shakeAmp:6 };
+    case 10: return { kind:'combo',       name:'Eye of the Storm',patches:2, baseRadius:5.5, speed:0.100, blocks:true,  color:[80,90,140],   cycleSec:9,  activeSec:10, shakeAmp:4, maxRiseRows:3, lightning:true };
+  }
+  return null;
+}
+
+function _tfInitHazard(lvl){
+  _tfHazardCfg = _tfGetHazardCfg(lvl);
+  _tfHazardLvlInited = lvl;
+  _tfHazardPatches = [];
+  _tfHazardTileAlpha = (typeof ROWS !== 'undefined' && typeof COLS !== 'undefined')
+    ? Array.from({length:ROWS}, () => new Array(COLS).fill(0))
+    : [];
+  _tfHazardTickAccum = 0;
+  _tfShakeAmp = 0;
+  _tfWaterRiseRows = 0;
+  _tfWaterTargetRows = 0;
+  _tfLightningTimer = 0;
+  _tfLightningFlash = 0;
+}
+
+function _tfSpawnHazardPatches(){
+  if(!_tfHazardCfg || _tfHazardCfg.patches <= 0) return;
+  const cfg = _tfHazardCfg;
+  _tfHazardPatches = Array.from({length:cfg.patches}, (_, i) => {
+    // Start off-board so they drift in
+    const fromLeft = Math.random() < 0.5;
+    return {
+      x: fromLeft ? -cfg.baseRadius : COLS + cfg.baseRadius,
+      y: ROWS * (0.35 + Math.random()*0.35),
+      vx: (fromLeft ? 1 : -1) * cfg.speed,
+      vy: (Math.random()-0.5) * cfg.speed * 0.3,
+      baseRadius: cfg.baseRadius * (0.85 + Math.random()*0.30),
+      radius: cfg.baseRadius * (0.85 + Math.random()*0.30),
+      life: cfg.activeSec * 60,  // frames
+      maxLife: cfg.activeSec * 60,
+      phase: i * Math.PI * 0.7,
+      angle: Math.random()*Math.PI*2,  // for tornado swirl
+    };
+  });
+}
+
+function _tfTickHazard(){
+  if(activeChallengeMode !== 'frenzy') return;
+  if(_tfHazardLvlInited !== (cm_frenzyLevel|0)) _tfInitHazard(cm_frenzyLevel|0);
+  if(!_tfHazardCfg) return;
+  const cfg = _tfHazardCfg;
+  _tfHazardTickAccum++;
+
+  // Water-rise & combo: oscillate level around target with smooth easing.
+  if(cfg.kind === 'water' || cfg.kind === 'combo'){
+    const cycle = cfg.cycleSec * 60;
+    const phase = (_tfHazardTickAccum % cycle) / cycle;
+    const maxRows = cfg.maxRiseRows || 4;
+    if(phase < 0.5){
+      // Rising
+      _tfWaterTargetRows = Math.round(maxRows * (phase * 2));
+    } else {
+      // Receding
+      _tfWaterTargetRows = Math.round(maxRows * (1 - (phase-0.5)*2));
+    }
+    // Smooth
+    _tfWaterRiseRows = _tfWaterRiseRows + (_tfWaterTargetRows - _tfWaterRiseRows) * 0.05;
+  }
+
+  // Lightning (combo)
+  if(cfg.lightning){
+    _tfLightningFlash = Math.max(0, _tfLightningFlash - 0.04);
+    _tfLightningTimer--;
+    if(_tfLightningTimer <= 0){
+      _tfLightningFlash = 1.0;
+      _tfLightningTimer = 60 * (5 + Math.random()*4);
+    }
+  }
+
+  // Cloud-style hazards: spawn at cycle start, drift, expire.
+  if(cfg.patches > 0){
+    const cycleFrames = cfg.cycleSec * 60;
+    if(_tfHazardTickAccum % cycleFrames === 1 || _tfHazardPatches.length === 0){
+      _tfSpawnHazardPatches();
+    }
+    // Advance + decay
+    const _alive = [];
+    for(const p of _tfHazardPatches){
+      if(cfg.kind === 'tornado'){
+        // Tornado swirls while drifting across
+        p.angle += 0.08;
+        p.x += p.vx + Math.cos(p.angle)*0.05;
+        p.y += Math.sin(p.angle)*0.05;
+      } else {
+        p.x += p.vx;
+        p.y += p.vy;
+      }
+      p.life--;
+      // Smooth radius envelope: grow in, hold, fade out (last 25% of life shrinks)
+      const lifeFrac = p.life / p.maxLife;
+      let envelope = 1.0;
+      if(lifeFrac > 0.75) envelope = (1 - lifeFrac) / 0.25;       // grow in
+      else if(lifeFrac < 0.25) envelope = lifeFrac / 0.25;        // fade out
+      p.radius = p.baseRadius * Math.max(0.2, envelope);
+      // Keep alive if still on board or has life
+      if(p.life > 0 && p.x > -p.baseRadius*2 && p.x < COLS + p.baseRadius*2){
+        _alive.push(p);
+      }
+    }
+    _tfHazardPatches = _alive;
+  }
+
+  // Shake (LV8/9/10) — apply when patches are active
+  if(cfg.shakeAmp && _tfHazardPatches.length > 0){
+    _tfShakeAmp = cfg.shakeAmp;
+  } else {
+    _tfShakeAmp = Math.max(0, _tfShakeAmp - 0.1);
+  }
+  // Apply shake transform to grid canvas (mirrors Golden Frog quake pattern)
+  if(typeof gridCanvas !== 'undefined' && gridCanvas){
+    if(_tfShakeAmp > 0.1){
+      const off = _tfGetShakeOffset();
+      gridCanvas.style.transform = 'translate(' + off.x.toFixed(2) + 'px,' + off.y.toFixed(2) + 'px)';
+    } else if(gridCanvas.style.transform && gridCanvas.style.transform.indexOf('translate') !== -1){
+      gridCanvas.style.transform = '';
+    }
+  }
+
+  // Update per-cell tile alpha (for placement blocking + tint detection)
+  if(_tfHazardTileAlpha.length){
+    for(let r=0;r<ROWS;r++){
+      for(let c=0;c<COLS;c++){
+        let maxA = 0;
+        for(const p of _tfHazardPatches){
+          const dx = c - p.x, dy = r - p.y;
+          const dist = Math.sqrt(dx*dx + dy*dy);
+          const rad = p.radius || cfg.baseRadius;
+          if(rad <= 0) continue;
+          const t = dist/rad;
+          let alpha;
+          if(t <= 0.50) alpha = 1.0;
+          else if(t >= 1.0) alpha = 0;
+          else { const u=(t-0.50)/0.50; alpha = 1.0 - (u*u*(3-2*u)); }
+          if(alpha > maxA) maxA = alpha;
+        }
+        _tfHazardTileAlpha[r][c] = _tfHazardTileAlpha[r][c]*0.70 + maxA*0.30;
+      }
+    }
+  }
+}
+
+// Check if a cell is blocked by a Tree Frog hazard (called from isMasked)
+function _tfHazardBlocks(row, col){
+  if(activeChallengeMode !== 'frenzy') return false;
+  if(!_tfHazardCfg || !_tfHazardCfg.blocks) {
+    // still check water
+    if(_tfHazardCfg && (_tfHazardCfg.kind === 'water' || _tfHazardCfg.kind === 'combo')){
+      if(row >= ROWS - Math.floor(_tfWaterRiseRows)) return true;
+    }
+    return false;
+  }
+  // Water rise
+  if((_tfHazardCfg.kind === 'water' || _tfHazardCfg.kind === 'combo') && row >= ROWS - Math.floor(_tfWaterRiseRows)){
+    return true;
+  }
+  // Cloud-based: blocked if opaque-core covers cell
+  if(_tfHazardCfg.patches > 0 && _tfHazardTileAlpha.length){
+    const a = (_tfHazardTileAlpha[row] && _tfHazardTileAlpha[row][col]) || 0;
+    if(a >= 0.65) return true;
+  }
+  return false;
+}
+
+// Draw hazard overlay on top of the playing grid (called from drawGrid)
+function _tfDrawHazardOverlay(ctx){
+  if(activeChallengeMode !== 'frenzy') return;
+  if(!_tfHazardCfg) return;
+  const cfg = _tfHazardCfg;
+  const W = ctx.canvas.width, H = ctx.canvas.height;
+  const CW = (typeof CELL !== 'undefined') ? CELL : (W/COLS);
+
+  // 1) Water layer (LV5, LV10)
+  if(_tfWaterRiseRows > 0.05){
+    const top = (ROWS - _tfWaterRiseRows) * CW;
+    ctx.save();
+    const grd = ctx.createLinearGradient(0, top, 0, H);
+    grd.addColorStop(0,    'rgba(80,140,200,0.55)');
+    grd.addColorStop(0.30, 'rgba(60,120,190,0.75)');
+    grd.addColorStop(1,    'rgba(40,90,160,0.92)');
+    ctx.fillStyle = grd;
+    ctx.fillRect(0, top, W, H-top);
+    // Surface ripple highlight
+    ctx.fillStyle = 'rgba(200,230,255,0.55)';
+    ctx.fillRect(0, top-1.5, W, 2.5);
+    // Animated wavelets
+    const tt = (typeof _ambientT === 'number') ? _ambientT : 0;
+    ctx.strokeStyle = 'rgba(220,240,255,0.30)';
+    ctx.lineWidth = 1.2;
+    for(let i=0;i<3;i++){
+      ctx.beginPath();
+      const y = top + 8 + i*14;
+      ctx.moveTo(0, y);
+      for(let x=0;x<=W;x+=6){
+        ctx.lineTo(x, y + Math.sin(x*0.05 + tt*0.05 + i)*1.5);
+      }
+      ctx.stroke();
+    }
+    ctx.restore();
+  }
+
+  // 2) Cloud hazards (per-cell solid cover + patch halo)
+  if(_tfHazardPatches.length > 0 && _tfHazardTileAlpha.length){
+    const [r0,g0,b0] = cfg.color;
+    // Per-cell base layer
+    for(let r=0;r<ROWS;r++){
+      for(let c=0;c<COLS;c++){
+        const a = _tfHazardTileAlpha[r][c];
+        if(a < 0.04) continue;
+        const x = c*CW, y = r*CW;
+        ctx.save();
+        ctx.globalAlpha = Math.min(1.0, Math.pow(a, 1.25));
+        ctx.fillStyle = `rgba(${r0},${g0},${b0},0.92)`;
+        ctx.fillRect(x-1, y-1, CW+2, CW+2);
+        ctx.restore();
+      }
+    }
+    // Patch halos — softer feathered edges
+    ctx.save();
+    for(const p of _tfHazardPatches){
+      const px = p.x*CW + CW/2;
+      const py = p.y*CW + CW/2;
+      const pr = (p.radius || cfg.baseRadius) * CW * 1.10;
+      if(pr <= 0) continue;
+      const bg = ctx.createRadialGradient(px, py, 1, px, py, pr);
+      bg.addColorStop(0,    `rgba(${r0},${g0},${b0},0.88)`);
+      bg.addColorStop(0.40, `rgba(${r0},${g0},${b0},0.65)`);
+      bg.addColorStop(0.70, `rgba(${r0},${g0},${b0},0.30)`);
+      bg.addColorStop(0.90, `rgba(${r0},${g0},${b0},0.08)`);
+      bg.addColorStop(1,    `rgba(${r0},${g0},${b0},0)`);
+      ctx.fillStyle = bg;
+      ctx.beginPath(); ctx.arc(px, py, pr, 0, Math.PI*2); ctx.fill();
+    }
+    ctx.restore();
+
+    // Particles per hazard kind for character
+    _tfDrawHazardParticles(ctx, cfg, CW);
+  }
+
+  // 3) Lightning flash overlay (LV10)
+  if(_tfLightningFlash > 0.01){
+    ctx.save();
+    ctx.globalAlpha = _tfLightningFlash * 0.55;
+    ctx.fillStyle = 'rgba(255,255,240,1)';
+    ctx.fillRect(0,0,W,H);
+    ctx.restore();
+  }
+}
+
+// Per-kind sprite particles drawn inside each cloud patch
+function _tfDrawHazardParticles(ctx, cfg, CW){
+  const tt = (typeof _ambientT === 'number') ? _ambientT : 0;
+  for(const p of _tfHazardPatches){
+    const cx = p.x*CW + CW/2;
+    const cy = p.y*CW + CW/2;
+    const R = (p.radius || cfg.baseRadius) * CW;
+    if(R <= 0) continue;
+    // Number of particles scales with radius
+    const n = Math.min(40, Math.floor(R/4));
+    for(let i=0;i<n;i++){
+      const a = (i/n)*Math.PI*2 + tt*0.02;
+      const rr = R * (0.15 + 0.70*((i*0.37)%1));
+      const wob = Math.sin(tt*0.05 + i)*4;
+      const x = cx + Math.cos(a)*rr + wob;
+      const y = cy + Math.sin(a)*rr*0.85 + Math.cos(tt*0.04 + i)*3;
+      ctx.save();
+      if(cfg.kind === 'butterflies'){
+        // Tiny butterfly: two wings
+        const flap = Math.sin(tt*0.3 + i)*0.6 + 1;
+        const col = (i%3===0)?'rgba(255,160,200,0.95)':(i%3===1)?'rgba(180,140,255,0.92)':'rgba(255,220,140,0.92)';
+        ctx.fillStyle = col;
+        ctx.beginPath(); ctx.ellipse(x-2*flap, y, 3*flap, 4, -0.4, 0,Math.PI*2); ctx.fill();
+        ctx.beginPath(); ctx.ellipse(x+2*flap, y, 3*flap, 4,  0.4, 0,Math.PI*2); ctx.fill();
+      } else if(cfg.kind === 'leaves'){
+        ctx.fillStyle = (i%2)?'rgba(220,160,80,0.92)':'rgba(190,120,50,0.92)';
+        ctx.save(); ctx.translate(x,y); ctx.rotate(a);
+        ctx.beginPath(); ctx.ellipse(0,0,4,2,0,0,Math.PI*2); ctx.fill();
+        ctx.restore();
+      } else if(cfg.kind === 'pollen'){
+        ctx.fillStyle = 'rgba(255,230,140,0.85)';
+        ctx.beginPath(); ctx.arc(x,y, 1.6, 0, Math.PI*2); ctx.fill();
+        ctx.fillStyle = 'rgba(255,255,200,0.55)';
+        ctx.beginPath(); ctx.arc(x,y, 3.2, 0, Math.PI*2); ctx.fill();
+      } else if(cfg.kind === 'bugs'){
+        ctx.fillStyle = 'rgba(40,30,20,0.95)';
+        ctx.beginPath(); ctx.ellipse(x,y, 2.5, 1.6, a, 0, Math.PI*2); ctx.fill();
+        // wings
+        ctx.fillStyle = 'rgba(120,140,80,0.55)';
+        ctx.beginPath(); ctx.ellipse(x-1, y-1, 2, 1, -0.4, 0, Math.PI*2); ctx.fill();
+        ctx.beginPath(); ctx.ellipse(x+1, y-1, 2, 1,  0.4, 0, Math.PI*2); ctx.fill();
+      } else if(cfg.kind === 'fog' || cfg.kind === 'fog_shake'){
+        // Soft white wisp dots
+        ctx.fillStyle = 'rgba(240,245,250,0.55)';
+        ctx.beginPath(); ctx.arc(x,y, 4, 0, Math.PI*2); ctx.fill();
+      } else if(cfg.kind === 'fire'){
+        // Flame flicker
+        const flick = 0.7 + Math.sin(tt*0.5+i)*0.3;
+        ctx.fillStyle = `rgba(255,${100+Math.floor(80*flick)},30,0.85)`;
+        ctx.beginPath(); ctx.arc(x,y, 3*flick, 0, Math.PI*2); ctx.fill();
+        ctx.fillStyle = `rgba(255,220,80,${0.6*flick})`;
+        ctx.beginPath(); ctx.arc(x,y, 1.5*flick, 0, Math.PI*2); ctx.fill();
+      } else if(cfg.kind === 'tornado'){
+        // Debris swirl
+        ctx.fillStyle = (i%3===0)?'rgba(80,60,40,0.85)':'rgba(140,120,100,0.75)';
+        ctx.save(); ctx.translate(x,y); ctx.rotate(a*3);
+        ctx.fillRect(-2,-1, 4, 2);
+        ctx.restore();
+      } else if(cfg.kind === 'combo'){
+        // Mixed water spray + debris
+        if(i%2){
+          ctx.fillStyle = 'rgba(180,210,240,0.65)';
+          ctx.beginPath(); ctx.arc(x,y, 2.5, 0, Math.PI*2); ctx.fill();
+        } else {
+          ctx.fillStyle = 'rgba(80,70,90,0.85)';
+          ctx.fillRect(x-2, y-1, 4, 2);
+        }
+      }
+      ctx.restore();
+    }
+  }
+}
+
+// Get current shake offset for the grid canvas (called by draw)
+function _tfGetShakeOffset(){
+  if(activeChallengeMode !== 'frenzy' || _tfShakeAmp < 0.1) return {x:0,y:0};
+  const tt = (typeof _ambientT === 'number') ? _ambientT : 0;
+  return {
+    x: Math.sin(tt*0.9)*_tfShakeAmp + Math.cos(tt*1.3)*_tfShakeAmp*0.4,
+    y: Math.cos(tt*1.1)*_tfShakeAmp*0.6 + Math.sin(tt*1.7)*_tfShakeAmp*0.3,
+  };
+}
+
 function _initForestWeather(W, H, rand, theme){
   const w = { kind: theme.weather };
   if(theme.weather === 'leaves'){
@@ -12080,6 +12605,8 @@ function isMasked(r, c) {
   }
   // Fog LV1 Mystic Pond seasonal hazards — winter ice / summer algae block cells
   if (typeof _pondHazardBlocks === 'function' && _pondHazardBlocks(r, c)) return true;
+  // Tree Frog (frenzy) hazards — rising water, dense fog/bug/fire patches block cells
+  if (typeof _tfHazardBlocks === 'function' && _tfHazardBlocks(r, c)) return true;
   if (!gridMask) return false;
   return !gridMask[r][c];
 }
@@ -19501,6 +20028,12 @@ function drawGrid(){
     }
   }
 
+  // ─ TREE FROG (frenzy) HAZARD OVERLAY ──────────────────────────────────────────────
+  // Drifting clouds of butterflies/leaves/fog/fire/bugs + rising water + lightning
+  if (activeChallengeMode === 'frenzy' && typeof _tfDrawHazardOverlay === 'function') {
+    _tfDrawHazardOverlay(ctx);
+  }
+
   // ─ GOLDEN FROG BLACKOUT: animated curtain falls top→bot, recedes bot→top, with vertical opacity gradient + flickering window lights ──────
   if (activeChallengeMode === 'goldenfrog' && (cm_gfBlackoutActive || (typeof _gfParisPhase !== 'undefined' && _gfParisPhase !== 'off'))) {
     const _W = gridCanvas.width, _H = gridCanvas.height;
@@ -22168,6 +22701,8 @@ window.__devSoloSetLevel = function(targetLv){
         // Force forest scene to re-init for the new biome
         if (typeof _forestSceneInited !== 'undefined') _forestSceneInited = false;
         if (typeof _forestBiomeLvlInited !== 'undefined') _forestBiomeLvlInited = -1;
+        // Re-init hazard for the new level (will spawn fresh patches + new cfg)
+        if (typeof _tfInitHazard === 'function') _tfInitHazard(lv);
       }
       // Force scene re-init for goldenfrog so the new location backdrop loads immediately
       if (isGfMode && typeof _gfSceneCfgIdx !== 'undefined') _gfSceneCfgIdx = -1;
