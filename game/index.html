@@ -11034,7 +11034,7 @@ function _tfGetHazardCfg(lvl){
   // patches/size/speed mimic FOG_LEVELS structure.
   // Each level: gentle to intense.
   switch(lvl){
-    case 1:  return { kind:'butterflies', name:'Butterfly Drift', patches:1, baseRadius:4.5, speed:0.060, blocks:false, color:[255,180,210], cycleSec:14, activeSec:9 };
+    case 1:  return { kind:'butterflies', name:'Butterfly Drift', patches:2, baseRadius:5.2, speed:0.055, blocks:false, color:[255,180,210], cycleSec:14, activeSec:10 };
     case 2:  return { kind:'leaves',      name:'Leaf Gust',       patches:1, baseRadius:5.0, speed:0.075, blocks:false, color:[230,200,150], cycleSec:13, activeSec:9 };
     case 3:  return { kind:'pollen',      name:'Pollen Cloud',    patches:1, baseRadius:5.5, speed:0.060, blocks:false, color:[250,220,130], cycleSec:13, activeSec:10 };
     case 4:  return { kind:'bugs',        name:'Bug Swarm',       patches:1, baseRadius:5.5, speed:0.075, blocks:true,  color:[120,90,60],   cycleSec:12, activeSec:9 };
@@ -11066,10 +11066,12 @@ function _tfInitHazard(lvl){
 function _tfSpawnHazardPatches(){
   if(!_tfHazardCfg || _tfHazardCfg.patches <= 0) return;
   const cfg = _tfHazardCfg;
+  if(typeof _tfHazardPatchSeq !== 'number') _tfHazardPatchSeq = 1;
   _tfHazardPatches = Array.from({length:cfg.patches}, (_, i) => {
     // Start off-board so they drift in
     const fromLeft = Math.random() < 0.5;
     return {
+      id: _tfHazardPatchSeq++,
       x: fromLeft ? -cfg.baseRadius : COLS + cfg.baseRadius,
       y: ROWS * (0.35 + Math.random()*0.35),
       vx: (fromLeft ? 1 : -1) * cfg.speed,
@@ -11249,38 +11251,43 @@ function _tfDrawHazardOverlay(ctx){
   }
 
   // 2) Cloud hazards (per-cell solid cover + patch halo)
+  //    Sprite-based hazards (butterflies, ...) skip the color wash entirely
+  //    and rely solely on _tfDrawHazardParticles for visuals.
+  const _spriteOnlyKinds = { butterflies:1 };
   if(_tfHazardPatches.length > 0 && _tfHazardTileAlpha.length){
     const [r0,g0,b0] = cfg.color;
-    // Per-cell base layer
-    for(let r=0;r<ROWS;r++){
-      for(let c=0;c<COLS;c++){
-        const a = _tfHazardTileAlpha[r][c];
-        if(a < 0.04) continue;
-        const x = c*CW, y = r*CW;
-        ctx.save();
-        ctx.globalAlpha = Math.min(1.0, Math.pow(a, 1.25));
-        ctx.fillStyle = `rgba(${r0},${g0},${b0},0.92)`;
-        ctx.fillRect(x-1, y-1, CW+2, CW+2);
-        ctx.restore();
+    if(!_spriteOnlyKinds[cfg.kind]){
+      // Per-cell base layer
+      for(let r=0;r<ROWS;r++){
+        for(let c=0;c<COLS;c++){
+          const a = _tfHazardTileAlpha[r][c];
+          if(a < 0.04) continue;
+          const x = c*CW, y = r*CW;
+          ctx.save();
+          ctx.globalAlpha = Math.min(1.0, Math.pow(a, 1.25));
+          ctx.fillStyle = `rgba(${r0},${g0},${b0},0.92)`;
+          ctx.fillRect(x-1, y-1, CW+2, CW+2);
+          ctx.restore();
+        }
       }
+      // Patch halos — softer feathered edges
+      ctx.save();
+      for(const p of _tfHazardPatches){
+        const px = p.x*CW + CW/2;
+        const py = p.y*CW + CW/2;
+        const pr = (p.radius || cfg.baseRadius) * CW * 1.10;
+        if(pr <= 0) continue;
+        const bg = ctx.createRadialGradient(px, py, 1, px, py, pr);
+        bg.addColorStop(0,    `rgba(${r0},${g0},${b0},0.88)`);
+        bg.addColorStop(0.40, `rgba(${r0},${g0},${b0},0.65)`);
+        bg.addColorStop(0.70, `rgba(${r0},${g0},${b0},0.30)`);
+        bg.addColorStop(0.90, `rgba(${r0},${g0},${b0},0.08)`);
+        bg.addColorStop(1,    `rgba(${r0},${g0},${b0},0)`);
+        ctx.fillStyle = bg;
+        ctx.beginPath(); ctx.arc(px, py, pr, 0, Math.PI*2); ctx.fill();
+      }
+      ctx.restore();
     }
-    // Patch halos — softer feathered edges
-    ctx.save();
-    for(const p of _tfHazardPatches){
-      const px = p.x*CW + CW/2;
-      const py = p.y*CW + CW/2;
-      const pr = (p.radius || cfg.baseRadius) * CW * 1.10;
-      if(pr <= 0) continue;
-      const bg = ctx.createRadialGradient(px, py, 1, px, py, pr);
-      bg.addColorStop(0,    `rgba(${r0},${g0},${b0},0.88)`);
-      bg.addColorStop(0.40, `rgba(${r0},${g0},${b0},0.65)`);
-      bg.addColorStop(0.70, `rgba(${r0},${g0},${b0},0.30)`);
-      bg.addColorStop(0.90, `rgba(${r0},${g0},${b0},0.08)`);
-      bg.addColorStop(1,    `rgba(${r0},${g0},${b0},0)`);
-      ctx.fillStyle = bg;
-      ctx.beginPath(); ctx.arc(px, py, pr, 0, Math.PI*2); ctx.fill();
-    }
-    ctx.restore();
 
     // Particles per hazard kind for character
     _tfDrawHazardParticles(ctx, cfg, CW);
@@ -11296,8 +11303,167 @@ function _tfDrawHazardOverlay(ctx){
   }
 }
 
+// Detailed cartoon butterfly sprite (painterly style to match the forest art)
+// Drawn at (x,y), wingspan ~size, with animated flap phase [0..1] where 0=closed, 1=open
+function _tfDrawButterfly(ctx, x, y, size, flap, palette, tilt){
+  // flap: 0 = wings folded (narrow), 1 = wings spread
+  const wingW = size * (0.35 + 0.65*flap);  // horizontal scale animates with flap
+  const wingH = size * 0.95;
+  const bodyL = size * 0.55;
+  const [wingCol, wingEdge, accentCol, bodyCol] = palette;
+  ctx.save();
+  ctx.translate(x, y);
+  ctx.rotate(tilt);
+
+  // Soft shadow under butterfly (subtle, for depth)
+  ctx.save();
+  ctx.globalAlpha = 0.18 * flap;
+  ctx.fillStyle = 'rgba(40,30,60,1)';
+  ctx.beginPath(); ctx.ellipse(0, size*0.05, wingW*0.95, wingH*0.55, 0, 0, Math.PI*2); ctx.fill();
+  ctx.restore();
+
+  // --- LEFT WING PAIR ---
+  // Hindwing (back, lower)
+  ctx.fillStyle = wingCol;
+  ctx.beginPath();
+  ctx.ellipse(-wingW*0.55, wingH*0.20, wingW*0.55, wingH*0.42, -0.25, 0, Math.PI*2);
+  ctx.fill();
+  // Forewing (front, upper, bigger)
+  ctx.beginPath();
+  ctx.ellipse(-wingW*0.60, -wingH*0.18, wingW*0.70, wingH*0.55, -0.45, 0, Math.PI*2);
+  ctx.fill();
+  // Wing edge / outline (darker rim)
+  ctx.strokeStyle = wingEdge;
+  ctx.lineWidth = Math.max(0.6, size*0.05);
+  ctx.beginPath();
+  ctx.ellipse(-wingW*0.55, wingH*0.20, wingW*0.55, wingH*0.42, -0.25, 0, Math.PI*2);
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.ellipse(-wingW*0.60, -wingH*0.18, wingW*0.70, wingH*0.55, -0.45, 0, Math.PI*2);
+  ctx.stroke();
+  // Accent dot on forewing
+  ctx.fillStyle = accentCol;
+  ctx.beginPath(); ctx.arc(-wingW*0.75, -wingH*0.25, size*0.10, 0, Math.PI*2); ctx.fill();
+  // Small spot on hindwing
+  ctx.beginPath(); ctx.arc(-wingW*0.55, wingH*0.30, size*0.07, 0, Math.PI*2); ctx.fill();
+
+  // --- RIGHT WING PAIR (mirror) ---
+  ctx.fillStyle = wingCol;
+  ctx.beginPath();
+  ctx.ellipse(wingW*0.55, wingH*0.20, wingW*0.55, wingH*0.42, 0.25, 0, Math.PI*2);
+  ctx.fill();
+  ctx.beginPath();
+  ctx.ellipse(wingW*0.60, -wingH*0.18, wingW*0.70, wingH*0.55, 0.45, 0, Math.PI*2);
+  ctx.fill();
+  ctx.strokeStyle = wingEdge;
+  ctx.beginPath();
+  ctx.ellipse(wingW*0.55, wingH*0.20, wingW*0.55, wingH*0.42, 0.25, 0, Math.PI*2);
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.ellipse(wingW*0.60, -wingH*0.18, wingW*0.70, wingH*0.55, 0.45, 0, Math.PI*2);
+  ctx.stroke();
+  ctx.fillStyle = accentCol;
+  ctx.beginPath(); ctx.arc(wingW*0.75, -wingH*0.25, size*0.10, 0, Math.PI*2); ctx.fill();
+  ctx.beginPath(); ctx.arc(wingW*0.55, wingH*0.30, size*0.07, 0, Math.PI*2); ctx.fill();
+
+  // --- BODY ---
+  ctx.fillStyle = bodyCol;
+  ctx.beginPath();
+  ctx.ellipse(0, 0, size*0.10, bodyL*0.55, 0, 0, Math.PI*2);
+  ctx.fill();
+  // Head
+  ctx.beginPath();
+  ctx.arc(0, -bodyL*0.55, size*0.11, 0, Math.PI*2);
+  ctx.fill();
+  // Antennae
+  ctx.strokeStyle = bodyCol;
+  ctx.lineWidth = Math.max(0.5, size*0.035);
+  ctx.beginPath();
+  ctx.moveTo(0, -bodyL*0.62);
+  ctx.quadraticCurveTo(-size*0.18, -bodyL*0.92, -size*0.24, -bodyL*1.05);
+  ctx.moveTo(0, -bodyL*0.62);
+  ctx.quadraticCurveTo( size*0.18, -bodyL*0.92,  size*0.24, -bodyL*1.05);
+  ctx.stroke();
+  // Antenna tips
+  ctx.fillStyle = bodyCol;
+  ctx.beginPath(); ctx.arc(-size*0.24, -bodyL*1.05, size*0.05, 0, Math.PI*2); ctx.fill();
+  ctx.beginPath(); ctx.arc( size*0.24, -bodyL*1.05, size*0.05, 0, Math.PI*2); ctx.fill();
+
+  ctx.restore();
+}
+
+// Butterfly palettes (wingFill, wingEdge, accentSpot, body) — painterly cartoon
+const _TF_BUTTERFLY_PALETTES = [
+  ['rgba(255,140,80,0.95)',  'rgba(80,30,20,0.9)',   'rgba(40,20,15,0.95)',  'rgba(40,20,15,1)'],   // monarch orange
+  ['rgba(255,230,110,0.95)', 'rgba(60,40,20,0.9)',   'rgba(40,25,15,0.95)',  'rgba(40,25,15,1)'],   // swallowtail yellow
+  ['rgba(120,170,255,0.95)', 'rgba(40,30,90,0.9)',   'rgba(255,255,255,0.95)','rgba(35,25,70,1)'],  // morpho blue
+  ['rgba(255,170,210,0.95)', 'rgba(120,40,90,0.9)',  'rgba(255,255,240,0.95)','rgba(80,30,60,1)'],  // pink
+  ['rgba(190,140,235,0.95)', 'rgba(70,40,100,0.9)',  'rgba(255,240,180,0.95)','rgba(50,30,70,1)'],  // purple
+  ['rgba(255,255,250,0.95)', 'rgba(80,80,100,0.85)', 'rgba(180,80,60,0.9)',  'rgba(60,60,80,1)'],   // white
+  ['rgba(255,200,90,0.95)',  'rgba(110,60,20,0.9)',  'rgba(40,25,15,0.95)',  'rgba(40,25,15,1)'],   // amber
+];
+
+// Draw a dense flock of butterflies for the butterflies hazard.
+// Uses the same patch geometry (center + radius) and per-cell opacity grid
+// to decide WHERE the flock is dense (center) vs sparse (edges).
+function _tfDrawButterflyFlock(ctx, cfg, CW){
+  const tt = (typeof _ambientT === 'number') ? _ambientT : 0;
+  for(const p of _tfHazardPatches){
+    const cx = p.x*CW + CW/2;
+    const cy = p.y*CW + CW/2;
+    const R = (p.radius || cfg.baseRadius) * CW;
+    if(R <= 1) continue;
+    // Density scales with patch area; cap to keep frame budget reasonable.
+    // Keep density moderate so board tiles remain visible — hazard is about
+    // visual chaos, not full obstruction (butterflies don't block placement).
+    const targetCount = Math.min(90, Math.floor((R*R) / 280));
+    // Use deterministic pseudo-random samples seeded by patch id so the flock
+    // is stable across frames (each butterfly persists), only their positions wobble.
+    const seed = (p.id|0) * 9301;
+    for(let i=0;i<targetCount;i++){
+      // Deterministic per-butterfly base offset within disc (center-weighted)
+      const h1 = Math.sin((seed + i*127.1)) * 43758.5453;
+      const h2 = Math.sin((seed + i*311.7)) * 12345.6789;
+      const u  = (h1 - Math.floor(h1));        // [0,1)
+      const v  = (h2 - Math.floor(h2));        // [0,1)
+      // sqrt + bias toward center: pow(u, 0.85) gives a denser core than uniform
+      const rNorm = Math.pow(u, 0.85);          // [0..1], biased to small values (=center)
+      const ang   = v * Math.PI * 2;
+      const baseX = Math.cos(ang) * rNorm * R;
+      const baseY = Math.sin(ang) * rNorm * R * 0.95;
+      // Per-butterfly wander phase
+      const ph    = (h1 - Math.floor(h1*10))*10;  // unique per i
+      const wx    = Math.sin(tt*0.04 + ph*6.28)*6 + Math.cos(tt*0.03 + i*0.3)*3;
+      const wy    = Math.cos(tt*0.05 + ph*4.10)*5 + Math.sin(tt*0.035 + i*0.7)*3;
+      const x = cx + baseX + wx;
+      const y = cy + baseY + wy;
+      // Per-butterfly size (varied; slightly larger so wings read clearly)
+      const size = 10 + (u*6) + Math.sin(tt*0.02 + i)*1.0;
+      // Flap phase: each butterfly has its own speed and offset
+      const flapSpeed = 0.35 + (v*0.25);
+      const flap = 0.35 + 0.65*Math.abs(Math.sin(tt*flapSpeed + ph*6.28));
+      // Tilt: drifts gently
+      const tilt = Math.sin(tt*0.04 + ph*3.14) * 0.35 + (Math.cos(ang)>0?0.05:-0.05);
+      // Palette pick per butterfly (stable)
+      const pal = _TF_BUTTERFLY_PALETTES[(i + (seed>>3)) % _TF_BUTTERFLY_PALETTES.length];
+      // Soft opacity falloff toward the edges of the patch (matches fog model)
+      // Center = full opacity, edge = fade. Use rNorm directly.
+      const edgeFade = 1 - Math.pow(rNorm, 2.2)*0.7; // strong in center, fades near edge
+      ctx.save();
+      ctx.globalAlpha = Math.max(0, Math.min(1, edgeFade));
+      _tfDrawButterfly(ctx, x, y, size, flap, pal, tilt);
+      ctx.restore();
+    }
+  }
+}
+
 // Per-kind sprite particles drawn inside each cloud patch
 function _tfDrawHazardParticles(ctx, cfg, CW){
+  // Special-case: butterflies use a dedicated flock renderer (sprite-only)
+  if(cfg.kind === 'butterflies'){
+    _tfDrawButterflyFlock(ctx, cfg, CW);
+    return;
+  }
   const tt = (typeof _ambientT === 'number') ? _ambientT : 0;
   for(const p of _tfHazardPatches){
     const cx = p.x*CW + CW/2;
@@ -11313,14 +11479,7 @@ function _tfDrawHazardParticles(ctx, cfg, CW){
       const x = cx + Math.cos(a)*rr + wob;
       const y = cy + Math.sin(a)*rr*0.85 + Math.cos(tt*0.04 + i)*3;
       ctx.save();
-      if(cfg.kind === 'butterflies'){
-        // Tiny butterfly: two wings
-        const flap = Math.sin(tt*0.3 + i)*0.6 + 1;
-        const col = (i%3===0)?'rgba(255,160,200,0.95)':(i%3===1)?'rgba(180,140,255,0.92)':'rgba(255,220,140,0.92)';
-        ctx.fillStyle = col;
-        ctx.beginPath(); ctx.ellipse(x-2*flap, y, 3*flap, 4, -0.4, 0,Math.PI*2); ctx.fill();
-        ctx.beginPath(); ctx.ellipse(x+2*flap, y, 3*flap, 4,  0.4, 0,Math.PI*2); ctx.fill();
-      } else if(cfg.kind === 'leaves'){
+      if(cfg.kind === 'leaves'){
         ctx.fillStyle = (i%2)?'rgba(220,160,80,0.92)':'rgba(190,120,50,0.92)';
         ctx.save(); ctx.translate(x,y); ctx.rotate(a);
         ctx.beginPath(); ctx.ellipse(0,0,4,2,0,0,Math.PI*2); ctx.fill();
