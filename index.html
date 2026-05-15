@@ -8066,12 +8066,12 @@ function _ambientDraw(timestamp) {
     // are picked up via _getFogTheme() inside _pondPalette/_drawPondTile.
     _drawMysticPondAmbient(ctx, W, H, rand, lerp);
   } else if (activeChallengeMode === 'frenzy') {
-    // Tree Frog — LV1 Mystic Forest (painterly biome). Higher levels fall back
-    // to the original storm ambient until their biomes are built.
-    if((cm_frenzyLevel|0) === 1){
-      _drawMysticForestAmbient(ctx, W, H, rand, lerp);
+    // Tree Frog — LV1–10 painterly biome system (forests, jungles, storms).
+    const lvl = (cm_frenzyLevel|0);
+    if(lvl >= 1 && lvl <= 10){
+      _drawForestBiome(ctx, W, H, rand, lerp, lvl);
     } else {
-      _drawFrenzyAmbient(ctx, W, H, rand, lerp);
+      _drawMysticForestAmbient(ctx, W, H, rand, lerp);
     }
   } else if (activeChallengeMode === 'colourrun') {
     _drawGoldenAmbient(ctx, W, H, rand, lerp);
@@ -10723,6 +10723,900 @@ function _drawFrenzyAmbient(ctx, W, H, rand, lerp) {
   ctx.quadraticCurveTo(W*0.5,H*0.86,W*0.65,H*0.9);
   ctx.quadraticCurveTo(W*0.8,H*0.88,W,H*0.9);
   ctx.lineTo(W,H); ctx.closePath(); ctx.fill(); ctx.restore();
+}
+
+// ============================================================================
+// Tree Frog — Forest Biome System (LV1–10)
+// Theme-driven painterly biomes. Each level has a palette, tree style,
+// weather overlay (wind/rain/fog/lightning/cyclone) and wildlife mix.
+// ============================================================================
+let _forestBiomeLvlInited = -1;       // cached level so scene re-inits on change
+let _forestWeather = null;             // weather state (leaves/rain/wisps/lightning/cyclone)
+
+function _getForestTheme(lvl){
+  // Returns palette + structural hints for the requested level (1..10)
+  // Palette keys: skyTop/skyMid/skyHorizon/skyGold, groundTop/groundMid/groundBot,
+  // farTree (rgba), midHue (multiplier triple), nearHue, accent
+  // Style keys: treeStyle ('conifer'|'birch'|'pine'|'bamboo'|'mountain'|'mist'|'jungle'|'cloud'|'storm'|'cyclone')
+  // weather: 'none'|'breeze'|'leaves'|'wind'|'rain'|'mist'|'storm'|'heavyFog'|'lightning'|'cyclone'
+  // wildlife: { deer, owl, butterfly, bird, monkey, eagle } booleans
+  switch(lvl){
+    case 1: return { // Mystic Forest — original
+      name: 'Mystic Forest',
+      skyTop:'#1F2B2E', skyMid:'#3D4E48', skyHorizon:'#6E7B5E', skyGold:'#A89668',
+      groundTop:'#2C3826', groundMid:'#1F2A18', groundBot:'#10160C',
+      sunX:0.52, sunY:0.55, sunGlow:[255,224,150,0.35],
+      treeStyle:'conifer', mistAlpha:0.20, weather:'none',
+      wildlife:{ deer:true, owl:true, butterfly:true, bird:false, monkey:false, eagle:false },
+      fireflyCount:22, fireflyHue:[255,240,170], petalHue:[255,220,170], petalCount:14,
+      grassHue:[60,80,38], grassCount:70,
+      vignette:0.45
+    };
+    case 2: return { // Birch Glade — pale silver bark, drifting leaves, soft autumn
+      name: 'Birch Glade',
+      skyTop:'#2B2F38', skyMid:'#4E5260', skyHorizon:'#8D8B7A', skyGold:'#C9B98C',
+      groundTop:'#3A3528', groundMid:'#2A2418', groundBot:'#15110A',
+      sunX:0.48, sunY:0.50, sunGlow:[255,236,180,0.40],
+      treeStyle:'birch', mistAlpha:0.18, weather:'breeze',
+      wildlife:{ deer:false, owl:false, butterfly:true, bird:true, monkey:false, eagle:false },
+      fireflyCount:8, fireflyHue:[255,235,180], petalHue:[230,200,140], petalCount:24,
+      grassHue:[100,98,55], grassCount:55,
+      vignette:0.40
+    };
+    case 3: return { // Pine Hollow — deeper coniferous, falling leaves
+      name: 'Pine Hollow',
+      skyTop:'#22251E', skyMid:'#3A4030', skyHorizon:'#5C6044', skyGold:'#8E7E50',
+      groundTop:'#2A2A18', groundMid:'#1C1C10', groundBot:'#0C0E08',
+      sunX:0.45, sunY:0.58, sunGlow:[245,200,120,0.32],
+      treeStyle:'pine', mistAlpha:0.22, weather:'leaves',
+      wildlife:{ deer:true, owl:true, butterfly:false, bird:true, monkey:false, eagle:false },
+      fireflyCount:14, fireflyHue:[255,225,150], petalHue:[200,140,70], petalCount:0,
+      grassHue:[80,72,38], grassCount:60,
+      vignette:0.48
+    };
+    case 4: return { // Bamboo Thicket — vertical green, stronger wind
+      name: 'Bamboo Thicket',
+      skyTop:'#1F2A28', skyMid:'#3E5048', skyHorizon:'#7A8A60', skyGold:'#B4B070',
+      groundTop:'#283520', groundMid:'#1A2414', groundBot:'#0A1008',
+      sunX:0.55, sunY:0.52, sunGlow:[230,235,160,0.30],
+      treeStyle:'bamboo', mistAlpha:0.15, weather:'wind',
+      wildlife:{ deer:false, owl:false, butterfly:true, bird:true, monkey:true, eagle:false },
+      fireflyCount:0, fireflyHue:[200,255,180], petalHue:[160,210,120], petalCount:18,
+      grassHue:[70,110,50], grassCount:40,
+      vignette:0.42
+    };
+    case 5: return { // Mountain Forest — distant peaks, rain + gusts
+      name: 'Mountain Forest',
+      skyTop:'#1E222B', skyMid:'#384050', skyHorizon:'#5A6878', skyGold:'#88928A',
+      groundTop:'#222820', groundMid:'#161B14', groundBot:'#080C08',
+      sunX:0.50, sunY:0.62, sunGlow:[200,210,220,0.18],
+      treeStyle:'mountain', mistAlpha:0.28, weather:'rain',
+      wildlife:{ deer:true, owl:false, butterfly:false, bird:false, monkey:false, eagle:true },
+      fireflyCount:0, fireflyHue:[255,255,255], petalHue:[180,190,200], petalCount:0,
+      grassHue:[55,72,40], grassCount:50,
+      vignette:0.55
+    };
+    case 6: return { // Misty Highlands — rolling mist + wind wisps
+      name: 'Misty Highlands',
+      skyTop:'#262C30', skyMid:'#4E5256', skyHorizon:'#7A8078', skyGold:'#A4A088',
+      groundTop:'#2A3028', groundMid:'#1C211B', groundBot:'#0E120D',
+      sunX:0.48, sunY:0.50, sunGlow:[240,230,200,0.22],
+      treeStyle:'mist', mistAlpha:0.55, weather:'mist',
+      wildlife:{ deer:true, owl:true, butterfly:false, bird:true, monkey:false, eagle:true },
+      fireflyCount:6, fireflyHue:[230,240,230], petalHue:[210,210,200], petalCount:0,
+      grassHue:[70,90,55], grassCount:50,
+      vignette:0.52
+    };
+    case 7: return { // Tropical Jungle — lush palms, storm hints
+      name: 'Tropical Jungle',
+      skyTop:'#1B2A22', skyMid:'#2E4838', skyHorizon:'#5A7A50', skyGold:'#8E9858',
+      groundTop:'#1E2A18', groundMid:'#121A0E', groundBot:'#080C06',
+      sunX:0.55, sunY:0.55, sunGlow:[230,220,140,0.28],
+      treeStyle:'jungle', mistAlpha:0.30, weather:'storm',
+      wildlife:{ deer:false, owl:false, butterfly:true, bird:true, monkey:true, eagle:false },
+      fireflyCount:18, fireflyHue:[180,255,200], petalHue:[255,170,130], petalCount:20,
+      grassHue:[60,100,50], grassCount:60,
+      vignette:0.50
+    };
+    case 8: return { // Cloud Forest — heavy fog wraps trees, mossy
+      name: 'Cloud Forest',
+      skyTop:'#2A2E32', skyMid:'#54585C', skyHorizon:'#888880', skyGold:'#B0AC98',
+      groundTop:'#2A3028', groundMid:'#1A1E18', groundBot:'#0C100A',
+      sunX:0.50, sunY:0.45, sunGlow:[235,235,225,0.22],
+      treeStyle:'cloud', mistAlpha:0.70, weather:'heavyFog',
+      wildlife:{ deer:false, owl:true, butterfly:true, bird:true, monkey:false, eagle:false },
+      fireflyCount:10, fireflyHue:[220,235,255], petalHue:[210,225,210], petalCount:8,
+      grassHue:[80,100,72], grassCount:50,
+      vignette:0.50
+    };
+    case 9: return { // Stormy Pine Ridge — lightning, howling wind
+      name: 'Stormy Pine Ridge',
+      skyTop:'#10141A', skyMid:'#1E242E', skyHorizon:'#384050', skyGold:'#566070',
+      groundTop:'#181C18', groundMid:'#0E1110', groundBot:'#050807',
+      sunX:0.50, sunY:0.40, sunGlow:[180,200,230,0.18],
+      treeStyle:'storm', mistAlpha:0.40, weather:'lightning',
+      wildlife:{ deer:false, owl:false, butterfly:false, bird:false, monkey:false, eagle:true },
+      fireflyCount:0, fireflyHue:[255,255,255], petalHue:[150,160,180], petalCount:0,
+      grassHue:[50,60,45], grassCount:60,
+      vignette:0.65
+    };
+    case 10: return { // Eye of the Storm — cyclone, debris, dramatic
+      name: 'Eye of the Storm',
+      skyTop:'#08090C', skyMid:'#161A22', skyHorizon:'#2A2F3A', skyGold:'#48505C',
+      groundTop:'#15161A', groundMid:'#0A0C10', groundBot:'#030406',
+      sunX:0.50, sunY:0.50, sunGlow:[120,150,200,0.20],
+      treeStyle:'cyclone', mistAlpha:0.45, weather:'cyclone',
+      wildlife:{ deer:false, owl:false, butterfly:false, bird:false, monkey:false, eagle:true },
+      fireflyCount:0, fireflyHue:[255,255,255], petalHue:[120,130,150], petalCount:0,
+      grassHue:[42,52,40], grassCount:70,
+      vignette:0.75
+    };
+  }
+}
+
+function _initForestWeather(W, H, rand, theme){
+  const w = { kind: theme.weather };
+  if(theme.weather === 'leaves'){
+    w.leaves = Array.from({length:35}, () => ({
+      x: rand(0, W), y: rand(-H, H), vx: rand(0.2, 0.6), vy: rand(0.5, 1.2),
+      rot: rand(0, Math.PI*2), rotV: rand(-0.04, 0.04), size: rand(3, 6),
+      hue: rand(0.7, 1.0), shape: Math.floor(rand(0, 3))
+    }));
+  } else if(theme.weather === 'wind' || theme.weather === 'breeze'){
+    w.streaks = Array.from({length: theme.weather === 'wind' ? 18 : 8}, () => ({
+      x: rand(0, W), y: rand(0, H*0.7),
+      vx: rand(2, theme.weather === 'wind' ? 5 : 3),
+      len: rand(10, 30), alpha: rand(0.08, 0.18)
+    }));
+  } else if(theme.weather === 'rain'){
+    w.drops = Array.from({length:120}, () => ({
+      x: rand(-20, W+20), y: rand(-H, H),
+      vx: rand(1.2, 2.0), vy: rand(11, 17),
+      len: rand(8, 16), alpha: rand(0.35, 0.7)
+    }));
+    w.gusts = Array.from({length:10}, () => ({
+      x: rand(0, W), y: rand(0, H*0.6),
+      vx: rand(3, 6), len: rand(30, 80), alpha: rand(0.05, 0.15)
+    }));
+  } else if(theme.weather === 'mist'){
+    w.wisps = Array.from({length:14}, () => ({
+      x: rand(-50, W), y: rand(H*0.25, H*0.85),
+      vx: rand(0.3, 0.8), w: rand(80, 180), h: rand(20, 50),
+      alpha: rand(0.10, 0.22)
+    }));
+  } else if(theme.weather === 'storm'){
+    w.drops = Array.from({length:80}, () => ({
+      x: rand(-20, W+20), y: rand(-H, H),
+      vx: rand(1.6, 2.6), vy: rand(13, 19),
+      len: rand(10, 20), alpha: rand(0.30, 0.55)
+    }));
+    w.streaks = Array.from({length:14}, () => ({
+      x: rand(0, W), y: rand(0, H*0.7),
+      vx: rand(3, 7), len: rand(20, 60), alpha: rand(0.10, 0.22)
+    }));
+  } else if(theme.weather === 'heavyFog'){
+    w.wisps = Array.from({length:22}, () => ({
+      x: rand(-100, W), y: rand(0, H),
+      vx: rand(0.2, 0.6), w: rand(120, 250), h: rand(30, 80),
+      alpha: rand(0.12, 0.28)
+    }));
+  } else if(theme.weather === 'lightning'){
+    w.drops = Array.from({length:90}, () => ({
+      x: rand(-20, W+20), y: rand(-H, H),
+      vx: rand(1.4, 2.4), vy: rand(12, 18),
+      len: rand(10, 18), alpha: rand(0.35, 0.6)
+    }));
+    w.streaks = Array.from({length:20}, () => ({
+      x: rand(0, W), y: rand(0, H*0.7),
+      vx: rand(4, 8), len: rand(30, 70), alpha: rand(0.12, 0.25)
+    }));
+    w.lightning = { active: 0, nextIn: 80 + Math.floor(rand(0, 180)), path: null };
+  } else if(theme.weather === 'cyclone'){
+    w.debris = Array.from({length:30}, () => ({
+      x: rand(0, W), y: rand(0, H),
+      angle: rand(0, Math.PI*2), radius: rand(80, Math.max(W, H)*0.6),
+      angV: rand(0.02, 0.06) * (rand(0,1) < 0.5 ? -1 : 1),
+      size: rand(2, 6), alpha: rand(0.3, 0.7),
+      kind: Math.floor(rand(0, 3))
+    }));
+    w.streaks = Array.from({length:30}, () => ({
+      x: rand(0, W), y: rand(0, H),
+      angle: rand(0, Math.PI*2),
+      r: rand(30, Math.max(W, H)*0.5),
+      angV: rand(0.015, 0.04) * (rand(0,1) < 0.5 ? -1 : 1),
+      len: rand(40, 120), alpha: rand(0.08, 0.18)
+    }));
+    w.lightning = { active: 0, nextIn: 60 + Math.floor(rand(0, 140)), path: null };
+    w.eyeAngle = 0;
+  }
+  return w;
+}
+
+function _initForestSceneForTheme(W, H, rand, theme){
+  const far = [], mid = [], near = [];
+  // Far band (always similar layout, palette differs)
+  for(let i=0;i<14;i++){
+    far.push({
+      x: (i/13)*W + rand(-W*0.03, W*0.03),
+      h: rand(H*0.18, H*0.32),
+      w: rand(20, 38),
+      hue: rand(0.85, 1.0)
+    });
+  }
+  for(let i=0;i<10;i++){
+    mid.push({
+      x: rand(-30, W+30),
+      h: rand(H*0.30, H*0.46),
+      w: rand(32, 60),
+      hue: rand(0.75, 0.95),
+      kind: i%3,
+      sway: rand(0, Math.PI*2)
+    });
+  }
+  for(let i=0;i<6;i++){
+    near.push({
+      x: rand(0, W),
+      h: rand(H*0.50, H*0.80),
+      w: rand(50, 95),
+      hue: rand(0.55, 0.78),
+      kind: i%2,
+      sway: rand(0, Math.PI*2)
+    });
+  }
+  _forestTreeLayout = { far, mid, near };
+
+  // Tall grass tufts
+  const tufts = [];
+  for(let i=0;i<theme.grassCount;i++){
+    tufts.push({
+      x: rand(-10, W+10),
+      y: H - rand(0, H*0.18),
+      h: rand(10, 28),
+      lean: rand(-0.3, 0.3),
+      phase: rand(0, Math.PI*2),
+      shade: rand(0.55, 0.95)
+    });
+  }
+  _forestGrassTufts = tufts;
+
+  // Fireflies / motes
+  const flies = [];
+  for(let i=0;i<theme.fireflyCount;i++){
+    flies.push({
+      x: rand(0, W), y: rand(H*0.25, H*0.85),
+      vx: rand(-0.25, 0.25), vy: rand(-0.18, 0.18),
+      phase: rand(0, Math.PI*2), speed: rand(0.015, 0.035),
+      r: rand(1.1, 1.8)
+    });
+  }
+  _forestFireflies = flies;
+
+  // Drifting petals/motes
+  const petals = [];
+  for(let i=0;i<theme.petalCount;i++){
+    petals.push({
+      x: rand(0, W), y: rand(0, H),
+      vx: rand(0.15, 0.45), vy: rand(0.05, 0.2),
+      r: rand(0.8, 1.6), alpha: rand(0.3, 0.7)
+    });
+  }
+  _forestPetals = petals;
+
+  // Wildlife pool — only enabled creatures get spawned
+  const wl = {};
+  if(theme.wildlife.deer)      wl.deer = { x: W*0.18, y: H*0.78, scale: 0.85, dir: 1, t: rand(0,100), idleNext: rand(80, 200) };
+  if(theme.wildlife.owl)       wl.owl  = { x: W*0.78, y: H*0.36, blink: 0, blinkNext: 120 };
+  if(theme.wildlife.butterfly) wl.butterfly = { x: W*0.45, y: H*0.55, phase: rand(0, Math.PI*2) };
+  if(theme.wildlife.bird)      wl.bird = { x: -20, y: H*0.25, vx: 0.6, phase: rand(0, Math.PI*2) };
+  if(theme.wildlife.monkey)    wl.monkey = { x: W*0.85, y: H*0.42, phase: rand(0, Math.PI*2) };
+  if(theme.wildlife.eagle)     wl.eagle = { x: W*0.5, y: H*0.18, angle: rand(0, Math.PI*2), r: Math.min(W,H)*0.25 };
+  _forestWildlife = wl;
+
+  _forestWeather = _initForestWeather(W, H, rand, theme);
+  _forestSceneInited = true;
+}
+
+// Helper: draw trees in per-level style for mid band
+function _drawForestMidTree(ctx, tr, baseY, t, style, sway){
+  const topY = baseY - tr.h;
+  const x = tr.x + sway;
+  ctx.fillStyle = `rgba(${Math.round(28*tr.hue)}, ${Math.round(48*tr.hue)}, ${Math.round(28*tr.hue)}, 0.92)`;
+  switch(style){
+    case 'birch': {
+      // White-grey trunk with dark bands, sparse leaves
+      ctx.fillStyle = `rgba(${Math.round(195*tr.hue)}, ${Math.round(195*tr.hue)}, ${Math.round(185*tr.hue)}, 0.85)`;
+      ctx.fillRect(x - 3, topY + tr.h*0.15, 6, tr.h*0.85);
+      // Bark bands
+      ctx.fillStyle = 'rgba(30,28,22,0.85)';
+      for(let i=0; i<5; i++){
+        ctx.fillRect(x - 3, topY + tr.h*(0.2 + i*0.15), 6, 1.5);
+      }
+      // Sparse leaves
+      ctx.fillStyle = `rgba(${Math.round(180*tr.hue)}, ${Math.round(160*tr.hue)}, ${Math.round(70*tr.hue)}, 0.7)`;
+      ctx.beginPath();
+      ctx.ellipse(x - tr.w*0.2, topY + tr.h*0.1, tr.w*0.35, tr.h*0.15, 0, 0, Math.PI*2);
+      ctx.ellipse(x + tr.w*0.2, topY + tr.h*0.05, tr.w*0.4, tr.h*0.18, 0, 0, Math.PI*2);
+      ctx.fill();
+      return;
+    }
+    case 'pine': {
+      // Tall narrow pine, layered
+      const layers = 5;
+      ctx.fillStyle = `rgba(${Math.round(22*tr.hue)}, ${Math.round(36*tr.hue)}, ${Math.round(22*tr.hue)}, 0.94)`;
+      for(let i=0;i<layers;i++){
+        const ly = topY + (i/layers)*tr.h*0.9;
+        const lw = tr.w * (0.40 + i*0.13);
+        ctx.beginPath();
+        ctx.moveTo(x - lw*0.5, ly + tr.h*0.16);
+        ctx.lineTo(x, ly);
+        ctx.lineTo(x + lw*0.5, ly + tr.h*0.16);
+        ctx.closePath(); ctx.fill();
+      }
+      ctx.fillStyle = 'rgba(18,12,8,0.9)';
+      ctx.fillRect(x - 2, baseY - tr.h*0.05, 4, tr.h*0.08);
+      return;
+    }
+    case 'bamboo': {
+      // Tall thin segmented stalk, green
+      ctx.strokeStyle = `rgba(${Math.round(80*tr.hue)}, ${Math.round(140*tr.hue)}, ${Math.round(60*tr.hue)}, 0.92)`;
+      ctx.lineWidth = 4;
+      ctx.beginPath();
+      ctx.moveTo(x, baseY); ctx.lineTo(x + sway*0.3, topY);
+      ctx.stroke();
+      // Segment nodes
+      ctx.strokeStyle = `rgba(${Math.round(40*tr.hue)}, ${Math.round(70*tr.hue)}, ${Math.round(30*tr.hue)}, 0.95)`;
+      ctx.lineWidth = 1.5;
+      for(let i=1;i<6;i++){
+        const y = baseY - tr.h*(i/6);
+        ctx.beginPath();
+        ctx.moveTo(x - 3, y); ctx.lineTo(x + 3, y);
+        ctx.stroke();
+      }
+      // Top leaves
+      ctx.fillStyle = `rgba(${Math.round(90*tr.hue)}, ${Math.round(160*tr.hue)}, ${Math.round(70*tr.hue)}, 0.85)`;
+      for(let i=0;i<3;i++){
+        ctx.beginPath();
+        ctx.ellipse(x + (i-1)*5 + sway, topY + 2, 8, 2, (i-1)*0.4, 0, Math.PI*2);
+        ctx.fill();
+      }
+      return;
+    }
+    case 'jungle': {
+      // Lush broad-leaf palm — fan of fronds + thick trunk
+      ctx.fillStyle = 'rgba(28,22,12,0.95)';
+      ctx.fillRect(x - 3, topY + tr.h*0.25, 6, tr.h*0.75);
+      ctx.fillStyle = `rgba(${Math.round(48*tr.hue)}, ${Math.round(96*tr.hue)}, ${Math.round(42*tr.hue)}, 0.92)`;
+      // Fan of fronds
+      for(let i=-3;i<=3;i++){
+        const ang = (i/3) * Math.PI*0.4 + sway*0.02;
+        const fx = x + Math.sin(ang) * tr.w*0.55;
+        const fy = topY + tr.h*0.1 - Math.cos(ang) * tr.w*0.35;
+        ctx.beginPath();
+        ctx.ellipse(fx, fy, tr.w*0.30, tr.w*0.08, ang, 0, Math.PI*2);
+        ctx.fill();
+      }
+      return;
+    }
+    case 'mountain': {
+      // Stiff alpine fir + rocky underbase
+      const layers = 5;
+      ctx.fillStyle = `rgba(${Math.round(30*tr.hue)}, ${Math.round(42*tr.hue)}, ${Math.round(34*tr.hue)}, 0.94)`;
+      for(let i=0;i<layers;i++){
+        const ly = topY + (i/layers)*tr.h*0.92;
+        const lw = tr.w * (0.45 + i*0.14);
+        ctx.beginPath();
+        ctx.moveTo(x - lw*0.5, ly + tr.h*0.16);
+        ctx.lineTo(x, ly);
+        ctx.lineTo(x + lw*0.5, ly + tr.h*0.16);
+        ctx.closePath(); ctx.fill();
+      }
+      // Snow dusting on top layer
+      ctx.fillStyle = 'rgba(220,225,230,0.45)';
+      ctx.beginPath();
+      ctx.moveTo(x - tr.w*0.22, topY + tr.h*0.16);
+      ctx.lineTo(x, topY);
+      ctx.lineTo(x + tr.w*0.22, topY + tr.h*0.16);
+      ctx.closePath(); ctx.fill();
+      return;
+    }
+    case 'mist':
+    case 'cloud': {
+      // Trees half-eaten by mist: lighter alpha, softer edges
+      const layers = 4;
+      ctx.fillStyle = `rgba(${Math.round(34*tr.hue)}, ${Math.round(54*tr.hue)}, ${Math.round(40*tr.hue)}, ${style==='cloud' ? 0.55 : 0.70})`;
+      for(let i=0;i<layers;i++){
+        const ly = topY + (i/layers)*tr.h*0.9;
+        const lw = tr.w * (0.50 + i*0.16);
+        ctx.beginPath();
+        ctx.ellipse(x, ly + tr.h*0.1, lw*0.5, tr.h*0.16, 0, 0, Math.PI*2);
+        ctx.fill();
+      }
+      return;
+    }
+    case 'storm':
+    case 'cyclone': {
+      // Wind-bent stark conifer, dark, leaning
+      const lean = style === 'cyclone' ? 0.15 : 0.08;
+      const layers = 4;
+      ctx.fillStyle = `rgba(${Math.round(18*tr.hue)}, ${Math.round(28*tr.hue)}, ${Math.round(22*tr.hue)}, 0.96)`;
+      for(let i=0;i<layers;i++){
+        const ly = topY + (i/layers)*tr.h*0.9;
+        const lw = tr.w * (0.50 + i*0.16);
+        const dx = lean * tr.h * (1 - i/layers);
+        ctx.beginPath();
+        ctx.moveTo(x - lw*0.5 + dx, ly + tr.h*0.18);
+        ctx.lineTo(x + dx*0.5, ly);
+        ctx.lineTo(x + lw*0.5 + dx, ly + tr.h*0.18);
+        ctx.closePath(); ctx.fill();
+      }
+      ctx.fillStyle = 'rgba(12,10,8,0.95)';
+      ctx.fillRect(x - 2, baseY - tr.h*0.05, 4, tr.h*0.08);
+      return;
+    }
+    default: { // conifer (LV1)
+      const layers = 4;
+      for(let i=0;i<layers;i++){
+        const ly = topY + (i/layers)*tr.h*0.9;
+        const lw = tr.w * (0.55 + i*0.18);
+        ctx.beginPath();
+        ctx.moveTo(x - lw*0.5, ly + tr.h*0.18);
+        ctx.lineTo(x, ly);
+        ctx.lineTo(x + lw*0.5, ly + tr.h*0.18);
+        ctx.closePath(); ctx.fill();
+      }
+      ctx.fillStyle = 'rgba(20,16,10,0.95)';
+      ctx.fillRect(x - 2, baseY - tr.h*0.05, 4, tr.h*0.08);
+    }
+  }
+}
+
+// Weather overlays
+function _drawForestWeather(ctx, W, H, rand, theme, t){
+  const w = _forestWeather;
+  if(!w) return;
+  if(w.kind === 'leaves'){
+    for(const lf of w.leaves){
+      lf.x += lf.vx + Math.sin(t*0.02 + lf.x*0.01)*0.4;
+      lf.y += lf.vy;
+      lf.rot += lf.rotV;
+      if(lf.y > H+10){ lf.y = -10; lf.x = rand(0, W); }
+      if(lf.x > W+10) lf.x = -10;
+      ctx.save();
+      ctx.translate(lf.x, lf.y); ctx.rotate(lf.rot);
+      ctx.fillStyle = `rgba(${Math.round(210*lf.hue)}, ${Math.round(140*lf.hue)}, ${Math.round(60*lf.hue)}, 0.85)`;
+      ctx.beginPath();
+      ctx.ellipse(0, 0, lf.size, lf.size*0.55, 0, 0, Math.PI*2);
+      ctx.fill();
+      ctx.restore();
+    }
+  } else if(w.kind === 'wind' || w.kind === 'breeze'){
+    ctx.save();
+    ctx.strokeStyle = 'rgba(220,220,200,0.18)'; ctx.lineWidth = 1;
+    for(const s of w.streaks){
+      s.x += s.vx;
+      if(s.x > W+30){ s.x = -30; s.y = rand(0, H*0.7); }
+      ctx.globalAlpha = s.alpha;
+      ctx.beginPath();
+      ctx.moveTo(s.x, s.y); ctx.lineTo(s.x - s.len, s.y);
+      ctx.stroke();
+    }
+    ctx.globalAlpha = 1; ctx.restore();
+  } else if(w.kind === 'rain' || w.kind === 'storm' || w.kind === 'lightning'){
+    ctx.save();
+    ctx.strokeStyle = w.kind === 'lightning' ? 'rgba(200,210,235,0.7)' : 'rgba(190,210,225,0.6)';
+    ctx.lineWidth = 1.2;
+    for(const d of w.drops){
+      d.x += d.vx; d.y += d.vy;
+      if(d.y > H+10){ d.y = -10; d.x = rand(-20, W+20); }
+      if(d.x > W+10) d.x = -10;
+      ctx.globalAlpha = d.alpha;
+      ctx.beginPath();
+      ctx.moveTo(d.x, d.y); ctx.lineTo(d.x - d.vx*0.8, d.y - d.len);
+      ctx.stroke();
+    }
+    if(w.streaks){
+      ctx.strokeStyle = 'rgba(220,225,240,0.20)';
+      for(const s of w.streaks){
+        s.x += s.vx;
+        if(s.x > W+30){ s.x = -30; s.y = rand(0, H*0.7); }
+        ctx.globalAlpha = s.alpha;
+        ctx.beginPath();
+        ctx.moveTo(s.x, s.y); ctx.lineTo(s.x - s.len, s.y);
+        ctx.stroke();
+      }
+    }
+    ctx.globalAlpha = 1; ctx.restore();
+
+    // Lightning bolts
+    if(w.lightning){
+      const L = w.lightning;
+      L.nextIn--;
+      if(L.nextIn <= 0){
+        // Build a jagged path
+        const startX = rand(W*0.2, W*0.8);
+        const pts = [{x:startX, y:0}];
+        let y = 0, x = startX;
+        while(y < H*0.7){
+          y += rand(15, 30); x += rand(-20, 20);
+          pts.push({x,y});
+        }
+        L.path = pts;
+        L.active = 8;
+        L.nextIn = 90 + Math.floor(rand(0, 220));
+      }
+      if(L.active > 0){
+        L.active--;
+        ctx.save();
+        // Bright flash overlay
+        ctx.fillStyle = `rgba(220,230,255,${0.18 * (L.active/8)})`;
+        ctx.fillRect(0,0,W,H);
+        // Bolt path
+        ctx.strokeStyle = `rgba(230,240,255,${0.85 * (L.active/8)})`;
+        ctx.lineWidth = 2.2;
+        ctx.beginPath();
+        for(let i=0;i<L.path.length;i++){
+          const p = L.path[i];
+          if(i===0) ctx.moveTo(p.x, p.y);
+          else ctx.lineTo(p.x, p.y);
+        }
+        ctx.stroke();
+        // Glow
+        ctx.strokeStyle = `rgba(180,200,255,${0.35 * (L.active/8)})`;
+        ctx.lineWidth = 5;
+        ctx.stroke();
+        ctx.restore();
+      }
+    }
+  } else if(w.kind === 'mist' || w.kind === 'heavyFog'){
+    ctx.save();
+    for(const wisp of w.wisps){
+      wisp.x += wisp.vx;
+      if(wisp.x > W+wisp.w){ wisp.x = -wisp.w; wisp.y = rand(0, H); }
+      const g = ctx.createRadialGradient(wisp.x, wisp.y, 4, wisp.x, wisp.y, wisp.w*0.5);
+      g.addColorStop(0, `rgba(220,225,225,${wisp.alpha})`);
+      g.addColorStop(0.5, `rgba(210,215,215,${wisp.alpha*0.6})`);
+      g.addColorStop(1, 'rgba(200,210,210,0)');
+      ctx.fillStyle = g;
+      ctx.beginPath();
+      ctx.ellipse(wisp.x, wisp.y, wisp.w*0.5, wisp.h*0.5, 0, 0, Math.PI*2);
+      ctx.fill();
+    }
+    ctx.restore();
+  } else if(w.kind === 'cyclone'){
+    // Spiralling debris around a central eye
+    ctx.save();
+    w.eyeAngle += 0.01;
+    const cx = W*0.5, cy = H*0.5;
+    // Spiral wind streaks
+    ctx.strokeStyle = 'rgba(180,190,210,0.15)'; ctx.lineWidth = 1.5;
+    for(const s of w.streaks){
+      s.angle += s.angV;
+      const x1 = cx + Math.cos(s.angle) * s.r;
+      const y1 = cy + Math.sin(s.angle) * s.r;
+      const x2 = cx + Math.cos(s.angle - 0.15) * (s.r + s.len);
+      const y2 = cy + Math.sin(s.angle - 0.15) * (s.r + s.len);
+      ctx.globalAlpha = s.alpha;
+      ctx.beginPath();
+      ctx.moveTo(x1,y1); ctx.lineTo(x2,y2);
+      ctx.stroke();
+    }
+    ctx.globalAlpha = 1;
+    // Debris
+    for(const d of w.debris){
+      d.angle += d.angV;
+      d.radius -= 0.4;
+      if(d.radius < 30){ d.radius = Math.max(W,H)*0.55; d.angle = rand(0, Math.PI*2); }
+      const px = cx + Math.cos(d.angle) * d.radius;
+      const py = cy + Math.sin(d.angle) * d.radius * 0.85;
+      ctx.fillStyle = `rgba(140,150,170,${d.alpha})`;
+      if(d.kind === 0){
+        ctx.fillRect(px-d.size*0.5, py-d.size*0.3, d.size, d.size*0.6);
+      } else if(d.kind === 1){
+        ctx.beginPath(); ctx.arc(px, py, d.size*0.5, 0, Math.PI*2); ctx.fill();
+      } else {
+        ctx.save(); ctx.translate(px, py); ctx.rotate(d.angle);
+        ctx.fillRect(-d.size*0.6, -1, d.size*1.2, 1.5);
+        ctx.restore();
+      }
+    }
+    // Eye glow at centre
+    const eg = ctx.createRadialGradient(cx, cy, 4, cx, cy, 120);
+    eg.addColorStop(0, 'rgba(80,90,110,0.25)');
+    eg.addColorStop(1, 'rgba(0,0,0,0)');
+    ctx.fillStyle = eg; ctx.fillRect(0,0,W,H);
+    ctx.restore();
+
+    // Occasional lightning
+    if(w.lightning){
+      const L = w.lightning;
+      L.nextIn--;
+      if(L.nextIn <= 0){
+        const startX = rand(W*0.1, W*0.9);
+        const pts = [{x:startX, y:0}];
+        let y = 0, x = startX;
+        while(y < H*0.75){
+          y += rand(15, 30); x += rand(-25, 25);
+          pts.push({x,y});
+        }
+        L.path = pts;
+        L.active = 10;
+        L.nextIn = 60 + Math.floor(rand(0, 140));
+      }
+      if(L.active > 0){
+        L.active--;
+        ctx.save();
+        ctx.fillStyle = `rgba(180,200,235,${0.20 * (L.active/10)})`;
+        ctx.fillRect(0,0,W,H);
+        ctx.strokeStyle = `rgba(220,235,255,${0.90 * (L.active/10)})`;
+        ctx.lineWidth = 2.5;
+        ctx.beginPath();
+        for(let i=0;i<L.path.length;i++){
+          const p = L.path[i];
+          if(i===0) ctx.moveTo(p.x, p.y);
+          else ctx.lineTo(p.x, p.y);
+        }
+        ctx.stroke();
+        ctx.strokeStyle = `rgba(160,190,255,${0.40 * (L.active/10)})`;
+        ctx.lineWidth = 6;
+        ctx.stroke();
+        ctx.restore();
+      }
+    }
+  }
+}
+
+// Main biome renderer — theme-driven
+function _drawForestBiome(ctx, W, H, rand, lerp, lvl){
+  const theme = _getForestTheme(lvl);
+  if(!_forestSceneInited || _forestBiomeLvlInited !== lvl){
+    _initForestSceneForTheme(W, H, rand, theme);
+    _forestBiomeLvlInited = lvl;
+  }
+  const t = _ambientT;
+  // Per-level subtle wind value to influence trees + grass
+  const windAmp = (theme.weather === 'wind' || theme.weather === 'storm') ? 4 :
+                  (theme.weather === 'lightning' || theme.weather === 'cyclone') ? 6 :
+                  (theme.weather === 'breeze' || theme.weather === 'leaves') ? 2 : 1;
+
+  // ---- Sky
+  const sky = ctx.createLinearGradient(0,0,0,H*0.72);
+  sky.addColorStop(0, theme.skyTop);
+  sky.addColorStop(0.30, theme.skyMid);
+  sky.addColorStop(0.65, theme.skyHorizon);
+  sky.addColorStop(1, theme.skyGold);
+  ctx.fillStyle = sky; ctx.fillRect(0,0,W,H*0.72);
+
+  // Sun shaft / glow
+  ctx.save();
+  const sg = ctx.createRadialGradient(W*theme.sunX, H*theme.sunY, 4, W*theme.sunX, H*theme.sunY, W*0.55);
+  const [sr,sgC,sb,sa] = theme.sunGlow;
+  sg.addColorStop(0,    `rgba(${sr},${sgC},${sb},${sa})`);
+  sg.addColorStop(0.35, `rgba(${sr},${sgC},${sb},${sa*0.5})`);
+  sg.addColorStop(1,    'rgba(0,0,0,0)');
+  ctx.fillStyle = sg; ctx.fillRect(0,0,W,H);
+  ctx.restore();
+
+  // Ground gradient
+  const grd = ctx.createLinearGradient(0, H*0.68, 0, H);
+  grd.addColorStop(0, theme.groundTop);
+  grd.addColorStop(0.5, theme.groundMid);
+  grd.addColorStop(1, theme.groundBot);
+  ctx.fillStyle = grd; ctx.fillRect(0, H*0.68, W, H*0.32);
+
+  // ---- Far tree band
+  ctx.save();
+  ctx.fillStyle = `rgba(${Math.round(20)}, ${Math.round(28)}, ${Math.round(22)}, 0.85)`;
+  for(const tr of _forestTreeLayout.far){
+    const baseY = H*0.66;
+    const topY = baseY - tr.h;
+    ctx.beginPath();
+    ctx.moveTo(tr.x - tr.w*0.5, baseY);
+    ctx.lineTo(tr.x, topY);
+    ctx.lineTo(tr.x + tr.w*0.5, baseY);
+    ctx.closePath(); ctx.fill();
+  }
+  ctx.restore();
+
+  // Ground mist between far and mid
+  if(theme.mistAlpha > 0){
+    ctx.save();
+    const mist = ctx.createLinearGradient(0, H*0.58, 0, H*0.74);
+    mist.addColorStop(0, 'rgba(180,180,150,0)');
+    mist.addColorStop(0.5,`rgba(200,200,170,${theme.mistAlpha})`);
+    mist.addColorStop(1, 'rgba(180,180,150,0)');
+    ctx.fillStyle = mist; ctx.fillRect(0, H*0.58, W, H*0.16);
+    ctx.restore();
+  }
+
+  // ---- Mid tree band
+  ctx.save();
+  for(const tr of _forestTreeLayout.mid){
+    const baseY = H*0.72;
+    const sway = Math.sin(t*0.025 + tr.sway) * windAmp;
+    _drawForestMidTree(ctx, tr, baseY, t, theme.treeStyle, sway);
+  }
+  ctx.restore();
+
+  // ---- Near tree band (framing edges)
+  ctx.save();
+  for(const tr of _forestTreeLayout.near){
+    if(tr.x > W*0.18 && tr.x < W*0.82) continue;
+    const baseY = H + 8;
+    const sway = Math.sin(t*0.020 + tr.sway) * windAmp * 0.7;
+    _drawForestMidTree(ctx, { ...tr, h:tr.h*0.95, w:tr.w*1.1 }, baseY, t, theme.treeStyle, sway);
+  }
+  ctx.restore();
+
+  // ---- Wildlife
+  const wl = _forestWildlife;
+  if(wl){
+    if(wl.deer){
+      const d = wl.deer; d.t++;
+      if(d.t > d.idleNext){ d.idleNext = d.t + 80 + Math.floor(rand(0,200)); d.dir *= -1; }
+      const dxOff = Math.sin(t*0.008)*1.5;
+      const dyOff = Math.sin(t*0.022)*0.6;
+      ctx.save();
+      ctx.translate(d.x + dxOff, d.y + dyOff);
+      ctx.scale(d.scale*d.dir, d.scale);
+      ctx.fillStyle = 'rgba(20,18,14,0.92)';
+      ctx.beginPath(); ctx.ellipse(0,0,14,7,0,0,Math.PI*2); ctx.fill();
+      ctx.fillRect(-9,4,2,10); ctx.fillRect(-5,4,2,10); ctx.fillRect(5,4,2,10); ctx.fillRect(9,4,2,10);
+      ctx.beginPath(); ctx.moveTo(10,-2); ctx.lineTo(15,-10); ctx.lineTo(17,-10); ctx.lineTo(13,-1); ctx.closePath(); ctx.fill();
+      ctx.beginPath(); ctx.ellipse(17,-11,4,3,0,0,Math.PI*2); ctx.fill();
+      ctx.strokeStyle = 'rgba(20,18,14,0.92)'; ctx.lineWidth = 1.2;
+      ctx.beginPath(); ctx.moveTo(17,-13); ctx.lineTo(18,-17); ctx.moveTo(17,-13); ctx.lineTo(20,-16); ctx.moveTo(16,-13); ctx.lineTo(14,-17); ctx.stroke();
+      ctx.fillRect(-13,-2,2,4);
+      ctx.restore();
+    }
+    if(wl.owl){
+      const o = wl.owl; o.blinkNext--;
+      if(o.blinkNext <= 0){ o.blink = 6; o.blinkNext = 200 + Math.floor(rand(0,200)); }
+      if(o.blink > 0) o.blink--;
+      ctx.save();
+      ctx.translate(o.x, o.y);
+      ctx.fillStyle = 'rgba(18,16,12,0.95)';
+      ctx.beginPath(); ctx.ellipse(0,0,5,6,0,0,Math.PI*2); ctx.fill();
+      ctx.beginPath(); ctx.moveTo(-4,-4); ctx.lineTo(-2,-8); ctx.lineTo(-1,-4); ctx.closePath(); ctx.fill();
+      ctx.beginPath(); ctx.moveTo(4,-4); ctx.lineTo(2,-8); ctx.lineTo(1,-4); ctx.closePath(); ctx.fill();
+      if(o.blink === 0){
+        ctx.fillStyle = 'rgba(255,210,90,0.85)';
+        ctx.beginPath(); ctx.arc(-1.6,-1,0.9,0,Math.PI*2); ctx.fill();
+        ctx.beginPath(); ctx.arc(1.6,-1,0.9,0,Math.PI*2); ctx.fill();
+      }
+      ctx.strokeStyle = 'rgba(20,16,10,0.85)'; ctx.lineWidth = 1.5;
+      ctx.beginPath(); ctx.moveTo(-12,6); ctx.lineTo(14,5); ctx.stroke();
+      ctx.restore();
+    }
+    if(wl.butterfly){
+      const b = wl.butterfly; b.phase += 0.025;
+      const bx = b.x + Math.sin(b.phase)*30;
+      const by = b.y + Math.sin(b.phase*2)*12;
+      ctx.save(); ctx.translate(bx, by);
+      const flap = Math.abs(Math.sin(b.phase*8));
+      ctx.fillStyle = 'rgba(220,170,90,0.7)';
+      ctx.beginPath(); ctx.ellipse(-2.5,0,2.5*flap+0.5,3,0,0,Math.PI*2); ctx.fill();
+      ctx.beginPath(); ctx.ellipse(2.5,0,2.5*flap+0.5,3,0,0,Math.PI*2); ctx.fill();
+      ctx.fillStyle = 'rgba(40,28,14,0.9)'; ctx.fillRect(-0.5,-2.5,1,5);
+      ctx.restore();
+    }
+    if(wl.bird){
+      const bd = wl.bird; bd.x += bd.vx; bd.phase += 0.15;
+      if(bd.x > W + 30){ bd.x = -30; bd.y = H*0.18 + rand(0, H*0.2); }
+      ctx.save(); ctx.translate(bd.x, bd.y);
+      ctx.fillStyle = 'rgba(20,18,14,0.9)';
+      const flap = Math.sin(bd.phase)*3;
+      ctx.beginPath();
+      ctx.moveTo(-6, 0); ctx.quadraticCurveTo(-3, -flap, 0, 0);
+      ctx.quadraticCurveTo(3, -flap, 6, 0);
+      ctx.lineWidth = 1.4; ctx.strokeStyle = 'rgba(20,18,14,0.9)';
+      ctx.stroke();
+      ctx.restore();
+    }
+    if(wl.monkey){
+      // Tiny silhouette swinging on a branch
+      const m = wl.monkey; m.phase += 0.04;
+      const mx = m.x + Math.sin(m.phase)*8;
+      const my = m.y + Math.abs(Math.sin(m.phase))*3;
+      ctx.save();
+      // Branch
+      ctx.strokeStyle = 'rgba(20,16,10,0.85)'; ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.moveTo(m.x-22, m.y-6); ctx.lineTo(m.x+22, m.y-6); ctx.stroke();
+      // Monkey body
+      ctx.fillStyle = 'rgba(18,14,10,0.95)';
+      ctx.beginPath(); ctx.ellipse(mx, my, 3, 4, 0, 0, Math.PI*2); ctx.fill();
+      // Head
+      ctx.beginPath(); ctx.arc(mx, my-4, 2, 0, Math.PI*2); ctx.fill();
+      // Arm to branch
+      ctx.strokeStyle = 'rgba(18,14,10,0.95)'; ctx.lineWidth = 1.2;
+      ctx.beginPath(); ctx.moveTo(mx, my-2); ctx.lineTo(mx + Math.sin(m.phase)*4, m.y-6);
+      ctx.stroke();
+      // Tail curl
+      ctx.beginPath();
+      ctx.moveTo(mx, my+3); ctx.quadraticCurveTo(mx-4, my+8, mx-2, my+10);
+      ctx.stroke();
+      ctx.restore();
+    }
+    if(wl.eagle){
+      // Circling eagle silhouette high in sky
+      const e = wl.eagle; e.angle += 0.01;
+      const ex = W*0.5 + Math.cos(e.angle) * e.r;
+      const ey = H*0.18 + Math.sin(e.angle) * e.r * 0.5;
+      ctx.save(); ctx.translate(ex, ey);
+      ctx.fillStyle = 'rgba(18,16,12,0.85)';
+      ctx.strokeStyle = 'rgba(18,16,12,0.85)'; ctx.lineWidth = 1.6;
+      ctx.beginPath();
+      ctx.moveTo(-10, 0); ctx.quadraticCurveTo(-5, -3, 0, 0);
+      ctx.quadraticCurveTo(5, -3, 10, 0);
+      ctx.stroke();
+      ctx.restore();
+    }
+  }
+
+  // ---- Tall grass
+  ctx.save(); ctx.lineCap = 'round';
+  for(const g of _forestGrassTufts){
+    const sway = Math.sin(t*0.04 + g.phase) * (1.4 + windAmp*0.2);
+    const tipX = g.x + g.lean*g.h + sway;
+    const tipY = g.y - g.h;
+    const [gr,gg,gb] = theme.grassHue;
+    ctx.strokeStyle = `rgba(${Math.round(gr*g.shade)}, ${Math.round(gg*g.shade)}, ${Math.round(gb*g.shade)}, 0.85)`;
+    ctx.lineWidth = 1.1;
+    ctx.beginPath();
+    ctx.moveTo(g.x, g.y);
+    ctx.quadraticCurveTo(g.x + g.lean*g.h*0.4 + sway*0.4, g.y - g.h*0.5, tipX, tipY);
+    ctx.stroke();
+    ctx.lineWidth = 0.8;
+    ctx.beginPath();
+    ctx.moveTo(g.x+1, g.y);
+    ctx.quadraticCurveTo(g.x + 4 + sway*0.3, g.y - g.h*0.45, g.x + 5 + sway*0.5, g.y - g.h*0.75);
+    ctx.stroke();
+  }
+  ctx.restore();
+
+  // ---- Petals / motes
+  ctx.save();
+  const [pr,pg,pb] = theme.petalHue;
+  for(const p of _forestPetals){
+    p.x += p.vx + (windAmp > 2 ? Math.sin(t*0.04)*0.5 : 0);
+    p.y += p.vy + Math.sin(t*0.02 + p.x*0.01)*0.05;
+    if(p.x > W+4){ p.x = -4; p.y = rand(0, H*0.7); }
+    if(p.y > H+4){ p.y = -4; }
+    ctx.fillStyle = `rgba(${pr}, ${pg}, ${pb}, ${p.alpha})`;
+    ctx.beginPath(); ctx.arc(p.x, p.y, p.r, 0, Math.PI*2); ctx.fill();
+  }
+  ctx.restore();
+
+  // ---- Fireflies
+  ctx.save();
+  const [fr,fg,fb] = theme.fireflyHue;
+  for(const f of _forestFireflies){
+    f.phase += f.speed;
+    f.x += f.vx + Math.sin(f.phase)*0.3;
+    f.y += f.vy + Math.cos(f.phase*0.7)*0.2;
+    if(f.x < -10) f.x = W+10; if(f.x > W+10) f.x = -10;
+    if(f.y < 0) f.y = H*0.85; if(f.y > H) f.y = H*0.25;
+    const pulse = 0.5 + 0.5*Math.sin(f.phase*3);
+    const hg = ctx.createRadialGradient(f.x, f.y, 0, f.x, f.y, 8);
+    hg.addColorStop(0, `rgba(${fr},${fg},${fb},${0.55*pulse})`);
+    hg.addColorStop(0.4, `rgba(${fr},${Math.max(180,fg-40)},${Math.max(90,fb-80)},${0.22*pulse})`);
+    hg.addColorStop(1, 'rgba(255,200,90,0)');
+    ctx.fillStyle = hg;
+    ctx.fillRect(f.x-10, f.y-10, 20, 20);
+    ctx.fillStyle = `rgba(${fr},${fg},${fb},${0.85*pulse+0.15})`;
+    ctx.beginPath(); ctx.arc(f.x, f.y, f.r, 0, Math.PI*2); ctx.fill();
+  }
+  ctx.restore();
+
+  // ---- Weather overlay (rain/leaves/wind/mist/storm/lightning/cyclone)
+  _drawForestWeather(ctx, W, H, rand, theme, t);
+
+  // ---- Vignette
+  ctx.save();
+  const vg = ctx.createRadialGradient(W*0.5, H*0.55, W*0.3, W*0.5, H*0.55, W*0.75);
+  vg.addColorStop(0, 'rgba(0,0,0,0)');
+  vg.addColorStop(1, `rgba(0,0,0,${theme.vignette})`);
+  ctx.fillStyle = vg; ctx.fillRect(0,0,W,H);
+  ctx.restore();
 }
 
 // Lazy init persistent forest scene entities
