@@ -8056,9 +8056,9 @@ function _ambientDraw(timestamp) {
 
   if (activeChallengeMode === 'standard') {
     _drawPondAmbient(ctx, W, H, rand, lerp);
-  } else if (activeChallengeMode === 'fog' && ((cm_fogLevel|0) === 1)) {
-    // Fog LV1 Mystic Pond — quiet morning pond, koi beneath surface, swaying
-    // vegetation, edge dragonflies, hopping corner frog. Pure procedural.
+  } else if (activeChallengeMode === 'fog' && (cm_fogLevel|0) >= 1 && (cm_fogLevel|0) <= 10) {
+    // Fog LV1–10 — reuse Mystic Pond renderer. Per-level palette + tile kinds
+    // are picked up via _getFogTheme() inside _pondPalette/_drawPondTile.
     _drawMysticPondAmbient(ctx, W, H, rand, lerp);
   } else if (activeChallengeMode === 'frenzy') {
     _drawFrenzyAmbient(ctx, W, H, rand, lerp);
@@ -8307,9 +8307,9 @@ function _pondClock() {
   const elapsed = performance.now() - _pondCycleStartTS;
   const dn     = _pondCycleLookup(_POND_DN_PHASES,     elapsed);
   const season = _pondCycleLookup(_POND_SEASON_PHASES, elapsed);
-  // Phase-change banners (only when actively in Fog LV1)
+  // Phase-change banners (active in Fog LV1–10)
   if (typeof activeChallengeMode !== 'undefined' && activeChallengeMode === 'fog'
-      && typeof cm_fogLevel !== 'undefined' && (cm_fogLevel|0) === 1
+      && typeof cm_fogLevel !== 'undefined' && (cm_fogLevel|0) >= 1 && (cm_fogLevel|0) <= 10
       && typeof showEventBanner === 'function') {
     if (_pondLastDNPhase !== null && _pondLastDNPhase !== dn.name) {
       const bn = {day:'☀️ DAY', dusk:'🌇 DUSK', night:'🌙 NIGHT', dawn:'🌅 DAWN'}[dn.name];
@@ -8335,7 +8335,7 @@ function _pondClock() {
     const badge = document.getElementById('pond-season-badge');
     if (badge) {
       const inFogLv1 = typeof activeChallengeMode !== 'undefined' && activeChallengeMode === 'fog'
-        && typeof cm_fogLevel !== 'undefined' && (cm_fogLevel|0) === 1;
+        && typeof cm_fogLevel !== 'undefined' && (cm_fogLevel|0) >= 1 && (cm_fogLevel|0) <= 10;
       if (inFogLv1) {
         const phaseEmoji  = {day:'☀️', dusk:'🌇', night:'🌙', dawn:'🌅'}[dn.name] || '☀️';
         const seasonEmoji = {spring:'🌸', summer:'☀️', autumn:'🍂', winter:'❄️'}[season.name] || '🌸';
@@ -8380,9 +8380,9 @@ function _pondHazardClear() {
   _pondHazardKind  = null;
 }
 function _pondHazardEnsure(seasonName) {
-  // Only active in Fog LV1
+  // Active in Fog LV1–10
   if (typeof activeChallengeMode === 'undefined' || activeChallengeMode !== 'fog'
-      || typeof cm_fogLevel === 'undefined' || (cm_fogLevel|0) !== 1) {
+      || typeof cm_fogLevel === 'undefined' || (cm_fogLevel|0) < 1 || (cm_fogLevel|0) > 10) {
     _pondHazardClear();
     _pondHazardSeason = null;
     return;
@@ -8545,8 +8545,102 @@ function _pondHazardDrawCell(ctx, r, c) {
 
 // Returns interpolated palette for the current time of day.
 // Each entry is an RGB triplet.
+// === FOG LV1–10 THEMES ============================================
+// Per-level palette/decor overrides. LV1 (Mystic Pond) is the baseline; other
+// levels apply a multiplicative day-palette shift + seasonal mood + tile kinds.
+// Day-palette is the core look you see; night/dawn/dusk auto-derive from it.
+const _FOG_LV_THEMES = {
+  1: {  // Mystic Pond — baseline (untouched)
+    name: 'Mystic Pond',
+    dayWater: null, // null = use original mystic pond palette
+    seasonHueShift: 0,
+    tileKinds: ['lotus','koibelly','lily','pad','stone','iris','pinklotus'],
+    creatureTint: null,
+  },
+  2: {  // Forest River — autumn forest, mossy green water + amber leaves
+    name: 'Forest River',
+    dayWater: { top:[120,165,135], mid:[80,125,95], bot:[35,70,55],
+                sun:[255,235,180], seaweed:[140,90,40], dragonfly:[210,170,80] },
+    seasonHueShift: 'autumn',
+    tileKinds: ['mapleRed','mapleOrange','acorn','mossyStone','pinecone','twig','mapleYellow'],
+    creatureTint: [200,140,60],
+  },
+  3: {  // Tropical Lagoon — bright turquoise + coral pink
+    name: 'Tropical Lagoon',
+    dayWater: { top:[180,240,235], mid:[100,210,210], bot:[20,140,165],
+                sun:[255,248,200], seaweed:[230,140,170], dragonfly:[255,180,80] },
+    seasonHueShift: 'tropical',
+    tileKinds: ['coralPink','starfish','conch','hibiscus','seaglass','tropBubble','coralRed'],
+    creatureTint: [255,180,120],
+  },
+  4: {  // Jungle Swamp — deep murky green + glowing fireflies
+    name: 'Jungle Swamp',
+    dayWater: { top:[60,90,55], mid:[35,65,45], bot:[15,35,25],
+                sun:[245,225,140], seaweed:[80,55,30], dragonfly:[120,255,180] },
+    seasonHueShift: 'jungle',
+    tileKinds: ['mushroomViolet','rootKnot','giantLeaf','firefly','vineCoil','swampLily','mushroomRed'],
+    creatureTint: [255,220,120],
+  },
+  5: {  // Mountain Lake — sapphire blue + alpine ice
+    name: 'Mountain Lake',
+    dayWater: { top:[170,210,235], mid:[80,135,180], bot:[20,55,95],
+                sun:[255,235,210], seaweed:[60,110,140], dragonfly:[200,220,255] },
+    seasonHueShift: 'alpine',
+    tileKinds: ['alpinePinecone','snowPatch','slateStone','alpineFlower','iceCrystal','pineSprig','snowdrop'],
+    creatureTint: [200,220,250],
+  },
+  6: {  // Mangrove Delta — tea-stained brown + sandy
+    name: 'Mangrove Delta',
+    dayWater: { top:[180,150,110], mid:[140,110,75], bot:[80,55,30],
+                sun:[255,225,170], seaweed:[80,55,30], dragonfly:[230,180,90] },
+    seasonHueShift: 'mangrove',
+    tileKinds: ['mangrovePod','crabRed','sandShell','stiltRoot','driftwood','kelpStrand','mangroveLeaf'],
+    creatureTint: [220,160,100],
+  },
+  7: {  // Deep Ocean Reef — midnight blue with bioluminescent coral
+    name: 'Deep Ocean Reef',
+    dayWater: { top:[20,40,80], mid:[10,25,60], bot:[5,12,35],
+                sun:[180,255,255], seaweed:[255,80,200], dragonfly:[100,255,240] },
+    seasonHueShift: 'reef',
+    forceDark: true,  // override day cycle — always dark
+    tileKinds: ['glowCoralCyan','glowCoralMagenta','pearl','anemoneViolet','glowStarfish','iridShell','glowCoralYellow'],
+    creatureTint: [120,255,240],
+  },
+  8: {  // Arctic Ice Sea — pale ice + aurora
+    name: 'Arctic Ice Sea',
+    dayWater: { top:[200,220,235], mid:[140,175,205], bot:[40,70,110],
+                sun:[230,240,255], seaweed:[140,200,230], dragonfly:[180,255,220] },
+    seasonHueShift: 'arctic',
+    tileKinds: ['iceFloe','snowflakeT','blueberryIce','sealPrint','auroraWisp','arcticPebble','snowdriftT'],
+    creatureTint: [220,240,255],
+  },
+  9: {  // Volcanic Springs — molten orange + charcoal
+    name: 'Volcanic Springs',
+    dayWater: { top:[60,80,90], mid:[40,55,65], bot:[20,25,30],
+                sun:[255,180,90], seaweed:[120,40,30], dragonfly:[255,140,60] },
+    seasonHueShift: 'volcanic',
+    tileKinds: ['lavaChunk','obsidian','sulfurCrystal','steamPuff','pumice','emberGlow','lavaCrack'],
+    creatureTint: [255,140,60],
+  },
+  10: { // Celestial Realm — indigo cosmic
+    name: 'Celestial Realm',
+    dayWater: { top:[30,20,80], mid:[20,15,60], bot:[8,5,30],
+                sun:[255,240,200], seaweed:[180,140,255], dragonfly:[255,200,255] },
+    seasonHueShift: 'celestial',
+    forceDark: true,
+    tileKinds: ['starGold','moonCrescent','nebulaPuff','comet','planetRinged','stardust','starPink'],
+    creatureTint: [255,220,255],
+  },
+};
+function _getFogTheme() {
+  if (typeof activeChallengeMode === 'undefined' || activeChallengeMode !== 'fog') return _FOG_LV_THEMES[1];
+  const lv = (typeof cm_fogLevel !== 'undefined') ? Math.max(1, Math.min(10, cm_fogLevel|0)) : 1;
+  return _FOG_LV_THEMES[lv] || _FOG_LV_THEMES[1];
+}
+
 function _pondPalette(clock) {
-  // Anchor palettes at: night, dawn, day, dusk
+  const theme = _getFogTheme();
+  // Anchor palettes at: night, dawn, day, dusk — LV1 baseline.
   const PAL = {
     night: { top:[28,40,62], mid:[20,52,70], bot:[8,22,38],
              sun:[180,200,255], sunA:0.18, // moonglow
@@ -8561,6 +8655,30 @@ function _pondPalette(clock) {
              sun:[255,160,110], sunA:0.60,
              seaweed:[50,100,80], dragonfly:[180,150,140] },
   };
+  // Per-level day water override — derive matching dawn/dusk/night.
+  if (theme && theme.dayWater) {
+    const d = theme.dayWater;
+    PAL.day = { top:d.top, mid:d.mid, bot:d.bot,
+                sun:d.sun, sunA:0.55,
+                seaweed:d.seaweed, dragonfly:d.dragonfly };
+    // Derive dawn = day*0.85 + warm tint; dusk = day*0.65 + warm tint; night = day*0.30 + cool tint.
+    const mix = (a, b, t) => [Math.round(a[0]*(1-t)+b[0]*t),Math.round(a[1]*(1-t)+b[1]*t),Math.round(a[2]*(1-t)+b[2]*t)];
+    const warm = [255,200,140];
+    const cool = [20,30,55];
+    PAL.dawn = { top:mix(d.top,warm,0.45), mid:mix(d.mid,warm,0.30), bot:mix(d.bot,warm,0.20),
+                 sun:[255,210,170], sunA:0.55,
+                 seaweed:mix(d.seaweed,warm,0.20), dragonfly:mix(d.dragonfly,warm,0.20) };
+    PAL.dusk = { top:mix(d.top,warm,0.55), mid:mix(d.mid,warm,0.40), bot:mix(d.bot,cool,0.25),
+                 sun:[255,160,110], sunA:0.60,
+                 seaweed:mix(d.seaweed,warm,0.30), dragonfly:mix(d.dragonfly,warm,0.25) };
+    PAL.night = { top:mix(d.top,cool,0.65), mid:mix(d.mid,cool,0.55), bot:mix(d.bot,cool,0.55),
+                  sun:[180,200,255], sunA:0.18,
+                  seaweed:mix(d.seaweed,cool,0.50), dragonfly:mix(d.dragonfly,cool,0.40) };
+    // Force dark levels (reef, celestial) skip the bright phases entirely.
+    if (theme.forceDark) {
+      PAL.day = PAL.night; PAL.dawn = PAL.night; PAL.dusk = PAL.night;
+    }
+  }
   // New shape: clock.phase + clock.phaseProgress (0..1 within that phase)
   // Linear interp from current phase's palette → next phase's palette.
   const a = PAL[clock.phase]     || PAL.day;
@@ -15282,7 +15400,7 @@ function randomColor(){
   // other 6 kinds (red/orange/yellow/blue/purple/pink) split the remaining 90%.
   try {
     if (typeof activeChallengeMode !== 'undefined' && activeChallengeMode === 'fog'
-        && typeof cm_fogLevel !== 'undefined' && (cm_fogLevel|0) === 1) {
+        && typeof cm_fogLevel !== 'undefined' && (cm_fogLevel|0) >= 1 && (cm_fogLevel|0) <= 10) {
       const roll = Math.random();
       if (roll < 0.10) return 4; // green pad ~10%
       // Remaining 90% split among the 6 colourful kinds (1,2,3,5,6,7)
@@ -15429,24 +15547,29 @@ function _drawPondTile(r,c,colorIdx,alpha,glow,gold) {
   ctx.ellipse(cx+1, cyy + radius*0.78, radius*0.95, radius*0.34, 0, 0, Math.PI*2);
   ctx.fill();
 
-  // Map color → piece kind. We accept colorIdx as either a hex string
-  // (legacy callers pass getTileColor(v)) or a numeric grid value.
-  let kind, baseHex;
+  // Map color → piece kind. The theme's tileKinds[7] vocabulary varies per
+  // level (lotus/koi/etc. for LV1; maple/acorn/etc. for LV2; coral/starfish for
+  // LV3; etc.) — see _FOG_LV_THEMES.
+  let kind, baseHex, themeKinds;
+  try { themeKinds = _getFogTheme().tileKinds; } catch(_) {}
+  if (!themeKinds || themeKinds.length < 7) themeKinds = ['lotus','koibelly','lily','pad','stone','iris','pinklotus'];
   if (typeof colorIdx === 'number') {
-    kind = ['lotus','koibelly','lily','pad','stone','iris','pinklotus'][(colorIdx-1) % 7] || 'pad';
+    const i = ((colorIdx - 1) % 7 + 7) % 7;
+    kind = themeKinds[i] || 'pad';
     baseHex = getTileColor(colorIdx);
   } else {
     baseHex = colorIdx || '#7ED321';
-    // Hex → kind by hue family
+    // Hex → numeric index by hue family, then pick from themeKinds
     const h = baseHex.toUpperCase();
-    if (h === '#CC1212') kind = 'lotus';
-    else if (h === '#F5A623') kind = 'koibelly';
-    else if (h === '#F5E000') kind = 'lily';
-    else if (h === '#7ED321') kind = 'pad';
-    else if (h === '#1B5FDB') kind = 'stone';
-    else if (h === '#7B3FBE') kind = 'iris';
-    else if (h === '#E62298') kind = 'pinklotus';
-    else kind = 'pad';
+    let idx = 3; // default green
+    if (h === '#CC1212') idx = 0;
+    else if (h === '#F5A623') idx = 1;
+    else if (h === '#F5E000') idx = 2;
+    else if (h === '#7ED321') idx = 3;
+    else if (h === '#1B5FDB') idx = 4;
+    else if (h === '#7B3FBE') idx = 5;
+    else if (h === '#E62298') idx = 6;
+    kind = themeKinds[idx] || 'pad';
   }
 
   // Gold tier → keep glossy gold disc (don't break the gold tier vibe)
@@ -15597,7 +15720,506 @@ function _drawPondTile(r,c,colorIdx,alpha,glow,gold) {
     ctx.beginPath(); ctx.ellipse(cx, cyy, radius*0.15, radius*0.25, 0, 0, Math.PI*2); ctx.fill();
   };
 
+  // ===== Extra renderers for LV2–10 themed tiles =====================
+  // Each helper draws inside the current cell using cx, cyy, radius.
+  const drawLeaf = (mainHex, accentHex, lobes=5) => {
+    // Maple-leaf style: pointed lobes radiating from a center stem.
+    ctx.fillStyle = mainHex;
+    ctx.strokeStyle = accentHex;
+    ctx.lineWidth = 0.9;
+    ctx.beginPath();
+    for (let i = 0; i < lobes*2; i++) {
+      const ang = (i / (lobes*2)) * Math.PI*2 - Math.PI/2;
+      const rr = (i % 2 === 0) ? radius*0.95 : radius*0.55;
+      const px = cx + Math.cos(ang) * rr;
+      const py = cyy + Math.sin(ang) * rr;
+      if (i === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
+    }
+    ctx.closePath(); ctx.fill(); ctx.stroke();
+    // Center vein
+    ctx.strokeStyle = accentHex; ctx.lineWidth = 1.0; ctx.globalAlpha = 0.7;
+    ctx.beginPath(); ctx.moveTo(cx, cyy + radius*0.6); ctx.lineTo(cx, cyy - radius*0.6); ctx.stroke();
+    ctx.globalAlpha = 1;
+  };
+  const drawAcornShape = () => {
+    // Brown nut + green cap
+    ctx.fillStyle = '#8B5A2B';
+    ctx.beginPath(); ctx.ellipse(cx, cyy+radius*0.15, radius*0.62, radius*0.78, 0, 0, Math.PI*2); ctx.fill();
+    ctx.fillStyle = '#3E7A2E';
+    ctx.beginPath(); ctx.ellipse(cx, cyy-radius*0.32, radius*0.7, radius*0.32, 0, 0, Math.PI*2); ctx.fill();
+    // Stem
+    ctx.strokeStyle = '#3E7A2E'; ctx.lineWidth = 1.5;
+    ctx.beginPath(); ctx.moveTo(cx, cyy-radius*0.6); ctx.lineTo(cx+radius*0.1, cyy-radius*0.85); ctx.stroke();
+    // Texture dots on cap
+    ctx.fillStyle = 'rgba(20,50,20,0.5)';
+    for (let i = 0; i < 5; i++) {
+      const a = -Math.PI*0.85 + (i/4)*Math.PI*0.7;
+      ctx.beginPath(); ctx.arc(cx+Math.cos(a)*radius*0.5, cyy-radius*0.32+Math.sin(a)*radius*0.15, 1.2, 0, Math.PI*2); ctx.fill();
+    }
+  };
+  const drawPinecone = (hex='#6E4520') => {
+    ctx.fillStyle = hex;
+    ctx.beginPath(); ctx.ellipse(cx, cyy, radius*0.55, radius*0.85, 0, 0, Math.PI*2); ctx.fill();
+    // Scales
+    ctx.fillStyle = 'rgba(40,20,10,0.5)';
+    for (let row = 0; row < 5; row++) {
+      for (let i = 0; i < 3; i++) {
+        const px = cx + (i-1)*radius*0.28;
+        const py = cyy + (row-2)*radius*0.28;
+        ctx.beginPath(); ctx.ellipse(px, py, radius*0.16, radius*0.10, 0, 0, Math.PI*2); ctx.fill();
+      }
+    }
+  };
+  const drawTwig = () => {
+    ctx.strokeStyle = '#7A4A1F'; ctx.lineWidth = 2.5;
+    ctx.beginPath(); ctx.moveTo(cx-radius*0.7, cyy+radius*0.3); ctx.lineTo(cx+radius*0.7, cyy-radius*0.3); ctx.stroke();
+    ctx.lineWidth = 1.5;
+    ctx.beginPath(); ctx.moveTo(cx-radius*0.2, cyy); ctx.lineTo(cx-radius*0.05, cyy-radius*0.45); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(cx+radius*0.25, cyy-radius*0.1); ctx.lineTo(cx+radius*0.4, cyy-radius*0.55); ctx.stroke();
+  };
+  const drawCoral = (hex='#FF7AAF', accent='#FFB6D8') => {
+    // Branching coral piece
+    ctx.strokeStyle = hex; ctx.lineWidth = 3.5; ctx.lineCap='round';
+    ctx.beginPath(); ctx.moveTo(cx, cyy+radius*0.7); ctx.lineTo(cx, cyy-radius*0.2); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(cx, cyy); ctx.lineTo(cx-radius*0.55, cyy-radius*0.5); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(cx, cyy-radius*0.1); ctx.lineTo(cx+radius*0.55, cyy-radius*0.6); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(cx-radius*0.35, cyy-radius*0.3); ctx.lineTo(cx-radius*0.45, cyy-radius*0.7); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(cx+radius*0.35, cyy-radius*0.4); ctx.lineTo(cx+radius*0.4, cyy-radius*0.8); ctx.stroke();
+    // Tips
+    ctx.fillStyle = accent;
+    [[0,-0.2],[-0.55,-0.5],[0.55,-0.6],[-0.45,-0.7],[0.4,-0.8]].forEach(([dx,dy]) => {
+      ctx.beginPath(); ctx.arc(cx+radius*dx, cyy+radius*dy, 2.5, 0, Math.PI*2); ctx.fill();
+    });
+  };
+  const drawStarfish = (hex='#F5C419', accent='#FFE068') => {
+    ctx.fillStyle = hex; ctx.strokeStyle = accent; ctx.lineWidth = 1.0;
+    ctx.beginPath();
+    for (let i = 0; i < 10; i++) {
+      const ang = (i/10)*Math.PI*2 - Math.PI/2;
+      const rr = (i%2===0) ? radius*0.95 : radius*0.42;
+      const px = cx + Math.cos(ang)*rr, py = cyy + Math.sin(ang)*rr;
+      if (i===0) ctx.moveTo(px,py); else ctx.lineTo(px,py);
+    }
+    ctx.closePath(); ctx.fill(); ctx.stroke();
+    // Dots
+    ctx.fillStyle = 'rgba(180,100,20,0.5)';
+    for (let i = 0; i < 5; i++) {
+      const a = (i/5)*Math.PI*2 - Math.PI/2;
+      ctx.beginPath(); ctx.arc(cx+Math.cos(a)*radius*0.5, cyy+Math.sin(a)*radius*0.5, 1.3, 0, Math.PI*2); ctx.fill();
+    }
+  };
+  const drawConch = () => {
+    ctx.fillStyle = '#FFE5C2';
+    ctx.beginPath(); ctx.ellipse(cx, cyy, radius*0.85, radius*0.95, 0, 0, Math.PI*2); ctx.fill();
+    ctx.strokeStyle = '#E89060'; ctx.lineWidth = 1.5;
+    for (let i = 1; i <= 4; i++) {
+      ctx.beginPath();
+      ctx.arc(cx, cyy, radius*0.85*(1 - i*0.18), 0, Math.PI*1.6);
+      ctx.stroke();
+    }
+    ctx.fillStyle = '#FFB378';
+    ctx.beginPath(); ctx.arc(cx-radius*0.4, cyy+radius*0.35, radius*0.25, 0, Math.PI*2); ctx.fill();
+  };
+  const drawHibiscus = (hex='#E84141') => {
+    drawLotus(hex, '#FFCAB0');
+    // Replace center with bright yellow stamen
+    ctx.fillStyle = '#FFEC50';
+    ctx.beginPath(); ctx.arc(cx, cyy, radius*0.20, 0, Math.PI*2); ctx.fill();
+    ctx.strokeStyle = '#FFB800'; ctx.lineWidth = 1.2;
+    for (let i = 0; i < 5; i++) {
+      const a = (i/5)*Math.PI*2;
+      ctx.beginPath(); ctx.moveTo(cx, cyy);
+      ctx.lineTo(cx+Math.cos(a)*radius*0.25, cyy+Math.sin(a)*radius*0.25);
+      ctx.stroke();
+    }
+  };
+  const drawBubbleCluster = (hex='rgba(180,230,255,0.85)') => {
+    ctx.fillStyle = hex;
+    [[0,0,0.45],[-0.45,0.2,0.30],[0.4,0.3,0.28],[-0.3,-0.4,0.22],[0.35,-0.3,0.25]].forEach(([dx,dy,sz]) => {
+      ctx.beginPath(); ctx.arc(cx+radius*dx, cyy+radius*dy, radius*sz, 0, Math.PI*2); ctx.fill();
+    });
+    // Highlights
+    ctx.fillStyle = 'rgba(255,255,255,0.9)';
+    [[0,0,0.45],[-0.45,0.2,0.30],[0.4,0.3,0.28]].forEach(([dx,dy,sz]) => {
+      ctx.beginPath(); ctx.arc(cx+radius*(dx-sz*0.3), cyy+radius*(dy-sz*0.3), radius*sz*0.25, 0, Math.PI*2); ctx.fill();
+    });
+  };
+  const drawSeaglass = () => {
+    ctx.fillStyle = 'rgba(180,230,200,0.85)';
+    ctx.beginPath(); ctx.ellipse(cx, cyy, radius*0.85, radius*0.65, 0.3, 0, Math.PI*2); ctx.fill();
+    const hl = ctx.createRadialGradient(cx-radius*0.3, cyy-radius*0.2, 0, cx, cyy, radius*0.8);
+    hl.addColorStop(0, 'rgba(255,255,255,0.7)'); hl.addColorStop(1, 'rgba(255,255,255,0)');
+    ctx.fillStyle = hl;
+    ctx.beginPath(); ctx.ellipse(cx, cyy, radius*0.85, radius*0.65, 0.3, 0, Math.PI*2); ctx.fill();
+  };
+  const drawMushroom = (capHex='#9B5BD6', accent='#FFFFFF') => {
+    // Stem
+    ctx.fillStyle = '#F5EBD2';
+    ctx.beginPath(); ctx.ellipse(cx, cyy+radius*0.4, radius*0.32, radius*0.38, 0, 0, Math.PI*2); ctx.fill();
+    // Cap
+    ctx.fillStyle = capHex;
+    ctx.beginPath();
+    ctx.arc(cx, cyy-radius*0.05, radius*0.78, Math.PI, Math.PI*2);
+    ctx.lineTo(cx+radius*0.65, cyy+radius*0.05);
+    ctx.lineTo(cx-radius*0.65, cyy+radius*0.05);
+    ctx.closePath(); ctx.fill();
+    // Spots
+    ctx.fillStyle = accent;
+    [[0,-0.15],[-0.35,-0.1],[0.3,0.0]].forEach(([dx,dy]) => {
+      ctx.beginPath(); ctx.arc(cx+radius*dx, cyy+radius*dy, radius*0.10, 0, Math.PI*2); ctx.fill();
+    });
+  };
+  const drawRoot = () => {
+    ctx.strokeStyle = '#5A3818'; ctx.lineWidth = 4; ctx.lineCap = 'round';
+    ctx.beginPath();
+    ctx.moveTo(cx-radius*0.7, cyy);
+    ctx.bezierCurveTo(cx-radius*0.3, cyy-radius*0.6, cx+radius*0.3, cyy+radius*0.6, cx+radius*0.7, cyy);
+    ctx.stroke();
+    ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.moveTo(cx, cyy-radius*0.1); ctx.lineTo(cx-radius*0.4, cyy-radius*0.6); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(cx+radius*0.2, cyy+radius*0.2); ctx.lineTo(cx+radius*0.5, cyy+radius*0.6); ctx.stroke();
+  };
+  const drawGiantLeaf = () => {
+    ctx.fillStyle = '#1F5028';
+    ctx.beginPath(); ctx.ellipse(cx, cyy, radius*0.95, radius*0.55, 0.4, 0, Math.PI*2); ctx.fill();
+    ctx.strokeStyle = 'rgba(120,200,100,0.6)'; ctx.lineWidth = 1.0;
+    ctx.beginPath(); ctx.moveTo(cx-radius*0.85, cyy+radius*0.3); ctx.lineTo(cx+radius*0.85, cyy-radius*0.3); ctx.stroke();
+    for (let i = -3; i <= 3; i++) {
+      ctx.beginPath();
+      ctx.moveTo(cx+i*radius*0.22-radius*0.3, cyy+i*radius*0.06+radius*0.05);
+      ctx.lineTo(cx+i*radius*0.22+radius*0.3, cyy+i*radius*0.06-radius*0.25);
+      ctx.stroke();
+    }
+  };
+  const drawFireflyOrb = () => {
+    const g = ctx.createRadialGradient(cx, cyy, 0, cx, cyy, radius);
+    g.addColorStop(0, 'rgba(255,255,200,1)');
+    g.addColorStop(0.4, 'rgba(255,220,80,0.8)');
+    g.addColorStop(1, 'rgba(255,180,0,0)');
+    ctx.fillStyle = g;
+    ctx.beginPath(); ctx.arc(cx, cyy, radius*0.95, 0, Math.PI*2); ctx.fill();
+    ctx.fillStyle = '#FFFCBA';
+    ctx.beginPath(); ctx.arc(cx, cyy, radius*0.25, 0, Math.PI*2); ctx.fill();
+  };
+  const drawVineCoil = () => {
+    ctx.strokeStyle = '#3E7A2E'; ctx.lineWidth = 3; ctx.lineCap='round';
+    ctx.beginPath();
+    for (let a = 0; a < Math.PI*4; a += 0.18) {
+      const rr = radius*0.78 - a*radius*0.06;
+      if (rr <= 0) break;
+      const px = cx + Math.cos(a)*rr, py = cyy + Math.sin(a)*rr;
+      if (a === 0) ctx.moveTo(px,py); else ctx.lineTo(px,py);
+    }
+    ctx.stroke();
+    ctx.fillStyle = '#7DB04F';
+    ctx.beginPath(); ctx.ellipse(cx-radius*0.2, cyy-radius*0.5, radius*0.18, radius*0.10, 0.5, 0, Math.PI*2); ctx.fill();
+  };
+  const drawSnowPatch = () => {
+    ctx.fillStyle = 'rgba(255,255,255,0.95)';
+    ctx.beginPath();
+    for (let i = 0; i < 12; i++) {
+      const a = (i/12)*Math.PI*2;
+      const rr = radius*(0.65 + Math.sin(i*1.7)*0.18);
+      const px = cx+Math.cos(a)*rr, py=cyy+Math.sin(a)*rr*0.85;
+      if (i===0) ctx.moveTo(px,py); else ctx.lineTo(px,py);
+    }
+    ctx.closePath(); ctx.fill();
+    ctx.strokeStyle = 'rgba(180,210,235,0.7)'; ctx.lineWidth = 0.8;
+    ctx.stroke();
+  };
+  const drawIceCrystal = () => {
+    ctx.fillStyle = 'rgba(220,240,255,0.9)';
+    ctx.strokeStyle = 'rgba(120,180,220,0.95)'; ctx.lineWidth = 1.2;
+    ctx.beginPath();
+    for (let i = 0; i < 6; i++) {
+      const a = (i/6)*Math.PI*2 - Math.PI/2;
+      const px = cx+Math.cos(a)*radius*0.85, py=cyy+Math.sin(a)*radius*0.85;
+      if (i===0) ctx.moveTo(px,py); else ctx.lineTo(px,py);
+    }
+    ctx.closePath(); ctx.fill(); ctx.stroke();
+    // Inner star
+    ctx.beginPath();
+    for (let i = 0; i < 6; i++) {
+      const a = (i/6)*Math.PI*2 + Math.PI/6;
+      const px = cx+Math.cos(a)*radius*0.5, py=cyy+Math.sin(a)*radius*0.5;
+      ctx.moveTo(cx, cyy); ctx.lineTo(px, py);
+    }
+    ctx.stroke();
+  };
+  const drawSnowflake = () => {
+    ctx.strokeStyle = '#FFFFFF'; ctx.lineWidth = 1.4; ctx.lineCap = 'round';
+    for (let i = 0; i < 6; i++) {
+      const a = (i/6)*Math.PI*2;
+      ctx.beginPath();
+      ctx.moveTo(cx, cyy);
+      ctx.lineTo(cx+Math.cos(a)*radius*0.8, cyy+Math.sin(a)*radius*0.8);
+      ctx.stroke();
+      // Branch arms
+      const bx = cx+Math.cos(a)*radius*0.5, by = cyy+Math.sin(a)*radius*0.5;
+      ctx.beginPath();
+      ctx.moveTo(bx, by);
+      ctx.lineTo(bx+Math.cos(a+1.0)*radius*0.18, by+Math.sin(a+1.0)*radius*0.18);
+      ctx.moveTo(bx, by);
+      ctx.lineTo(bx+Math.cos(a-1.0)*radius*0.18, by+Math.sin(a-1.0)*radius*0.18);
+      ctx.stroke();
+    }
+  };
+  const drawAurora = () => {
+    const g = ctx.createLinearGradient(cx-radius, cyy, cx+radius, cyy);
+    g.addColorStop(0,   'rgba(120,255,200,0)');
+    g.addColorStop(0.3, 'rgba(120,255,200,0.7)');
+    g.addColorStop(0.7, 'rgba(180,140,255,0.7)');
+    g.addColorStop(1,   'rgba(180,140,255,0)');
+    ctx.fillStyle = g;
+    ctx.beginPath();
+    ctx.ellipse(cx, cyy, radius*0.95, radius*0.45, 0.2, 0, Math.PI*2);
+    ctx.fill();
+  };
+  const drawCrab = () => {
+    ctx.fillStyle = '#D9402F';
+    // Body
+    ctx.beginPath(); ctx.ellipse(cx, cyy+radius*0.05, radius*0.65, radius*0.45, 0, 0, Math.PI*2); ctx.fill();
+    // Claws
+    ctx.beginPath(); ctx.arc(cx-radius*0.6, cyy-radius*0.15, radius*0.25, 0, Math.PI*2); ctx.fill();
+    ctx.beginPath(); ctx.arc(cx+radius*0.6, cyy-radius*0.15, radius*0.25, 0, Math.PI*2); ctx.fill();
+    // Eyes
+    ctx.fillStyle = '#000';
+    ctx.beginPath(); ctx.arc(cx-radius*0.18, cyy-radius*0.18, 1.6, 0, Math.PI*2); ctx.fill();
+    ctx.beginPath(); ctx.arc(cx+radius*0.18, cyy-radius*0.18, 1.6, 0, Math.PI*2); ctx.fill();
+    // Legs
+    ctx.strokeStyle = '#A02818'; ctx.lineWidth = 1.5;
+    for (let i = 0; i < 3; i++) {
+      const dy = (i-1)*radius*0.18 + radius*0.15;
+      ctx.beginPath();
+      ctx.moveTo(cx-radius*0.4, cyy+dy); ctx.lineTo(cx-radius*0.85, cyy+dy+radius*0.2);
+      ctx.moveTo(cx+radius*0.4, cyy+dy); ctx.lineTo(cx+radius*0.85, cyy+dy+radius*0.2);
+      ctx.stroke();
+    }
+  };
+  const drawShellSand = () => {
+    ctx.fillStyle = '#F2D8B0';
+    ctx.beginPath();
+    for (let i = 0; i < 8; i++) {
+      const a = -Math.PI/2 + (i-3.5)*0.45;
+      const px = cx+Math.cos(a)*radius*0.85, py=cyy+Math.sin(a)*radius*0.85;
+      if (i===0) ctx.moveTo(px,py); else ctx.lineTo(px,py);
+    }
+    ctx.lineTo(cx, cyy+radius*0.4); ctx.closePath(); ctx.fill();
+    ctx.strokeStyle = '#C49060'; ctx.lineWidth = 1;
+    for (let i = 0; i < 7; i++) {
+      const a = -Math.PI/2 + (i-3)*0.45;
+      ctx.beginPath(); ctx.moveTo(cx, cyy+radius*0.4);
+      ctx.lineTo(cx+Math.cos(a)*radius*0.78, cyy+Math.sin(a)*radius*0.78);
+      ctx.stroke();
+    }
+  };
+  const drawDriftwood = () => {
+    ctx.fillStyle = '#A38B6E';
+    ctx.beginPath(); ctx.ellipse(cx, cyy, radius*0.95, radius*0.32, 0.4, 0, Math.PI*2); ctx.fill();
+    ctx.strokeStyle = '#65503A'; ctx.lineWidth = 0.9;
+    for (let i = -2; i <= 2; i++) {
+      ctx.beginPath();
+      ctx.moveTo(cx+i*radius*0.3-radius*0.4, cyy+i*radius*0.08+radius*0.05);
+      ctx.lineTo(cx+i*radius*0.3+radius*0.5, cyy+i*radius*0.08-radius*0.15);
+      ctx.stroke();
+    }
+  };
+  const drawKelp = () => {
+    ctx.strokeStyle = '#2D6438'; ctx.lineWidth = 4; ctx.lineCap = 'round';
+    ctx.beginPath();
+    ctx.moveTo(cx, cyy+radius*0.85);
+    ctx.bezierCurveTo(cx+radius*0.4, cyy+radius*0.3, cx-radius*0.4, cyy-radius*0.3, cx, cyy-radius*0.85);
+    ctx.stroke();
+    ctx.fillStyle = '#5C9648';
+    [[0.25,0.4],[-0.25,0.0],[0.2,-0.4]].forEach(([dx,dy]) => {
+      ctx.beginPath(); ctx.ellipse(cx+radius*dx, cyy+radius*dy, radius*0.25, radius*0.10, 0.3, 0, Math.PI*2); ctx.fill();
+    });
+  };
+  const drawAnemone = (hex='#9B5BD6') => {
+    ctx.fillStyle = hex;
+    ctx.beginPath(); ctx.arc(cx, cyy+radius*0.3, radius*0.45, 0, Math.PI*2); ctx.fill();
+    // Tentacles
+    ctx.strokeStyle = hex; ctx.lineWidth = 2.0; ctx.lineCap='round';
+    for (let i = 0; i < 12; i++) {
+      const a = -Math.PI + (i/11)*Math.PI;
+      const tipX = cx+Math.cos(a)*radius*0.85, tipY = cyy+radius*0.3+Math.sin(a)*radius*0.85;
+      ctx.beginPath();
+      ctx.moveTo(cx+Math.cos(a)*radius*0.3, cyy+radius*0.3+Math.sin(a)*radius*0.3);
+      ctx.lineTo(tipX, tipY);
+      ctx.stroke();
+    }
+  };
+  const drawPearl = () => {
+    const g = ctx.createRadialGradient(cx-radius*0.3, cyy-radius*0.3, 0, cx, cyy, radius*0.85);
+    g.addColorStop(0, '#FFFFFF');
+    g.addColorStop(0.6, '#E0D8E8');
+    g.addColorStop(1, '#988CA8');
+    ctx.fillStyle = g;
+    ctx.beginPath(); ctx.arc(cx, cyy, radius*0.78, 0, Math.PI*2); ctx.fill();
+    ctx.fillStyle = 'rgba(255,255,255,0.85)';
+    ctx.beginPath(); ctx.arc(cx-radius*0.25, cyy-radius*0.3, radius*0.18, 0, Math.PI*2); ctx.fill();
+  };
+  const drawIridescentShell = () => {
+    const g = ctx.createLinearGradient(cx-radius, cyy-radius, cx+radius, cyy+radius);
+    g.addColorStop(0,   '#FFB0E5');
+    g.addColorStop(0.5, '#80E5FF');
+    g.addColorStop(1,   '#FFE0A0');
+    ctx.fillStyle = g;
+    ctx.beginPath();
+    for (let i = 0; i < 8; i++) {
+      const a = -Math.PI/2 + (i-3.5)*0.4;
+      const px = cx+Math.cos(a)*radius*0.9, py=cyy+Math.sin(a)*radius*0.9;
+      if (i===0) ctx.moveTo(px,py); else ctx.lineTo(px,py);
+    }
+    ctx.lineTo(cx, cyy+radius*0.3); ctx.closePath(); ctx.fill();
+  };
+  const drawLavaChunk = () => {
+    ctx.fillStyle = '#1A1410';
+    ctx.beginPath();
+    for (let i = 0; i < 9; i++) {
+      const a = (i/9)*Math.PI*2;
+      const rr = radius*(0.78+Math.sin(i*2.1)*0.15);
+      const px = cx+Math.cos(a)*rr, py = cyy+Math.sin(a)*rr;
+      if (i===0) ctx.moveTo(px,py); else ctx.lineTo(px,py);
+    }
+    ctx.closePath(); ctx.fill();
+    // Glowing cracks
+    const g = ctx.createRadialGradient(cx, cyy, 0, cx, cyy, radius);
+    g.addColorStop(0, 'rgba(255,180,30,0.95)');
+    g.addColorStop(0.5, 'rgba(255,80,20,0.5)');
+    g.addColorStop(1, 'rgba(180,30,0,0)');
+    ctx.fillStyle = g;
+    ctx.beginPath(); ctx.arc(cx, cyy, radius*0.45, 0, Math.PI*2); ctx.fill();
+    ctx.strokeStyle = '#FFB832'; ctx.lineWidth = 1.6;
+    ctx.beginPath(); ctx.moveTo(cx-radius*0.5, cyy); ctx.lineTo(cx+radius*0.4, cyy+radius*0.2); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(cx-radius*0.2, cyy-radius*0.5); ctx.lineTo(cx+radius*0.1, cyy+radius*0.5); ctx.stroke();
+  };
+  const drawObsidian = () => {
+    ctx.fillStyle = '#0A0A14';
+    ctx.beginPath();
+    ctx.moveTo(cx, cyy-radius*0.85);
+    ctx.lineTo(cx+radius*0.7, cyy);
+    ctx.lineTo(cx, cyy+radius*0.85);
+    ctx.lineTo(cx-radius*0.7, cyy);
+    ctx.closePath(); ctx.fill();
+    const g = ctx.createLinearGradient(cx-radius*0.5, cyy-radius*0.5, cx+radius*0.5, cyy+radius*0.5);
+    g.addColorStop(0, 'rgba(255,255,255,0.5)');
+    g.addColorStop(0.5, 'rgba(120,80,200,0.3)');
+    g.addColorStop(1, 'rgba(255,255,255,0)');
+    ctx.fillStyle = g;
+    ctx.beginPath(); ctx.moveTo(cx, cyy-radius*0.85); ctx.lineTo(cx+radius*0.7, cyy);
+    ctx.lineTo(cx, cyy+radius*0.85); ctx.lineTo(cx-radius*0.7, cyy); ctx.closePath(); ctx.fill();
+  };
+  const drawSulfur = () => {
+    ctx.fillStyle = '#F5E64C';
+    ctx.beginPath();
+    ctx.moveTo(cx, cyy-radius*0.85);
+    ctx.lineTo(cx+radius*0.55, cyy-radius*0.2);
+    ctx.lineTo(cx+radius*0.4, cyy+radius*0.7);
+    ctx.lineTo(cx-radius*0.4, cyy+radius*0.7);
+    ctx.lineTo(cx-radius*0.55, cyy-radius*0.2);
+    ctx.closePath(); ctx.fill();
+    ctx.strokeStyle = '#C8A018'; ctx.lineWidth = 1.0;
+    ctx.stroke();
+  };
+  const drawSteam = () => {
+    ctx.fillStyle = 'rgba(240,245,250,0.85)';
+    [[0,0,0.55],[-0.3,0.2,0.32],[0.3,-0.1,0.35],[0,-0.4,0.30]].forEach(([dx,dy,sz]) => {
+      ctx.beginPath(); ctx.arc(cx+radius*dx, cyy+radius*dy, radius*sz, 0, Math.PI*2); ctx.fill();
+    });
+  };
+  const drawPumice = () => {
+    ctx.fillStyle = '#9C9890';
+    ctx.beginPath(); ctx.arc(cx, cyy, radius*0.85, 0, Math.PI*2); ctx.fill();
+    // Pores
+    ctx.fillStyle = '#5A564E';
+    for (let i = 0; i < 8; i++) {
+      const a = (i/8)*Math.PI*2;
+      const rr = radius*0.6;
+      ctx.beginPath();
+      ctx.arc(cx+Math.cos(a)*rr*Math.random()*0.9, cyy+Math.sin(a)*rr*Math.random()*0.9, 1.5+Math.random()*1.2, 0, Math.PI*2);
+      ctx.fill();
+    }
+  };
+  const drawEmber = () => {
+    const g = ctx.createRadialGradient(cx, cyy, 0, cx, cyy, radius);
+    g.addColorStop(0, 'rgba(255,255,200,1)');
+    g.addColorStop(0.4, 'rgba(255,140,40,0.85)');
+    g.addColorStop(1, 'rgba(120,30,0,0)');
+    ctx.fillStyle = g;
+    ctx.beginPath(); ctx.arc(cx, cyy, radius*0.95, 0, Math.PI*2); ctx.fill();
+    ctx.fillStyle = '#FFFCAA';
+    ctx.beginPath(); ctx.arc(cx, cyy, radius*0.22, 0, Math.PI*2); ctx.fill();
+  };
+  const drawStar = (hex='#FFE068', glow='rgba(255,224,80,0.6)') => {
+    // Outer glow
+    const g = ctx.createRadialGradient(cx, cyy, 0, cx, cyy, radius);
+    g.addColorStop(0, glow);
+    g.addColorStop(1, 'rgba(255,224,80,0)');
+    ctx.fillStyle = g;
+    ctx.beginPath(); ctx.arc(cx, cyy, radius*0.95, 0, Math.PI*2); ctx.fill();
+    // 5-point star
+    ctx.fillStyle = hex;
+    ctx.beginPath();
+    for (let i = 0; i < 10; i++) {
+      const a = (i/10)*Math.PI*2 - Math.PI/2;
+      const rr = (i%2===0) ? radius*0.7 : radius*0.32;
+      const px = cx+Math.cos(a)*rr, py=cyy+Math.sin(a)*rr;
+      if (i===0) ctx.moveTo(px,py); else ctx.lineTo(px,py);
+    }
+    ctx.closePath(); ctx.fill();
+  };
+  const drawMoonCrescent = () => {
+    ctx.fillStyle = '#FFF6CE';
+    ctx.beginPath(); ctx.arc(cx, cyy, radius*0.7, 0, Math.PI*2); ctx.fill();
+    ctx.globalCompositeOperation = 'destination-out';
+    ctx.beginPath(); ctx.arc(cx+radius*0.25, cyy-radius*0.05, radius*0.6, 0, Math.PI*2); ctx.fill();
+    ctx.globalCompositeOperation = 'source-over';
+  };
+  const drawNebulaPuff = () => {
+    const g = ctx.createRadialGradient(cx, cyy, 0, cx, cyy, radius);
+    g.addColorStop(0, 'rgba(220,180,255,0.9)');
+    g.addColorStop(0.5, 'rgba(140,80,210,0.55)');
+    g.addColorStop(1, 'rgba(60,20,100,0)');
+    ctx.fillStyle = g;
+    ctx.beginPath(); ctx.arc(cx, cyy, radius*0.95, 0, Math.PI*2); ctx.fill();
+    // Stars inside
+    ctx.fillStyle = '#FFFFFF';
+    [[0.2,-0.3],[-0.3,0.1],[0.1,0.4]].forEach(([dx,dy]) => {
+      ctx.beginPath(); ctx.arc(cx+radius*dx, cyy+radius*dy, 1.3, 0, Math.PI*2); ctx.fill();
+    });
+  };
+  const drawComet = () => {
+    // Tail
+    const tg = ctx.createLinearGradient(cx+radius*0.3, cyy-radius*0.3, cx-radius*0.7, cyy+radius*0.5);
+    tg.addColorStop(0, 'rgba(255,255,200,0.95)');
+    tg.addColorStop(1, 'rgba(255,200,100,0)');
+    ctx.strokeStyle = tg; ctx.lineWidth = 5; ctx.lineCap='round';
+    ctx.beginPath(); ctx.moveTo(cx+radius*0.3, cyy-radius*0.3); ctx.lineTo(cx-radius*0.7, cyy+radius*0.5); ctx.stroke();
+    // Head
+    ctx.fillStyle = '#FFFCAA';
+    ctx.beginPath(); ctx.arc(cx+radius*0.3, cyy-radius*0.3, radius*0.32, 0, Math.PI*2); ctx.fill();
+  };
+  const drawPlanet = () => {
+    ctx.fillStyle = '#C28A48';
+    ctx.beginPath(); ctx.arc(cx, cyy, radius*0.5, 0, Math.PI*2); ctx.fill();
+    // Ring
+    ctx.strokeStyle = '#E0C080'; ctx.lineWidth = 2.0;
+    ctx.beginPath(); ctx.ellipse(cx, cyy, radius*0.85, radius*0.20, 0.35, 0, Math.PI*2); ctx.stroke();
+    ctx.fillStyle = '#9C6428';
+    ctx.beginPath(); ctx.ellipse(cx-radius*0.18, cyy-radius*0.05, radius*0.18, radius*0.08, 0, 0, Math.PI*2); ctx.fill();
+  };
+  const drawStardust = () => {
+    [[0,0,2.5],[-0.4,-0.3,1.6],[0.4,-0.4,1.5],[-0.3,0.4,1.4],[0.3,0.3,1.6],[-0.5,0.05,1.2],[0.5,-0.05,1.2]].forEach(([dx,dy,sz]) => {
+      ctx.fillStyle = '#FFFFFF';
+      ctx.beginPath(); ctx.arc(cx+radius*dx, cyy+radius*dy, sz, 0, Math.PI*2); ctx.fill();
+      ctx.fillStyle = 'rgba(255,255,150,0.8)';
+      ctx.beginPath(); ctx.arc(cx+radius*dx, cyy+radius*dy, sz*0.6, 0, Math.PI*2); ctx.fill();
+    });
+  };
+
   // Render by kind
+  // ---- LV1 originals ----
   if (kind === 'pad') {
     drawLilyPad('rgba(38,108,62,0.95)', 'rgba(120,200,140,0.7)');
   } else if (kind === 'lotus') {
@@ -15613,6 +16235,82 @@ function _drawPondTile(r,c,colorIdx,alpha,glow,gold) {
   } else if (kind === 'iris') {
     drawIris('#9B5BD6');
   }
+  // ---- LV2 Forest River ----
+  else if (kind === 'mapleRed')    { drawLeaf('#C0382E', '#5A1810', 5); }
+  else if (kind === 'mapleOrange') { drawLeaf('#E07A2A', '#7A3010', 5); }
+  else if (kind === 'mapleYellow') { drawLeaf('#E8C638', '#8A6020', 5); }
+  else if (kind === 'acorn')       { drawAcornShape(); }
+  else if (kind === 'mossyStone')  { drawStone('#6B7E58'); }
+  else if (kind === 'pinecone')    { drawPinecone('#6E4520'); }
+  else if (kind === 'twig')        { drawTwig(); }
+  // ---- LV3 Tropical Lagoon ----
+  else if (kind === 'coralPink')   { drawCoral('#FF7AAF', '#FFB6D8'); }
+  else if (kind === 'coralRed')    { drawCoral('#E84141', '#FFB6B0'); }
+  else if (kind === 'starfish')    { drawStarfish('#F5C419', '#FFE068'); }
+  else if (kind === 'conch')       { drawConch(); }
+  else if (kind === 'hibiscus')    { drawHibiscus('#E84141'); }
+  else if (kind === 'tropBubble')  { drawBubbleCluster('rgba(140,230,250,0.9)'); }
+  else if (kind === 'seaglass')    { drawSeaglass(); }
+  // ---- LV4 Jungle Swamp ----
+  else if (kind === 'mushroomViolet') { drawMushroom('#9B5BD6', '#FFFFFF'); }
+  else if (kind === 'mushroomRed')    { drawMushroom('#D03030', '#FFE8AA'); }
+  else if (kind === 'rootKnot')       { drawRoot(); }
+  else if (kind === 'giantLeaf')      { drawGiantLeaf(); }
+  else if (kind === 'firefly')        { drawFireflyOrb(); }
+  else if (kind === 'vineCoil')       { drawVineCoil(); }
+  else if (kind === 'swampLily')      { drawWaterLily('#88E090'); }
+  // ---- LV5 Mountain Lake ----
+  else if (kind === 'alpinePinecone') { drawPinecone('#3A2410'); }
+  else if (kind === 'snowPatch')      { drawSnowPatch(); }
+  else if (kind === 'slateStone')     { drawStone('#5C6878'); }
+  else if (kind === 'alpineFlower')   { drawLotus('#F087BC', '#FFD4E6'); }
+  else if (kind === 'iceCrystal')     { drawIceCrystal(); }
+  else if (kind === 'pineSprig')      { drawTwig(); }
+  else if (kind === 'snowdrop')       { drawWaterLily('#FFFFFF'); }
+  // ---- LV6 Mangrove Delta ----
+  else if (kind === 'mangrovePod')    { drawAcornShape(); }
+  else if (kind === 'crabRed')        { drawCrab(); }
+  else if (kind === 'sandShell')      { drawShellSand(); }
+  else if (kind === 'stiltRoot')      { drawRoot(); }
+  else if (kind === 'driftwood')      { drawDriftwood(); }
+  else if (kind === 'kelpStrand')     { drawKelp(); }
+  else if (kind === 'mangroveLeaf')   { drawLeaf('#3E7A4E', '#1F4028', 4); }
+  // ---- LV7 Deep Ocean Reef ----
+  else if (kind === 'glowCoralCyan')    { drawCoral('#00E5E0', '#80FFFF'); }
+  else if (kind === 'glowCoralMagenta') { drawCoral('#FF40C8', '#FF90E0'); }
+  else if (kind === 'glowCoralYellow')  { drawCoral('#FFD040', '#FFF0A0'); }
+  else if (kind === 'pearl')            { drawPearl(); }
+  else if (kind === 'anemoneViolet')    { drawAnemone('#A050E0'); }
+  else if (kind === 'glowStarfish')     { drawStarfish('#80FFE0', '#C0FFF0'); }
+  else if (kind === 'iridShell')        { drawIridescentShell(); }
+  // ---- LV8 Arctic Ice Sea ----
+  else if (kind === 'iceFloe')        { drawSnowPatch(); }
+  else if (kind === 'snowflakeT')     { drawSnowflake(); }
+  else if (kind === 'blueberryIce')   { drawBubbleCluster('rgba(60,90,170,0.92)'); }
+  else if (kind === 'sealPrint')      { drawShellSand(); }
+  else if (kind === 'auroraWisp')     { drawAurora(); }
+  else if (kind === 'arcticPebble')   { drawStone('#5C7090'); }
+  else if (kind === 'snowdriftT')     { drawSnowPatch(); }
+  // ---- LV9 Volcanic Springs ----
+  else if (kind === 'lavaChunk')    { drawLavaChunk(); }
+  else if (kind === 'lavaCrack')    { drawLavaChunk(); }
+  else if (kind === 'obsidian')     { drawObsidian(); }
+  else if (kind === 'sulfurCrystal'){ drawSulfur(); }
+  else if (kind === 'steamPuff')    { drawSteam(); }
+  else if (kind === 'pumice')       { drawPumice(); }
+  else if (kind === 'emberGlow')    { drawEmber(); }
+  // ---- LV10 Celestial Realm ----
+  else if (kind === 'starGold')     { drawStar('#FFE068', 'rgba(255,224,80,0.6)'); }
+  else if (kind === 'starPink')     { drawStar('#FF80E0', 'rgba(255,128,224,0.6)'); }
+  else if (kind === 'moonCrescent') { drawMoonCrescent(); }
+  else if (kind === 'nebulaPuff')   { drawNebulaPuff(); }
+  else if (kind === 'comet')        { drawComet(); }
+  else if (kind === 'planetRinged') { drawPlanet(); }
+  else if (kind === 'stardust')     { drawStardust(); }
+  // ---- Fallback ----
+  else {
+    drawLilyPad('rgba(38,108,62,0.95)', 'rgba(120,200,140,0.7)');
+  }
 
   ctx.shadowBlur = 0;
   ctx.restore();
@@ -15625,7 +16323,7 @@ function drawTile(r,c,color,alpha=1,glow=false,gold=false){
     if (typeof activeChallengeMode !== 'undefined'
         && activeChallengeMode === 'fog'
         && typeof cm_fogLevel !== 'undefined'
-        && ((cm_fogLevel|0) === 1)) {
+        && (cm_fogLevel|0) >= 1 && (cm_fogLevel|0) <= 10) {
       // Prefer the grid's numeric color index so the pond kind mapping works
       // regardless of which tier palette is equipped (treefrog/poison/gold etc.
       // all use green/gold/orange hex codes that would otherwise collapse to
@@ -15805,7 +16503,7 @@ function drawGrid(){
   // Ambient FX: composite behind grid for standard/frenzy/colourrun + Fog LV1 Mystic Pond
   if (!cityPackActive && _ambientInitialized && _ambientCanvas &&
       (activeChallengeMode === 'standard' || activeChallengeMode === 'frenzy' || activeChallengeMode === 'colourrun' ||
-       (activeChallengeMode === 'fog' && ((cm_fogLevel|0) === 1)))) {
+       (activeChallengeMode === 'fog' && ((cm_fogLevel|0) >= 1) && ((cm_fogLevel|0) <= 10)))) {
     ctx.drawImage(_ambientCanvas, 0, 0);
   }
 
@@ -15989,7 +16687,7 @@ function drawGrid(){
   // active hazard cells (winter/summer).
   if (typeof _pondHazardCells !== 'undefined' && _pondHazardCells && _pondHazardCells.size > 0
       && typeof activeChallengeMode !== 'undefined' && activeChallengeMode === 'fog'
-      && typeof cm_fogLevel !== 'undefined' && (cm_fogLevel|0) === 1) {
+      && typeof cm_fogLevel !== 'undefined' && (cm_fogLevel|0) >= 1 && (cm_fogLevel|0) <= 10) {
     for (const key of _pondHazardCells) {
       const hr = Math.floor(key / 100);
       const hc = key % 100;
@@ -17005,9 +17703,9 @@ function animateParticles(ts){
     _gfSceneTick(ts);
     drawGrid();
   }
-  // Ambient FX: Tadpole pond, Frenzy weather, Golden Frog location, Fog LV1 Mystic Pond
+  // Ambient FX: Tadpole pond, Frenzy weather, Golden Frog location, Fog LV1–10 themed pond
   if (!cityPackActive && _ambientInitialized && (activeChallengeMode === 'standard' || activeChallengeMode === 'frenzy' || activeChallengeMode === 'colourrun' ||
-      (activeChallengeMode === 'fog' && ((cm_fogLevel|0) === 1)))) {
+      (activeChallengeMode === 'fog' && ((cm_fogLevel|0) >= 1) && ((cm_fogLevel|0) <= 10)))) {
     _ambientDraw(ts);
     drawGrid();
   }
@@ -21962,7 +22660,7 @@ const GF_LINES_PER_LEVEL = 50;
 let cm_gfLinesCleared = 0;     // lines cleared at the current location
 let cm_gfLevelGateActive = false; // true while the COMPLETE overlay is showing
 // Quick lookup of the Fog the Frog location names (for HUD labels)
-const FOG_LOCATION_NAMES = ['Mystic Pond','Scottish Moors','Scottish Highlands','Mediterranean Sea','Coral Reef','Amazon','Sahara Night','Arctic','Deep Ocean','Above the Clouds'];
+const FOG_LOCATION_NAMES = ['Mystic Pond','Forest River','Tropical Lagoon','Jungle Swamp','Mountain Lake','Mangrove Delta','Deep Ocean Reef','Arctic Ice Sea','Volcanic Springs','Celestial Realm'];
 // Each Golden Frog location has its own day/night sky, silhouette skyline (column heights 0-10),
 // accent + edge colours, and atmospheric particle type (sand/blossoms/neon/rain/fireflies/etc.)
 const GF_LOCATIONS_CFG = [
