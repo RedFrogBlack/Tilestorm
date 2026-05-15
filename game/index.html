@@ -8727,6 +8727,1227 @@ function _pondSeason(monthIdx) {
 let _fogLv1Heron = null;     // { startMs, durMs, side:'l'|'r', y:fraction }
 let _fogLv1NextHeron = 0;    // ms timestamp of next heron event
 
+// ────────────────────────────────────────────────────────────────────────────
+// Per-level edge decor — distinctive scenery on the left/right/bottom edges
+// of the pond canvas. Each level renders its own "this place" cue so the
+// player can identify the location at a glance. Pure procedural canvas.
+// All elements stay in the ~12% margin around the play grid (left/right/bottom
+// strips), never overlapping the centre play area.
+// ────────────────────────────────────────────────────────────────────────────
+function _drawFogEdgeDecor(ctx, W, H, t, isNight, season) {
+  if (typeof activeChallengeMode === 'undefined' || activeChallengeMode !== 'fog') return;
+  const lv = (typeof cm_fogLevel !== 'undefined') ? Math.max(1, Math.min(10, cm_fogLevel|0)) : 1;
+  const sway = Math.sin(t * 0.0008);  // slow ambient sway
+  const sway2 = Math.cos(t * 0.0011);
+
+  // ── LV2 Forest River ─────────────────────────────────────────────────────
+  // Leaning tree trunks on left + right edges with branches reaching over the
+  // water; tall river grass tufts at the bottom; auburn leaves on the surface.
+  if (lv === 2) {
+    ctx.save();
+    // Left tree — trunk leans right toward water (compact, confined to bottom edge strip)
+    const drawLeaningTree = (x, y, h, dir, season) => {
+      // Branches angled INWARD only slightly; foliage cluster stays in margin
+      const tip = x + dir * h * 0.30 + sway*3*dir;
+      const tipY = y - h;
+      // Trunk
+      ctx.strokeStyle = isNight ? 'rgba(45,30,20,0.85)' : 'rgba(70,45,28,0.92)';
+      ctx.lineWidth = h * 0.08;
+      ctx.lineCap = 'round';
+      ctx.beginPath();
+      ctx.moveTo(x, y);
+      ctx.bezierCurveTo(x + dir*h*0.10, y - h*0.4, x + dir*h*0.22, y - h*0.75, tip, tipY);
+      ctx.stroke();
+      // Bark texture
+      ctx.strokeStyle = isNight ? 'rgba(20,12,5,0.5)' : 'rgba(40,25,15,0.5)';
+      ctx.lineWidth = h * 0.025;
+      ctx.beginPath(); ctx.moveTo(x + dir*h*0.04, y - h*0.1); ctx.lineTo(x + dir*h*0.07, y - h*0.35); ctx.stroke();
+      // 2 short branches off the leaning trunk — short so they don't reach the grid
+      const branchPts = [
+        { f: 0.55, len: h*0.20, ang: dir * 0.55 },
+        { f: 0.85, len: h*0.18, ang: dir * 0.25 },
+      ];
+      for (const br of branchPts) {
+        const bx = x + dir * h * 0.30 * br.f + sway*3*dir;
+        const by = y - h * br.f * 0.95;
+        const ex = bx + Math.cos(-Math.PI/2 + br.ang) * br.len + sway2*2*dir;
+        const ey = by + Math.sin(-Math.PI/2 + br.ang) * br.len;
+        ctx.strokeStyle = isNight ? 'rgba(40,28,18,0.8)' : 'rgba(65,42,25,0.85)';
+        ctx.lineWidth = h * 0.04;
+        ctx.beginPath(); ctx.moveTo(bx, by); ctx.lineTo(ex, ey); ctx.stroke();
+        // Foliage cluster on branch tip — autumn colours
+        const leafColours = season === 'winter'
+          ? ['rgba(180,170,160,0.55)','rgba(140,130,120,0.55)']
+          : season === 'spring'
+          ? ['rgba(140,200,110,0.7)','rgba(170,220,130,0.65)','rgba(220,240,180,0.6)']
+          : season === 'summer'
+          ? ['rgba(70,140,70,0.78)','rgba(100,170,90,0.72)','rgba(140,200,110,0.65)']
+          : ['rgba(220,120,40,0.78)','rgba(200,80,30,0.72)','rgba(240,180,60,0.7)','rgba(180,60,25,0.7)'];
+        for (let i = 0; i < 9; i++) {
+          const a = (i/9)*Math.PI*2;
+          const rr = h * 0.06 * (0.7 + Math.sin(i*1.7)*0.3);
+          const lx = ex + Math.cos(a) * rr;
+          const ly2 = ey + Math.sin(a) * rr;
+          ctx.fillStyle = leafColours[i % leafColours.length];
+          ctx.beginPath(); ctx.ellipse(lx, ly2, 3, 2.2, a, 0, Math.PI*2); ctx.fill();
+        }
+      }
+    };
+    drawLeaningTree(W*0.025, H*0.97, H*0.32, 1, season);    // left — keeps below grid
+    drawLeaningTree(W*0.975, H*0.95, H*0.30, -1, season);   // right — keeps below grid
+
+    // Tall river grass tufts on bottom-left + bottom-right shoreline
+    const drawGrassTuft = (cx, cy, count, swayMul) => {
+      ctx.lineCap = 'round';
+      for (let i = 0; i < count; i++) {
+        const x0 = cx + (i - count/2) * 4;
+        const h0 = 18 + Math.sin(i*1.7) * 8;
+        const ang = (i*0.3 - 0.4) + sway * 0.3 * swayMul;
+        const tx = x0 + Math.sin(ang) * h0 * 0.25;
+        const ty = cy - h0;
+        ctx.strokeStyle = isNight ? `rgba(40,70,35,${0.55+Math.random()*0.1})` : `rgba(70,120,55,${0.7+Math.random()*0.1})`;
+        ctx.lineWidth = 1.2;
+        ctx.beginPath();
+        ctx.moveTo(x0, cy);
+        ctx.quadraticCurveTo(x0 + Math.sin(ang)*h0*0.1, cy - h0*0.5, tx, ty);
+        ctx.stroke();
+      }
+    };
+    drawGrassTuft(W*0.08, H*0.95, 9, 1);
+    drawGrassTuft(W*0.20, H*0.97, 7, -1);
+    drawGrassTuft(W*0.82, H*0.96, 8, 1);
+    drawGrassTuft(W*0.93, H*0.94, 7, -1);
+
+    // Floating leaves on water surface (autumn especially)
+    const leafCount = season === 'autumn' ? 8 : 4;
+    const leafCols = season === 'autumn'
+      ? ['rgba(220,90,30,0.85)','rgba(200,140,40,0.82)','rgba(180,60,25,0.85)']
+      : ['rgba(80,140,50,0.7)','rgba(110,160,60,0.7)'];
+    for (let i = 0; i < leafCount; i++) {
+      const lx = W * (0.10 + (i*0.12 + (t*0.00003) % 1) % 0.85);
+      const ly = H * (0.85 + Math.sin(t*0.0006 + i)*0.04);
+      ctx.save();
+      ctx.translate(lx, ly);
+      ctx.rotate(Math.sin(t*0.001+i)*0.6);
+      ctx.fillStyle = leafCols[i % leafCols.length];
+      ctx.beginPath(); ctx.ellipse(0,0, 6, 3, 0, 0, Math.PI*2); ctx.fill();
+      ctx.strokeStyle = 'rgba(60,30,10,0.4)'; ctx.lineWidth = 0.5;
+      ctx.beginPath(); ctx.moveTo(-6,0); ctx.lineTo(6,0); ctx.stroke();
+      ctx.restore();
+    }
+    ctx.restore();
+  }
+
+  // ── LV3 Tropical Lagoon ──────────────────────────────────────────────────
+  // Palm trees on edges with hanging coconuts; pineapple plant on bottom-right;
+  // hibiscus flowers; floating coconut halves.
+  if (lv === 3) {
+    ctx.save();
+    // Palm tree (curved trunk + fronds) — compact, confined to bottom edge strip
+    const drawPalm = (x, y, h, dir) => {
+      const tipX = x + dir * h * 0.18 + sway * 3 * dir;
+      const tipY = y - h;
+      // Trunk — segmented curved
+      ctx.strokeStyle = isNight ? 'rgba(60,42,25,0.85)' : 'rgba(110,75,42,0.92)';
+      ctx.lineWidth = h * 0.07;
+      ctx.lineCap = 'round';
+      ctx.beginPath();
+      ctx.moveTo(x, y);
+      ctx.quadraticCurveTo(x + dir*h*0.10, y - h*0.5, tipX, tipY);
+      ctx.stroke();
+      // Trunk segments
+      ctx.strokeStyle = isNight ? 'rgba(35,25,15,0.6)' : 'rgba(70,45,25,0.7)';
+      ctx.lineWidth = 1;
+      for (let s = 1; s < 8; s++) {
+        const f = s/8;
+        const sx = x + dir * h * 0.18 * f;
+        const sy = y - h * f;
+        ctx.beginPath(); ctx.arc(sx, sy, h*0.04, -Math.PI*0.3, Math.PI*0.3); ctx.stroke();
+      }
+      // 5 fronds radiating from tip — shorter so they stay near the corner
+      for (let f = 0; f < 5; f++) {
+        const ang = -Math.PI/2 + (f - 2) * 0.55 + sway * 0.05;
+        const flen = h * (0.22 + (f%2)*0.05);
+        const ex = tipX + Math.cos(ang) * flen;
+        const ey = tipY + Math.sin(ang) * flen;
+        // Frond stem
+        ctx.strokeStyle = isNight ? 'rgba(40,80,40,0.7)' : 'rgba(60,140,60,0.85)';
+        ctx.lineWidth = 2.5;
+        ctx.beginPath();
+        ctx.moveTo(tipX, tipY);
+        ctx.quadraticCurveTo(
+          tipX + Math.cos(ang)*flen*0.6,
+          tipY + Math.sin(ang)*flen*0.6 + 8,
+          ex, ey
+        );
+        ctx.stroke();
+        // Frond leaflets
+        ctx.strokeStyle = isNight ? 'rgba(50,100,50,0.6)' : 'rgba(80,170,80,0.75)';
+        ctx.lineWidth = 1.4;
+        const segs = 6;
+        for (let i = 1; i <= segs; i++) {
+          const ff = i/segs;
+          const sx = tipX + Math.cos(ang)*flen*ff;
+          const sy = tipY + Math.sin(ang)*flen*ff + 5*ff;
+          const perp = ang + Math.PI/2;
+          const len = 6 - ff*3;
+          ctx.beginPath();
+          ctx.moveTo(sx, sy);
+          ctx.lineTo(sx + Math.cos(perp)*len, sy + Math.sin(perp)*len);
+          ctx.stroke();
+          ctx.beginPath();
+          ctx.moveTo(sx, sy);
+          ctx.lineTo(sx - Math.cos(perp)*len, sy - Math.sin(perp)*len);
+          ctx.stroke();
+        }
+      }
+      // Coconuts (3) clustered at frond base
+      ctx.fillStyle = isNight ? 'rgba(40,25,12,0.9)' : 'rgba(80,50,25,0.95)';
+      ctx.beginPath(); ctx.arc(tipX - 3, tipY + 4, 3.5, 0, Math.PI*2); ctx.fill();
+      ctx.beginPath(); ctx.arc(tipX + 4, tipY + 5, 3.2, 0, Math.PI*2); ctx.fill();
+      ctx.beginPath(); ctx.arc(tipX + 1, tipY + 8, 3, 0, Math.PI*2); ctx.fill();
+    };
+    drawPalm(W*0.025, H*0.97, H*0.30, 1);
+    drawPalm(W*0.975, H*0.95, H*0.28, -1);
+
+    // Pineapple plant — spiky leaves + pineapple body, bottom-right area
+    const drawPineapple = (cx, cy, scale) => {
+      // Body — yellow-ochre with diamond pattern
+      ctx.fillStyle = isNight ? 'rgba(140,100,30,0.9)' : 'rgba(220,170,60,0.95)';
+      ctx.beginPath();
+      ctx.ellipse(cx, cy, 8*scale, 12*scale, 0, 0, Math.PI*2);
+      ctx.fill();
+      // Diamond cross-hatch
+      ctx.strokeStyle = isNight ? 'rgba(80,55,15,0.7)' : 'rgba(140,90,30,0.7)';
+      ctx.lineWidth = 0.6;
+      for (let r = -2; r <= 2; r++) {
+        ctx.beginPath();
+        ctx.moveTo(cx - 7*scale, cy + r*4*scale);
+        ctx.lineTo(cx + 7*scale, cy + r*4*scale);
+        ctx.stroke();
+      }
+      for (let c = -2; c <= 2; c++) {
+        ctx.beginPath();
+        ctx.moveTo(cx + c*3*scale, cy - 11*scale);
+        ctx.lineTo(cx + c*3*scale, cy + 11*scale);
+        ctx.stroke();
+      }
+      // Spiky crown leaves on top
+      const leafCol = isNight ? 'rgba(40,90,40,0.85)' : 'rgba(60,150,60,0.92)';
+      ctx.fillStyle = leafCol;
+      for (let l = 0; l < 9; l++) {
+        const ang = -Math.PI/2 + (l - 4) * 0.30 + sway * 0.08;
+        const lh = (10 + (l%3)*4) * scale;
+        const tx = cx + Math.cos(ang) * lh;
+        const ty = cy - 12*scale + Math.sin(ang) * lh;
+        ctx.beginPath();
+        ctx.moveTo(cx, cy - 11*scale);
+        ctx.lineTo(cx + Math.cos(ang)*1.5, cy - 11*scale);
+        ctx.lineTo(tx, ty);
+        ctx.closePath();
+        ctx.fill();
+        // Leaf vein
+        ctx.strokeStyle = isNight ? 'rgba(20,50,20,0.6)' : 'rgba(40,100,40,0.7)';
+        ctx.lineWidth = 0.5;
+        ctx.beginPath(); ctx.moveTo(cx, cy - 11*scale); ctx.lineTo(tx, ty); ctx.stroke();
+      }
+    };
+    drawPineapple(W*0.12, H*0.93, 1.0);
+    drawPineapple(W*0.88, H*0.95, 0.85);
+
+    // Hibiscus flowers floating on water (3-4 blooms)
+    const hibiscusCols = ['rgba(255,80,120,0.95)','rgba(255,150,80,0.92)','rgba(255,200,100,0.92)'];
+    for (let i = 0; i < 4; i++) {
+      const fx = W * (0.18 + i*0.21);
+      const fy = H * (0.88 + Math.sin(t*0.0008+i)*0.03);
+      ctx.save();
+      ctx.translate(fx, fy);
+      ctx.rotate(Math.sin(t*0.0006+i*1.3)*0.4);
+      ctx.fillStyle = hibiscusCols[i % hibiscusCols.length];
+      // 5 petals
+      for (let p = 0; p < 5; p++) {
+        const ang = (p/5)*Math.PI*2;
+        ctx.beginPath();
+        ctx.ellipse(Math.cos(ang)*4, Math.sin(ang)*4, 5, 3.5, ang, 0, Math.PI*2);
+        ctx.fill();
+      }
+      // Yellow stamen
+      ctx.fillStyle = 'rgba(255,230,80,0.95)';
+      ctx.beginPath(); ctx.arc(0, 0, 2, 0, Math.PI*2); ctx.fill();
+      ctx.restore();
+    }
+    ctx.restore();
+  }
+
+  // ── LV4 Jungle Swamp ─────────────────────────────────────────────────────
+  // Murky water already, add: thick algae scum patches floating, exposed
+  // mangrove roots arching out of the water on edges, hanging vines from top.
+  if (lv === 4) {
+    ctx.save();
+    // Murky scum patches — darker green blobs on surface (overlay tint already does base)
+    ctx.globalAlpha = 0.28;
+    for (let i = 0; i < 14; i++) {
+      const px = W * (((i*0.137 + t*0.00002) % 1) * 1.0);
+      const py = H * (0.20 + (i%6)*0.13 + Math.sin(t*0.0004+i)*0.03);
+      const rad = 18 + (i%3)*8;
+      ctx.fillStyle = i%2 ? 'rgba(20,55,30,0.8)' : 'rgba(40,80,40,0.7)';
+      ctx.beginPath();
+      ctx.ellipse(px, py, rad, rad*0.45, Math.sin(i)*0.3, 0, Math.PI*2);
+      ctx.fill();
+      // Bumpy edge
+      for (let b = 0; b < 6; b++) {
+        const ba = (b/6)*Math.PI*2;
+        ctx.beginPath();
+        ctx.arc(px + Math.cos(ba)*rad*0.7, py + Math.sin(ba)*rad*0.3, 4, 0, Math.PI*2);
+        ctx.fill();
+      }
+    }
+    ctx.globalAlpha = 1;
+
+    // Exposed mangrove roots — gnarled brown arches coming out of water on edges
+    const drawMangroveRoot = (x, y, dir, scale) => {
+      ctx.strokeStyle = isNight ? 'rgba(35,22,12,0.85)' : 'rgba(60,38,22,0.92)';
+      ctx.lineWidth = 4 * scale;
+      ctx.lineCap = 'round';
+      // Main arch
+      ctx.beginPath();
+      ctx.moveTo(x, y);
+      ctx.bezierCurveTo(x + dir*15*scale, y - 25*scale, x + dir*35*scale, y - 18*scale, x + dir*45*scale, y);
+      ctx.stroke();
+      // Sub roots
+      ctx.lineWidth = 2.5 * scale;
+      ctx.beginPath();
+      ctx.moveTo(x + dir*22*scale, y - 22*scale);
+      ctx.bezierCurveTo(x + dir*30*scale, y - 30*scale, x + dir*38*scale, y - 20*scale, x + dir*38*scale, y);
+      ctx.stroke();
+      // Smaller arch behind
+      ctx.lineWidth = 3 * scale;
+      ctx.globalAlpha = 0.6;
+      ctx.beginPath();
+      ctx.moveTo(x + dir*10*scale, y);
+      ctx.bezierCurveTo(x + dir*18*scale, y - 18*scale, x + dir*26*scale, y - 14*scale, x + dir*30*scale, y);
+      ctx.stroke();
+      ctx.globalAlpha = 1;
+    };
+    drawMangroveRoot(W*0.02, H*0.84, 1, 1.0);
+    drawMangroveRoot(W*0.06, H*0.92, 1, 0.8);
+    drawMangroveRoot(W*0.98, H*0.86, -1, 1.0);
+    drawMangroveRoot(W*0.92, H*0.94, -1, 0.85);
+
+    // Hanging vines from the top edge — long thin curves
+    const drawHangingVine = (x, len) => {
+      ctx.strokeStyle = isNight ? 'rgba(50,80,40,0.6)' : 'rgba(70,130,55,0.75)';
+      ctx.lineWidth = 1.6;
+      ctx.beginPath();
+      ctx.moveTo(x, 0);
+      const segments = 8;
+      for (let s = 1; s <= segments; s++) {
+        const f = s/segments;
+        const dx = x + Math.sin(t*0.0009 + x*0.05 + f*1.5) * 8 * f;
+        const dy = len * f;
+        ctx.lineTo(dx, dy);
+      }
+      ctx.stroke();
+      // Small leaves along the vine
+      for (let s = 2; s <= 7; s += 2) {
+        const f = s/8;
+        const dx = x + Math.sin(t*0.0009 + x*0.05 + f*1.5) * 8 * f;
+        const dy = len * f;
+        ctx.fillStyle = isNight ? 'rgba(40,90,30,0.65)' : 'rgba(60,140,50,0.78)';
+        ctx.beginPath();
+        ctx.ellipse(dx + 5, dy, 4, 2, 0.4, 0, Math.PI*2);
+        ctx.fill();
+      }
+    };
+    // Vines stay tucked near the top edges (only reach down to ~y=0.18 max)
+    drawHangingVine(W*0.025, H*0.18);
+    drawHangingVine(W*0.07, H*0.14);
+    drawHangingVine(W*0.975, H*0.18);
+    drawHangingVine(W*0.93, H*0.14);
+
+    // Glowing fireflies at night (already in tile grid but add some on edges)
+    if (isNight || season === 'summer') {
+      for (let i = 0; i < 12; i++) {
+        const fx = W * (0.05 + (i*0.083 + t*0.00005) % 0.9);
+        const fy = H * (0.40 + Math.sin(t*0.001 + i)*0.30);
+        const a = 0.5 + Math.sin(t*0.005 + i*1.7)*0.5;
+        ctx.save();
+        ctx.globalAlpha = a;
+        ctx.fillStyle = 'rgba(180,255,150,0.9)';
+        ctx.shadowColor = 'rgba(180,255,150,0.9)';
+        ctx.shadowBlur = 8;
+        ctx.beginPath(); ctx.arc(fx, fy, 1.5, 0, Math.PI*2); ctx.fill();
+        ctx.restore();
+      }
+    }
+    ctx.restore();
+  }
+
+  // ── LV5 Mountain Lake ────────────────────────────────────────────────────
+  // Exposed boulders/rocks breaking the water surface; pine trees on edges;
+  // sharp mountain silhouettes in the back; underwater pebble texture visible.
+  if (lv === 5) {
+    ctx.save();
+    // Mountain peaks silhouette in upper background
+    ctx.fillStyle = isNight ? 'rgba(30,45,75,0.55)' : 'rgba(80,110,150,0.45)';
+    ctx.beginPath();
+    ctx.moveTo(0, H*0.18);
+    ctx.lineTo(W*0.10, H*0.05);
+    ctx.lineTo(W*0.18, H*0.12);
+    ctx.lineTo(W*0.28, H*0.02);
+    ctx.lineTo(W*0.40, H*0.10);
+    ctx.lineTo(W*0.50, H*0.04);
+    ctx.lineTo(W*0.60, H*0.13);
+    ctx.lineTo(W*0.72, H*0.06);
+    ctx.lineTo(W*0.84, H*0.11);
+    ctx.lineTo(W*0.92, H*0.04);
+    ctx.lineTo(W, H*0.14);
+    ctx.lineTo(W, H*0.22);
+    ctx.lineTo(0, H*0.22);
+    ctx.closePath();
+    ctx.fill();
+    // Snow caps
+    ctx.fillStyle = isNight ? 'rgba(180,200,230,0.6)' : 'rgba(245,250,255,0.85)';
+    [[0.10,0.05],[0.28,0.02],[0.50,0.04],[0.72,0.06],[0.92,0.04]].forEach(([px,py]) => {
+      ctx.beginPath();
+      ctx.moveTo(W*px - 8, H*py + 6);
+      ctx.lineTo(W*px, H*py);
+      ctx.lineTo(W*px + 8, H*py + 6);
+      ctx.closePath();
+      ctx.fill();
+    });
+
+    // Exposed rocks/boulders breaking the water surface
+    const drawBoulder = (cx, cy, w, h) => {
+      // Wet/shadowed bottom half
+      ctx.fillStyle = isNight ? 'rgba(40,55,75,0.85)' : 'rgba(85,100,120,0.92)';
+      ctx.beginPath();
+      ctx.ellipse(cx, cy, w, h, 0, 0, Math.PI);
+      ctx.fill();
+      // Top dry part — lighter slate grey
+      ctx.fillStyle = isNight ? 'rgba(80,95,120,0.85)' : 'rgba(140,150,165,0.95)';
+      ctx.beginPath();
+      ctx.moveTo(cx - w, cy);
+      ctx.bezierCurveTo(cx - w*0.7, cy - h*1.3, cx + w*0.6, cy - h*1.4, cx + w, cy);
+      ctx.closePath();
+      ctx.fill();
+      // Highlight ridge
+      ctx.strokeStyle = isNight ? 'rgba(160,180,210,0.4)' : 'rgba(220,225,235,0.6)';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(cx - w*0.7, cy - h*0.8);
+      ctx.lineTo(cx - w*0.2, cy - h*1.1);
+      ctx.lineTo(cx + w*0.5, cy - h*0.6);
+      ctx.stroke();
+      // Reflection
+      ctx.save();
+      ctx.globalAlpha = 0.25;
+      ctx.fillStyle = isNight ? 'rgba(50,70,95,0.6)' : 'rgba(100,115,135,0.7)';
+      ctx.beginPath();
+      ctx.ellipse(cx, cy + h*0.4, w*0.9, h*0.5, 0, 0, Math.PI*2);
+      ctx.fill();
+      ctx.restore();
+    };
+    // 5 boulders scattered around edges and the lake
+    drawBoulder(W*0.10, H*0.50, 18, 7);
+    drawBoulder(W*0.92, H*0.55, 22, 9);
+    drawBoulder(W*0.06, H*0.78, 26, 10);
+    drawBoulder(W*0.95, H*0.82, 24, 9);
+    drawBoulder(W*0.50, H*0.90, 30, 11);
+
+    // Smaller pebbles visible THROUGH the water (use low alpha)
+    ctx.save();
+    ctx.globalAlpha = 0.32;
+    for (let i = 0; i < 18; i++) {
+      const px = W * (0.05 + (i*0.137) % 0.9);
+      const py = H * (0.30 + (i%5)*0.13);
+      const r = 3 + (i%3);
+      ctx.fillStyle = isNight ? 'rgba(60,80,100,0.7)' : 'rgba(110,130,150,0.7)';
+      ctx.beginPath(); ctx.ellipse(px, py, r, r*0.7, 0, 0, Math.PI*2); ctx.fill();
+    }
+    ctx.restore();
+
+    // Pine trees on edges (small triangular silhouettes)
+    const drawPine = (x, y, h, dir) => {
+      ctx.fillStyle = isNight ? 'rgba(15,40,30,0.85)' : 'rgba(30,75,45,0.92)';
+      ctx.beginPath();
+      ctx.moveTo(x, y);
+      ctx.lineTo(x - h*0.25, y);
+      ctx.lineTo(x - h*0.18, y - h*0.3);
+      ctx.lineTo(x - h*0.12, y - h*0.3);
+      ctx.lineTo(x - h*0.10, y - h*0.6);
+      ctx.lineTo(x - h*0.05, y - h*0.6);
+      ctx.lineTo(x, y - h);
+      ctx.lineTo(x + h*0.05, y - h*0.6);
+      ctx.lineTo(x + h*0.10, y - h*0.6);
+      ctx.lineTo(x + h*0.12, y - h*0.3);
+      ctx.lineTo(x + h*0.18, y - h*0.3);
+      ctx.lineTo(x + h*0.25, y);
+      ctx.closePath();
+      ctx.fill();
+      // Trunk
+      ctx.fillStyle = isNight ? 'rgba(30,20,10,0.8)' : 'rgba(60,40,25,0.9)';
+      ctx.fillRect(x - 1.5, y, 3, h*0.05);
+    };
+    drawPine(W*0.04, H*0.78, H*0.20, 1);
+    drawPine(W*0.10, H*0.85, H*0.16, 1);
+    drawPine(W*0.96, H*0.76, H*0.22, -1);
+    drawPine(W*0.90, H*0.83, H*0.18, -1);
+    ctx.restore();
+  }
+
+  // ── LV6 Mangrove Delta ───────────────────────────────────────────────────
+  // Stilted mangrove root forest on left + right edges (THE signature feature),
+  // sandy shore strips at bottom, scattered seashells, drifting driftwood logs.
+  if (lv === 6) {
+    ctx.save();
+    // Stilted mangrove forest — multiple thin trunks rising from criss-cross roots
+    const drawMangroveStand = (x, y, dir) => {
+      // Crisscross stilt roots at base
+      ctx.strokeStyle = isNight ? 'rgba(50,30,15,0.85)' : 'rgba(85,55,30,0.92)';
+      ctx.lineWidth = 2.5;
+      ctx.lineCap = 'round';
+      const rootStarts = [-25, -10, 5, 20];
+      for (const rs of rootStarts) {
+        for (let dx = -8; dx <= 8; dx += 4) {
+          ctx.beginPath();
+          ctx.moveTo(x + dir*(rs+dx), y);
+          ctx.lineTo(x + dir*(rs), y - 18 - Math.abs(dx));
+          ctx.stroke();
+        }
+      }
+      // Vertical mangrove trunks
+      ctx.lineWidth = 3.5;
+      ctx.strokeStyle = isNight ? 'rgba(45,28,15,0.9)' : 'rgba(75,48,25,0.95)';
+      const trunkXs = [-22, -8, 7, 20];
+      for (const tx of trunkXs) {
+        // Trunks rise ~50px (less than before) so they stay below the play grid (y>=0.21)
+        const tipY = y - 18 - Math.abs(tx) - 38 - Math.sin(t*0.001+tx)*2;
+        ctx.beginPath();
+        ctx.moveTo(x + dir*tx, y - 18 - Math.abs(tx));
+        ctx.lineTo(x + dir*tx + sway*2, tipY);
+        ctx.stroke();
+        // Leaf cluster on top — small
+        ctx.fillStyle = isNight ? 'rgba(20,55,25,0.85)' : 'rgba(45,115,55,0.92)';
+        for (let l = 0; l < 7; l++) {
+          const la = (l/7)*Math.PI*2;
+          ctx.beginPath();
+          ctx.ellipse(
+            x + dir*tx + sway*2 + Math.cos(la)*5,
+            tipY + Math.sin(la)*4,
+            4, 2.8, la, 0, Math.PI*2
+          );
+          ctx.fill();
+        }
+      }
+    };
+    drawMangroveStand(W*0.07, H*0.96, 1);
+    drawMangroveStand(W*0.93, H*0.94, -1);
+
+    // Sandy shore strip at the bottom corners
+    ctx.fillStyle = isNight ? 'rgba(120,95,60,0.55)' : 'rgba(220,195,140,0.75)';
+    ctx.beginPath();
+    ctx.moveTo(0, H);
+    ctx.lineTo(0, H*0.93);
+    ctx.quadraticCurveTo(W*0.15, H*0.96, W*0.30, H);
+    ctx.closePath();
+    ctx.fill();
+    ctx.beginPath();
+    ctx.moveTo(W, H);
+    ctx.lineTo(W, H*0.92);
+    ctx.quadraticCurveTo(W*0.85, H*0.95, W*0.70, H);
+    ctx.closePath();
+    ctx.fill();
+
+    // Seashells on the sand
+    const drawShell = (cx, cy, scale, col) => {
+      ctx.fillStyle = col;
+      ctx.beginPath();
+      // Fan-shape
+      ctx.moveTo(cx, cy);
+      for (let a = 0; a <= Math.PI; a += 0.1) {
+        ctx.lineTo(cx + Math.cos(a + Math.PI) * 6 * scale, cy + Math.sin(a + Math.PI) * 6 * scale);
+      }
+      ctx.closePath();
+      ctx.fill();
+      // Ridges
+      ctx.strokeStyle = 'rgba(120,80,55,0.55)';
+      ctx.lineWidth = 0.5;
+      for (let r = 0; r < 5; r++) {
+        const ra = Math.PI + (r/5) * Math.PI;
+        ctx.beginPath();
+        ctx.moveTo(cx, cy);
+        ctx.lineTo(cx + Math.cos(ra)*6*scale, cy + Math.sin(ra)*6*scale);
+        ctx.stroke();
+      }
+    };
+    const shellCols = ['rgba(255,220,180,0.95)','rgba(240,180,150,0.92)','rgba(255,200,170,0.95)'];
+    drawShell(W*0.06, H*0.97, 1.1, shellCols[0]);
+    drawShell(W*0.18, H*0.99, 0.9, shellCols[1]);
+    drawShell(W*0.25, H*0.97, 1.0, shellCols[2]);
+    drawShell(W*0.78, H*0.98, 1.0, shellCols[1]);
+    drawShell(W*0.86, H*0.96, 0.85, shellCols[2]);
+
+    // Floating driftwood log on the water
+    ctx.save();
+    const dwX = W * (0.30 + ((t*0.00003) % 0.4));
+    ctx.translate(dwX, H*0.35);
+    ctx.rotate(0.15);
+    ctx.fillStyle = isNight ? 'rgba(60,40,22,0.85)' : 'rgba(105,75,45,0.92)';
+    ctx.beginPath(); ctx.ellipse(0, 0, 24, 4, 0, 0, Math.PI*2); ctx.fill();
+    ctx.strokeStyle = isNight ? 'rgba(30,18,8,0.7)' : 'rgba(60,40,20,0.7)';
+    ctx.lineWidth = 0.5;
+    for (let r = -3; r <= 3; r++) {
+      ctx.beginPath();
+      ctx.moveTo(r*6, -3);
+      ctx.lineTo(r*6, 3);
+      ctx.stroke();
+    }
+    ctx.restore();
+
+    // Small crab silhouette on the sand (tiny details)
+    if (!isNight) {
+      ctx.fillStyle = 'rgba(180,80,50,0.85)';
+      const crabX = W*0.13 + Math.sin(t*0.0008)*6;
+      const crabY = H*0.985;
+      ctx.beginPath(); ctx.ellipse(crabX, crabY, 3.5, 2.5, 0, 0, Math.PI*2); ctx.fill();
+      // Legs
+      ctx.strokeStyle = 'rgba(140,60,40,0.85)'; ctx.lineWidth = 0.6;
+      for (let l = 0; l < 3; l++) {
+        ctx.beginPath();
+        ctx.moveTo(crabX - 3, crabY); ctx.lineTo(crabX - 5, crabY + (l-1));
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.moveTo(crabX + 3, crabY); ctx.lineTo(crabX + 5, crabY + (l-1));
+        ctx.stroke();
+      }
+    }
+    ctx.restore();
+  }
+
+  // ── LV7 Deep Ocean Reef ──────────────────────────────────────────────────
+  // Rich underwater coral garden on the bottom edge — branching corals, sea
+  // anemones swaying, sea fans, schools of tiny fish, glowing jellyfish drifting.
+  if (lv === 7) {
+    ctx.save();
+    // Branching coral colonies along the bottom
+    const drawBranchingCoral = (cx, cy, scale, col, glow) => {
+      ctx.save();
+      if (glow) {
+        ctx.shadowColor = col;
+        ctx.shadowBlur = 10;
+      }
+      ctx.strokeStyle = col;
+      ctx.lineWidth = 3 * scale;
+      ctx.lineCap = 'round';
+      // Recursive-ish tree: trunk + 3 branches + sub-branches
+      const drawBranch = (x1, y1, ang, len, depth) => {
+        if (depth <= 0) return;
+        const x2 = x1 + Math.cos(ang) * len;
+        const y2 = y1 + Math.sin(ang) * len;
+        ctx.lineWidth = depth * scale * 1.2;
+        ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.stroke();
+        if (depth > 1) {
+          drawBranch(x2, y2, ang - 0.5, len*0.65, depth - 1);
+          drawBranch(x2, y2, ang + 0.5, len*0.65, depth - 1);
+        }
+        // Tip nodule
+        if (depth === 1) {
+          ctx.fillStyle = col;
+          ctx.beginPath(); ctx.arc(x2, y2, 2*scale, 0, Math.PI*2); ctx.fill();
+        }
+      };
+      drawBranch(cx, cy, -Math.PI/2, 14*scale, 4);
+      drawBranch(cx - 3*scale, cy, -Math.PI/2 - 0.3, 10*scale, 3);
+      drawBranch(cx + 3*scale, cy, -Math.PI/2 + 0.3, 10*scale, 3);
+      ctx.restore();
+    };
+    drawBranchingCoral(W*0.08, H*0.95, 1.2, 'rgba(255,90,160,0.85)', true);
+    drawBranchingCoral(W*0.20, H*0.98, 0.9, 'rgba(140,255,200,0.85)', true);
+    drawBranchingCoral(W*0.32, H*0.97, 1.0, 'rgba(255,180,80,0.85)', true);
+    drawBranchingCoral(W*0.55, H*0.99, 1.1, 'rgba(180,120,255,0.85)', true);
+    drawBranchingCoral(W*0.72, H*0.96, 0.95, 'rgba(100,255,255,0.85)', true);
+    drawBranchingCoral(W*0.88, H*0.97, 1.1, 'rgba(255,100,200,0.85)', true);
+
+    // Sea anemones — swaying tentacles
+    const drawAnemone = (cx, cy, col) => {
+      ctx.save();
+      ctx.shadowColor = col; ctx.shadowBlur = 6;
+      // Base bulb
+      ctx.fillStyle = 'rgba(80,30,80,0.85)';
+      ctx.beginPath(); ctx.ellipse(cx, cy, 6, 4, 0, 0, Math.PI*2); ctx.fill();
+      // Tentacles
+      ctx.strokeStyle = col; ctx.lineWidth = 1.2;
+      for (let t2 = 0; t2 < 14; t2++) {
+        const baseAng = -Math.PI + (t2/14) * Math.PI;
+        const sw = Math.sin(t*0.002 + t2*0.5) * 0.4;
+        const len = 12 + Math.sin(t2)*3;
+        const ex = cx + Math.cos(baseAng + sw) * len;
+        const ey = cy + Math.sin(baseAng + sw) * len;
+        ctx.beginPath();
+        ctx.moveTo(cx, cy);
+        ctx.quadraticCurveTo(
+          cx + Math.cos(baseAng)*len*0.5,
+          cy + Math.sin(baseAng)*len*0.5 - 4,
+          ex, ey
+        );
+        ctx.stroke();
+      }
+      ctx.restore();
+    };
+    drawAnemone(W*0.04, H*0.88, 'rgba(255,120,200,0.85)');
+    drawAnemone(W*0.96, H*0.86, 'rgba(120,255,255,0.85)');
+    drawAnemone(W*0.45, H*0.92, 'rgba(255,200,100,0.85)');
+
+    // Sea fans (purple/red gorgonian) on edges
+    const drawSeaFan = (cx, cy, dir) => {
+      ctx.save();
+      ctx.translate(cx, cy);
+      ctx.rotate(dir * 0.2 + sway*0.05);
+      ctx.strokeStyle = 'rgba(200,80,180,0.7)';
+      ctx.lineWidth = 1.4;
+      // Trunk
+      ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(0, -25); ctx.stroke();
+      // Fan branches
+      for (let b = -3; b <= 3; b++) {
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.moveTo(0, -10);
+        ctx.quadraticCurveTo(b*3, -22, b*8, -28);
+        ctx.stroke();
+        // Sub-branches
+        for (let s = 1; s <= 3; s++) {
+          ctx.lineWidth = 0.5;
+          ctx.beginPath();
+          ctx.moveTo(b * (3+s), -22 - s);
+          ctx.lineTo(b * (3+s) + b*1.5, -28 - s);
+          ctx.stroke();
+        }
+      }
+      ctx.restore();
+    };
+    drawSeaFan(W*0.02, H*0.78, 1);
+    drawSeaFan(W*0.98, H*0.80, -1);
+    drawSeaFan(W*0.14, H*0.84, 1);
+    drawSeaFan(W*0.86, H*0.82, -1);
+
+    // School of tiny fish drifting across — silver streaks
+    const fishOff = (t * 0.04) % (W + 200) - 100;
+    for (let f = 0; f < 18; f++) {
+      const fx = fishOff - (f%6)*15 + Math.floor(f/6)*220;
+      const fy = H * (0.45 + (f%6)*0.04 + Math.sin(t*0.002+f)*0.02);
+      ctx.save();
+      ctx.globalAlpha = 0.65;
+      ctx.fillStyle = 'rgba(220,240,255,0.9)';
+      ctx.beginPath();
+      ctx.moveTo(fx, fy);
+      ctx.lineTo(fx - 5, fy - 1.5);
+      ctx.lineTo(fx - 5, fy + 1.5);
+      ctx.closePath();
+      ctx.fill();
+      ctx.restore();
+    }
+
+    // Drifting jellyfish (1-2) — translucent bell + tentacles
+    for (let j = 0; j < 2; j++) {
+      const jx = W * (0.25 + j*0.5 + Math.sin(t*0.0004 + j)*0.15);
+      const jy = H * (0.30 + Math.sin(t*0.0008 + j*1.4)*0.15);
+      ctx.save();
+      ctx.shadowColor = 'rgba(180,240,255,0.7)';
+      ctx.shadowBlur = 12;
+      ctx.fillStyle = 'rgba(180,220,255,0.45)';
+      // Bell
+      ctx.beginPath();
+      ctx.arc(jx, jy, 12, Math.PI, Math.PI*2);
+      ctx.lineTo(jx + 12, jy + 4);
+      ctx.quadraticCurveTo(jx, jy + 8, jx - 12, jy + 4);
+      ctx.closePath();
+      ctx.fill();
+      // Tentacles
+      ctx.strokeStyle = 'rgba(180,220,255,0.4)';
+      ctx.lineWidth = 1;
+      for (let tn = -3; tn <= 3; tn++) {
+        ctx.beginPath();
+        ctx.moveTo(jx + tn*3, jy + 5);
+        const sn = Math.sin(t*0.003 + tn);
+        ctx.quadraticCurveTo(jx + tn*3 + sn*4, jy + 14, jx + tn*3 + sn*6, jy + 22);
+        ctx.stroke();
+      }
+      ctx.restore();
+    }
+    ctx.restore();
+  }
+
+  // ── LV8 Arctic Ice Sea ───────────────────────────────────────────────────
+  // Sharp ice shards rising from the water on edges (signature look),
+  // floating ice floes drifting across, distant iceberg silhouette,
+  // optional aurora ribbon at top.
+  if (lv === 8) {
+    ctx.save();
+    // Distant iceberg silhouettes in the background (upper area)
+    ctx.fillStyle = isNight ? 'rgba(130,160,200,0.45)' : 'rgba(220,235,250,0.6)';
+    ctx.beginPath();
+    ctx.moveTo(0, H*0.20);
+    ctx.lineTo(W*0.08, H*0.10);
+    ctx.lineTo(W*0.16, H*0.06);
+    ctx.lineTo(W*0.24, H*0.14);
+    ctx.lineTo(W*0.32, H*0.08);
+    ctx.lineTo(W*0.40, H*0.18);
+    ctx.lineTo(W*0.40, H*0.22);
+    ctx.lineTo(0, H*0.22);
+    ctx.closePath();
+    ctx.fill();
+    ctx.beginPath();
+    ctx.moveTo(W*0.65, H*0.20);
+    ctx.lineTo(W*0.74, H*0.05);
+    ctx.lineTo(W*0.82, H*0.10);
+    ctx.lineTo(W*0.90, H*0.04);
+    ctx.lineTo(W, H*0.16);
+    ctx.lineTo(W, H*0.22);
+    ctx.lineTo(W*0.65, H*0.22);
+    ctx.closePath();
+    ctx.fill();
+    // Iceberg shading
+    ctx.fillStyle = isNight ? 'rgba(80,110,150,0.5)' : 'rgba(170,200,230,0.6)';
+    ctx.beginPath();
+    ctx.moveTo(W*0.16, H*0.06);
+    ctx.lineTo(W*0.20, H*0.10);
+    ctx.lineTo(W*0.16, H*0.18);
+    ctx.closePath();
+    ctx.fill();
+
+    // Sharp jagged ice shards rising from the water at edges
+    const drawIceShard = (cx, cy, h, dir) => {
+      // Below-water (deep blue, low alpha) base
+      ctx.fillStyle = isNight ? 'rgba(100,140,180,0.4)' : 'rgba(180,210,235,0.45)';
+      ctx.beginPath();
+      ctx.moveTo(cx - h*0.25, cy + h*0.3);
+      ctx.lineTo(cx + h*0.30, cy + h*0.3);
+      ctx.lineTo(cx, cy + h*0.65);
+      ctx.closePath();
+      ctx.fill();
+      // Above-water sharp shard
+      const grad = ctx.createLinearGradient(cx, cy, cx, cy - h);
+      if (isNight) {
+        grad.addColorStop(0, 'rgba(100,130,180,0.85)');
+        grad.addColorStop(0.5, 'rgba(180,210,240,0.92)');
+        grad.addColorStop(1, 'rgba(220,240,255,0.95)');
+      } else {
+        grad.addColorStop(0, 'rgba(180,210,240,0.92)');
+        grad.addColorStop(0.5, 'rgba(220,240,255,0.96)');
+        grad.addColorStop(1, 'rgba(255,255,255,0.98)');
+      }
+      ctx.fillStyle = grad;
+      ctx.beginPath();
+      ctx.moveTo(cx - h*0.30, cy);
+      ctx.lineTo(cx + h*0.30 * dir, cy - h);
+      ctx.lineTo(cx + h*0.40, cy);
+      ctx.closePath();
+      ctx.fill();
+      // Inner crack/ridge
+      ctx.strokeStyle = isNight ? 'rgba(60,90,140,0.7)' : 'rgba(120,160,200,0.75)';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(cx - h*0.10, cy);
+      ctx.lineTo(cx + h*0.20*dir, cy - h*0.7);
+      ctx.stroke();
+      // Highlight edge
+      ctx.strokeStyle = isNight ? 'rgba(200,230,255,0.65)' : 'rgba(255,255,255,0.9)';
+      ctx.lineWidth = 1.4;
+      ctx.beginPath();
+      ctx.moveTo(cx + h*0.30 * dir, cy - h);
+      ctx.lineTo(cx + h*0.40, cy);
+      ctx.stroke();
+    };
+    // Cluster of shards on left edge
+    drawIceShard(W*0.04, H*0.78, H*0.22, 0.3);
+    drawIceShard(W*0.10, H*0.85, H*0.16, -0.2);
+    drawIceShard(W*0.14, H*0.92, H*0.13, 0.4);
+    drawIceShard(W*0.20, H*0.95, H*0.09, -0.1);
+    // Cluster on right edge
+    drawIceShard(W*0.96, H*0.76, H*0.24, -0.3);
+    drawIceShard(W*0.90, H*0.86, H*0.18, 0.2);
+    drawIceShard(W*0.84, H*0.93, H*0.12, -0.4);
+
+    // Floating ice floes on water surface (drift slowly)
+    const floes = [
+      { x: 0.30, y: 0.55, w: 28, h: 8 },
+      { x: 0.55, y: 0.40, w: 35, h: 10 },
+      { x: 0.78, y: 0.62, w: 24, h: 7 },
+      { x: 0.18, y: 0.45, w: 22, h: 6 },
+    ];
+    for (let i = 0; i < floes.length; i++) {
+      const f = floes[i];
+      const fx = W * ((f.x + (t*0.00002) * (i%2 ? 1 : -1)) % 1.0);
+      const fy = H * f.y + Math.sin(t*0.0004+i)*3;
+      // Underwater shadow
+      ctx.save();
+      ctx.globalAlpha = 0.25;
+      ctx.fillStyle = 'rgba(40,70,110,0.7)';
+      ctx.beginPath();
+      ctx.ellipse(fx, fy + f.h*0.6, f.w*0.9, f.h*0.5, 0, 0, Math.PI*2);
+      ctx.fill();
+      ctx.restore();
+      // Floe top — irregular hexagonal
+      ctx.fillStyle = isNight ? 'rgba(180,210,240,0.92)' : 'rgba(245,250,255,0.97)';
+      ctx.beginPath();
+      ctx.moveTo(fx - f.w*0.7, fy);
+      ctx.lineTo(fx - f.w*0.4, fy - f.h);
+      ctx.lineTo(fx + f.w*0.3, fy - f.h*0.9);
+      ctx.lineTo(fx + f.w*0.7, fy);
+      ctx.lineTo(fx + f.w*0.4, fy + f.h*0.4);
+      ctx.lineTo(fx - f.w*0.3, fy + f.h*0.5);
+      ctx.closePath();
+      ctx.fill();
+      // Floe shadow facet
+      ctx.fillStyle = isNight ? 'rgba(120,150,190,0.55)' : 'rgba(200,220,240,0.8)';
+      ctx.beginPath();
+      ctx.moveTo(fx - f.w*0.7, fy);
+      ctx.lineTo(fx + f.w*0.7, fy);
+      ctx.lineTo(fx + f.w*0.4, fy + f.h*0.4);
+      ctx.lineTo(fx - f.w*0.3, fy + f.h*0.5);
+      ctx.closePath();
+      ctx.fill();
+      // Highlight rim
+      ctx.strokeStyle = isNight ? 'rgba(220,240,255,0.7)' : 'rgba(255,255,255,0.9)';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(fx - f.w*0.7, fy);
+      ctx.lineTo(fx - f.w*0.4, fy - f.h);
+      ctx.lineTo(fx + f.w*0.3, fy - f.h*0.9);
+      ctx.lineTo(fx + f.w*0.7, fy);
+      ctx.stroke();
+    }
+
+    // Aurora ribbon at top during night — flowing horizontal ribbon
+    if (isNight) {
+      ctx.save();
+      ctx.globalAlpha = 0.45;
+      const aGrad = ctx.createLinearGradient(0, 0, W, 0);
+      aGrad.addColorStop(0, 'rgba(100,255,180,0)');
+      aGrad.addColorStop(0.3, 'rgba(120,255,200,0.75)');
+      aGrad.addColorStop(0.6, 'rgba(180,140,255,0.7)');
+      aGrad.addColorStop(1, 'rgba(100,200,255,0)');
+      ctx.fillStyle = aGrad;
+      ctx.beginPath();
+      ctx.moveTo(0, H*0.05);
+      for (let x = 0; x <= W; x += 12) {
+        const wy = H*0.05 + Math.sin(x*0.012 + t*0.0005)*8 + Math.sin(x*0.04 + t*0.001)*4;
+        ctx.lineTo(x, wy);
+      }
+      for (let x = W; x >= 0; x -= 12) {
+        const wy = H*0.05 + Math.sin(x*0.012 + t*0.0005)*8 + Math.sin(x*0.04 + t*0.001)*4 + 30;
+        ctx.lineTo(x, wy);
+      }
+      ctx.closePath();
+      ctx.fill();
+      ctx.restore();
+    }
+    ctx.restore();
+  }
+
+  // ── LV9 Volcanic Springs ─────────────────────────────────────────────────
+  // Glowing lava cracks under the water, crystallised volcanic rocks on edges,
+  // bubbling steam vents, sharp orange light beams from below, dead branches.
+  if (lv === 9) {
+    ctx.save();
+    // Glowing lava cracks across the floor — bright orange jagged lines visible THROUGH water
+    ctx.save();
+    ctx.shadowColor = 'rgba(255,120,40,0.85)';
+    ctx.shadowBlur = 15;
+    ctx.strokeStyle = 'rgba(255,150,50,0.85)';
+    ctx.lineWidth = 2.5;
+    const cracks = [
+      [[0.05,0.55],[0.18,0.50],[0.30,0.58],[0.42,0.52]],
+      [[0.55,0.48],[0.68,0.55],[0.80,0.50],[0.92,0.58]],
+      [[0.10,0.78],[0.25,0.82],[0.40,0.76],[0.55,0.84]],
+      [[0.62,0.80],[0.78,0.74],[0.92,0.82]],
+    ];
+    for (const crack of cracks) {
+      ctx.beginPath();
+      ctx.moveTo(W*crack[0][0], H*crack[0][1]);
+      for (let i = 1; i < crack.length; i++) {
+        ctx.lineTo(W*crack[i][0], H*crack[i][1]);
+      }
+      ctx.stroke();
+      // Brighter inner glow line
+      ctx.shadowBlur = 20;
+      ctx.strokeStyle = `rgba(255,230,180,${0.6 + Math.sin(t*0.003)*0.2})`;
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(W*crack[0][0], H*crack[0][1]);
+      for (let i = 1; i < crack.length; i++) {
+        ctx.lineTo(W*crack[i][0], H*crack[i][1]);
+      }
+      ctx.stroke();
+      ctx.shadowBlur = 15;
+      ctx.strokeStyle = 'rgba(255,150,50,0.85)';
+      ctx.lineWidth = 2.5;
+    }
+    ctx.restore();
+
+    // Sharp orange light beams shooting upward from cracks (volumetric)
+    ctx.save();
+    ctx.globalCompositeOperation = 'screen';
+    const beamSources = [
+      { x: 0.18, intensity: 0.6 },
+      { x: 0.45, intensity: 0.75 },
+      { x: 0.68, intensity: 0.55 },
+      { x: 0.85, intensity: 0.65 },
+    ];
+    for (const b of beamSources) {
+      const flick = b.intensity * (0.7 + Math.sin(t*0.004 + b.x*10)*0.3);
+      const grad = ctx.createLinearGradient(W*b.x, H*0.55, W*b.x, H*0.05);
+      grad.addColorStop(0, `rgba(255,140,40,${flick*0.55})`);
+      grad.addColorStop(0.5, `rgba(255,100,30,${flick*0.25})`);
+      grad.addColorStop(1, 'rgba(255,80,20,0)');
+      ctx.fillStyle = grad;
+      ctx.beginPath();
+      ctx.moveTo(W*b.x - 8, H*0.55);
+      ctx.lineTo(W*b.x - 30, H*0.05);
+      ctx.lineTo(W*b.x + 30, H*0.05);
+      ctx.lineTo(W*b.x + 8, H*0.55);
+      ctx.closePath();
+      ctx.fill();
+    }
+    ctx.restore();
+
+    // Crystallised volcanic rocks (obsidian/basalt) jutting out on edges
+    const drawVolcanicRock = (cx, cy, w, h) => {
+      // Dark base
+      ctx.fillStyle = isNight ? 'rgba(15,10,10,0.95)' : 'rgba(30,20,20,0.95)';
+      ctx.beginPath();
+      ctx.moveTo(cx - w, cy);
+      ctx.lineTo(cx - w*0.6, cy - h*0.9);
+      ctx.lineTo(cx - w*0.2, cy - h*1.1);
+      ctx.lineTo(cx + w*0.3, cy - h);
+      ctx.lineTo(cx + w, cy - h*0.6);
+      ctx.lineTo(cx + w, cy);
+      ctx.closePath();
+      ctx.fill();
+      // Glowing cracks within the rock
+      ctx.strokeStyle = `rgba(255,140,50,${0.5 + Math.sin(t*0.003+cx)*0.2})`;
+      ctx.lineWidth = 1.2;
+      ctx.shadowColor = 'rgba(255,120,40,0.7)'; ctx.shadowBlur = 8;
+      ctx.beginPath();
+      ctx.moveTo(cx - w*0.5, cy - h*0.2);
+      ctx.lineTo(cx - w*0.2, cy - h*0.6);
+      ctx.lineTo(cx + w*0.1, cy - h*0.4);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(cx + w*0.4, cy - h*0.3);
+      ctx.lineTo(cx + w*0.6, cy - h*0.7);
+      ctx.stroke();
+      ctx.shadowBlur = 0;
+    };
+    drawVolcanicRock(W*0.08, H*0.97, 32, 26);
+    drawVolcanicRock(W*0.92, H*0.96, 28, 22);
+    drawVolcanicRock(W*0.20, H*0.99, 22, 16);
+    drawVolcanicRock(W*0.80, H*0.98, 24, 18);
+
+    // Bubbling steam vents (rising puffs) from rocks
+    const ventXs = [W*0.08, W*0.45, W*0.92, W*0.55];
+    for (let v = 0; v < ventXs.length; v++) {
+      const vx = ventXs[v];
+      for (let p = 0; p < 4; p++) {
+        const phase = ((t*0.0008 + p*0.25 + v*0.13) % 1);
+        const py = H*0.85 - phase * H*0.55;
+        const px = vx + Math.sin(t*0.001 + p + v)*8 * phase;
+        const a = (1 - phase) * 0.45;
+        const r = 5 + phase * 14;
+        ctx.fillStyle = `rgba(220,210,200,${a.toFixed(3)})`;
+        ctx.beginPath(); ctx.arc(px, py, r, 0, Math.PI*2); ctx.fill();
+      }
+    }
+
+    // Charred dead branches sticking up from rocks
+    const drawDeadBranch = (x, y, h, dir) => {
+      ctx.strokeStyle = isNight ? 'rgba(20,12,8,0.95)' : 'rgba(35,22,15,0.95)';
+      ctx.lineWidth = 2;
+      ctx.lineCap = 'round';
+      ctx.beginPath();
+      ctx.moveTo(x, y);
+      ctx.bezierCurveTo(x + dir*5, y - h*0.4, x + dir*10, y - h*0.7, x + dir*15, y - h);
+      ctx.stroke();
+      // Small forks
+      ctx.lineWidth = 1.2;
+      ctx.beginPath();
+      ctx.moveTo(x + dir*8, y - h*0.55);
+      ctx.lineTo(x + dir*16, y - h*0.55);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(x + dir*13, y - h*0.85);
+      ctx.lineTo(x + dir*5, y - h*0.95);
+      ctx.stroke();
+    };
+    drawDeadBranch(W*0.10, H*0.82, 30, 1);
+    drawDeadBranch(W*0.91, H*0.82, 25, -1);
+    ctx.restore();
+  }
+
+  // ── LV10 Celestial Realm ─────────────────────────────────────────────────
+  // Galaxy/nebula clouds in the background, planet ring on horizon, shooting
+  // stars across, glowing constellation lines, floating cosmic dust.
+  if (lv === 10) {
+    ctx.save();
+    // Distant nebula clouds (large soft glowing blobs)
+    ctx.save();
+    ctx.globalCompositeOperation = 'screen';
+    const nebulae = [
+      { x: 0.15, y: 0.20, r: 80, col: [255, 80, 180] },
+      { x: 0.50, y: 0.12, r: 100, col: [120, 100, 255] },
+      { x: 0.82, y: 0.25, r: 70, col: [80, 200, 255] },
+      { x: 0.30, y: 0.85, r: 60, col: [255, 180, 100] },
+      { x: 0.75, y: 0.92, r: 75, col: [200, 100, 255] },
+    ];
+    for (const n of nebulae) {
+      const grad = ctx.createRadialGradient(W*n.x, H*n.y, 0, W*n.x, H*n.y, n.r);
+      grad.addColorStop(0, `rgba(${n.col[0]},${n.col[1]},${n.col[2]},0.35)`);
+      grad.addColorStop(0.5, `rgba(${n.col[0]},${n.col[1]},${n.col[2]},0.15)`);
+      grad.addColorStop(1, `rgba(${n.col[0]},${n.col[1]},${n.col[2]},0)`);
+      ctx.fillStyle = grad;
+      ctx.beginPath(); ctx.arc(W*n.x, H*n.y, n.r, 0, Math.PI*2); ctx.fill();
+    }
+    ctx.restore();
+
+    // Distant planet with rings on the horizon (bottom-right)
+    const planetX = W*0.85; const planetY = H*0.92; const planetR = 45;
+    // Rings (back half)
+    ctx.save();
+    ctx.translate(planetX, planetY);
+    ctx.rotate(-0.35);
+    ctx.strokeStyle = 'rgba(255,200,140,0.55)';
+    ctx.lineWidth = 4;
+    ctx.beginPath();
+    ctx.ellipse(0, 0, planetR*1.6, planetR*0.4, 0, Math.PI, Math.PI*2);
+    ctx.stroke();
+    ctx.lineWidth = 2;
+    ctx.strokeStyle = 'rgba(200,160,100,0.4)';
+    ctx.beginPath();
+    ctx.ellipse(0, 0, planetR*1.85, planetR*0.5, 0, Math.PI, Math.PI*2);
+    ctx.stroke();
+    ctx.restore();
+    // Planet body
+    const pGrad = ctx.createRadialGradient(planetX-12, planetY-12, 5, planetX, planetY, planetR);
+    pGrad.addColorStop(0, 'rgba(220,180,140,0.95)');
+    pGrad.addColorStop(0.6, 'rgba(160,110,80,0.92)');
+    pGrad.addColorStop(1, 'rgba(80,50,40,0.92)');
+    ctx.fillStyle = pGrad;
+    ctx.beginPath(); ctx.arc(planetX, planetY, planetR, 0, Math.PI*2); ctx.fill();
+    // Surface bands
+    ctx.strokeStyle = 'rgba(120,80,60,0.4)';
+    ctx.lineWidth = 1;
+    for (let b = -2; b <= 2; b++) {
+      ctx.beginPath();
+      ctx.arc(planetX, planetY, planetR, b*0.2, Math.PI - b*0.2);
+      ctx.stroke();
+    }
+    // Rings (front half)
+    ctx.save();
+    ctx.translate(planetX, planetY);
+    ctx.rotate(-0.35);
+    ctx.strokeStyle = 'rgba(255,220,170,0.65)';
+    ctx.lineWidth = 4;
+    ctx.beginPath();
+    ctx.ellipse(0, 0, planetR*1.6, planetR*0.4, 0, 0, Math.PI);
+    ctx.stroke();
+    ctx.lineWidth = 2;
+    ctx.strokeStyle = 'rgba(220,180,120,0.5)';
+    ctx.beginPath();
+    ctx.ellipse(0, 0, planetR*1.85, planetR*0.5, 0, 0, Math.PI);
+    ctx.stroke();
+    ctx.restore();
+
+    // Galaxy spiral on top-left
+    const galX = W*0.15, galY = H*0.85;
+    ctx.save();
+    ctx.translate(galX, galY);
+    ctx.globalCompositeOperation = 'screen';
+    for (let arm = 0; arm < 3; arm++) {
+      const rot = (arm/3)*Math.PI*2 + t*0.0001;
+      for (let i = 0; i < 30; i++) {
+        const f = i/30;
+        const ang = rot + f * 4;
+        const r = 5 + f * 35;
+        const x = Math.cos(ang) * r;
+        const y = Math.sin(ang) * r * 0.4;
+        const a = (1 - f) * 0.45;
+        ctx.fillStyle = `rgba(255,220,180,${a.toFixed(3)})`;
+        ctx.beginPath(); ctx.arc(x, y, 1.5 - f, 0, Math.PI*2); ctx.fill();
+      }
+    }
+    // Galaxy core
+    const gGrad = ctx.createRadialGradient(0, 0, 0, 0, 0, 12);
+    gGrad.addColorStop(0, 'rgba(255,240,200,0.85)');
+    gGrad.addColorStop(1, 'rgba(255,200,150,0)');
+    ctx.fillStyle = gGrad;
+    ctx.beginPath(); ctx.arc(0, 0, 12, 0, Math.PI*2); ctx.fill();
+    ctx.restore();
+
+    // Twinkling stars across the canvas (denser than LV1's stars)
+    for (let s = 0; s < 50; s++) {
+      const sx = W * ((s * 137.5) % 100) / 100;
+      const sy = H * ((s * 79.3) % 100) / 100;
+      const tw = 0.4 + Math.sin(t*0.003 + s*1.7) * 0.4;
+      const sz = (s % 5 === 0) ? 1.8 : 1;
+      ctx.fillStyle = `rgba(255,255,${220 + (s%30)},${tw.toFixed(2)})`;
+      ctx.beginPath(); ctx.arc(sx, sy, sz, 0, Math.PI*2); ctx.fill();
+      // Cross-spike on bigger stars
+      if (sz > 1.5) {
+        ctx.strokeStyle = `rgba(255,255,255,${tw.toFixed(2)})`;
+        ctx.lineWidth = 0.5;
+        ctx.beginPath();
+        ctx.moveTo(sx - 3, sy); ctx.lineTo(sx + 3, sy);
+        ctx.moveTo(sx, sy - 3); ctx.lineTo(sx, sy + 3);
+        ctx.stroke();
+      }
+    }
+
+    // Shooting star occasionally
+    const shootPhase = (t*0.0003) % 1;
+    if (shootPhase < 0.2) {
+      const sp = shootPhase / 0.2;
+      const ssx = W*0.1 + sp * W*0.6;
+      const ssy = H*0.15 + sp * H*0.25;
+      ctx.save();
+      ctx.strokeStyle = `rgba(255,255,200,${(1-sp).toFixed(2)})`;
+      ctx.lineWidth = 2;
+      ctx.shadowColor = 'rgba(255,255,150,0.95)';
+      ctx.shadowBlur = 8;
+      ctx.beginPath();
+      ctx.moveTo(ssx - 30, ssy - 12);
+      ctx.lineTo(ssx, ssy);
+      ctx.stroke();
+      ctx.fillStyle = 'rgba(255,255,255,1)';
+      ctx.beginPath(); ctx.arc(ssx, ssy, 2.5, 0, Math.PI*2); ctx.fill();
+      ctx.restore();
+    }
+
+    // Constellation lines connecting select stars (faint)
+    ctx.save();
+    ctx.strokeStyle = 'rgba(180,200,255,0.20)';
+    ctx.lineWidth = 0.5;
+    const constellations = [
+      [[0.20,0.25],[0.30,0.30],[0.35,0.20],[0.42,0.25],[0.40,0.35]],
+      [[0.55,0.55],[0.62,0.50],[0.68,0.58],[0.72,0.50]],
+      [[0.75,0.30],[0.82,0.28],[0.85,0.35],[0.90,0.32]],
+    ];
+    for (const c of constellations) {
+      ctx.beginPath();
+      ctx.moveTo(W*c[0][0], H*c[0][1]);
+      for (let i = 1; i < c.length; i++) ctx.lineTo(W*c[i][0], H*c[i][1]);
+      ctx.stroke();
+      // Star points at vertices
+      for (const p of c) {
+        ctx.fillStyle = 'rgba(255,255,200,0.9)';
+        ctx.beginPath(); ctx.arc(W*p[0], H*p[1], 1.5, 0, Math.PI*2); ctx.fill();
+      }
+    }
+    ctx.restore();
+    ctx.restore();
+  }
+}
+
 function _drawMysticPondAmbient(ctx, W, H, rand, lerp) {
   const t = _ambientT;
   const now = performance.now();
@@ -8838,6 +10059,10 @@ function _drawMysticPondAmbient(ctx, W, H, rand, lerp) {
     ctx.beginPath(); ctx.ellipse(tipX, tipY, 2.2, 4, 0, 0, Math.PI*2); ctx.fill();
   }
   ctx.restore();
+
+  // 4b. PER-LEVEL EDGE DECOR — distinctive scenery on left/right/bottom edges
+  // so each level reads as its location at a glance. All ambient only.
+  _drawFogEdgeDecor(ctx, W, H, t, isNight, season);
 
   // 5. Water ripples — spawn at random points every ~900–1600ms, expand & fade.
   if (now - _fogLv1LastRipple > 900 + Math.random()*700) {
