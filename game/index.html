@@ -7986,6 +7986,11 @@ function _ambientInit(W, H) {
   _frenzyDebris = Array.from({length:8}, () => ({ x:rand(0,W), y:rand(0,H*0.8), vx:rand(2,6), vy:rand(-1,1), rot:rand(0,Math.PI*2), rotSpeed:rand(0.05,0.15), w:rand(4,10), h:rand(2,5) }));
   _frenzyLightningTimer = 0; _frenzyLightning = null;
 
+  // Tree Frog LV1 Mystic Forest — reset persistent scene so it re-inits with current W/H
+  _forestSceneInited = false;
+  _forestFireflies = null; _forestGrassTufts = null; _forestTreeLayout = null;
+  _forestWildlife = null; _forestPetals = null;
+
   // Golden / Dubai
   _goldenSandParticles = Array.from({length:25}, () => ({ x:rand(0,W), y:rand(H*0.7,H), vx:rand(0.3,0.8), vy:rand(-0.1,0.1), alpha:rand(0.3,0.7), r:rand(0.5,1.5) }));
   _goldenStars = Array.from({length:20}, () => ({ x:rand(0,W), y:rand(0,H*0.5), r:rand(0.4,1.2), phase:rand(0,Math.PI*2), speed:rand(0.01,0.025) }));
@@ -8061,7 +8066,13 @@ function _ambientDraw(timestamp) {
     // are picked up via _getFogTheme() inside _pondPalette/_drawPondTile.
     _drawMysticPondAmbient(ctx, W, H, rand, lerp);
   } else if (activeChallengeMode === 'frenzy') {
-    _drawFrenzyAmbient(ctx, W, H, rand, lerp);
+    // Tree Frog — LV1 Mystic Forest (painterly biome). Higher levels fall back
+    // to the original storm ambient until their biomes are built.
+    if((cm_frenzyLevel|0) === 1){
+      _drawMysticForestAmbient(ctx, W, H, rand, lerp);
+    } else {
+      _drawFrenzyAmbient(ctx, W, H, rand, lerp);
+    }
   } else if (activeChallengeMode === 'colourrun') {
     _drawGoldenAmbient(ctx, W, H, rand, lerp);
   }
@@ -10712,6 +10723,364 @@ function _drawFrenzyAmbient(ctx, W, H, rand, lerp) {
   ctx.quadraticCurveTo(W*0.5,H*0.86,W*0.65,H*0.9);
   ctx.quadraticCurveTo(W*0.8,H*0.88,W,H*0.9);
   ctx.lineTo(W,H); ctx.closePath(); ctx.fill(); ctx.restore();
+}
+
+// Lazy init persistent forest scene entities
+function _initForestScene(W, H, rand){
+  // Far / mid / near tree band layouts. Painterly silhouettes.
+  const far = [], mid = [], near = [];
+  for(let i=0;i<14;i++){
+    far.push({
+      x: (i/13)*W + rand(-W*0.03, W*0.03),
+      h: rand(H*0.18, H*0.32),
+      w: rand(20, 38),
+      hue: rand(0.85, 1.0)
+    });
+  }
+  for(let i=0;i<9;i++){
+    mid.push({
+      x: rand(-30, W+30),
+      h: rand(H*0.30, H*0.46),
+      w: rand(32, 56),
+      hue: rand(0.75, 0.95),
+      kind: i%3 // 0=conifer-ish, 1=broadleaf, 2=tall thin
+    });
+  }
+  for(let i=0;i<5;i++){
+    near.push({
+      x: rand(0, W),
+      h: rand(H*0.50, H*0.78),
+      w: rand(50, 90),
+      hue: rand(0.55, 0.75),
+      kind: i%2
+    });
+  }
+  _forestTreeLayout = { far, mid, near };
+
+  // Tall grass tufts along bottom band
+  const tufts = [];
+  for(let i=0;i<70;i++){
+    tufts.push({
+      x: rand(-10, W+10),
+      y: H - rand(0, H*0.18),
+      h: rand(10, 28),
+      lean: rand(-0.3, 0.3),
+      phase: rand(0, Math.PI*2),
+      shade: rand(0.55, 0.95)
+    });
+  }
+  _forestGrassTufts = tufts;
+
+  // Fireflies
+  const flies = [];
+  for(let i=0;i<22;i++){
+    flies.push({
+      x: rand(0, W),
+      y: rand(H*0.25, H*0.85),
+      vx: rand(-0.25, 0.25),
+      vy: rand(-0.18, 0.18),
+      phase: rand(0, Math.PI*2),
+      speed: rand(0.015, 0.035),
+      r: rand(1.1, 1.8)
+    });
+  }
+  _forestFireflies = flies;
+
+  // Drifting petals / motes
+  const petals = [];
+  for(let i=0;i<14;i++){
+    petals.push({
+      x: rand(0, W),
+      y: rand(0, H),
+      vx: rand(0.15, 0.45),
+      vy: rand(0.05, 0.2),
+      r: rand(0.8, 1.6),
+      alpha: rand(0.3, 0.7)
+    });
+  }
+  _forestPetals = petals;
+
+  // Wildlife: a deer silhouette near the tree-line and a small owl/bird on a far branch
+  _forestWildlife = {
+    deer: { x: W*0.18, y: H*0.78, scale: 0.85, dir: 1, t: rand(0, 100), idleNext: rand(80, 200) },
+    owl:  { x: W*0.78, y: H*0.36, blink: 0, blinkNext: 120 },
+    butterfly: { x: W*0.45, y: H*0.55, phase: rand(0, Math.PI*2) }
+  };
+
+  _forestSceneInited = true;
+}
+
+function _drawMysticForestAmbient(ctx, W, H, rand, lerp){
+  if(!_forestSceneInited) _initForestScene(W, H, rand);
+  const t = _ambientT;
+
+  // ---- Sky: soft painterly dawn-into-dappled-day, mature palette
+  const sky = ctx.createLinearGradient(0,0,0,H*0.72);
+  sky.addColorStop(0,    '#1F2B2E'); // deep top
+  sky.addColorStop(0.30, '#3D4E48'); // mossy mid
+  sky.addColorStop(0.65, '#6E7B5E'); // warm horizon green
+  sky.addColorStop(1,    '#A89668'); // golden mist
+  ctx.fillStyle = sky; ctx.fillRect(0,0,W,H*0.72);
+
+  // Sun shaft / glow centred on horizon
+  ctx.save();
+  const sg = ctx.createRadialGradient(W*0.52, H*0.55, 4, W*0.52, H*0.55, W*0.55);
+  sg.addColorStop(0, 'rgba(255,224,150,0.35)');
+  sg.addColorStop(0.35,'rgba(240,200,120,0.18)');
+  sg.addColorStop(1,   'rgba(0,0,0,0)');
+  ctx.fillStyle = sg; ctx.fillRect(0,0,W,H);
+  ctx.restore();
+
+  // Ground gradient (rich loam + moss)
+  const grd = ctx.createLinearGradient(0, H*0.68, 0, H);
+  grd.addColorStop(0, '#2C3826');
+  grd.addColorStop(0.5, '#1F2A18');
+  grd.addColorStop(1, '#10160C');
+  ctx.fillStyle = grd; ctx.fillRect(0, H*0.68, W, H*0.32);
+
+  // ---- Far tree band (very dark, very simple silhouettes; flat fill)
+  ctx.save();
+  ctx.fillStyle = 'rgba(20, 28, 22, 0.85)';
+  for(const tr of _forestTreeLayout.far){
+    const baseY = H*0.66;
+    const topY  = baseY - tr.h;
+    ctx.beginPath();
+    ctx.moveTo(tr.x - tr.w*0.5, baseY);
+    ctx.lineTo(tr.x, topY);
+    ctx.lineTo(tr.x + tr.w*0.5, baseY);
+    ctx.closePath(); ctx.fill();
+  }
+  ctx.restore();
+
+  // Soft ground-mist between far and mid trees
+  ctx.save();
+  const mist = ctx.createLinearGradient(0, H*0.58, 0, H*0.74);
+  mist.addColorStop(0, 'rgba(180,180,150,0)');
+  mist.addColorStop(0.5,'rgba(200,200,170,0.20)');
+  mist.addColorStop(1, 'rgba(180,180,150,0)');
+  ctx.fillStyle = mist; ctx.fillRect(0, H*0.58, W, H*0.16);
+  ctx.restore();
+
+  // ---- Mid tree band (medium dark, fuller canopy)
+  ctx.save();
+  for(const tr of _forestTreeLayout.mid){
+    const baseY = H*0.72;
+    const topY  = baseY - tr.h;
+    ctx.fillStyle = `rgba(${Math.round(28*tr.hue)}, ${Math.round(48*tr.hue)}, ${Math.round(28*tr.hue)}, 0.92)`;
+    if(tr.kind === 0){
+      // Conifer triangle stack
+      const layers = 4;
+      for(let i=0;i<layers;i++){
+        const ly = topY + (i/layers)*tr.h*0.9;
+        const lw = tr.w * (0.55 + i*0.18);
+        ctx.beginPath();
+        ctx.moveTo(tr.x - lw*0.5, ly + tr.h*0.18);
+        ctx.lineTo(tr.x, ly);
+        ctx.lineTo(tr.x + lw*0.5, ly + tr.h*0.18);
+        ctx.closePath(); ctx.fill();
+      }
+      // trunk
+      ctx.fillStyle = 'rgba(20,16,10,0.95)';
+      ctx.fillRect(tr.x - 2, baseY - tr.h*0.05, 4, tr.h*0.08);
+    } else if(tr.kind === 1){
+      // Broadleaf rounded canopy
+      ctx.beginPath();
+      ctx.ellipse(tr.x, topY + tr.h*0.35, tr.w*0.7, tr.h*0.42, 0, 0, Math.PI*2);
+      ctx.fill();
+      ctx.fillStyle = 'rgba(30,22,14,0.95)';
+      ctx.fillRect(tr.x - 3, topY + tr.h*0.6, 6, tr.h*0.4);
+    } else {
+      // Tall thin pine
+      ctx.beginPath();
+      ctx.moveTo(tr.x - tr.w*0.35, baseY);
+      ctx.lineTo(tr.x, topY);
+      ctx.lineTo(tr.x + tr.w*0.35, baseY);
+      ctx.closePath(); ctx.fill();
+      // hint highlight
+      ctx.fillStyle = `rgba(120,140,80,0.10)`;
+      ctx.beginPath();
+      ctx.moveTo(tr.x - 2, baseY);
+      ctx.lineTo(tr.x + 1, topY + tr.h*0.2);
+      ctx.lineTo(tr.x + 3, baseY);
+      ctx.closePath(); ctx.fill();
+    }
+  }
+  ctx.restore();
+
+  // ---- Near tree band (foreground edges only — framing)
+  ctx.save();
+  for(const tr of _forestTreeLayout.near){
+    // Only render if on far left/right to act as framing element
+    if(tr.x > W*0.18 && tr.x < W*0.82) continue;
+    const baseY = H + 8;
+    const topY  = baseY - tr.h;
+    ctx.fillStyle = `rgba(${Math.round(14*tr.hue)}, ${Math.round(26*tr.hue)}, ${Math.round(14*tr.hue)}, 0.96)`;
+    if(tr.kind === 0){
+      // foreground conifer
+      const layers = 5;
+      for(let i=0;i<layers;i++){
+        const ly = topY + (i/layers)*tr.h*0.92;
+        const lw = tr.w * (0.5 + i*0.16);
+        ctx.beginPath();
+        ctx.moveTo(tr.x - lw*0.5, ly + tr.h*0.16);
+        ctx.lineTo(tr.x, ly);
+        ctx.lineTo(tr.x + lw*0.5, ly + tr.h*0.16);
+        ctx.closePath(); ctx.fill();
+      }
+    } else {
+      // Broad foliage mass
+      ctx.beginPath();
+      ctx.ellipse(tr.x, topY + tr.h*0.4, tr.w*0.8, tr.h*0.5, 0, 0, Math.PI*2);
+      ctx.fill();
+    }
+  }
+  ctx.restore();
+
+  // ---- Wildlife: deer silhouette near tree line (slow idle sway)
+  const wl = _forestWildlife;
+  if(wl){
+    // Deer
+    const d = wl.deer;
+    d.t++;
+    if(d.t > d.idleNext){
+      d.idleNext = d.t + 80 + Math.floor(rand(0, 200));
+      d.dir *= -1; // occasionally flip facing
+    }
+    const dxOff = Math.sin(t*0.008) * 1.5;
+    const dyOff = Math.sin(t*0.022) * 0.6;
+    ctx.save();
+    ctx.translate(d.x + dxOff, d.y + dyOff);
+    ctx.scale(d.scale * d.dir, d.scale);
+    ctx.fillStyle = 'rgba(20, 18, 14, 0.92)';
+    // Body
+    ctx.beginPath(); ctx.ellipse(0, 0, 14, 7, 0, 0, Math.PI*2); ctx.fill();
+    // Legs
+    ctx.fillRect(-9, 4, 2, 10);
+    ctx.fillRect(-5, 4, 2, 10);
+    ctx.fillRect(5, 4, 2, 10);
+    ctx.fillRect(9, 4, 2, 10);
+    // Neck
+    ctx.beginPath();
+    ctx.moveTo(10, -2); ctx.lineTo(15, -10); ctx.lineTo(17, -10); ctx.lineTo(13, -1); ctx.closePath();
+    ctx.fill();
+    // Head
+    ctx.beginPath(); ctx.ellipse(17, -11, 4, 3, 0, 0, Math.PI*2); ctx.fill();
+    // Antlers (tiny)
+    ctx.strokeStyle = 'rgba(20, 18, 14, 0.92)'; ctx.lineWidth = 1.2;
+    ctx.beginPath();
+    ctx.moveTo(17, -13); ctx.lineTo(18, -17); ctx.moveTo(17, -13); ctx.lineTo(20, -16);
+    ctx.moveTo(16, -13); ctx.lineTo(14, -17);
+    ctx.stroke();
+    // Tail
+    ctx.fillRect(-13, -2, 2, 4);
+    ctx.restore();
+
+    // Owl silhouette on a far branch (right side)
+    const o = wl.owl;
+    o.blinkNext--;
+    if(o.blinkNext <= 0){ o.blink = 6; o.blinkNext = 200 + Math.floor(rand(0,200)); }
+    if(o.blink > 0) o.blink--;
+    ctx.save();
+    ctx.translate(o.x, o.y);
+    ctx.fillStyle = 'rgba(18, 16, 12, 0.95)';
+    ctx.beginPath(); ctx.ellipse(0, 0, 5, 6, 0, 0, Math.PI*2); ctx.fill();
+    // Ear tufts
+    ctx.beginPath();
+    ctx.moveTo(-4, -4); ctx.lineTo(-2, -8); ctx.lineTo(-1, -4); ctx.closePath(); ctx.fill();
+    ctx.beginPath();
+    ctx.moveTo(4, -4); ctx.lineTo(2, -8); ctx.lineTo(1, -4); ctx.closePath(); ctx.fill();
+    // Eyes (yellow glow when not blinking)
+    if(o.blink === 0){
+      ctx.fillStyle = 'rgba(255, 210, 90, 0.85)';
+      ctx.beginPath(); ctx.arc(-1.6, -1, 0.9, 0, Math.PI*2); ctx.fill();
+      ctx.beginPath(); ctx.arc(1.6, -1, 0.9, 0, Math.PI*2); ctx.fill();
+    }
+    // Branch under owl
+    ctx.strokeStyle = 'rgba(20, 16, 10, 0.85)'; ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.moveTo(-12, 6); ctx.lineTo(14, 5);
+    ctx.stroke();
+    ctx.restore();
+
+    // Butterfly (slow figure-8 flight)
+    const b = wl.butterfly;
+    b.phase += 0.025;
+    const bx = b.x + Math.sin(b.phase) * 30;
+    const by = b.y + Math.sin(b.phase*2) * 12;
+    ctx.save();
+    ctx.translate(bx, by);
+    const flap = Math.abs(Math.sin(b.phase*8));
+    ctx.fillStyle = 'rgba(220, 170, 90, 0.7)';
+    ctx.beginPath(); ctx.ellipse(-2.5, 0, 2.5*flap+0.5, 3, 0, 0, Math.PI*2); ctx.fill();
+    ctx.beginPath(); ctx.ellipse(2.5, 0, 2.5*flap+0.5, 3, 0, 0, Math.PI*2); ctx.fill();
+    ctx.fillStyle = 'rgba(40, 28, 14, 0.9)';
+    ctx.fillRect(-0.5, -2.5, 1, 5);
+    ctx.restore();
+  }
+
+  // ---- Tall grass along bottom band (animated sway)
+  ctx.save();
+  ctx.lineCap = 'round';
+  for(const g of _forestGrassTufts){
+    const sway = Math.sin(t*0.04 + g.phase) * 1.4;
+    const tipX = g.x + g.lean*g.h + sway;
+    const tipY = g.y - g.h;
+    ctx.strokeStyle = `rgba(${Math.round(60*g.shade)}, ${Math.round(80*g.shade)}, ${Math.round(38*g.shade)}, 0.85)`;
+    ctx.lineWidth = 1.1;
+    ctx.beginPath();
+    ctx.moveTo(g.x, g.y);
+    ctx.quadraticCurveTo(g.x + g.lean*g.h*0.4 + sway*0.4, g.y - g.h*0.5, tipX, tipY);
+    ctx.stroke();
+    // small side blade
+    ctx.lineWidth = 0.8;
+    ctx.beginPath();
+    ctx.moveTo(g.x+1, g.y);
+    ctx.quadraticCurveTo(g.x + 4 + sway*0.3, g.y - g.h*0.45, g.x + 5 + sway*0.5, g.y - g.h*0.75);
+    ctx.stroke();
+  }
+  ctx.restore();
+
+  // ---- Drifting petals / motes (slow horizontal float)
+  ctx.save();
+  for(const p of _forestPetals){
+    p.x += p.vx;
+    p.y += p.vy + Math.sin(t*0.02 + p.x*0.01) * 0.05;
+    if(p.x > W + 4) { p.x = -4; p.y = rand(0, H*0.7); }
+    if(p.y > H + 4) { p.y = -4; }
+    ctx.fillStyle = `rgba(255, 220, 170, ${p.alpha})`;
+    ctx.beginPath(); ctx.arc(p.x, p.y, p.r, 0, Math.PI*2); ctx.fill();
+  }
+  ctx.restore();
+
+  // ---- Fireflies (warm glow with halo, pulsing)
+  ctx.save();
+  for(const f of _forestFireflies){
+    f.phase += f.speed;
+    f.x += f.vx + Math.sin(f.phase) * 0.3;
+    f.y += f.vy + Math.cos(f.phase*0.7) * 0.2;
+    if(f.x < -10) f.x = W+10; if(f.x > W+10) f.x = -10;
+    if(f.y < 0)   f.y = H*0.85; if(f.y > H) f.y = H*0.25;
+    const pulse = 0.5 + 0.5*Math.sin(f.phase*3);
+    // halo
+    const hg = ctx.createRadialGradient(f.x, f.y, 0, f.x, f.y, 8);
+    hg.addColorStop(0, `rgba(255, 230, 140, ${0.55*pulse})`);
+    hg.addColorStop(0.4,`rgba(255, 200, 90,  ${0.22*pulse})`);
+    hg.addColorStop(1, 'rgba(255, 200, 90, 0)');
+    ctx.fillStyle = hg;
+    ctx.fillRect(f.x-10, f.y-10, 20, 20);
+    // core
+    ctx.fillStyle = `rgba(255, 240, 170, ${0.85*pulse+0.15})`;
+    ctx.beginPath(); ctx.arc(f.x, f.y, f.r, 0, Math.PI*2); ctx.fill();
+  }
+  ctx.restore();
+
+  // ---- Subtle vignette to deepen the corners (mature, cinematic)
+  ctx.save();
+  const vg = ctx.createRadialGradient(W*0.5, H*0.55, W*0.3, W*0.5, H*0.55, W*0.75);
+  vg.addColorStop(0, 'rgba(0,0,0,0)');
+  vg.addColorStop(1, 'rgba(0,0,0,0.45)');
+  ctx.fillStyle = vg; ctx.fillRect(0,0,W,H);
+  ctx.restore();
 }
 
 function _drawGoldenAmbient(ctx, W, H, rand, lerp) {
@@ -23788,6 +24157,22 @@ let cm_fogTimer = null;
 let cm_fogPatches = [];            // array of fog patch objects
 let cm_fogLevel = 1;               // 1-10 controls location + coverage
 let cm_fogSurvivedSecs = 0;
+// Tree Frog (Frenzy) — wildlife/forest biome levels
+let cm_frenzyLevel = 1;            // 1-10 controls forest location + weather
+const FRENZY_LOCATION_NAMES = {
+  1:  'Mystic Forest',
+  2:  'Birch Glade',
+  3:  'Pine Hollow',
+  4:  'Bamboo Thicket',
+  5:  'Mountain Forest',
+  6:  'Misty Highlands',
+  7:  'Tropical Jungle',
+  8:  'Cloud Forest',
+  9:  'Stormy Pine Ridge',
+  10: 'Eye of the Storm'
+};
+// Persistent per-frame entities for forest scene (lazy init)
+let _forestFireflies = null, _forestGrassTufts = null, _forestTreeLayout = null, _forestWildlife = null, _forestPetals = null, _forestSceneInited = false;
 let cm_fogTileAlpha = [];          // per-cell fog opacity [row][col]
 let lastPlacedRow = null, lastPlacedCol = null;  // for chase fog behaviour
 // Golden Frog state
