@@ -18052,63 +18052,52 @@ function drawGrid(){
   }
 
   // ─ FOG THE FROG: overlay fog mist on tiles ────────────────────────────────────────
-  // LV1 Mystic Pond: thick white/grey fog drifting smoothly across the board.
-  // Other levels keep the original green-purple murk for now.
+  // Unified fog model (all 10 levels): white + tiny green/grey tint, with a
+  // fully-opaque core and a transparency feather at the edges. Coverage grows
+  // from ~12% (LV1) to ~70% (LV10) of the board.
+  //   Pass 1: per-cell solid cover (uses smoothed cm_fogTileAlpha grid)
+  //   Pass 2: drifting blob halo at each fog patch center (soft cloud feel)
   if (activeChallengeMode === 'fog' && cm_fogTileAlpha.length) {
-    const _isMysticPond = ((cm_fogLevel|0) === 1);
-    // Pass 1: per-cell soft cover (uses smoothed cm_fogTileAlpha grid).
+    // Per-cell solid cover — fully hides tiles underneath in the core.
     for (let r = 0; r < ROWS; r++) {
       for (let c = 0; c < COLS; c++) {
         const fogAlpha = _fogGetTileOpacity(r, c);
         if (fogAlpha > 0.02) {
           const x = c * CELL, y = r * CELL;
           ctx.save();
-          ctx.globalAlpha = Math.min(fogAlpha * (_isMysticPond ? 1.15 : 0.88), 1.0);
+          ctx.globalAlpha = Math.min(fogAlpha * 1.15, 1.0);
           const fg = ctx.createRadialGradient(x+CELL/2, y+CELL/2, 0, x+CELL/2, y+CELL/2, CELL*1.0);
-          if (_isMysticPond) {
-            // OPAQUE white/grey fog — fully hides tiles underneath, soft only at extreme edge
-            fg.addColorStop(0,    'rgba(248,250,253,1.00)');
-            fg.addColorStop(0.75, 'rgba(228,233,240,1.00)');
-            fg.addColorStop(0.92, 'rgba(210,218,228,0.95)');
-            fg.addColorStop(1,    'rgba(200,210,222,0.70)');
-          } else {
-            fg.addColorStop(0, 'rgba(120,200,100,0.9)');
-            fg.addColorStop(0.5, 'rgba(80,140,80,0.7)');
-            fg.addColorStop(1, 'rgba(40,80,60,0.5)');
-          }
+          // White with a visible green/grey tint — reads as fog, not paint.
+          // Greens biased ~10-12 above reds/blues; values dipped from pure 255
+          // to feel slightly cool/grey/misty.
+          fg.addColorStop(0,    'rgba(228,238,232,1.00)');
+          fg.addColorStop(0.75, 'rgba(212,224,217,1.00)');
+          fg.addColorStop(0.92, 'rgba(196,210,202,0.95)');
+          fg.addColorStop(1,    'rgba(184,198,190,0.70)');
           ctx.fillStyle = fg;
-          if (_isMysticPond) {
-            // Fill full cell with slight overdraw so neighboring fogged cells merge seamlessly
-            ctx.fillRect(x-1, y-1, CELL+2, CELL+2);
-          } else {
-            ctx.beginPath(); ctx.roundRect(x+1, y+1, CELL-2, CELL-2, 3); ctx.fill();
-          }
-          // Rare frog-eye blink in dense fog (skip in Mystic Pond — wrong vibe)
-          if (!_isMysticPond && fogAlpha > 0.5 && Math.random() < 0.001) {
-            ctx.globalAlpha = 0.6;
-            ctx.fillStyle = 'rgba(100,255,60,1)';
-            ctx.beginPath(); ctx.arc(x + CELL*0.35, y + CELL*0.45, 2, 0, Math.PI*2); ctx.fill();
-            ctx.beginPath(); ctx.arc(x + CELL*0.65, y + CELL*0.45, 2, 0, Math.PI*2); ctx.fill();
-          }
+          // Overdraw slightly so neighboring fogged cells merge seamlessly
+          ctx.fillRect(x-1, y-1, CELL+2, CELL+2);
           ctx.restore();
         }
       }
     }
-    // Pass 2 (Mystic Pond only): soft blob halo at each fog patch center so
-    // fog reads as drifting clouds, not per-cell pixels. Blobs are bigger
-    // than a cell and feather smoothly across cell boundaries.
-    if (_isMysticPond && typeof cm_fogPatches !== 'undefined' && cm_fogPatches && cm_fogPatches.length) {
+    // Drifting blob halo at each fog patch center so fog reads as soft clouds,
+    // not per-cell pixels. Blobs feather smoothly across cell boundaries via a
+    // wide radial gradient.
+    if (typeof cm_fogPatches !== 'undefined' && cm_fogPatches && cm_fogPatches.length) {
       ctx.save();
       for (const p of cm_fogPatches) {
         const px = p.x * CELL + CELL/2;
         const py = p.y * CELL + CELL/2;
-        const pr = (p.radius || (COLS * 0.25)) * CELL * 1.25;
+        // Halo radius matches the patch's logical radius so the soft edge
+        // feather aligns visually with where alpha goes from 1→0.
+        const pr = (p.radius || (COLS * 0.25)) * CELL * 1.05;
         const bg = ctx.createRadialGradient(px, py, 1, px, py, pr);
-        bg.addColorStop(0,    'rgba(250,252,255,0.95)');
-        bg.addColorStop(0.45, 'rgba(238,242,248,0.78)');
-        bg.addColorStop(0.75, 'rgba(222,228,236,0.45)');
-        bg.addColorStop(0.92, 'rgba(210,218,228,0.15)');
-        bg.addColorStop(1,    'rgba(200,210,220,0)');
+        bg.addColorStop(0,    'rgba(230,240,234,0.88)');
+        bg.addColorStop(0.55, 'rgba(216,228,220,0.68)');
+        bg.addColorStop(0.78, 'rgba(200,214,206,0.38)');
+        bg.addColorStop(0.92, 'rgba(190,204,196,0.14)');
+        bg.addColorStop(1,    'rgba(184,198,190,0.00)');
         ctx.fillStyle = bg;
         ctx.beginPath(); ctx.arc(px, py, pr, 0, Math.PI*2); ctx.fill();
       }
@@ -24059,26 +24048,43 @@ function initChallengeMode() {
     // visibly present — the user can see most of the board; LV10 is heavy (~80%).
     // Difficulty curve: LV1 is a gentle warm-up, LV10 is brutal.
     // patchSize is multiplied with COLS to set patch radius — LV1 is tiny.
+    // Unified fog model (all 10 levels share the same renderer):
+    //   • Opaque core (white + tiny green/grey tint) hides everything underneath.
+    //   • Edges transition through transparency.
+    //   • `coverage` = fraction of the board occupied by the OPAQUE CORE.
+    //   • LV1 ≈ 2×3 tiles core (~12% of 6×8 board), LV2 ≈ 2×5 (~20%),
+    //     scaling up so LV10 ≈ 70% thick core (only ~30% normally visible).
+    //   • `patches` = number of concurrent drifting blobs.
+    //   • `patchSize` is now derived from coverage & patches inside _fogAdvancePatches /
+    //     _fogUpdateTileAlpha — kept here for legacy paths but unused by the new model.
     const FOG_LEVELS = [
-      { name:'Mystic Pond',        coverage:0.10, speed:1.30, patches:2, patchSize:0.18, behaviour:'drift_lr' },
-      { name:'Scottish Moors',     coverage:0.18, speed:1.20, patches:2, patchSize:0.22, behaviour:'swirl' },
-      { name:'Scottish Highlands', coverage:0.28, speed:1.10, patches:3, patchSize:0.24, behaviour:'independent' },
-      { name:'Mediterranean Sea',  coverage:0.40, speed:1.00, patches:3, patchSize:0.28, behaviour:'opposite' },
-      { name:'Coral Reef',         coverage:0.50, speed:0.95, patches:3, patchSize:0.30, behaviour:'pulse' },
-      { name:'Amazon',             coverage:0.58, speed:0.90, patches:4, patchSize:0.32, behaviour:'random' },
-      { name:'Sahara Night',       coverage:0.64, speed:0.85, patches:4, patchSize:0.34, behaviour:'flash' },
-      { name:'Arctic',             coverage:0.70, speed:0.80, patches:5, patchSize:0.36, behaviour:'fast_swirl' },
-      { name:'Deep Ocean',         coverage:0.75, speed:0.75, patches:5, patchSize:0.38, behaviour:'smothered' },
-      { name:'Above the Clouds',   coverage:0.80, speed:0.70, patches:6, patchSize:0.40, behaviour:'chase' },
+      { name:'Mystic Pond',       coverage:0.12, speed:1.30, patches:1, patchSize:0.22, behaviour:'drift_lr' },
+      { name:'Forest River',      coverage:0.20, speed:1.20, patches:1, patchSize:0.26, behaviour:'swirl' },
+      { name:'Tropical Lagoon',   coverage:0.28, speed:1.10, patches:2, patchSize:0.22, behaviour:'independent' },
+      { name:'Jungle Swamp',      coverage:0.36, speed:1.00, patches:2, patchSize:0.24, behaviour:'opposite' },
+      { name:'Mountain Lake',     coverage:0.44, speed:0.95, patches:2, patchSize:0.26, behaviour:'pulse' },
+      { name:'Mangrove Delta',    coverage:0.52, speed:0.90, patches:3, patchSize:0.24, behaviour:'random' },
+      { name:'Deep Ocean Reef',   coverage:0.58, speed:0.85, patches:3, patchSize:0.26, behaviour:'flash' },
+      { name:'Arctic Ice Sea',    coverage:0.62, speed:0.80, patches:3, patchSize:0.28, behaviour:'fast_swirl' },
+      { name:'Volcanic Springs',  coverage:0.66, speed:0.75, patches:3, patchSize:0.30, behaviour:'smothered' },
+      { name:'Celestial Realm',   coverage:0.70, speed:0.70, patches:3, patchSize:0.32, behaviour:'chase' },
     ];
     const fogCfg = FOG_LEVELS[Math.min(cm_fogLevel - 1, 9)];
     cm_fogTileAlpha = Array.from({length:ROWS}, () => new Array(COLS).fill(0));
+    // Derive per-patch radius (in cell units) from coverage:
+    //   total opaque area target  = coverage * ROWS * COLS
+    //   per-patch opaque area      = target / patches
+    //   inner opaque core is the inner 70% of radius (π·(0.7r)²)
+    //   => r = sqrt(area / (π * 0.49))
+    // Patches overlap slightly so apply a small de-overlap factor (0.88).
+    const _fogCoreArea = fogCfg.coverage * ROWS * COLS / fogCfg.patches;
+    const _fogBaseRadius = Math.sqrt(_fogCoreArea / (Math.PI * 0.49)) * 0.92;
     cm_fogPatches = Array.from({length:fogCfg.patches}, (_, i) => ({
-      x: Math.random() * COLS,
-      y: Math.random() * ROWS,
+      x: (COLS / (fogCfg.patches + 1)) * (i + 1) + (Math.random() - 0.5) * 0.6,
+      y: ROWS * (0.4 + Math.random() * 0.2),
       vx: (Math.random() > 0.5 ? 1 : -1) * fogCfg.speed * (0.5 + Math.random() * 0.5),
       vy: (Math.random() > 0.5 ? 0.3 : -0.3) * fogCfg.speed,
-      radius: COLS * fogCfg.patchSize + i * 0.2,
+      radius: _fogBaseRadius * (0.92 + Math.random() * 0.16),
       behaviour: fogCfg.behaviour,
       phase: i * Math.PI * 0.6,
       flashTimer: 0,
@@ -24404,28 +24410,32 @@ function _fogAdvancePatches(fogCfg) {
 }
 
 function _fogUpdateTileAlpha(maxCoverage) {
-  // maxCoverage controls the AREA of fog (how far patches reach), not its density.
-  // Inside a patch, fog is fully opaque so tiles underneath are completely hidden.
-  // We use a wider effective radius (scaled by sqrt(maxCoverage)) and a steep
-  // alpha curve: nearly 1.0 across most of the patch, soft only at the very edge.
+  // Unified fog model: each patch is a blob with a fully-opaque core and a
+  // transparent feather at the edge. Patch `radius` (set in _startFogChallenge)
+  // already encodes the level's coverage target, so this function no longer
+  // inflates the radius further. Inner 70% of radius = opaque (1.0). Outer 30%
+  // = smooth ease-out feather down to 0.
   for (let r = 0; r < ROWS; r++) {
     for (let c = 0; c < COLS; c++) {
       let maxAlpha = 0;
       for (const p of cm_fogPatches) {
         const dx = c - p.x, dy = r - p.y;
         const dist = Math.sqrt(dx * dx + dy * dy);
-        // Effective radius scales with coverage so LV10 fog reaches further than LV1
-        const baseRad = p.radius || (COLS * 0.25);
-        const rad = baseRad * (0.85 + maxCoverage * 0.9);
+        const rad = p.radius || (COLS * 0.25);
         let alpha;
         if (p.behaviour === 'flash' && (p.flashTimer || 0) > 0) {
-          alpha = dist < rad * 1.5 ? 1.0 : 0;
+          alpha = dist < rad * 1.4 ? 1.0 : 0;
         } else {
-          // Steep falloff: full opacity for the inner ~70%, soft feather over outer 30%
           const t = dist / rad;
-          if (t <= 0.7) alpha = 1.0;
-          else if (t >= 1.0) alpha = 0;
-          else alpha = 1.0 - ((t - 0.7) / 0.3); // linear feather from 1.0 → 0
+          if (t <= 0.70) {
+            alpha = 1.0;
+          } else if (t >= 1.0) {
+            alpha = 0;
+          } else {
+            // Smooth ease-out cubic feather from 1.0 → 0 over outer 30% of radius
+            const u = (t - 0.70) / 0.30;            // 0…1 across feather band
+            alpha = 1.0 - (u * u * (3 - 2 * u));    // smoothstep
+          }
         }
         maxAlpha = Math.max(maxAlpha, alpha);
       }
