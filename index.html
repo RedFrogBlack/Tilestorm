@@ -11303,91 +11303,97 @@ function _tfDrawHazardOverlay(ctx){
   }
 }
 
-// Detailed cartoon butterfly sprite (painterly style to match the forest art)
-// Drawn at (x,y), wingspan ~size, with animated flap phase [0..1] where 0=closed, 1=open
+// Cartoon butterfly silhouette — designed to READ at small size (16-30px wingspan)
+// Uses a single iconic "4-lobe" path (two forewings on top, two hindwings on bottom)
+// so the SHAPE is unmistakably a butterfly even at thumbnail scale.
+// flap [0..1]: 0=folded (narrow), 1=fully spread
 function _tfDrawButterfly(ctx, x, y, size, flap, palette, tilt){
-  // flap: 0 = wings folded (narrow), 1 = wings spread
-  const wingW = size * (0.35 + 0.65*flap);  // horizontal scale animates with flap
-  const wingH = size * 0.95;
-  const bodyL = size * 0.55;
+  const span    = size * (0.55 + 0.45*flap);   // total wingspan from center to wing tip
+  const height  = size * 0.85;                  // total height of wings
   const [wingCol, wingEdge, accentCol, bodyCol] = palette;
   ctx.save();
   ctx.translate(x, y);
   ctx.rotate(tilt);
 
-  // Soft shadow under butterfly (subtle, for depth)
-  ctx.save();
-  ctx.globalAlpha = 0.18 * flap;
-  ctx.fillStyle = 'rgba(40,30,60,1)';
-  ctx.beginPath(); ctx.ellipse(0, size*0.05, wingW*0.95, wingH*0.55, 0, 0, Math.PI*2); ctx.fill();
-  ctx.restore();
-
-  // --- LEFT WING PAIR ---
-  // Hindwing (back, lower)
+  // ---- LEFT WING (iconic butterfly half-silhouette) ----
+  // Path traces: body-top → sweep out & up to wing tip → curve around outer edge →
+  //              indent at waist → sweep out to lower wing tip → back to body-bottom.
+  ctx.beginPath();
+  ctx.moveTo(0, -height*0.45);                              // top of body
+  // upper wing: out to top-left tip
+  ctx.bezierCurveTo(-span*0.30, -height*0.65,
+                    -span*1.00, -height*0.60,
+                    -span*1.05, -height*0.20);
+  // outer arc down to waist indent
+  ctx.bezierCurveTo(-span*1.05,  height*0.00,
+                    -span*0.55,  height*0.05,
+                    -span*0.30,  height*0.08);
+  // lower wing: out to bottom-left tip
+  ctx.bezierCurveTo(-span*0.75,  height*0.20,
+                    -span*0.90,  height*0.55,
+                    -span*0.55,  height*0.55);
+  // bottom arc back to body
+  ctx.bezierCurveTo(-span*0.30,  height*0.55,
+                    -span*0.10,  height*0.40,
+                     0,           height*0.30);
+  ctx.closePath();
   ctx.fillStyle = wingCol;
-  ctx.beginPath();
-  ctx.ellipse(-wingW*0.55, wingH*0.20, wingW*0.55, wingH*0.42, -0.25, 0, Math.PI*2);
-  ctx.fill();
-  // Forewing (front, upper, bigger)
-  ctx.beginPath();
-  ctx.ellipse(-wingW*0.60, -wingH*0.18, wingW*0.70, wingH*0.55, -0.45, 0, Math.PI*2);
-  ctx.fill();
-  // Wing edge / outline (darker rim)
-  ctx.strokeStyle = wingEdge;
-  ctx.lineWidth = Math.max(0.6, size*0.05);
-  ctx.beginPath();
-  ctx.ellipse(-wingW*0.55, wingH*0.20, wingW*0.55, wingH*0.42, -0.25, 0, Math.PI*2);
-  ctx.stroke();
-  ctx.beginPath();
-  ctx.ellipse(-wingW*0.60, -wingH*0.18, wingW*0.70, wingH*0.55, -0.45, 0, Math.PI*2);
-  ctx.stroke();
-  // Accent dot on forewing
-  ctx.fillStyle = accentCol;
-  ctx.beginPath(); ctx.arc(-wingW*0.75, -wingH*0.25, size*0.10, 0, Math.PI*2); ctx.fill();
-  // Small spot on hindwing
-  ctx.beginPath(); ctx.arc(-wingW*0.55, wingH*0.30, size*0.07, 0, Math.PI*2); ctx.fill();
-
-  // --- RIGHT WING PAIR (mirror) ---
-  ctx.fillStyle = wingCol;
-  ctx.beginPath();
-  ctx.ellipse(wingW*0.55, wingH*0.20, wingW*0.55, wingH*0.42, 0.25, 0, Math.PI*2);
-  ctx.fill();
-  ctx.beginPath();
-  ctx.ellipse(wingW*0.60, -wingH*0.18, wingW*0.70, wingH*0.55, 0.45, 0, Math.PI*2);
   ctx.fill();
   ctx.strokeStyle = wingEdge;
-  ctx.beginPath();
-  ctx.ellipse(wingW*0.55, wingH*0.20, wingW*0.55, wingH*0.42, 0.25, 0, Math.PI*2);
+  ctx.lineWidth = Math.max(0.8, size*0.06);
   ctx.stroke();
-  ctx.beginPath();
-  ctx.ellipse(wingW*0.60, -wingH*0.18, wingW*0.70, wingH*0.55, 0.45, 0, Math.PI*2);
-  ctx.stroke();
-  ctx.fillStyle = accentCol;
-  ctx.beginPath(); ctx.arc(wingW*0.75, -wingH*0.25, size*0.10, 0, Math.PI*2); ctx.fill();
-  ctx.beginPath(); ctx.arc(wingW*0.55, wingH*0.30, size*0.07, 0, Math.PI*2); ctx.fill();
 
-  // --- BODY ---
+  // ---- RIGHT WING (mirror) ----
+  ctx.beginPath();
+  ctx.moveTo(0, -height*0.45);
+  ctx.bezierCurveTo( span*0.30, -height*0.65,
+                     span*1.00, -height*0.60,
+                     span*1.05, -height*0.20);
+  ctx.bezierCurveTo( span*1.05,  height*0.00,
+                     span*0.55,  height*0.05,
+                     span*0.30,  height*0.08);
+  ctx.bezierCurveTo( span*0.75,  height*0.20,
+                     span*0.90,  height*0.55,
+                     span*0.55,  height*0.55);
+  ctx.bezierCurveTo( span*0.30,  height*0.55,
+                     span*0.10,  height*0.40,
+                     0,           height*0.30);
+  ctx.closePath();
+  ctx.fillStyle = wingCol;
+  ctx.fill();
+  ctx.strokeStyle = wingEdge;
+  ctx.stroke();
+
+  // ---- Wing accent spots (one per wing, on the upper lobe) ----
+  ctx.fillStyle = accentCol;
+  ctx.beginPath(); ctx.arc(-span*0.65, -height*0.30, size*0.10, 0, Math.PI*2); ctx.fill();
+  ctx.beginPath(); ctx.arc( span*0.65, -height*0.30, size*0.10, 0, Math.PI*2); ctx.fill();
+  // smaller spot on lower lobe
+  ctx.beginPath(); ctx.arc(-span*0.55,  height*0.30, size*0.07, 0, Math.PI*2); ctx.fill();
+  ctx.beginPath(); ctx.arc( span*0.55,  height*0.30, size*0.07, 0, Math.PI*2); ctx.fill();
+
+  // ---- BODY (thin vertical capsule, clearly visible) ----
   ctx.fillStyle = bodyCol;
   ctx.beginPath();
-  ctx.ellipse(0, 0, size*0.10, bodyL*0.55, 0, 0, Math.PI*2);
+  ctx.ellipse(0, height*0.00, size*0.10, height*0.40, 0, 0, Math.PI*2);
   ctx.fill();
   // Head
   ctx.beginPath();
-  ctx.arc(0, -bodyL*0.55, size*0.11, 0, Math.PI*2);
+  ctx.arc(0, -height*0.45, size*0.13, 0, Math.PI*2);
   ctx.fill();
-  // Antennae
+  // Antennae (curved up-and-out)
   ctx.strokeStyle = bodyCol;
-  ctx.lineWidth = Math.max(0.5, size*0.035);
+  ctx.lineWidth = Math.max(0.6, size*0.04);
   ctx.beginPath();
-  ctx.moveTo(0, -bodyL*0.62);
-  ctx.quadraticCurveTo(-size*0.18, -bodyL*0.92, -size*0.24, -bodyL*1.05);
-  ctx.moveTo(0, -bodyL*0.62);
-  ctx.quadraticCurveTo( size*0.18, -bodyL*0.92,  size*0.24, -bodyL*1.05);
+  ctx.moveTo(0, -height*0.55);
+  ctx.quadraticCurveTo(-size*0.22, -height*0.85, -size*0.30, -height*0.95);
+  ctx.moveTo(0, -height*0.55);
+  ctx.quadraticCurveTo( size*0.22, -height*0.85,  size*0.30, -height*0.95);
   ctx.stroke();
-  // Antenna tips
+  // Antenna tip dots
   ctx.fillStyle = bodyCol;
-  ctx.beginPath(); ctx.arc(-size*0.24, -bodyL*1.05, size*0.05, 0, Math.PI*2); ctx.fill();
-  ctx.beginPath(); ctx.arc( size*0.24, -bodyL*1.05, size*0.05, 0, Math.PI*2); ctx.fill();
+  ctx.beginPath(); ctx.arc(-size*0.30, -height*0.95, size*0.06, 0, Math.PI*2); ctx.fill();
+  ctx.beginPath(); ctx.arc( size*0.30, -height*0.95, size*0.06, 0, Math.PI*2); ctx.fill();
 
   ctx.restore();
 }
@@ -11413,10 +11419,9 @@ function _tfDrawButterflyFlock(ctx, cfg, CW){
     const cy = p.y*CW + CW/2;
     const R = (p.radius || cfg.baseRadius) * CW;
     if(R <= 1) continue;
-    // Density scales with patch area; cap to keep frame budget reasonable.
-    // Keep density moderate so board tiles remain visible — hazard is about
-    // visual chaos, not full obstruction (butterflies don't block placement).
-    const targetCount = Math.min(90, Math.floor((R*R) / 280));
+    // Fewer + LARGER butterflies so each one reads as a butterfly.
+    // Density scales with patch area but stays moderate — board must remain playable.
+    const targetCount = Math.min(35, Math.floor((R*R) / 700));
     // Use deterministic pseudo-random samples seeded by patch id so the flock
     // is stable across frames (each butterfly persists), only their positions wobble.
     const seed = (p.id|0) * 9301;
@@ -11437,8 +11442,10 @@ function _tfDrawButterflyFlock(ctx, cfg, CW){
       const wy    = Math.cos(tt*0.05 + ph*4.10)*5 + Math.sin(tt*0.035 + i*0.7)*3;
       const x = cx + baseX + wx;
       const y = cy + baseY + wy;
-      // Per-butterfly size (varied; slightly larger so wings read clearly)
-      const size = 10 + (u*6) + Math.sin(tt*0.02 + i)*1.0;
+      // Per-butterfly size: LARGE so wings read clearly even on the board.
+      // Wingspan ~20-32px at typical cell size (~36-50px) makes butterflies
+      // unmistakable as butterflies (silhouette readable, not blobs).
+      const size = 18 + (u*12) + Math.sin(tt*0.02 + i)*1.5;
       // Flap phase: each butterfly has its own speed and offset
       const flapSpeed = 0.35 + (v*0.25);
       const flap = 0.35 + 0.65*Math.abs(Math.sin(tt*flapSpeed + ph*6.28));
