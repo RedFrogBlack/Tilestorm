@@ -18189,10 +18189,14 @@ function drawGrid(){
     for (let r = 0; r < ROWS; r++) {
       for (let c = 0; c < COLS; c++) {
         const fogAlpha = _fogGetTileOpacity(r, c);
-        if (fogAlpha > 0.02) {
+        if (fogAlpha > 0.04) {
           const x = c * CELL, y = r * CELL;
           ctx.save();
-          ctx.globalAlpha = Math.min(fogAlpha * 1.15, 1.0);
+          // v2: don't inflate fog alpha. Use it directly so the edge feather
+          // genuinely fades to see-through. Apply a gentle curve so the core
+          // still reads as fully thick but the outer band gets meaningfully transparent.
+          const adj = Math.pow(fogAlpha, 1.25);
+          ctx.globalAlpha = Math.min(adj, 1.0);
           const fg = ctx.createRadialGradient(x+CELL/2, y+CELL/2, 0, x+CELL/2, y+CELL/2, CELL*1.0);
           // White with a visible green/grey tint — reads as fog, not paint.
           // Greens biased ~10-12 above reds/blues; values dipped from pure 255
@@ -18220,10 +18224,12 @@ function drawGrid(){
         // feather aligns visually with where alpha goes from 1→0.
         const pr = (p.radius || (COLS * 0.25)) * CELL * 1.05;
         const bg = ctx.createRadialGradient(px, py, 1, px, py, pr);
-        bg.addColorStop(0,    'rgba(230,240,234,0.88)');
-        bg.addColorStop(0.55, 'rgba(216,228,220,0.68)');
-        bg.addColorStop(0.78, 'rgba(200,214,206,0.38)');
-        bg.addColorStop(0.92, 'rgba(190,204,196,0.14)');
+        // v2: thick center, much more transparent edges so player can see through outer fog
+        bg.addColorStop(0,    'rgba(230,240,234,0.92)');
+        bg.addColorStop(0.40, 'rgba(220,232,224,0.78)');
+        bg.addColorStop(0.65, 'rgba(206,220,212,0.42)');
+        bg.addColorStop(0.82, 'rgba(196,210,202,0.18)');
+        bg.addColorStop(0.94, 'rgba(190,204,196,0.05)');
         bg.addColorStop(1,    'rgba(184,198,190,0.00)');
         ctx.fillStyle = bg;
         ctx.beginPath(); ctx.arc(px, py, pr, 0, Math.PI*2); ctx.fill();
@@ -24190,16 +24196,18 @@ function initChallengeMode() {
     // must remain playable at every level — i.e. the player can always see
     // at least 30% of the tiles clearly.
     const FOG_LEVELS = [
+      // v2: motion speed RISES with level so the thicker fog at high levels
+      // keeps drifting fast enough that the player gets regular visibility gaps.
       { name:'Mystic Pond',       coverage:0.12, speed:1.30, patches:1, patchSize:0.22, behaviour:'drift_lr' },
-      { name:'Forest River',      coverage:0.18, speed:1.20, patches:1, patchSize:0.26, behaviour:'swirl' },
-      { name:'Tropical Lagoon',   coverage:0.24, speed:1.10, patches:2, patchSize:0.22, behaviour:'independent' },
-      { name:'Jungle Swamp',      coverage:0.30, speed:1.00, patches:2, patchSize:0.24, behaviour:'opposite' },
-      { name:'Mountain Lake',     coverage:0.36, speed:0.95, patches:2, patchSize:0.26, behaviour:'pulse' },
-      { name:'Mangrove Delta',    coverage:0.44, speed:0.90, patches:3, patchSize:0.24, behaviour:'random' },
-      { name:'Deep Ocean Reef',   coverage:0.50, speed:0.85, patches:3, patchSize:0.26, behaviour:'flash' },
-      { name:'Arctic Ice Sea',    coverage:0.56, speed:0.80, patches:3, patchSize:0.28, behaviour:'fast_swirl' },
-      { name:'Volcanic Springs',  coverage:0.62, speed:0.75, patches:3, patchSize:0.30, behaviour:'smothered' },
-      { name:'Bioluminescent Abyss',   coverage:0.70, speed:0.70, patches:3, patchSize:0.32, behaviour:'chase' },
+      { name:'Forest River',      coverage:0.18, speed:1.35, patches:1, patchSize:0.26, behaviour:'swirl' },
+      { name:'Tropical Lagoon',   coverage:0.24, speed:1.40, patches:2, patchSize:0.22, behaviour:'independent' },
+      { name:'Jungle Swamp',      coverage:0.30, speed:1.45, patches:2, patchSize:0.24, behaviour:'opposite' },
+      { name:'Mountain Lake',     coverage:0.36, speed:1.50, patches:2, patchSize:0.26, behaviour:'pulse' },
+      { name:'Mangrove Delta',    coverage:0.44, speed:1.60, patches:3, patchSize:0.24, behaviour:'random' },
+      { name:'Deep Ocean Reef',   coverage:0.50, speed:1.70, patches:3, patchSize:0.26, behaviour:'flash' },
+      { name:'Arctic Ice Sea',    coverage:0.56, speed:1.80, patches:3, patchSize:0.28, behaviour:'fast_swirl' },
+      { name:'Volcanic Springs',  coverage:0.62, speed:1.90, patches:3, patchSize:0.30, behaviour:'smothered' },
+      { name:'Bioluminescent Abyss',   coverage:0.70, speed:2.00, patches:3, patchSize:0.32, behaviour:'chase' },
     ];
     const fogCfg = FOG_LEVELS[Math.min(cm_fogLevel - 1, 9)];
     cm_fogTileAlpha = Array.from({length:ROWS}, () => new Array(COLS).fill(0));
@@ -24570,11 +24578,10 @@ function _fogAdvancePatches(fogCfg) {
 }
 
 function _fogUpdateTileAlpha(maxCoverage) {
-  // Unified fog model: each patch is a blob with a fully-opaque core and a
-  // transparent feather at the edge. Patch `radius` (set in _startFogChallenge)
-  // already encodes the level's coverage target, so this function no longer
-  // inflates the radius further. Inner 70% of radius = opaque (1.0). Outer 30%
-  // = smooth ease-out feather down to 0.
+  // Unified fog model v2: thick concentrated CORE + much more transparent EDGES.
+  // Inner 50% of radius = fully opaque (the thick middle the user wants to keep).
+  // Outer 50% = wide smooth feather that fades to fully transparent so the
+  // player can see the board through the edges of every fog cloud.
   for (let r = 0; r < ROWS; r++) {
     for (let c = 0; c < COLS; c++) {
       let maxAlpha = 0;
@@ -24584,19 +24591,17 @@ function _fogUpdateTileAlpha(maxCoverage) {
         const rad = p.radius || (COLS * 0.25);
         let alpha;
         if (p.behaviour === 'flash' && (p.flashTimer || 0) > 0) {
-          // Flash bursts go fully opaque inside the patch's normal radius but
-          // don't inflate the radius (used to be rad*1.4 which exceeded the
-          // level's coverage budget).
+          // Flash bursts stay fully opaque inside the patch's normal radius.
           alpha = dist < rad ? 1.0 : 0;
         } else {
           const t = dist / rad;
-          if (t <= 0.70) {
-            alpha = 1.0;
+          if (t <= 0.50) {
+            alpha = 1.0;                            // thick opaque core (was 0.70)
           } else if (t >= 1.0) {
             alpha = 0;
           } else {
-            // Smooth ease-out cubic feather from 1.0 → 0 over outer 30% of radius
-            const u = (t - 0.70) / 0.30;            // 0…1 across feather band
+            // Wide smooth feather over outer 50% of radius. Goes 1.0 → 0.
+            const u = (t - 0.50) / 0.50;            // 0…1 across feather band
             alpha = 1.0 - (u * u * (3 - 2 * u));    // smoothstep
           }
         }
