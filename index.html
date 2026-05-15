@@ -8292,6 +8292,8 @@ function _pondClock() {
     const o = window._POND_CLOCK_OVERRIDE;
     const seasonName = o.season || 'spring';
     const phaseName  = o.phase  || 'day';
+    // Spawn hazards for the overridden season too
+    try { _pondHazardEnsure(seasonName); } catch(_) {}
     return {
       phase: phaseName, nextPhase: phaseName, phaseProgress: 0,
       season: seasonName, nextSeason: seasonName, seasonProgress: 0,
@@ -8325,6 +8327,8 @@ function _pondClock() {
   }
   _pondLastDNPhase     = dn.name;
   _pondLastSeasonPhase = season.name;
+  // Spawn / refresh blocking hazards for the active season (winter ice, summer algae)
+  try { _pondHazardEnsure(season.name); } catch(_) {}
   // Persistent season/phase badge in the game HUD — always shows current state
   // so the player never has to guess which season/phase is active.
   try {
@@ -8359,6 +8363,185 @@ function _pondLerpC(c1, c2, t) {
 }
 function _pondRgba(c, a) { return `rgba(${c[0]},${c[1]},${c[2]},${a})`; }
 function _pondRgb(c) { return `rgb(${c[0]},${c[1]},${c[2]})`; }
+
+// ─── POND BLOCKING HAZARDS (city monument model) ─────────────────────────
+// Some seasons place obstacle tiles on the grid that BLOCK placement until
+// the season ends, then melt/clear away. Mirrors how city monuments use
+// hazard cells (e.g. Tokyo flood).
+//   Winter:  ICE tiles  — frozen cells, ~6 cells, can't place on them
+//   Summer:  ALGAE tiles — choking algae, ~5 cells, blocks placement
+//   Spring/Autumn:  no blocking hazards (purely ambient particles)
+let _pondHazardCells = new Set();   // r*100+c
+let _pondHazardKind  = null;        // 'ice' | 'algae' | null
+let _pondHazardSeason = null;       // last season we generated for
+let _pondHazardSpawnTS = 0;
+function _pondHazardClear() {
+  _pondHazardCells = new Set();
+  _pondHazardKind  = null;
+}
+function _pondHazardEnsure(seasonName) {
+  // Only active in Fog LV1
+  if (typeof activeChallengeMode === 'undefined' || activeChallengeMode !== 'fog'
+      || typeof cm_fogLevel === 'undefined' || (cm_fogLevel|0) !== 1) {
+    _pondHazardClear();
+    _pondHazardSeason = null;
+    return;
+  }
+  // Hazards only for winter (ice) and summer (algae). Clear on other seasons.
+  if (seasonName !== 'winter' && seasonName !== 'summer') {
+    if (_pondHazardSeason !== seasonName) {
+      _pondHazardClear();
+      _pondHazardSeason = seasonName;
+      if (typeof renderTray === 'function') {
+        try { renderTray(); } catch(_) {}
+      }
+    }
+    return;
+  }
+  // Already spawned for this season cycle? Keep them.
+  if (_pondHazardSeason === seasonName && _pondHazardCells.size > 0) return;
+  // New season — spawn fresh hazards on empty cells.
+  _pondHazardClear();
+  _pondHazardKind = (seasonName === 'winter') ? 'ice' : 'algae';
+  _pondHazardSeason = seasonName;
+  _pondHazardSpawnTS = performance.now();
+  const target = (seasonName === 'winter') ? 6 : 5;
+  // Pick distinct random empty cells. Skip if grid is missing.
+  if (typeof grid === 'undefined' || !grid || !grid[0]) return;
+  const empties = [];
+  for (let r = 0; r < ROWS; r++) {
+    for (let c = 0; c < COLS; c++) {
+      if (grid[r] && grid[r][c] === 0) empties.push(r*100 + c);
+    }
+  }
+  // Shuffle and take first N
+  for (let i = empties.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i+1));
+    const tmp = empties[i]; empties[i] = empties[j]; empties[j] = tmp;
+  }
+  for (let i = 0; i < Math.min(target, empties.length); i++) {
+    _pondHazardCells.add(empties[i]);
+  }
+  // Announce + tray refresh so any "no placement" state is re-checked.
+  try {
+    if (typeof showEventBanner === 'function') {
+      showEventBanner(seasonName === 'winter' ? '❄️ ICE BLOCKS THE POND' : '☀️ ALGAE CHOKES THE POND');
+    }
+  } catch(_) {}
+}
+function _pondHazardBlocks(r, c) {
+  if (!_pondHazardCells || _pondHazardCells.size === 0) return false;
+  return _pondHazardCells.has(r*100 + c);
+}
+function _pondHazardGetKind() { return _pondHazardKind; }
+function _pondHazardDrawCell(ctx, r, c) {
+  // Draw the hazard overlay on a blocked grid cell. Called from drawGrid.
+  if (!_pondHazardKind) return;
+  if (typeof CELL === 'undefined') return;
+  const PAD2 = (typeof PAD === 'number') ? PAD : 2;
+  const x = c*CELL + PAD2, y = r*CELL + PAD2, s = CELL - PAD2*2;
+  const cx = x + s/2, cy = y + s/2;
+  const t = (typeof _ambientT === 'number') ? _ambientT : (performance.now()/16);
+  const ageMs = performance.now() - _pondHazardSpawnTS;
+  // Grow-in over first 600ms
+  const grow = Math.max(0.5, Math.min(1, ageMs / 600));
+  ctx.save();
+  if (_pondHazardKind === 'ice') {
+    // Ice block on the tile — crystalline cyan/white, BIG so it reads clearly
+    const r1 = s*0.55*grow;
+    // Solid rectangular ice block backing — fully opaque so it clearly says BLOCKED
+    ctx.fillStyle = 'rgba(220,240,255,0.92)';
+    ctx.fillRect(x+1, y+1, s-2, s-2);
+    ctx.strokeStyle = 'rgba(70,130,180,0.95)';
+    ctx.lineWidth = 2;
+    ctx.strokeRect(x+1, y+1, s-2, s-2);
+    // Cool base disc
+    const ig = ctx.createRadialGradient(cx-r1*0.3, cy-r1*0.3, 1, cx, cy, r1*1.1);
+    ig.addColorStop(0,   'rgba(245,252,255,0.95)');
+    ig.addColorStop(0.6, 'rgba(200,230,250,0.85)');
+    ig.addColorStop(1,   'rgba(150,200,235,0.55)');
+    ctx.fillStyle = ig;
+    ctx.beginPath();
+    // Jagged hex shape
+    const pts = 7;
+    for (let p = 0; p < pts; p++) {
+      const ang = (p/pts) * Math.PI*2 + Math.sin(t*0.002 + r*0.3 + c*0.2) * 0.1;
+      const rr = r1 * (0.85 + 0.15*Math.sin(t*0.003 + p*1.5 + r + c));
+      const px = cx + Math.cos(ang)*rr;
+      const py = cy + Math.sin(ang)*rr*0.92;
+      if (p === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
+    }
+    ctx.closePath();
+    ctx.fill();
+    // Crystalline crack lines
+    ctx.strokeStyle = 'rgba(255,255,255,0.85)';
+    ctx.lineWidth = 1.1;
+    for (let k = 0; k < 4; k++) {
+      const ang = (k/4)*Math.PI*2 + (r+c)*0.3;
+      ctx.beginPath();
+      ctx.moveTo(cx, cy);
+      ctx.lineTo(cx + Math.cos(ang)*r1*0.8, cy + Math.sin(ang)*r1*0.65);
+      ctx.stroke();
+    }
+    // Outer rim
+    ctx.strokeStyle = 'rgba(120,180,220,0.75)';
+    ctx.lineWidth = 1.2;
+    ctx.beginPath();
+    for (let p = 0; p < pts; p++) {
+      const ang = (p/pts) * Math.PI*2 + Math.sin(t*0.002 + r*0.3 + c*0.2) * 0.1;
+      const rr = r1 * (0.85 + 0.15*Math.sin(t*0.003 + p*1.5 + r + c));
+      const px = cx + Math.cos(ang)*rr;
+      const py = cy + Math.sin(ang)*rr*0.92;
+      if (p === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
+    }
+    ctx.closePath();
+    ctx.stroke();
+    // Sparkles for icy shimmer
+    ctx.fillStyle = 'rgba(255,255,255,0.95)';
+    ctx.beginPath(); ctx.arc(cx - r1*0.25, cy - r1*0.2, 1.6, 0, Math.PI*2); ctx.fill();
+    ctx.beginPath(); ctx.arc(cx + r1*0.3, cy + r1*0.15, 1.2, 0, Math.PI*2); ctx.fill();
+    // Snowflake icon in center for unambiguous read
+    ctx.fillStyle = 'rgba(40,80,140,0.95)';
+    ctx.font = `bold ${Math.floor(s*0.45)}px sans-serif`;
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText('❄', cx, cy + 1);
+  } else if (_pondHazardKind === 'algae') {
+    // Algae clump on the tile — noisy green tendrils, BIG so it reads clearly
+    const r1 = s*0.55*grow;
+    // Solid square algae backing — fully opaque so it clearly says BLOCKED
+    ctx.fillStyle = 'rgba(30,75,40,0.95)';
+    ctx.fillRect(x+1, y+1, s-2, s-2);
+    ctx.strokeStyle = 'rgba(160,210,80,0.95)';
+    ctx.lineWidth = 2;
+    ctx.strokeRect(x+1, y+1, s-2, s-2);
+    // Base murk disc
+    ctx.fillStyle = 'rgba(45,90,55,0.85)';
+    ctx.beginPath(); ctx.arc(cx, cy, r1*0.85, 0, Math.PI*2); ctx.fill();
+    // Tendrils
+    for (let b = 0; b < 8; b++) {
+      const ang = (b/8) * Math.PI*2 + t*0.001*(b%2?1:-1);
+      const dist = r1 * (0.4 + 0.45*Math.sin(t*0.01 + b*1.3 + r + c));
+      const bx = cx + Math.cos(ang) * dist;
+      const by = cy + Math.sin(ang) * dist * 0.85;
+      const rr = r1 * 0.32 + Math.sin(t*0.018 + b + r) * 1.5;
+      const g = 100 + (b%3)*28;
+      ctx.fillStyle = `rgba(55,${g},${70 + b*4},0.85)`;
+      ctx.beginPath(); ctx.ellipse(bx, by, rr, rr*0.78, ang, 0, Math.PI*2); ctx.fill();
+    }
+    // Yellow algae flower in center
+    ctx.fillStyle = 'rgba(230,220,90,0.85)';
+    ctx.beginPath(); ctx.arc(cx, cy, r1*0.22, 0, Math.PI*2); ctx.fill();
+    ctx.fillStyle = 'rgba(255,255,180,0.95)';
+    ctx.beginPath(); ctx.arc(cx, cy, r1*0.1, 0, Math.PI*2); ctx.fill();
+    // Algae icon for unambiguous read
+    ctx.fillStyle = 'rgba(200,255,180,0.95)';
+    ctx.font = `bold ${Math.floor(s*0.35)}px sans-serif`;
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText('🌿', cx, cy + s*0.05);
+  }
+  ctx.restore();
+}
+
 
 // Returns interpolated palette for the current time of day.
 // Each entry is an RGB triplet.
@@ -9328,6 +9511,8 @@ function isMasked(r, c) {
   if (typeof _tokyoFloodLevel === 'number' && _tokyoFloodLevel > 0) {
     if (r >= ROWS - _tokyoFloodLevel) return true;
   }
+  // Fog LV1 Mystic Pond seasonal hazards — winter ice / summer algae block cells
+  if (typeof _pondHazardBlocks === 'function' && _pondHazardBlocks(r, c)) return true;
   if (!gridMask) return false;
   return !gridMask[r][c];
 }
@@ -15091,7 +15276,22 @@ function checkGameOver(){
 
 // ── Tray ──────────────────────────────────────────────────────────
 function randomPiece(){return PIECES[Math.floor(Math.random()*PIECES.length)];}
-function randomColor(){return Math.floor(Math.random()*7)+1;}
+function randomColor(){
+  // Fog LV1 (Mystic Pond): bias picks toward colourful flowers so the player
+  // doesn't see a sea of green lily pads. Green pad (4) drops to ~10%, the
+  // other 6 kinds (red/orange/yellow/blue/purple/pink) split the remaining 90%.
+  try {
+    if (typeof activeChallengeMode !== 'undefined' && activeChallengeMode === 'fog'
+        && typeof cm_fogLevel !== 'undefined' && (cm_fogLevel|0) === 1) {
+      const roll = Math.random();
+      if (roll < 0.10) return 4; // green pad ~10%
+      // Remaining 90% split among the 6 colourful kinds (1,2,3,5,6,7)
+      const colourful = [1, 2, 3, 5, 6, 7];
+      return colourful[Math.floor(Math.random() * 6)];
+    }
+  } catch(_) {}
+  return Math.floor(Math.random()*7)+1;
+}
 // Split-aware colour picker for hazard / penalty / adder grid-writes.
 // During Dubai (split) and Amalfi (gauntlet) GF levels, any tile that lands
 // on the grid must use the active split colours — and must respect the
@@ -15783,6 +15983,18 @@ function drawGrid(){
     // Skip cells that are mid-slide (NewYork one-way streets) — the slide overlay draws them
     if (typeof _gfStreetHiddenSet !== 'undefined' && _gfStreetHiddenSet && _gfStreetHiddenSet.has(r*100+c)) continue;
     drawTile(r,c,getTileColor(grid[r][c]),1,false,isGold);
+  }
+  // Fog LV1 — draw seasonal blocking hazards (ice/algae) AFTER tiles so the
+  // obstacle is unmistakable on top of the cell. Only renders when there are
+  // active hazard cells (winter/summer).
+  if (typeof _pondHazardCells !== 'undefined' && _pondHazardCells && _pondHazardCells.size > 0
+      && typeof activeChallengeMode !== 'undefined' && activeChallengeMode === 'fog'
+      && typeof cm_fogLevel !== 'undefined' && (cm_fogLevel|0) === 1) {
+    for (const key of _pondHazardCells) {
+      const hr = Math.floor(key / 100);
+      const hc = key % 100;
+      _pondHazardDrawCell(ctx, hr, hc);
+    }
   }
   // Maldives conveyor flight: draw L→R wind-blown tiles with optional zig-zag wobble.
   // Wrap tiles (right edge → left edge) fly across the full board so the player can
