@@ -11034,7 +11034,7 @@ function _tfGetHazardCfg(lvl){
   // patches/size/speed mimic FOG_LEVELS structure.
   // Each level: gentle to intense.
   switch(lvl){
-    case 1:  return { kind:'butterflies', name:'Butterfly Drift', patches:2, baseRadius:5.8, speed:0.028, blocks:true,  color:[255,180,210], cycleSec:16, activeSec:14, coreRadius:2.5 };
+    case 1:  return { kind:'butterflies', name:'Butterfly Drift', patches:2, baseRadius:3.8, speed:0.012, blocks:true,  color:[255,180,210], cycleSec:18, activeSec:16, coreRadius:1.6 };
     case 2:  return { kind:'leaves',      name:'Leaf Gust',       patches:1, baseRadius:5.0, speed:0.075, blocks:false, color:[230,200,150], cycleSec:13, activeSec:9 };
     case 3:  return { kind:'pollen',      name:'Pollen Cloud',    patches:1, baseRadius:5.5, speed:0.060, blocks:false, color:[250,220,130], cycleSec:13, activeSec:10 };
     case 4:  return { kind:'bugs',        name:'Bug Swarm',       patches:1, baseRadius:5.5, speed:0.075, blocks:true,  color:[120,90,60],   cycleSec:12, activeSec:9 };
@@ -11076,42 +11076,17 @@ function _tfSpawnHazardPatches(){
     let entryX, entryY, vx, vy;
     let flightStyle = null;
     if(cfg.kind === 'butterflies'){
-      // Pick a varied flight style so the 2 patches feel distinct
+      // Butterflies hover/drift inside the board. Pick a starting position
+      // within the playable area so the flock is immediately visible & threatening.
+      // Each patch gets a different starting region so 2 flocks don't overlap.
       flightStyle = _bflyStyles[(i + (Math.random()*5|0)) % _bflyStyles.length];
-      switch(flightStyle){
-        case 'horiz':
-          entryX = fromLeft ? -baseR : COLS + baseR;
-          entryY = ROWS * (0.30 + Math.random()*0.40);
-          vx = (fromLeft ? 1 : -1) * cfg.speed;
-          vy = 0;
-          break;
-        case 'diag_down':
-          entryX = fromLeft ? -baseR : COLS + baseR;
-          entryY = ROWS * 0.15;
-          vx = (fromLeft ? 1 : -1) * cfg.speed * 0.85;
-          vy = cfg.speed * 0.45;
-          break;
-        case 'diag_up':
-          entryX = fromLeft ? -baseR : COLS + baseR;
-          entryY = ROWS * 0.75;
-          vx = (fromLeft ? 1 : -1) * cfg.speed * 0.85;
-          vy = -cfg.speed * 0.45;
-          break;
-        case 'wander':
-          // Drifting in a gentle wandering arc — starts off-board top or bottom
-          entryX = COLS * (0.2 + Math.random()*0.6);
-          entryY = Math.random() < 0.5 ? -baseR : ROWS + baseR;
-          vx = (Math.random() - 0.5) * cfg.speed * 1.2;
-          vy = (entryY < 0 ? 1 : -1) * cfg.speed * 0.6;
-          break;
-        case 'figure8':
-          // Hovers near center, traces a figure-8 pattern
-          entryX = COLS * (0.3 + Math.random()*0.4);
-          entryY = ROWS * (0.3 + Math.random()*0.4);
-          vx = 0;
-          vy = 0;
-          break;
-      }
+      // Split board into halves — patch 0 left, patch 1 right (with jitter)
+      const half = (i === 0) ? 0 : 1;
+      entryX = COLS * (0.20 + half*0.40 + Math.random()*0.20);
+      entryY = ROWS * (0.25 + Math.random()*0.50);
+      // Initial velocity small — hover-drift system handles motion
+      vx = 0;
+      vy = 0;
     } else {
       // Default linear drift for other hazards
       entryX = fromLeft ? -cfg.baseRadius : COLS + cfg.baseRadius;
@@ -11428,51 +11403,81 @@ function _tfTickButterflyPatch(p, cfg, tt){
     }
   }
   // ---- Flight motion (skip when resting in phase 2) ----
+  // ALL butterfly flocks now use a "hover-drift-hover" pattern:
+  //   - Hover phase: stay near an anchor, oscillating in place 2-4 sec
+  //   - Drift phase: gently slide to a new anchor (within board), 2-4 sec
+  //   - Direction of drift is random each cycle (any of 8 directions)
+  // The flightStyle field now only affects the OSCILLATION pattern during hover
+  // (figure8 traces a figure-8, wander traces a circle, others just bob).
   if(p.restPhase !== 2){
-    const style = p.flightStyle || 'horiz';
-    switch(style){
-      case 'horiz':
-        if(p.restPhase === 0){
-          p.x += p.vx;
-          // Gentle vertical sway
-          p.y += Math.sin(tt*0.04 + p.phase)*0.012;
+    // Initialize hover/drift state if missing (legacy patches)
+    if(typeof p.driftPhase === 'undefined'){
+      p.driftPhase = 'hover';
+      p.driftTimer = 60 * (2.5 + Math.random()*1.5);   // hover 2.5-4s first
+      p.targetX = p.x;
+      p.targetY = p.y;
+      p.anchorX = p.x;
+      p.anchorY = p.y;
+    }
+    if(p.restPhase === 0){
+      p.driftTimer--;
+      if(p.driftPhase === 'hover'){
+        // Stay near anchor, with style-specific micro-oscillation
+        const style = p.flightStyle || 'horiz';
+        const t = tt * 0.025;
+        let ox = 0, oy = 0;
+        if(style === 'figure8'){
+          ox = Math.sin(t) * 0.6;
+          oy = Math.sin(t*2) * 0.4;
+        } else if(style === 'wander'){
+          // Small circular hover
+          ox = Math.cos(t) * 0.55;
+          oy = Math.sin(t) * 0.45;
+        } else {
+          // Gentle bob (slight horizontal sway)
+          ox = Math.sin(t + p.phase) * 0.35;
+          oy = Math.cos(t*0.8 + p.phase) * 0.25;
         }
-        break;
-      case 'diag_down':
-      case 'diag_up':
-        if(p.restPhase === 0){
-          p.x += p.vx;
-          p.y += p.vy + Math.sin(tt*0.04 + p.phase)*0.010;
-          // Bounce vy slightly when hitting top/bottom
-          if(p.y < 1 && p.vy < 0) p.vy = Math.abs(p.vy);
-          if(p.y > ROWS-1 && p.vy > 0) p.vy = -Math.abs(p.vy);
+        p.x = p.anchorX + ox;
+        p.y = p.anchorY + oy;
+        if(p.driftTimer <= 0){
+          // Pick a new drift target: any of 8 directions, 2-3.5 tiles distance
+          const dirAngle = Math.random() * Math.PI * 2;
+          const dist = 2 + Math.random()*1.5;
+          let tx = p.anchorX + Math.cos(dirAngle)*dist;
+          let ty = p.anchorY + Math.sin(dirAngle)*dist;
+          // Keep target inside playable area (margin from board edges)
+          const m = 1.5;
+          if(tx < m) tx = m;
+          if(tx > COLS-m) tx = COLS-m;
+          if(ty < m) ty = m;
+          if(ty > ROWS-m) ty = ROWS-m;
+          p.targetX = tx;
+          p.targetY = ty;
+          p.driftPhase = 'drift';
+          p.driftTimer = 60 * (2.8 + Math.random()*1.8);  // drift 2.8-4.6s
         }
-        break;
-      case 'wander':
-        if(p.restPhase === 0){
-          // Wandering: vx & vy slowly rotate over time
-          const rot = 0.008;
-          const cs = Math.cos(rot), sn = Math.sin(rot);
-          const nvx = p.vx*cs - p.vy*sn;
-          const nvy = p.vx*sn + p.vy*cs;
-          p.vx = nvx; p.vy = nvy;
-          p.x += p.vx;
-          p.y += p.vy;
-          // Keep loosely within board: gentle pull back if too far
-          if(p.x < -2) p.vx = Math.abs(p.vx);
-          if(p.x > COLS+2) p.vx = -Math.abs(p.vx);
-          if(p.y < -2) p.vy = Math.abs(p.vy);
-          if(p.y > ROWS+2) p.vy = -Math.abs(p.vy);
+      } else {
+        // Drift phase: smoothly ease toward target (slow!)
+        const ease = 0.012;  // very gentle
+        p.x += (p.targetX - p.x) * ease;
+        p.y += (p.targetY - p.y) * ease;
+        // Add tiny perpendicular wobble so motion isn't a perfect straight line
+        const dx = p.targetX - p.anchorX;
+        const dy = p.targetY - p.anchorY;
+        const len = Math.sqrt(dx*dx + dy*dy) || 1;
+        const px = -dy/len, py = dx/len;
+        const wob = Math.sin(tt*0.05 + p.phase) * 0.04;
+        p.x += px * wob;
+        p.y += py * wob;
+        if(p.driftTimer <= 0 || (Math.abs(p.x-p.targetX) < 0.25 && Math.abs(p.y-p.targetY) < 0.25)){
+          // Arrived (or time up) — settle into hover at new location
+          p.anchorX = p.x;
+          p.anchorY = p.y;
+          p.driftPhase = 'hover';
+          p.driftTimer = 60 * (2.5 + Math.random()*1.8);   // hover 2.5-4.3s
         }
-        break;
-      case 'figure8':
-        if(p.restPhase === 0){
-          // Figure-8 around anchor point
-          const t = tt * 0.018;
-          p.x = p.anchorX + Math.sin(t) * 2.5;
-          p.y = p.anchorY + Math.sin(t*2) * 1.4;
-        }
-        break;
+      }
     }
   }
 }
@@ -11599,59 +11604,105 @@ function _tfDrawButterflyFlock(ctx, cfg, CW){
     const R = (p.radius || cfg.baseRadius) * CW;
     if(R <= 1) continue;
     const isResting = (p.restPhase === 2);
-    // Many more butterflies for a real flock feel. Core is packed.
-    const targetCount = Math.min(110, Math.floor((R*R) / 230));
+    // Core radius in pixels (where the flock is SOLIDLY packed)
+    // Clamp coreRpx <= R*0.85 so the radial gradient stops stay in [0,1]
+    // (R can shrink to ~0.2*baseRadius during the envelope fade).
+    let coreRpx = (p.coreRadius || (p.baseRadius*0.40)) * CW;
+    if(coreRpx > R*0.85) coreRpx = R*0.85;
+    const stop1 = Math.max(0, Math.min(1, (coreRpx/R) * 0.80));
+    const stop2 = Math.max(stop1+0.001, Math.min(1, coreRpx/R));
+    const stop3 = Math.max(stop2+0.001, Math.min(1, (coreRpx/R + 1.0)*0.5));
+
+    // -------- STEP 1: Opaque pink core wash --------
+    // Underneath the flock, paint a soft pink radial gradient that's fully
+    // opaque in the inner core (covering ~4-5 tiles) and fades to transparent
+    // at the patch radius. This guarantees you cannot see through the center
+    // even if butterfly sprites have small gaps between them.
+    if(!isResting){
+      const grd = ctx.createRadialGradient(cx, cy, 0, cx, cy, R);
+      grd.addColorStop(0,     'rgba(245,200,225,0.95)');
+      grd.addColorStop(stop1, 'rgba(245,200,225,0.90)');
+      grd.addColorStop(stop2, 'rgba(240,195,220,0.70)');
+      grd.addColorStop(stop3, 'rgba(235,190,215,0.35)');
+      grd.addColorStop(1.0,   'rgba(235,190,215,0)');
+      ctx.save();
+      ctx.fillStyle = grd;
+      ctx.beginPath(); ctx.arc(cx, cy, R, 0, Math.PI*2); ctx.fill();
+      ctx.restore();
+    } else {
+      // Resting: paint a horizontal pink band along the row
+      const halfW = R * 1.1;
+      const halfH = CW * 0.65;
+      const grdR = ctx.createLinearGradient(cx-halfW, cy, cx+halfW, cy);
+      grdR.addColorStop(0,    'rgba(240,195,220,0)');
+      grdR.addColorStop(0.18, 'rgba(245,200,225,0.65)');
+      grdR.addColorStop(0.50, 'rgba(245,200,225,0.95)');
+      grdR.addColorStop(0.82, 'rgba(245,200,225,0.65)');
+      grdR.addColorStop(1,    'rgba(240,195,220,0)');
+      ctx.save();
+      ctx.fillStyle = grdR;
+      ctx.fillRect(cx-halfW, cy-halfH, halfW*2, halfH*2);
+      ctx.restore();
+    }
+
+    // -------- STEP 2: Dense flock of butterfly sprites --------
+    // Count is high — a real, packed flock. Center is solid, edges scattered.
+    const targetCount = Math.min(380, Math.floor((R*R) / 60));
     const seed = (p.id|0) * 9301;
-    // Core radius in pixels (where the flock is solidly packed)
-    const coreRpx = (p.coreRadius || (p.baseRadius*0.45)) * CW;
     for(let i=0;i<targetCount;i++){
       const h1 = Math.sin((seed + i*127.1)) * 43758.5453;
       const h2 = Math.sin((seed + i*311.7)) * 12345.6789;
       const u  = (h1 - Math.floor(h1));
       const v  = (h2 - Math.floor(h2));
-      // Strong center bias — ~60% of butterflies fall inside the core
-      // (using a power < 1 maps uniform u to a distribution skewed toward 0)
-      const rNorm = Math.pow(u, 1.6);
+      // Distribution biased toward center: ~70% inside core
+      // u^1.8 squeezes most samples toward 0 (center)
+      const rNorm = Math.pow(u, 1.8);
       const ang   = v * Math.PI * 2;
       let baseX, baseY;
       if(isResting){
-        // When resting: butterflies arranged in a horizontal strip along the row.
-        // x spreads more, y is tight to the row line.
-        baseX = (v - 0.5) * R * 2.2;       // wide horizontal spread
-        baseY = (Math.sin(seed + i*7.3))*CW*0.55;  // narrow vertical band
+        // Resting: wide horizontal strip on the row
+        baseX = (v - 0.5) * R * 2.0;
+        baseY = (Math.sin(seed + i*7.3))*CW*0.50;
       } else {
-        // Map rNorm to actual radius pixels (use coreRpx for inner, R for outer)
-        const rPx = (rNorm < 0.5)
-          ? (rNorm/0.5) * coreRpx          // inner half: packed inside core
-          : coreRpx + ((rNorm-0.5)/0.5) * (R - coreRpx); // outer half: scattered
+        // Inner core (rNorm < 0.5) maps to coreRpx with even fill (uniform-density disk)
+        // Outer band (rNorm 0.5..1.0) maps to coreRpx..R, getting sparser
+        let rPx;
+        if(rNorm < 0.5){
+          // Uniform area distribution within core: rPx = coreRpx * sqrt(2*rNorm)
+          rPx = coreRpx * Math.sqrt(2*rNorm);
+        } else {
+          // Outer fringe: linear from coreRpx to R
+          rPx = coreRpx + ((rNorm-0.5)/0.5) * (R - coreRpx);
+        }
         baseX = Math.cos(ang) * rPx;
         baseY = Math.sin(ang) * rPx * 0.95;
       }
-      // Per-butterfly wander phase (each has its own gentle wobble)
+      // Wander
       const ph    = (h1 - Math.floor(h1*10))*10;
-      const wMag  = isResting ? 1.5 : 5.5;
-      const wx    = Math.sin(tt*0.045 + ph*6.28)*wMag + Math.cos(tt*0.032 + i*0.3)*wMag*0.5;
-      const wy    = Math.cos(tt*0.055 + ph*4.10)*wMag + Math.sin(tt*0.038 + i*0.7)*wMag*0.5;
+      const wMag  = isResting ? 1.2 : 3.0;  // small wander (calmer)
+      const wx    = Math.sin(tt*0.035 + ph*6.28)*wMag + Math.cos(tt*0.025 + i*0.3)*wMag*0.5;
+      const wy    = Math.cos(tt*0.040 + ph*4.10)*wMag + Math.sin(tt*0.028 + i*0.7)*wMag*0.5;
       const x = cx + baseX + wx;
       const y = cy + baseY + wy;
-      // Per-butterfly size
-      const size = 18 + (u*12) + Math.sin(tt*0.02 + i)*1.5;
-      // Flap phase: each butterfly has its own speed. Resting butterflies barely flap.
-      const flapSpeed = 0.35 + (v*0.25);
+      // Slightly smaller butterflies (so more fit in the core) but still readable
+      const size = 14 + (u*10) + Math.sin(tt*0.02 + i)*1.2;
+      // Flap
+      const flapSpeed = 0.28 + (v*0.22);
       const flap = isResting
-        ? (0.40 + 0.10*Math.abs(Math.sin(tt*0.18 + ph*6.28)))
+        ? (0.40 + 0.10*Math.abs(Math.sin(tt*0.15 + ph*6.28)))
         : (0.35 + 0.65*Math.abs(Math.sin(tt*flapSpeed + ph*6.28)));
       const tilt = isResting
         ? Math.sin(tt*0.02 + ph*1.57)*0.10
-        : Math.sin(tt*0.04 + ph*3.14)*0.35 + (Math.cos(ang)>0?0.05:-0.05);
+        : Math.sin(tt*0.03 + ph*3.14)*0.35 + (Math.cos(ang)>0?0.05:-0.05);
       const pal = _TF_BUTTERFLY_PALETTES[(i + (seed>>3)) % _TF_BUTTERFLY_PALETTES.length];
-      // Opacity falloff: core = 1.0, edges fade fast
+      // Opacity: inside core = full, fringe fades sharply to ~0
       let edgeFade;
       if(isResting){
-        // Resting butterflies on a row: solid opacity in the middle, fades at the ends
-        edgeFade = 1 - Math.pow(Math.abs(v-0.5)*2, 2.0)*0.85;
+        edgeFade = 1 - Math.pow(Math.abs(v-0.5)*2, 1.8)*0.85;
       } else {
-        edgeFade = (rNorm < 0.5) ? 1.0 : (1.0 - Math.pow((rNorm-0.5)/0.5, 1.6)*0.85);
+        edgeFade = (rNorm < 0.5)
+          ? 1.0
+          : (1.0 - Math.pow((rNorm-0.5)/0.5, 1.4)*0.92);
       }
       ctx.save();
       ctx.globalAlpha = Math.max(0, Math.min(1, edgeFade));
