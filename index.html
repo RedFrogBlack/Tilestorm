@@ -22425,12 +22425,25 @@ function updateUI(){
   // Keep the mid-zone tier badge label in sync with the active challenge mode
   if (typeof _updateMidZone === 'function') { try { _updateMidZone(); } catch(e){} }
   const newScore = score;
-  const newLevel = level;
+  // In challenge modes (Tree Frog / Fog / Golden Frog) the displayed level
+  // must come from the mode-specific tracker — e.g. cm_frenzyLevel for Tree
+  // Frog — because `level` is the classic-mode counter and can be out of sync
+  // when the player jumps levels via the picker. Without this the header
+  // shows LV1 even when the player is on LV7.
+  let displayLevel = level;
+  try {
+    if (typeof activeChallengeMode !== 'undefined') {
+      if (activeChallengeMode === 'frenzy' && typeof cm_frenzyLevel !== 'undefined' && cm_frenzyLevel) displayLevel = cm_frenzyLevel;
+      else if (activeChallengeMode === 'fog' && typeof cm_fogLevel !== 'undefined' && cm_fogLevel) displayLevel = cm_fogLevel;
+      else if (activeChallengeMode === 'goldenfrog' && typeof cm_gfLevel !== 'undefined' && cm_gfLevel) displayLevel = cm_gfLevel;
+    }
+  } catch(_e){}
+  const newLevel = displayLevel;
   const scoreChanged = newScore !== _prevScore;
   const levelChanged = newLevel > _prevLevel;
   document.getElementById('score-display').textContent=score.toLocaleString();
   document.getElementById('best-display').textContent=bestScore.toLocaleString();
-  document.getElementById('level-display').textContent=level;
+  document.getElementById('level-display').textContent=displayLevel;
   document.getElementById('lines-display').textContent=linesCleared;
   if (scoreChanged) bumpStatPill('score-display', true);
   if (levelChanged) {
@@ -22439,6 +22452,11 @@ function updateUI(){
   }
   _prevScore = newScore;
   _prevLevel = newLevel;
+  // Also push the displayed level into the pause-menu level box if present
+  try {
+    const pauseLv = document.getElementById('pause-level-val');
+    if (pauseLv) pauseLv.textContent = displayLevel;
+  } catch(_e){}
   // Update level progress bar (new under-topbar bar)
   const nextTarget = linesForNextLevel(linesCleared);
   const prevTarget = level > 1 ? LEVEL_THRESHOLDS[level-2] || 0 : 0;
