@@ -8287,7 +8287,7 @@ function _tadStartMudCycle(rows, periodMs){
   _tadMudCycleTimer = setInterval(() => {
     try {
       if (activeChallengeMode !== 'standard' || !gameActive) return;
-      if (typeof level !== 'number' || level !== 8) {
+      if (typeof level !== 'number' || (level !== 8 && level !== 10)) {
         try { clearInterval(_tadMudCycleTimer); } catch(_){}
         _tadMudCycleTimer = null;
         return;
@@ -8522,7 +8522,7 @@ function _drawTadpoleLevelLayer(ctx, W, H){
     if(lvl === 9 && !_tadFloodActive){ _tadStartTide(); }
     // LV10: chaos finale — mud + rising water + rotation + occasional quake.
     if(lvl === 10){
-      if (!_tadMudActive) _tadStartMud(1, [[40000, 2]]);
+      if (!_tadMudCycleTimer) _tadStartMudCycle(1, 4000);
       if (!_tadFloodActive) _tadStartTide();
       if (!_tadChaosTimer) _tadStartChaos();
     }
