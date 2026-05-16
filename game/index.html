@@ -12932,15 +12932,6 @@ function _tfDrawAnimalsOverlay(ctx, W, H, CW){
     else if(an.kind === 'bird') _tfDrawBirdSprite(ctx, px, py, sz, an.phase);
     else _tfDrawCrocSprite(ctx, px, py, sz);
     an.phase += 0.04;
-    // Highlight landed cell
-    if(an.landedCell){
-      const bx = an.landedCell.c*CW, by = an.landedCell.r*CW;
-      ctx.save();
-      ctx.strokeStyle = 'rgba(80,200,80,0.70)';
-      ctx.lineWidth = 2;
-      ctx.strokeRect(bx+1, by+1, CW-2, CW-2);
-      ctx.restore();
-    }
   }
 }
 
