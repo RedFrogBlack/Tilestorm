@@ -11023,27 +11023,57 @@ let _tfHazardCfg = null;            // current level's hazard config
 let _tfHazardTileAlpha = [];        // [r][c] per-cell opacity 0..1
 let _tfHazardLvlInited = -1;
 let _tfHazardTickAccum = 0;         // 60fps accumulator
-let _tfShakeAmp = 0;                // current board shake amplitude (LV9/10)
-let _tfWaterRiseRows = 0;           // current flooded rows from bottom (LV5/10)
+let _tfShakeAmp = 0;                // current board shake amplitude
+let _tfWaterRiseRows = 0;           // current flooded rows from bottom (LV5)
 let _tfWaterTargetRows = 0;
 let _tfLightningTimer = 0;          // frames until next lightning flash
 let _tfLightningFlash = 0;          // flash brightness 0..1, decays
+// LV2: wind leaves
+let _tfWindLeaves = [];             // [{x,y,vx,vy,rot,rotV,size,hue,wobble}]
+// LV3: branches
+let _tfBranchRows = false;          // true = top-3 rows actively blocked
+let _tfBranchParticles = [];        // falling leaf particles
+let _tfBranchSprites = [];          // branch overlay sprites [{x,y,angle,len,thick}]
+// LV4: fireflies
+let _tfFireflies = [];              // [{x,y,vx,vy,phase,size}]
+let _tfFireflyBlockedCells = [];    // [{r,c}] cells blocked during active window
+let _tfFireflyRespawnTimer = 0;     // countdown to reposition blocked cluster
+// LV6: plant overgrowth
+let _tfBushCells = [];              // [{r,c}] edge cells blocked
+let _tfBushRespawnTimer = 0;        // countdown to pick new cells
+let _tfBushLeaves = [];             // decorative leaf sprites per cell
+// LV7: ice tiles
+let _tfIceTiles = [];               // [{r,c,melt}] melt 0=frozen 1=melted
+let _tfIceRespawnTimer = 0;
+let _tfSnowflakes = [];             // [{x,y,vy,size,rot,alpha}]
+// LV8: mud
+let _tfMudTiles = [];               // [{r,c,bubblePhase}]
+let _tfMudRespawnTimer = 0;
+// LV9: rain/storm
+let _tfRainDrops = [];              // [{x,y,len,speed}]
+let _tfBlackoutAlpha = 0;           // 0=clear, >0 = dark overlay
+let _tfBlackoutTimer = 0;           // countdown to next blackout
+let _tfBlackoutFade = 0;            // 1=fading in, -1=fading out, 0=off
+// LV10: animals
+let _tfAnimals = [];                // [{kind,x,y,vx,vy,landedCell,landTimer,size}]
+let _tfAnimalBlockedCells = [];     // [{r,c}] cells occupied by landed animals
 
 function _tfGetHazardCfg(lvl){
   // kind controls visual style. blocks=true means placement blocked under opaque core.
   // patches/size/speed mimic FOG_LEVELS structure.
   // Each level: gentle to intense.
   switch(lvl){
-    case 1:  return { kind:'butterflies', name:'Butterfly Drift', patches:2, baseRadius:3.8, speed:0.012, blocks:true,  color:[255,180,210], cycleSec:18, activeSec:16, coreRadius:1.6 };
-    case 2:  return { kind:'leaves',      name:'Leaf Gust',       patches:1, baseRadius:5.0, speed:0.075, blocks:false, color:[230,200,150], cycleSec:13, activeSec:9 };
-    case 3:  return { kind:'pollen',      name:'Pollen Cloud',    patches:1, baseRadius:5.5, speed:0.060, blocks:false, color:[250,220,130], cycleSec:13, activeSec:10 };
-    case 4:  return { kind:'bugs',        name:'Bug Swarm',       patches:1, baseRadius:5.5, speed:0.075, blocks:true,  color:[120,90,60],   cycleSec:12, activeSec:9 };
-    case 5:  return { kind:'water',       name:'Rising Water',    patches:0, baseRadius:0,   speed:0,     blocks:true,  color:[80,140,200],  cycleSec:14, activeSec:8, maxRiseRows:4 };
-    case 6:  return { kind:'fog',         name:'Drifting Fog',    patches:2, baseRadius:4.8, speed:0.075, blocks:true,  color:[220,225,230], cycleSec:11, activeSec:9 };
-    case 7:  return { kind:'fire',        name:'Wildfire',        patches:2, baseRadius:4.5, speed:0.070, blocks:true,  color:[240,100,40],  cycleSec:11, activeSec:9 };
-    case 8:  return { kind:'fog_shake',   name:'Cloud Tremor',    patches:2, baseRadius:5.0, speed:0.085, blocks:true,  color:[230,235,240], cycleSec:10, activeSec:9, shakeAmp:3 };
-    case 9:  return { kind:'tornado',     name:'Tornado',         patches:1, baseRadius:6.0, speed:0.110, blocks:true,  color:[100,90,80],   cycleSec:10, activeSec:9, shakeAmp:6 };
-    case 10: return { kind:'combo',       name:'Eye of the Storm',patches:2, baseRadius:5.5, speed:0.100, blocks:true,  color:[80,90,140],   cycleSec:9,  activeSec:10, shakeAmp:4, maxRiseRows:3, lightning:true };
+    case 1:  return { kind:'butterflies', name:'Butterfly Drift',    patches:2, baseRadius:3.8, speed:0.012, blocks:true,  color:[255,180,210], cycleSec:18, activeSec:16, coreRadius:1.6 };
+    // LV2-10: 5s active / 5s rest (cycleSec:10, activeSec:5). patches:0 = no cloud patch system.
+    case 2:  return { kind:'wind',        name:'Strong Wind Gusts',  patches:0, baseRadius:0,   speed:0,     blocks:false, color:[220,210,180], cycleSec:10, activeSec:5, shakeAmp:5 };
+    case 3:  return { kind:'branches',    name:'Falling Branches',   patches:0, baseRadius:0,   speed:0,     blocks:true,  color:[120,80,40],   cycleSec:10, activeSec:5 };
+    case 4:  return { kind:'fireflies',   name:'Firefly Swarm',      patches:0, baseRadius:0,   speed:0,     blocks:true,  color:[200,240,80],  cycleSec:10, activeSec:5 };
+    case 5:  return { kind:'flood',       name:'Rising Water',       patches:0, baseRadius:0,   speed:0,     blocks:true,  color:[80,140,200],  cycleSec:10, activeSec:5, maxRiseRows:4 };
+    case 6:  return { kind:'bushes',      name:'Plant Overgrowth',   patches:0, baseRadius:0,   speed:0,     blocks:true,  color:[60,140,60],   cycleSec:10, activeSec:5 };
+    case 7:  return { kind:'ice',         name:'Ice Freeze',         patches:0, baseRadius:0,   speed:0,     blocks:true,  color:[160,220,255], cycleSec:10, activeSec:5 };
+    case 8:  return { kind:'mud',         name:'Mud Sinkholes',      patches:0, baseRadius:0,   speed:0,     blocks:true,  color:[100,70,40],   cycleSec:10, activeSec:5 };
+    case 9:  return { kind:'storm',       name:'Heavy Rain & Storm', patches:0, baseRadius:0,   speed:0,     blocks:false, color:[80,100,140],  cycleSec:10, activeSec:5 };
+    case 10: return { kind:'animals',     name:'Animal Interference',patches:0, baseRadius:0,   speed:0,     blocks:true,  color:[120,180,80],  cycleSec:10, activeSec:5 };
   }
   return null;
 }
@@ -11061,6 +11091,35 @@ function _tfInitHazard(lvl){
   _tfWaterTargetRows = 0;
   _tfLightningTimer = 0;
   _tfLightningFlash = 0;
+  // LV2: wind
+  _tfWindLeaves = [];
+  // LV3: branches
+  _tfBranchRows = false;
+  _tfBranchParticles = [];
+  _tfBranchSprites = [];
+  // LV4: fireflies
+  _tfFireflies = [];
+  _tfFireflyBlockedCells = [];
+  _tfFireflyRespawnTimer = 0;
+  // LV6: bushes
+  _tfBushCells = [];
+  _tfBushRespawnTimer = 0;
+  _tfBushLeaves = [];
+  // LV7: ice
+  _tfIceTiles = [];
+  _tfIceRespawnTimer = 0;
+  _tfSnowflakes = [];
+  // LV8: mud
+  _tfMudTiles = [];
+  _tfMudRespawnTimer = 0;
+  // LV9: storm
+  _tfRainDrops = [];
+  _tfBlackoutAlpha = 0;
+  _tfBlackoutTimer = 0;
+  _tfBlackoutFade = 0;
+  // LV10: animals
+  _tfAnimals = [];
+  _tfAnimalBlockedCells = [];
 }
 
 function _tfSpawnHazardPatches(){
@@ -11125,31 +11184,20 @@ function _tfTickHazard(){
   const cfg = _tfHazardCfg;
   _tfHazardTickAccum++;
 
-  // Water-rise & combo: oscillate level around target with smooth easing.
-  if(cfg.kind === 'water' || cfg.kind === 'combo'){
-    const cycle = cfg.cycleSec * 60;
-    const phase = (_tfHazardTickAccum % cycle) / cycle;
-    const maxRows = cfg.maxRiseRows || 4;
-    if(phase < 0.5){
-      // Rising
-      _tfWaterTargetRows = Math.round(maxRows * (phase * 2));
-    } else {
-      // Receding
-      _tfWaterTargetRows = Math.round(maxRows * (1 - (phase-0.5)*2));
-    }
-    // Smooth
-    _tfWaterRiseRows = _tfWaterRiseRows + (_tfWaterTargetRows - _tfWaterRiseRows) * 0.05;
-  }
+  // ── Per-kind tick dispatchers for LV2-LV10 ──────────────────────────────
+  // LV2-10 use 5s-on/5s-off cycling. isActive = first 5s of each 10s cycle.
+  const _tfCycleF = _tfHazardTickAccum % (cfg.cycleSec * 60);
+  const _tfIsActive = _tfCycleF < (cfg.activeSec * 60);
 
-  // Lightning (combo)
-  if(cfg.lightning){
-    _tfLightningFlash = Math.max(0, _tfLightningFlash - 0.04);
-    _tfLightningTimer--;
-    if(_tfLightningTimer <= 0){
-      _tfLightningFlash = 1.0;
-      _tfLightningTimer = 60 * (5 + Math.random()*4);
-    }
-  }
+  if(cfg.kind === 'wind')      _tfTickWind(_tfIsActive);
+  if(cfg.kind === 'branches')  _tfTickBranches(_tfIsActive);
+  if(cfg.kind === 'fireflies') _tfTickFireflies(_tfIsActive);
+  if(cfg.kind === 'flood')     _tfTickFlood(_tfIsActive, cfg);
+  if(cfg.kind === 'bushes')    _tfTickBushes(_tfIsActive);
+  if(cfg.kind === 'ice')       _tfTickIce(_tfIsActive);
+  if(cfg.kind === 'mud')       _tfTickMud(_tfIsActive);
+  if(cfg.kind === 'storm')     _tfTickStorm(_tfIsActive);
+  if(cfg.kind === 'animals')   _tfTickAnimals(_tfIsActive);
 
   // Cloud-style hazards: spawn at cycle start, drift, expire.
   // Butterflies spawn ONCE per level (persistent flocks); other hazards
@@ -11209,10 +11257,13 @@ function _tfTickHazard(){
     _tfHazardPatches = _alive;
   }
 
-  // Shake (LV8/9/10) — apply when patches are active
-  if(cfg.shakeAmp && _tfHazardPatches.length > 0){
+  // Shake — applies for any level with shakeAmp in cfg.
+  // For LV2 (wind): shake only during active window. For patch-based kinds: when patches present.
+  if(cfg.kind === 'wind'){
+    // Already handled by _tfTickWind setting _tfShakeAmp
+  } else if(cfg.shakeAmp && _tfHazardPatches.length > 0){
     _tfShakeAmp = cfg.shakeAmp;
-  } else {
+  } else if(cfg.kind !== 'wind'){
     _tfShakeAmp = Math.max(0, _tfShakeAmp - 0.1);
   }
   // Apply shake transform to grid canvas (mirrors Golden Frog quake pattern)
@@ -11265,21 +11316,55 @@ function _tfTickHazard(){
 // Check if a cell is blocked by a Tree Frog hazard (called from isMasked)
 function _tfHazardBlocks(row, col){
   if(activeChallengeMode !== 'frenzy') return false;
-  if(!_tfHazardCfg || !_tfHazardCfg.blocks) {
-    // still check water
-    if(_tfHazardCfg && (_tfHazardCfg.kind === 'water' || _tfHazardCfg.kind === 'combo')){
-      if(row >= ROWS - Math.floor(_tfWaterRiseRows)) return true;
+  const cfg = _tfHazardCfg;
+  if(!cfg) return false;
+
+  // LV3: top-3 rows blocked during active window
+  if(cfg.kind === 'branches'){
+    if(_tfBranchRows && row <= 2) return true;
+    return false;
+  }
+  // LV4: firefly cluster cells
+  if(cfg.kind === 'fireflies'){
+    for(const cell of _tfFireflyBlockedCells){
+      if(cell.r === row && cell.c === col) return true;
     }
     return false;
   }
-  // Water rise
-  if((_tfHazardCfg.kind === 'water' || _tfHazardCfg.kind === 'combo') && row >= ROWS - Math.floor(_tfWaterRiseRows)){
-    return true;
+  // LV5: flood — water rise
+  if(cfg.kind === 'flood'){
+    return row >= ROWS - Math.floor(_tfWaterRiseRows);
   }
-  // Butterflies: flying flocks do NOT block placement (visual only).
-  // ONLY block the row a flock is RESTING on (restPhase === 2),
-  // until it takes off again.
-  if(_tfHazardCfg.kind === 'butterflies'){
+  // LV6: bush-covered edge cells
+  if(cfg.kind === 'bushes'){
+    for(const cell of _tfBushCells){
+      if(cell.r === row && cell.c === col) return true;
+    }
+    return false;
+  }
+  // LV7: ice tiles block placement and row-clear
+  if(cfg.kind === 'ice'){
+    for(const t of _tfIceTiles){
+      if(t.r === row && t.c === col && t.melt < 0.5) return true;
+    }
+    return false;
+  }
+  // LV8: mud tiles
+  if(cfg.kind === 'mud'){
+    for(const t of _tfMudTiles){
+      if(t.r === row && t.c === col) return true;
+    }
+    return false;
+  }
+  // LV10: animal-occupied cells
+  if(cfg.kind === 'animals'){
+    for(const cell of _tfAnimalBlockedCells){
+      if(cell.r === row && cell.c === col) return true;
+    }
+    return false;
+  }
+  // LV1 butterflies: only block when resting
+  if(cfg.kind === 'butterflies'){
     if(_tfHazardPatches && _tfHazardPatches.length){
       for(const p of _tfHazardPatches){
         if(p.restPhase === 2 && p.restRow === row) return true;
@@ -11287,10 +11372,15 @@ function _tfHazardBlocks(row, col){
     }
     return false;
   }
-  // Other cloud-based hazards: blocked if opaque-core covers cell
-  if(_tfHazardCfg.patches > 0 && _tfHazardTileAlpha.length){
-    const a = (_tfHazardTileAlpha[row] && _tfHazardTileAlpha[row][col]) || 0;
-    if(a >= 0.65) return true;
+  return false;
+}
+
+// Check if ice hazard prevents this row from clearing (LV7)
+function _tfIceBlocksRowClear(row){
+  if(activeChallengeMode !== 'frenzy') return false;
+  if(!_tfHazardCfg || _tfHazardCfg.kind !== 'ice') return false;
+  for(const t of _tfIceTiles){
+    if(t.r === row && t.melt < 0.5) return true;
   }
   return false;
 }
@@ -11375,13 +11465,880 @@ function _tfDrawHazardOverlay(ctx){
     _tfDrawHazardParticles(ctx, cfg, CW);
   }
 
-  // 3) Lightning flash overlay (LV10)
+  // 3) LV2-10: custom sprite-based renders (no patch/cloud system)
+  if(cfg.kind === 'wind')     _tfDrawWindLeaves(ctx, W, H, CW);
+  if(cfg.kind === 'branches') _tfDrawBranchOverlay(ctx, W, H, CW);
+  if(cfg.kind === 'fireflies') _tfDrawFireflies(ctx, W, H, CW);
+  if(cfg.kind === 'flood')    _tfDrawFloodOverlay(ctx, W, H, CW);
+  if(cfg.kind === 'bushes')   _tfDrawBushOverlay(ctx, W, H, CW);
+  if(cfg.kind === 'ice')      _tfDrawIceOverlay(ctx, W, H, CW);
+  if(cfg.kind === 'mud')      _tfDrawMudOverlay(ctx, W, H, CW);
+  if(cfg.kind === 'storm')    _tfDrawStormOverlay(ctx, W, H, CW);
+  if(cfg.kind === 'animals')  _tfDrawAnimalsOverlay(ctx, W, H, CW);
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+// LV2: STRONG WIND GUSTS — leaves + debris fly left→right, board shakes during active
+// ════════════════════════════════════════════════════════════════════════════
+function _tfTickWind(isActive){
+  const tt = (typeof _ambientT === 'number') ? _ambientT : _tfHazardTickAccum;
+  // Always have leaves (even during rest — just fewer/slower)
+  const targetCount = isActive ? 60 : 15;
+  while(_tfWindLeaves.length < targetCount){
+    _tfWindLeaves.push({
+      x: -0.5 - Math.random()*2,      // start off left edge (in tile units)
+      y: Math.random() * ROWS,
+      vx: isActive ? (0.06 + Math.random()*0.10) : (0.02 + Math.random()*0.03),
+      vy: (Math.random()-0.5)*0.02,
+      rot: Math.random()*Math.PI*2,
+      rotV: (Math.random()-0.5)*0.08,
+      size: 3 + Math.random()*5,
+      hue: 0.7 + Math.random()*0.35,  // warm autumn hue
+      wobble: Math.random()*Math.PI*2,
+      kind: Math.random() < 0.3 ? 'twig' : 'leaf',  // 30% twigs
+    });
+  }
+  // Trim if switching to rest
+  if(!isActive && _tfWindLeaves.length > 20) _tfWindLeaves.splice(20);
+
+  const windSpeed = isActive ? 1.0 : 0.35;
+  for(const lf of _tfWindLeaves){
+    lf.x += lf.vx * windSpeed + Math.sin(tt*0.03 + lf.wobble)*0.005;
+    lf.y += lf.vy + Math.sin(tt*0.05 + lf.wobble)*0.01;
+    lf.rot += lf.rotV * windSpeed;
+    if(lf.x > COLS + 1){ lf.x = -0.5 - Math.random(); lf.y = Math.random()*ROWS; }
+    if(lf.y < -0.5) lf.y = ROWS + 0.2;
+    if(lf.y > ROWS + 0.5) lf.y = -0.2;
+  }
+  // Shake: use _tfShakeAmp directly (reusing existing shake pipeline)
+  if(isActive){
+    _tfShakeAmp = 5 + Math.sin(tt*0.08)*1.0;
+  } else {
+    _tfShakeAmp = Math.max(0, _tfShakeAmp - 0.15);
+  }
+}
+
+// ─── REUSE: same ellipse-leaf draw as _drawForestWeather 'leaves' ────────────
+function _tfDrawWindLeaves(ctx, W, H, CW){
+  const tt = (typeof _ambientT === 'number') ? _ambientT : _tfHazardTickAccum;
+  for(const lf of _tfWindLeaves){
+    const px = lf.x * CW, py = lf.y * CW;
+    ctx.save();
+    ctx.translate(px, py);
+    ctx.rotate(lf.rot);
+    if(lf.kind === 'twig'){
+      // Small brown twig: line + nubs
+      ctx.strokeStyle = `rgba(${Math.round(160*lf.hue)},${Math.round(100*lf.hue)},${Math.round(40*lf.hue)},0.88)`;
+      ctx.lineWidth = Math.max(1, lf.size*0.22);
+      ctx.beginPath(); ctx.moveTo(-lf.size*0.8, 0); ctx.lineTo(lf.size*0.8, 0); ctx.stroke();
+      ctx.lineWidth = Math.max(0.8, lf.size*0.15);
+      ctx.beginPath(); ctx.moveTo(-lf.size*0.2, 0); ctx.lineTo(-lf.size*0.4, -lf.size*0.4); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(lf.size*0.2, 0); ctx.lineTo(lf.size*0.5, -lf.size*0.35); ctx.stroke();
+    } else {
+      // Autumn leaf: filled ellipse with vein
+      ctx.fillStyle = `rgba(${Math.round(220*lf.hue)},${Math.round(130*lf.hue)},${Math.round(50*lf.hue)},0.88)`;
+      ctx.beginPath();
+      ctx.ellipse(0, 0, lf.size, lf.size*0.5, 0, 0, Math.PI*2);
+      ctx.fill();
+      // midrib vein
+      ctx.strokeStyle = `rgba(${Math.round(160*lf.hue)},${Math.round(90*lf.hue)},${Math.round(30*lf.hue)},0.6)`;
+      ctx.lineWidth = 0.7;
+      ctx.beginPath(); ctx.moveTo(-lf.size*0.8, 0); ctx.lineTo(lf.size*0.8, 0); ctx.stroke();
+    }
+    ctx.restore();
+  }
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+// LV3: FALLING BRANCHES — top 3 rows covered by branch sprites + leaf rain
+// ════════════════════════════════════════════════════════════════════════════
+function _tfTickBranches(isActive){
+  _tfBranchRows = isActive;
+  const tt = (typeof _ambientT === 'number') ? _ambientT : _tfHazardTickAccum;
+  // Always seed branch sprite positions once
+  if(_tfBranchSprites.length === 0){
+    for(let i=0;i<8;i++){
+      _tfBranchSprites.push({
+        x: Math.random()*COLS,
+        y: Math.random()*2.5,
+        angle: (Math.random()-0.5)*0.6,
+        len: 2 + Math.random()*3,
+        thick: 4 + Math.random()*6,
+        leafCount: 4 + Math.floor(Math.random()*5),
+      });
+    }
+  }
+  // Leaf particles — always drift, faster during active
+  const target = isActive ? 50 : 12;
+  while(_tfBranchParticles.length < target){
+    _tfBranchParticles.push({
+      x: Math.random()*COLS,
+      y: -Math.random()*0.5,
+      vx: (Math.random()-0.5)*0.025,
+      vy: 0.015 + Math.random()*0.025,
+      rot: Math.random()*Math.PI*2,
+      rotV: (Math.random()-0.5)*0.06,
+      size: 3 + Math.random()*4,
+      hue: 0.6 + Math.random()*0.4,
+    });
+  }
+  if(!isActive && _tfBranchParticles.length > 15) _tfBranchParticles.splice(15);
+  for(const p of _tfBranchParticles){
+    p.x += p.vx + Math.sin(tt*0.04 + p.x)*0.008;
+    p.y += p.vy;
+    p.rot += p.rotV;
+    if(p.y > ROWS + 0.5){ p.y = -0.3; p.x = Math.random()*COLS; }
+  }
+}
+
+function _tfDrawBranchOverlay(ctx, W, H, CW){
+  const tt = (typeof _ambientT === 'number') ? _ambientT : _tfHazardTickAccum;
+  const isActive = _tfBranchRows;
+  // Semi-transparent shadow over top 3 rows when active
+  if(isActive){
+    ctx.save();
+    ctx.fillStyle = 'rgba(40,25,10,0.28)';
+    ctx.fillRect(0, 0, W, 3*CW);
+    ctx.restore();
+  }
+  // Draw branch sprites across top band — always visible
+  for(const br of _tfBranchSprites){
+    const bx = br.x * CW, by = br.y * CW;
+    const sw = Math.sin(tt*0.015 + br.x)*0.04;
+    ctx.save();
+    ctx.translate(bx, by);
+    ctx.rotate(br.angle + sw);
+    // Main branch stroke
+    ctx.strokeStyle = 'rgba(90,55,25,0.92)';
+    ctx.lineWidth = br.thick;
+    ctx.lineCap = 'round';
+    ctx.beginPath();
+    ctx.moveTo(-br.len*CW*0.5, 0);
+    ctx.bezierCurveTo(-br.len*CW*0.2, -CW*0.3, br.len*CW*0.2, CW*0.2, br.len*CW*0.5, -CW*0.1);
+    ctx.stroke();
+    // Sub-branch
+    ctx.strokeStyle = 'rgba(70,42,18,0.80)';
+    ctx.lineWidth = br.thick * 0.45;
+    ctx.beginPath();
+    ctx.moveTo(-br.len*CW*0.1, 0);
+    ctx.quadraticCurveTo(-br.len*CW*0.2, -CW*0.5, -br.len*CW*0.05, -CW*0.7);
+    ctx.stroke();
+    // Leaf clusters at tips
+    const leafPositions = [
+      [br.len*CW*0.5, -CW*0.1],
+      [-br.len*CW*0.05, -CW*0.7],
+      [0, -CW*0.15],
+    ];
+    for(let li=0;li<Math.min(br.leafCount, leafPositions.length);li++){
+      const [lx, ly] = leafPositions[li];
+      for(let k=0;k<5;k++){
+        const la = (k/5)*Math.PI*2 + tt*0.01;
+        const lr = CW*0.28;
+        const leafX = lx + Math.cos(la)*lr;
+        const leafY = ly + Math.sin(la)*lr*0.6;
+        ctx.save();
+        ctx.translate(leafX, leafY);
+        ctx.rotate(la + 0.3);
+        ctx.fillStyle = `rgba(${40+k*8},${100+k*10},${30+k*5},0.85)`;
+        ctx.beginPath();
+        ctx.ellipse(0, 0, CW*0.14, CW*0.07, 0, 0, Math.PI*2);
+        ctx.fill();
+        ctx.restore();
+      }
+    }
+    ctx.restore();
+  }
+  // Falling leaf particles
+  for(const p of _tfBranchParticles){
+    const px = p.x*CW, py = p.y*CW;
+    ctx.save();
+    ctx.translate(px, py);
+    ctx.rotate(p.rot);
+    ctx.fillStyle = `rgba(${Math.round(200*p.hue)},${Math.round(120*p.hue)},${Math.round(40*p.hue)},0.85)`;
+    ctx.beginPath();
+    ctx.ellipse(0, 0, p.size, p.size*0.5, 0, 0, Math.PI*2);
+    ctx.fill();
+    ctx.restore();
+  }
+  // Blocked-row indicators: dashed amber border on rows 0-2 when active
+  if(isActive){
+    ctx.save();
+    ctx.strokeStyle = 'rgba(200,130,40,0.70)';
+    ctx.lineWidth = 2;
+    ctx.setLineDash([6, 4]);
+    for(let r=0;r<3;r++){
+      ctx.strokeRect(1, r*CW+1, W-2, CW-2);
+    }
+    ctx.setLineDash([]);
+    ctx.restore();
+  }
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+// LV4: BUG SWARMS / FIREFLIES — glowing drifting dots, cluster blocks cells
+// ════════════════════════════════════════════════════════════════════════════
+function _tfTickFireflies(isActive){
+  const tt = (typeof _ambientT === 'number') ? _ambientT : _tfHazardTickAccum;
+  // Initialise firefly cloud on first tick
+  if(_tfFireflies.length === 0){
+    for(let i=0;i<120;i++){
+      _tfFireflies.push({
+        x: 2 + Math.random()*(COLS-4),
+        y: 2 + Math.random()*(ROWS-4),
+        vx: (Math.random()-0.5)*0.04,
+        vy: (Math.random()-0.5)*0.03,
+        phase: Math.random()*Math.PI*2,
+        pulseSpeed: 0.04 + Math.random()*0.06,
+        size: 2.5 + Math.random()*3.5,
+        cluster: Math.floor(Math.random()*2),  // 0 or 1 = which of 2 clusters
+        cx: 3 + Math.random()*(COLS-6),
+        cy: 2 + Math.random()*(ROWS-4),
+      });
+    }
+    // Seed 2 cluster anchors
+    _tfFireflies._clusterA = { x: 3 + Math.random()*(COLS-6), y: 2 + Math.random()*(ROWS-4) };
+    _tfFireflies._clusterB = { x: 3 + Math.random()*(COLS-6), y: 2 + Math.random()*(ROWS-4) };
+  }
+  // Drift cluster anchors slowly
+  const cA = _tfFireflies._clusterA, cB = _tfFireflies._clusterB;
+  cA.x += (Math.random()-0.5)*0.015; cA.y += (Math.random()-0.5)*0.012;
+  cB.x += (Math.random()-0.5)*0.015; cB.y += (Math.random()-0.5)*0.012;
+  cA.x = Math.max(1.5, Math.min(COLS-1.5, cA.x));
+  cA.y = Math.max(1,   Math.min(ROWS-1,   cA.y));
+  cB.x = Math.max(1.5, Math.min(COLS-1.5, cB.x));
+  cB.y = Math.max(1,   Math.min(ROWS-1,   cB.y));
+  for(const ff of _tfFireflies){
+    const anchor = ff.cluster === 0 ? cA : cB;
+    // Pull toward cluster anchor
+    ff.vx += (anchor.x - ff.x) * 0.002;
+    ff.vy += (anchor.y - ff.y) * 0.002;
+    // Damp velocity
+    ff.vx *= 0.97; ff.vy *= 0.97;
+    ff.x += ff.vx; ff.y += ff.vy;
+    ff.phase += ff.pulseSpeed;
+  }
+  // Active: pick 2-3 cells near each cluster anchor to block
+  _tfFireflyRespawnTimer--;
+  if(isActive && (_tfFireflyBlockedCells.length === 0 || _tfFireflyRespawnTimer <= 0)){
+    _tfFireflyBlockedCells = [];
+    for(const anchor of [cA, cB]){
+      const r = Math.max(0, Math.min(ROWS-1, Math.round(anchor.y)));
+      const c = Math.max(0, Math.min(COLS-1, Math.round(anchor.x)));
+      _tfFireflyBlockedCells.push({r, c});
+      // Add 1 neighbour cell
+      const nr = Math.max(0, Math.min(ROWS-1, r + (Math.random()<0.5?-1:1)));
+      const nc = Math.max(0, Math.min(COLS-1, c + (Math.random()<0.5?-1:1)));
+      _tfFireflyBlockedCells.push({r:nr, c:nc});
+    }
+    _tfFireflyRespawnTimer = 60 * 10; // reposition every 10s cycle
+  }
+  if(!isActive) _tfFireflyBlockedCells = [];
+}
+
+function _tfDrawFireflies(ctx, W, H, CW){
+  const tt = (typeof _ambientT === 'number') ? _ambientT : _tfHazardTickAccum;
+  for(const ff of _tfFireflies){
+    const px = ff.x*CW + CW*0.5, py = ff.y*CW + CW*0.5;
+    const pulse = 0.4 + 0.6*Math.abs(Math.sin(ff.phase));
+    // Outer glow halo (reuse technique from monument snowflake glow)
+    const glowR = ff.size * 4.5 * pulse;
+    const grd = ctx.createRadialGradient(px, py, 0, px, py, glowR);
+    grd.addColorStop(0,   `rgba(200,255,80,${0.55*pulse})`);
+    grd.addColorStop(0.4, `rgba(160,255,40,${0.25*pulse})`);
+    grd.addColorStop(1,   'rgba(120,200,0,0)');
+    ctx.save();
+    ctx.fillStyle = grd;
+    ctx.beginPath(); ctx.arc(px, py, glowR, 0, Math.PI*2); ctx.fill();
+    // Bright core dot
+    ctx.fillStyle = `rgba(230,255,120,${0.9*pulse})`;
+    ctx.beginPath(); ctx.arc(px, py, ff.size*0.55*pulse, 0, Math.PI*2); ctx.fill();
+    ctx.restore();
+  }
+  // Highlight blocked cells with a soft warm-yellow ring
+  for(const cell of _tfFireflyBlockedCells){
+    const bx = cell.c*CW, by = cell.r*CW;
+    ctx.save();
+    ctx.strokeStyle = 'rgba(200,255,60,0.65)';
+    ctx.lineWidth = 2;
+    ctx.strokeRect(bx+1, by+1, CW-2, CW-2);
+    ctx.restore();
+  }
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+// LV5: RISING WATER / FLOODING — reuses _tfWaterRiseRows + existing water render
+// REUSE: _tfDrawHazardOverlay already draws water via _tfWaterRiseRows.
+// This tick just drives the rise/fall on the 5s/5s schedule.
+// ════════════════════════════════════════════════════════════════════════════
+function _tfTickFlood(isActive, cfg){
+  const maxRows = cfg.maxRiseRows || 4;
+  if(isActive){
+    // Rise to fill rows 6-9 over active 5s
+    _tfWaterTargetRows = Math.min(maxRows, _tfWaterTargetRows + 0.012);
+  } else {
+    // Drain over rest 5s
+    _tfWaterTargetRows = Math.max(0, _tfWaterTargetRows - 0.012);
+  }
+  _tfWaterRiseRows = _tfWaterRiseRows + (_tfWaterTargetRows - _tfWaterRiseRows) * 0.06;
+}
+
+function _tfDrawFloodOverlay(ctx, W, H, CW){
+  // REUSE: same drawing code as the existing water layer in _tfDrawHazardOverlay
+  if(_tfWaterRiseRows < 0.05) return;
+  const top = (ROWS - _tfWaterRiseRows) * CW;
+  ctx.save();
+  const grd = ctx.createLinearGradient(0, top, 0, H);
+  grd.addColorStop(0,    'rgba(80,160,220,0.50)');
+  grd.addColorStop(0.30, 'rgba(60,130,200,0.72)');
+  grd.addColorStop(1,    'rgba(30,80,160,0.90)');
+  ctx.fillStyle = grd;
+  ctx.fillRect(0, top, W, H-top);
+  ctx.fillStyle = 'rgba(200,235,255,0.55)';
+  ctx.fillRect(0, top-1.5, W, 2.5);
+  const tt = (typeof _ambientT === 'number') ? _ambientT : _tfHazardTickAccum;
+  ctx.strokeStyle = 'rgba(220,245,255,0.28)';
+  ctx.lineWidth = 1.2;
+  for(let i=0;i<3;i++){
+    ctx.beginPath();
+    const y = top + 8 + i*14;
+    ctx.moveTo(0, y);
+    for(let x=0;x<=W;x+=6){
+      ctx.lineTo(x, y + Math.sin(x*0.05 + tt*0.05 + i)*1.5);
+    }
+    ctx.stroke();
+  }
+  ctx.restore();
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+// LV6: PLANT OVERGROWTH — bushes grow on edge cells, block placement
+// ════════════════════════════════════════════════════════════════════════════
+function _tfTickBushes(isActive){
+  // Collect all perimeter cells
+  const perim = [];
+  for(let c=0;c<COLS;c++){ perim.push({r:0,c}); perim.push({r:ROWS-1,c}); }
+  for(let r=1;r<ROWS-1;r++){ perim.push({r,c:0}); perim.push({r,c:COLS-1}); }
+
+  _tfBushRespawnTimer--;
+  if(isActive && (_tfBushCells.length === 0 || _tfBushRespawnTimer <= 0)){
+    // Pick 3 random perimeter cells
+    const chosen = [];
+    const shuffled = [...perim].sort(()=>Math.random()-0.5);
+    for(let i=0;i<3 && i<shuffled.length;i++) chosen.push(shuffled[i]);
+    _tfBushCells = chosen;
+    // Generate leaf sprites for each cell
+    _tfBushLeaves = [];
+    for(const cell of _tfBushCells){
+      for(let k=0;k<12;k++){
+        _tfBushLeaves.push({
+          r: cell.r, c: cell.c,
+          ox: (Math.random()-0.5)*0.9,  // offset within cell (tile units)
+          oy: (Math.random()-0.5)*0.9,
+          size: 4 + Math.random()*7,
+          rot: Math.random()*Math.PI*2,
+          hue: 0.5 + Math.random()*0.4,
+        });
+      }
+    }
+    _tfBushRespawnTimer = 600;  // reposition every 10s
+  }
+  if(!isActive){
+    _tfBushCells = [];
+    _tfBushLeaves = [];
+  }
+}
+
+function _tfDrawBush(ctx, x, y, size){
+  // Painterly bush: cluster of overlapping ovals
+  const colors = [
+    'rgba(40,130,40,0.88)', 'rgba(60,160,50,0.82)', 'rgba(30,110,30,0.90)',
+    'rgba(80,180,60,0.78)', 'rgba(50,145,45,0.85)',
+  ];
+  for(let k=0;k<7;k++){
+    const ang = (k/7)*Math.PI*2;
+    const r = size * (0.3 + 0.25*(k%2));
+    const ox = Math.cos(ang)*r*0.7;
+    const oy = Math.sin(ang)*r*0.5;
+    ctx.save();
+    ctx.translate(x+ox, y+oy);
+    ctx.rotate(ang*0.3);
+    ctx.fillStyle = colors[k % colors.length];
+    ctx.beginPath();
+    ctx.ellipse(0, 0, size*0.5, size*0.38, 0, 0, Math.PI*2);
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(20,80,20,0.55)';
+    ctx.lineWidth = 0.8;
+    ctx.stroke();
+    ctx.restore();
+  }
+}
+
+function _tfDrawBushOverlay(ctx, W, H, CW){
+  const tt = (typeof _ambientT === 'number') ? _ambientT : _tfHazardTickAccum;
+  // Draw leaf sprites from precomputed list
+  for(const lf of _tfBushLeaves){
+    const px = (lf.c + 0.5 + lf.ox)*CW;
+    const py = (lf.r + 0.5 + lf.oy)*CW;
+    ctx.save();
+    ctx.translate(px, py);
+    ctx.rotate(lf.rot + Math.sin(tt*0.02 + lf.ox*3)*0.05);
+    ctx.fillStyle = `rgba(${Math.round(40*lf.hue)},${Math.round(150*lf.hue)},${Math.round(40*lf.hue)},0.88)`;
+    ctx.beginPath();
+    ctx.ellipse(0, 0, lf.size, lf.size*0.55, 0, 0, Math.PI*2);
+    ctx.fill();
+    ctx.strokeStyle = `rgba(${Math.round(20*lf.hue)},${Math.round(90*lf.hue)},${Math.round(20*lf.hue)},0.55)`;
+    ctx.lineWidth = 0.8;
+    ctx.stroke();
+    ctx.restore();
+  }
+  // Draw bush clusters centered on blocked cells
+  for(const cell of _tfBushCells){
+    const px = (cell.c + 0.5)*CW;
+    const py = (cell.r + 0.5)*CW;
+    _tfDrawBush(ctx, px, py, CW*0.55);
+    // Highlight border
+    ctx.save();
+    ctx.strokeStyle = 'rgba(20,100,20,0.65)';
+    ctx.lineWidth = 2;
+    ctx.strokeRect(cell.c*CW+1, cell.r*CW+1, CW-2, CW-2);
+    ctx.restore();
+  }
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+// LV7: ICE / FREEZING — snowflakes fall, random tiles get ice tint + block
+// REUSE: draws ice using same phase pattern as _mnDrawHazards 'ice'
+// ════════════════════════════════════════════════════════════════════════════
+function _tfTickIce(isActive){
+  const tt = (typeof _ambientT === 'number') ? _ambientT : _tfHazardTickAccum;
+  // Snowflakes always fall (more during active)
+  const targetFlakes = isActive ? 80 : 20;
+  while(_tfSnowflakes.length < targetFlakes){
+    _tfSnowflakes.push({
+      x: Math.random()*(COLS+1) - 0.5,
+      y: -Math.random()*ROWS,
+      vy: 0.02 + Math.random()*0.04,
+      vx: (Math.random()-0.5)*0.01,
+      size: 2.5 + Math.random()*4.5,
+      rot: Math.random()*Math.PI*2,
+      alpha: 0.5 + Math.random()*0.5,
+    });
+  }
+  if(!isActive && _tfSnowflakes.length > 25) _tfSnowflakes.splice(25);
+  for(const sf of _tfSnowflakes){
+    sf.x += sf.vx + Math.sin(tt*0.03 + sf.y)*0.005;
+    sf.y += sf.vy;
+    sf.rot += 0.02;
+    if(sf.y > ROWS + 0.5){ sf.y = -0.3; sf.x = Math.random()*(COLS+1)-0.5; }
+  }
+  // Ice tiles: spawn 4-6 when entering active, melt during rest
+  _tfIceRespawnTimer--;
+  if(isActive && (_tfIceTiles.length === 0 || _tfIceRespawnTimer <= 0)){
+    const count = 4 + Math.floor(Math.random()*3);
+    _tfIceTiles = [];
+    const used = new Set();
+    for(let i=0;i<count*10 && _tfIceTiles.length < count;i++){
+      const r = Math.floor(Math.random()*ROWS);
+      const c = Math.floor(Math.random()*COLS);
+      const key = r*100+c;
+      if(!used.has(key)){ used.add(key); _tfIceTiles.push({r, c, melt:0}); }
+    }
+    _tfIceRespawnTimer = 300;  // refresh every 5s
+  }
+  // Melt when not active (unblocks after ~60 frames = 1s into rest)
+  // melt threshold for blocking is 0.5; at rate 0.01 reaches 0.5 after 50 frames
+  for(const t of _tfIceTiles){
+    if(!isActive) t.melt = Math.min(1, t.melt + 0.010);  // 100 frames to fully melt
+    else t.melt = Math.max(0, t.melt - 0.020);            // 50 frames to fully freeze
+  }
+  if(!isActive && _tfIceTiles.every(t=>t.melt >= 1)) _tfIceTiles = [];
+}
+
+// Draw a 6-pointed snowflake crystal at (cx,cy) radius r
+// REUSE: same flake draw idea as _mnDrawHazards snowflake path
+function _tfDrawSnowflakeCrystal(ctx, cx, cy, r){
+  ctx.save();
+  ctx.translate(cx, cy);
+  for(let arm=0;arm<6;arm++){
+    ctx.rotate(Math.PI/3);
+    ctx.beginPath();
+    ctx.moveTo(0, 0); ctx.lineTo(0, r);
+    ctx.moveTo(0, r*0.35); ctx.lineTo(r*0.22, r*0.55);
+    ctx.moveTo(0, r*0.35); ctx.lineTo(-r*0.22, r*0.55);
+    ctx.moveTo(0, r*0.65); ctx.lineTo(r*0.18, r*0.82);
+    ctx.moveTo(0, r*0.65); ctx.lineTo(-r*0.18, r*0.82);
+    ctx.stroke();
+  }
+  ctx.restore();
+}
+
+function _tfDrawIceOverlay(ctx, W, H, CW){
+  const tt = (typeof _ambientT === 'number') ? _ambientT : _tfHazardTickAccum;
+  // Draw snowflakes (always visible)
+  for(const sf of _tfSnowflakes){
+    const px = sf.x*CW, py = sf.y*CW;
+    ctx.save();
+    ctx.globalAlpha = sf.alpha * (0.6 + 0.4*Math.abs(Math.sin(tt*0.02 + sf.y)));
+    ctx.strokeStyle = 'rgba(220,240,255,0.9)';
+    ctx.lineWidth = Math.max(0.8, sf.size*0.18);
+    _tfDrawSnowflakeCrystal(ctx, px, py, sf.size);
+    ctx.restore();
+  }
+  // Draw ice overlay per frozen tile (reuse monument ice visual pattern)
+  for(const t of _tfIceTiles){
+    if(t.melt >= 1) continue;
+    const fade = 1 - t.melt;
+    const x = t.c*CW, y = t.r*CW;
+    ctx.save();
+    ctx.globalAlpha = fade;
+    // Cyan glow
+    ctx.shadowColor = 'rgba(120,210,255,0.9)';
+    ctx.shadowBlur = 10;
+    ctx.fillStyle = 'rgba(120,210,255,0.35)';
+    ctx.beginPath(); ctx.roundRect(x+1, y+1, CW-2, CW-2, 4); ctx.fill();
+    ctx.shadowBlur = 0;
+    // Ice gradient overlay
+    const ig = ctx.createLinearGradient(x, y, x, y+CW);
+    ig.addColorStop(0, 'rgba(244,251,255,0.85)');
+    ig.addColorStop(0.45, 'rgba(168,220,255,0.75)');
+    ig.addColorStop(1, 'rgba(78,168,216,0.70)');
+    ctx.fillStyle = ig;
+    ctx.beginPath(); ctx.roundRect(x+1, y+1, CW-2, CW-2, 4); ctx.fill();
+    // Crystal in centre
+    ctx.strokeStyle = 'rgba(180,230,255,0.9)';
+    ctx.lineWidth = Math.max(1, CW*0.05);
+    _tfDrawSnowflakeCrystal(ctx, x+CW*0.5, y+CW*0.5, CW*0.32);
+    ctx.restore();
+  }
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+// LV8: MUD / SWAMP SINKHOLES — dark brown splatters with bubbles
+// ════════════════════════════════════════════════════════════════════════════
+function _tfTickMud(isActive){
+  _tfMudRespawnTimer--;
+  if(isActive && (_tfMudTiles.length === 0 || _tfMudRespawnTimer <= 0)){
+    const count = 2 + Math.floor(Math.random()*2);
+    _tfMudTiles = [];
+    const used = new Set();
+    for(let i=0;i<count*10 && _tfMudTiles.length < count;i++){
+      const r = Math.floor(Math.random()*ROWS);
+      const c = Math.floor(Math.random()*COLS);
+      const key = r*100+c;
+      if(!used.has(key)){ used.add(key); _tfMudTiles.push({r, c, bubblePhase: Math.random()*Math.PI*2}); }
+    }
+    _tfMudRespawnTimer = 300;
+  }
+  if(!isActive) _tfMudTiles = [];
+  // Advance bubble animation
+  for(const t of _tfMudTiles) t.bubblePhase += 0.04;
+}
+
+function _tfDrawMudOverlay(ctx, W, H, CW){
+  const tt = (typeof _ambientT === 'number') ? _ambientT : _tfHazardTickAccum;
+  for(const t of _tfMudTiles){
+    const x = t.c*CW, y = t.r*CW;
+    ctx.save();
+    // Dark brown radial gradient — murky swamp pool
+    const grd = ctx.createRadialGradient(x+CW*0.5, y+CW*0.6, 2, x+CW*0.5, y+CW*0.6, CW*0.52);
+    grd.addColorStop(0,    'rgba(55,32,12,0.97)');
+    grd.addColorStop(0.45, 'rgba(70,42,16,0.88)');
+    grd.addColorStop(0.80, 'rgba(90,58,24,0.65)');
+    grd.addColorStop(1,    'rgba(100,70,30,0)');
+    ctx.fillStyle = grd;
+    ctx.beginPath(); ctx.ellipse(x+CW*0.5, y+CW*0.6, CW*0.50, CW*0.42, 0, 0, Math.PI*2); ctx.fill();
+    // Bubbles — light brown circles pulsing
+    for(let b=0;b<4;b++){
+      const bph = t.bubblePhase + b*1.57;
+      const bx = x + CW*(0.2 + b*0.18) + Math.sin(bph)*CW*0.04;
+      const by = y + CW*(0.55 - Math.abs(Math.sin(bph))*0.18);
+      const bs = (2 + b*1.2) * (0.7 + 0.3*Math.sin(bph*2));
+      ctx.fillStyle = `rgba(${130+b*8},${85+b*6},${40+b*5},${0.7 + 0.3*Math.abs(Math.sin(bph))})`;
+      ctx.beginPath(); ctx.arc(bx, by, bs, 0, Math.PI*2); ctx.fill();
+    }
+    // Highlight border
+    ctx.strokeStyle = 'rgba(80,48,16,0.60)';
+    ctx.lineWidth = 2;
+    ctx.strokeRect(x+1, y+1, CW-2, CW-2);
+    ctx.restore();
+  }
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+// LV9: HEAVY RAIN / STORMS — diagonal rain + lightning flashes + dark tint
+// REUSE: rain drop draw pattern from _drawForestWeather 'rain'
+// REUSE: lightning from _ambientTreeFrog and _drawForestWeather 'lightning'
+// ════════════════════════════════════════════════════════════════════════════
+function _tfTickStorm(isActive){
+  const tt = (typeof _ambientT === 'number') ? _ambientT : _tfHazardTickAccum;
+  // Rain drops — always present, more during active
+  const targetDrops = isActive ? 120 : 30;
+  while(_tfRainDrops.length < targetDrops){
+    _tfRainDrops.push({
+      x: Math.random()*(COLS+2) - 1,
+      y: Math.random()*ROWS,
+      len: 0.12 + Math.random()*0.18,  // in tile units
+      speed: 0.08 + Math.random()*0.07,
+      alpha: 0.35 + Math.random()*0.35,
+    });
+  }
+  if(!isActive && _tfRainDrops.length > 35) _tfRainDrops.splice(35);
+  for(const d of _tfRainDrops){
+    d.y += d.speed * (isActive ? 1.0 : 0.5);
+    d.x += d.speed * 0.22;
+    if(d.y > ROWS + 0.2){ d.y = -0.3; d.x = Math.random()*(COLS+2)-1; }
+    if(d.x > COLS + 0.5) d.x -= COLS + 1;
+  }
+  // Blackout: every ~1s during active, 100-200ms dark overlay
+  if(isActive){
+    if(_tfBlackoutFade === 0){
+      _tfBlackoutTimer--;
+      if(_tfBlackoutTimer <= 0){
+        _tfBlackoutFade = 1;   // start fading in
+        _tfBlackoutAlpha = 0;
+        _tfBlackoutTimer = 55 + Math.floor(Math.random()*15); // ~1s interval
+      }
+    }
+    if(_tfBlackoutFade === 1){
+      _tfBlackoutAlpha = Math.min(0.72, _tfBlackoutAlpha + 0.12);
+      if(_tfBlackoutAlpha >= 0.72) _tfBlackoutFade = -1;
+    }
+    if(_tfBlackoutFade === -1){
+      _tfBlackoutAlpha = Math.max(0, _tfBlackoutAlpha - 0.06);
+      if(_tfBlackoutAlpha <= 0) { _tfBlackoutFade = 0; }
+    }
+  } else {
+    _tfBlackoutAlpha = Math.max(0, _tfBlackoutAlpha - 0.08);
+    _tfBlackoutFade = 0;
+    _tfBlackoutTimer = 60;
+  }
+  // Lightning flash timer
+  _tfLightningFlash = Math.max(0, _tfLightningFlash - 0.06);
+  if(isActive){
+    _tfLightningTimer--;
+    if(_tfLightningTimer <= 0){
+      _tfLightningFlash = 1.0;
+      _tfLightningTimer = 55 + Math.floor(Math.random()*65); // 0.9-2s
+    }
+  }
+}
+
+function _tfDrawStormOverlay(ctx, W, H, CW){
+  const tt = (typeof _ambientT === 'number') ? _ambientT : _tfHazardTickAccum;
+  // Dark stormy tint (slightly darker during active)
+  ctx.save();
+  ctx.globalAlpha = 0.15 + (_tfBlackoutAlpha > 0.1 ? 0.0 : 0.0);
+  ctx.fillStyle = 'rgba(20,30,60,1)';
+  ctx.fillRect(0, 0, W, H);
+  ctx.restore();
+  // Rain drops — reuse diagonal line pattern from _ambientTreeFrog
+  ctx.save();
+  ctx.strokeStyle = 'rgba(180,210,255,0.70)';
+  ctx.lineWidth = 1.1;
+  for(const d of _tfRainDrops){
+    const x1 = d.x*CW, y1 = d.y*CW;
+    const x2 = x1 + d.len*CW*0.22;
+    const y2 = y1 + d.len*CW;
+    ctx.globalAlpha = d.alpha;
+    ctx.beginPath(); ctx.moveTo(x1,y1); ctx.lineTo(x2,y2); ctx.stroke();
+  }
+  ctx.globalAlpha = 1;
+  ctx.restore();
+  // Lightning flash — white overlay (reuse pattern from _ambientTreeFrog)
   if(_tfLightningFlash > 0.01){
     ctx.save();
-    ctx.globalAlpha = _tfLightningFlash * 0.55;
-    ctx.fillStyle = 'rgba(255,255,240,1)';
+    ctx.globalAlpha = _tfLightningFlash * 0.60;
+    ctx.fillStyle = 'rgba(230,240,255,1)';
     ctx.fillRect(0,0,W,H);
     ctx.restore();
+  }
+  // Blackout — dark gray overlay (visibility-only, no placement block)
+  if(_tfBlackoutAlpha > 0.01){
+    ctx.save();
+    ctx.globalAlpha = _tfBlackoutAlpha;
+    ctx.fillStyle = 'rgba(15,15,25,1)';
+    ctx.fillRect(0,0,W,H);
+    ctx.restore();
+  }
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+// LV10: ANIMAL INTERFERENCE — frogs, birds, croc jump/fly across board
+// ════════════════════════════════════════════════════════════════════════════
+function _tfTickAnimals(isActive){
+  const tt = (typeof _ambientT === 'number') ? _ambientT : _tfHazardTickAccum;
+  // Always have 1-2 animals moving
+  const targetCount = isActive ? 2 : 1;
+  while(_tfAnimals.length < targetCount){
+    const kinds = ['frog','bird','croc'];
+    const kind = kinds[Math.floor(Math.random()*kinds.length)];
+    const fromLeft = Math.random() < 0.5;
+    _tfAnimals.push({
+      kind,
+      x: fromLeft ? -1.5 : COLS + 1.5,
+      y: 1 + Math.random()*(ROWS-2),
+      vx: fromLeft ? (0.04 + Math.random()*0.04) : -(0.04 + Math.random()*0.04),
+      vy: (Math.random()-0.5)*0.015,
+      size: kind==='croc' ? (typeof CELL!=='undefined'?CELL:40)*1.3 : (typeof CELL!=='undefined'?CELL:40)*0.8,
+      phase: Math.random()*Math.PI*2,
+      landedCell: null,
+      landTimer: 0,
+      hopPhase: 0,
+      hopT: 0,
+    });
+  }
+  _tfAnimalBlockedCells = [];
+  const alive = [];
+  for(const an of _tfAnimals){
+    // Hop/fly motion
+    if(an.kind === 'frog'){
+      an.hopT += 0.05;
+      if(an.hopT >= Math.PI) an.hopT -= Math.PI;
+      const hop = Math.abs(Math.sin(an.hopT)) * 0.35;
+      an.x += an.vx;
+      an.y += an.vy;
+      an._hopY = hop * 0.5; // visual hop offset
+    } else if(an.kind === 'bird'){
+      an.x += an.vx * 1.4;
+      an.y += Math.sin(an.phase) * 0.012;
+      an.phase += 0.06;
+      an._hopY = 0;
+    } else { // croc
+      an.x += an.vx * 0.6;
+      an.y += an.vy;
+      an._hopY = 0;
+    }
+    // When isActive: animal can "land" on a cell briefly
+    if(isActive && an.landTimer <= 0 && an.kind !== 'croc'){
+      // Land when roughly over a cell
+      const nearR = Math.round(an.y);
+      const nearC = Math.round(an.x);
+      if(nearR >= 0 && nearR < ROWS && nearC >= 0 && nearC < COLS){
+        if(Math.random() < 0.005){ // ~0.5% chance per frame
+          an.landedCell = {r:nearR, c:nearC};
+          an.landTimer = 60 + Math.floor(Math.random()*60); // 1-2s
+        }
+      }
+    }
+    if(an.landTimer > 0){
+      an.landTimer--;
+      if(an.landedCell){
+        _tfAnimalBlockedCells.push(an.landedCell);
+      }
+      if(an.landTimer <= 0) an.landedCell = null;
+    }
+    if(!isActive) { an.landedCell = null; an.landTimer = 0; }
+    // Remove when off-board
+    if(an.x > COLS + 2 || an.x < -2){
+      // expired — don't push back, will spawn new one next cycle
+    } else {
+      alive.push(an);
+    }
+  }
+  _tfAnimals = alive;
+}
+
+// Simple animal sprite draw helpers
+function _tfDrawFrogSprite(ctx, x, y, size, phase){
+  const hop = Math.abs(Math.sin(phase*3)) * size*0.15;
+  ctx.save();
+  ctx.translate(x, y - hop);
+  // Body
+  ctx.fillStyle = 'rgba(60,160,60,0.92)';
+  ctx.beginPath(); ctx.ellipse(0, 0, size*0.38, size*0.28, 0, 0, Math.PI*2); ctx.fill();
+  // Eyes
+  ctx.fillStyle = 'rgba(240,240,80,0.95)';
+  ctx.beginPath(); ctx.arc(-size*0.18, -size*0.14, size*0.12, 0, Math.PI*2); ctx.fill();
+  ctx.beginPath(); ctx.arc( size*0.18, -size*0.14, size*0.12, 0, Math.PI*2); ctx.fill();
+  ctx.fillStyle = 'rgba(10,10,10,0.9)';
+  ctx.beginPath(); ctx.arc(-size*0.18, -size*0.14, size*0.065, 0, Math.PI*2); ctx.fill();
+  ctx.beginPath(); ctx.arc( size*0.18, -size*0.14, size*0.065, 0, Math.PI*2); ctx.fill();
+  // Legs
+  ctx.strokeStyle = 'rgba(40,130,40,0.88)';
+  ctx.lineWidth = size*0.09;
+  ctx.lineCap = 'round';
+  ctx.beginPath(); ctx.moveTo(-size*0.3, size*0.1); ctx.lineTo(-size*0.55, size*0.32); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo( size*0.3, size*0.1); ctx.lineTo( size*0.55, size*0.32); ctx.stroke();
+  ctx.restore();
+}
+
+function _tfDrawBirdSprite(ctx, x, y, size, phase){
+  ctx.save();
+  ctx.translate(x, y);
+  const flapA = Math.sin(phase*6) * 0.45;
+  // Body
+  ctx.fillStyle = 'rgba(80,60,40,0.90)';
+  ctx.beginPath(); ctx.ellipse(0, 0, size*0.32, size*0.18, 0, 0, Math.PI*2); ctx.fill();
+  // Wings — V-shape that flaps
+  ctx.strokeStyle = 'rgba(60,45,30,0.92)';
+  ctx.lineWidth = size*0.12;
+  ctx.lineCap = 'round';
+  ctx.beginPath();
+  ctx.moveTo(-size*0.55, -flapA*size*0.6);
+  ctx.lineTo(0, 0);
+  ctx.lineTo( size*0.55, -flapA*size*0.6);
+  ctx.stroke();
+  // Head
+  ctx.fillStyle = 'rgba(80,55,35,0.92)';
+  ctx.beginPath(); ctx.arc(size*0.28, -size*0.10, size*0.10, 0, Math.PI*2); ctx.fill();
+  // Beak
+  ctx.fillStyle = 'rgba(210,160,40,0.92)';
+  ctx.beginPath();
+  ctx.moveTo(size*0.38, -size*0.10);
+  ctx.lineTo(size*0.55, -size*0.08);
+  ctx.lineTo(size*0.38, -size*0.05);
+  ctx.closePath(); ctx.fill();
+  ctx.restore();
+}
+
+function _tfDrawCrocSprite(ctx, x, y, size){
+  ctx.save();
+  ctx.translate(x, y);
+  // Long body
+  ctx.fillStyle = 'rgba(50,100,40,0.90)';
+  ctx.beginPath(); ctx.ellipse(0, 0, size*0.70, size*0.18, 0, 0, Math.PI*2); ctx.fill();
+  // Snout
+  ctx.beginPath(); ctx.ellipse(size*0.62, 0, size*0.22, size*0.10, 0.1, 0, Math.PI*2); ctx.fill();
+  // Teeth
+  ctx.fillStyle = 'rgba(240,240,230,0.90)';
+  for(let t=0;t<4;t++){
+    const tx = size*(0.45 + t*0.08);
+    ctx.beginPath(); ctx.moveTo(tx, 0); ctx.lineTo(tx+size*0.03, size*0.12); ctx.lineTo(tx+size*0.06, 0); ctx.fill();
+  }
+  // Eyes
+  ctx.fillStyle = 'rgba(180,220,50,0.92)';
+  ctx.beginPath(); ctx.arc(size*0.38, -size*0.14, size*0.07, 0, Math.PI*2); ctx.fill();
+  ctx.fillStyle = 'rgba(10,10,10,0.9)';
+  ctx.beginPath(); ctx.arc(size*0.38, -size*0.14, size*0.04, 0, Math.PI*2); ctx.fill();
+  // Tail taper
+  ctx.fillStyle = 'rgba(45,90,35,0.85)';
+  ctx.beginPath();
+  ctx.moveTo(-size*0.6, size*0.10);
+  ctx.lineTo(-size*0.90, 0);
+  ctx.lineTo(-size*0.6, -size*0.10);
+  ctx.closePath(); ctx.fill();
+  ctx.restore();
+}
+
+function _tfDrawAnimalsOverlay(ctx, W, H, CW){
+  const tt = (typeof _ambientT === 'number') ? _ambientT : _tfHazardTickAccum;
+  for(const an of _tfAnimals){
+    const px = an.x*CW + CW*0.5;
+    const py = (an.y + (an._hopY||0))*CW + CW*0.5;
+    const sz = an.size || CW*0.8;
+    if(an.kind === 'frog') _tfDrawFrogSprite(ctx, px, py, sz, an.phase);
+    else if(an.kind === 'bird') _tfDrawBirdSprite(ctx, px, py, sz, an.phase);
+    else _tfDrawCrocSprite(ctx, px, py, sz);
+    an.phase += 0.04;
+    // Highlight landed cell
+    if(an.landedCell){
+      const bx = an.landedCell.c*CW, by = an.landedCell.r*CW;
+      ctx.save();
+      ctx.strokeStyle = 'rgba(80,200,80,0.70)';
+      ctx.lineWidth = 2;
+      ctx.strokeRect(bx+1, by+1, CW-2, CW-2);
+      ctx.restore();
+    }
   }
 }
 
@@ -18685,6 +19642,8 @@ function findCompletedLines(){
   }
   const halfMode = _isHalfBoardMode();
   for(let r=0;r<ROWS;r++){
+    // LV7 ice: frozen rows cannot be cleared
+    if(typeof _tfIceBlocksRowClear === 'function' && _tfIceBlocksRowClear(r)) continue;
     const mc=[];for(let c=0;c<COLS;c++)if(!isMasked(r,c))mc.push(c);
     if(mc.length>0 && mc.every(c=>grid[r][c]!==0)) {
       rows.push(r);
