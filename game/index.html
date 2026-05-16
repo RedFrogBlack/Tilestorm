@@ -11267,8 +11267,11 @@ function _tfTickHazard(){
     _tfShakeAmp = Math.max(0, _tfShakeAmp - 0.1);
   }
   // Apply shake transform to grid canvas (mirrors Golden Frog quake pattern)
+  // EXCEPT for LV2 wind — LV2 jitters each tile INDEPENDENTLY (see drawTile)
+  // so the tiles look like they're being blown all over the place rather
+  // than the whole board moving as one rigid unit.
   if(typeof gridCanvas !== 'undefined' && gridCanvas){
-    if(_tfShakeAmp > 0.1){
+    if(_tfShakeAmp > 0.1 && cfg.kind !== 'wind'){
       const off = _tfGetShakeOffset();
       gridCanvas.style.transform = 'translate(' + off.x.toFixed(2) + 'px,' + off.y.toFixed(2) + 'px)';
     } else if(gridCanvas.style.transform && gridCanvas.style.transform.indexOf('translate') !== -1){
@@ -20894,8 +20897,23 @@ function drawTile(r,c,color,alpha=1,glow=false,gold=false){
       return;
     }
   } catch(_e) {}
-  const x=c*CELL+PAD,y=r*CELL+PAD,w=CELL-PAD*2,h=CELL-PAD*2;
+  let x=c*CELL+PAD,y=r*CELL+PAD;
+  const w=CELL-PAD*2,h=CELL-PAD*2;
   const rad=Math.max(4,CELL*0.13);
+  // LV2 Strong Wind Gusts: each tile jitters INDEPENDENTLY so the board
+  // looks like tiles are being blown around, not moving as one rigid block.
+  // Phase per (r,c) gives each tile its own swirling motion.
+  if(typeof activeChallengeMode !== 'undefined' && activeChallengeMode === 'frenzy'
+     && typeof cm_frenzyLevel !== 'undefined' && (cm_frenzyLevel|0) === 2
+     && typeof _tfShakeAmp === 'number' && _tfShakeAmp > 0.1){
+    const tt = (typeof _ambientT === 'number') ? _ambientT : 0;
+    const ph = (r*31 + c*17) * 0.37;          // unique phase per cell
+    const amp = _tfShakeAmp * 1.6;            // amplified vs whole-board shake
+    const jx = Math.sin(tt*1.4 + ph)*amp + Math.cos(tt*2.2 + ph*1.3)*amp*0.45;
+    const jy = Math.cos(tt*1.7 + ph*1.1)*amp*0.9 + Math.sin(tt*2.6 + ph)*amp*0.35;
+    x += jx;
+    y += jy;
+  }
   ctx.save();
   ctx.globalAlpha=alpha;
   // Outer glow on placed tiles
