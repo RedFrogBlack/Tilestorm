@@ -8124,6 +8124,15 @@ let _tadLastLvl     = -1;
 let _tadLightning   = 0;     // LV9 lightning flash alpha
 let _tadLightningTimer = 0;
 let _tadWindQuakeTimer = null; // LV3: recurring tile-relocation (reuses Monaco quake)
+let _tadRotationTimer = null;  // LV7: periodic 90° board rotation (reuses Bali mechanic)
+let _tadRotationAngle = 0;     // LV7: cosmetic angle for the wind ring visual
+let _tadMudActive    = false;  // LV8: bottom rows masked + brown mud overlay
+let _tadMudRows      = 0;      // LV8: number of bottom rows currently muddy
+let _tadMudGrowTimer = null;   // LV8: grows mud over time
+let _tadFloodActive  = false;  // LV9: drives _tokyoFloodLevel for the rising tide
+let _tadFloodTimer   = null;   // LV9: tide cycle stepper
+let _tadFloodPhase   = 'off';  // LV9: calm | rising | peak | falling
+let _tadChaosTimer   = null;   // LV10: orchestrates rotation + quake bursts
 
 function _tadResetVisitors(){
   _tadFlocks = null; _tadFireflyFlocks = null; _tadSnow = null;
@@ -8133,6 +8142,18 @@ function _tadResetVisitors(){
   _tadWindShakeAmp = 0; _tadLightning = 0; _tadLightningTimer = 0;
   // Stop the LV3 wind-quake timer when level changes; restart only if new level is 3.
   try { if(_tadWindQuakeTimer){ clearInterval(_tadWindQuakeTimer); _tadWindQuakeTimer = null; } } catch(_){}
+  // Stop the LV7 board-rotation timer when level changes; restart only if new level is 7 (or 10).
+  try { if(_tadRotationTimer){ clearInterval(_tadRotationTimer); _tadRotationTimer = null; } } catch(_){}
+  _tadRotationAngle = 0;
+  // Stop the LV8 mud grow timer + clear the mud mask if it was applied.
+  try { if(_tadMudGrowTimer){ clearInterval(_tadMudGrowTimer); _tadMudGrowTimer = null; } } catch(_){}
+  try { if(_tadMudActive){ _tadClearMud(); } } catch(_){}
+  _tadMudActive = false; _tadMudRows = 0;
+  // Stop the LV9 rising-water tide cycle when leaving LV9.
+  try { if(_tadFloodActive){ _tadStopTide(); } } catch(_){}
+  _tadFloodActive = false; _tadFloodPhase = 'off';
+  // Stop the LV10 chaos orchestrator.
+  try { if(_tadChaosTimer){ clearInterval(_tadChaosTimer); _tadChaosTimer = null; } } catch(_){}
   // Drop the LV5 frog-shape mask when leaving LV5; re-applied on entering LV5.
   try { _tadClearLv5FrogMask(); } catch(_){}
 }
@@ -8151,6 +8172,215 @@ function _tadStartWindQuakes(){
       if (typeof _gfTriggerMonacoQuake === 'function') _gfTriggerMonacoQuake();
     } catch(_){}
   }, 10000);
+}
+
+// LV7: periodic 90° board rotation. Reuses the math from _gfRotateBoard (Bali)
+// but does NOT call it directly because that function early-returns unless
+// activeChallengeMode === 'goldenfrog'. We do the same grid mutation here in
+// Tadpole/standard mode, then update angle + recheck lines.
+function _tadRotateBoardOnce(){
+  if (activeChallengeMode !== 'standard' || !gameActive) return;
+  if (typeof grid === 'undefined' || !grid || !grid.length) return;
+  const newGrid = Array.from({length:ROWS}, () => new Array(COLS).fill(0));
+  for (let r = 0; r < ROWS; r++) {
+    for (let c = 0; c < COLS; c++) {
+      // Same 90° mapping as Bali: (r,c) → (c, ROWS-1-r)
+      const nr = c, nc = ROWS - 1 - r;
+      if (nr < ROWS && nc < COLS) newGrid[nr][nc] = grid[r][c];
+    }
+  }
+  for (let r = 0; r < ROWS; r++) for (let c = 0; c < COLS; c++) grid[r][c] = newGrid[r][c];
+  _tadRotationAngle = (_tadRotationAngle + 90) % 360;
+  try { if (typeof drawGrid === 'function') drawGrid(); } catch(_){}
+  try { if (typeof _gfRecheckLinesAfterMutation === 'function') _gfRecheckLinesAfterMutation(); } catch(_){}
+  try { if (typeof showEventBanner === 'function') showEventBanner('🌀 SPINNING POND — BOARD ROTATES!'); } catch(_){}
+}
+function _tadStartRotation(intervalMs){
+  try { if(_tadRotationTimer){ clearInterval(_tadRotationTimer); } } catch(_){}
+  const ms = intervalMs || 12000;
+  // Brief grace period before the first rotation
+  setTimeout(() => {
+    try {
+      if (activeChallengeMode !== 'standard' || !gameActive) return;
+      if (typeof level !== 'number' || (level !== 7 && level !== 10)) return;
+      _tadRotateBoardOnce();
+    } catch(_){}
+  }, 6000);
+  _tadRotationTimer = setInterval(() => {
+    try {
+      if (activeChallengeMode !== 'standard' || !gameActive) return;
+      if (typeof level !== 'number' || (level !== 7 && level !== 10)) return;
+      _tadRotateBoardOnce();
+    } catch(_){}
+  }, ms);
+}
+
+// LV8: bottom rows are muddy — can't place tiles there. Mud grows over time.
+// Starts with 1 row, grows to 3 rows after 30s + 60s of play.
+function _tadApplyMudMask(){
+  if (activeChallengeMode !== 'standard') return;
+  if (typeof level !== 'number' || (level !== 8 && level !== 10)) return;
+  const rows = Math.max(0, Math.min(ROWS-1, _tadMudRows|0));
+  // Build mask: false on muddy rows, true elsewhere. (gridMask[r][c]=true means playable.)
+  const m = Array.from({length: ROWS}, (_, r) =>
+    Array.from({length: COLS}, () => r < (ROWS - rows))
+  );
+  gridMask = m;
+  // Clear any tiles trapped in newly-muddied rows.
+  if (grid && grid.length) {
+    for (let r = ROWS - rows; r < ROWS; r++) {
+      if (r < 0) continue;
+      for (let c = 0; c < COLS; c++) grid[r][c] = 0;
+    }
+  }
+}
+function _tadStartMud(initialRows, growthSchedule){
+  _tadMudActive = true;
+  _tadMudRows = initialRows|0;
+  _tadApplyMudMask();
+  try { if (typeof drawGrid === 'function') drawGrid(); } catch(_){}
+  try { showEventBanner('💫 MUDDY POND — BOTTOM ROW BLOCKED!'); } catch(_){}
+  // Schedule mud growth steps: each entry [ms, totalRows]
+  try { if(_tadMudGrowTimer){ clearInterval(_tadMudGrowTimer); } } catch(_){}
+  const schedule = growthSchedule || [
+    [25000, 2],  // After 25s, mud rises to 2 rows
+    [55000, 3],  // After 55s, mud rises to 3 rows
+  ];
+  schedule.forEach(([ms, rows]) => {
+    setTimeout(() => {
+      try {
+        if (activeChallengeMode !== 'standard' || !gameActive) return;
+        if (typeof level !== 'number' || (level !== 8 && level !== 10)) return;
+        if (!_tadMudActive) return;
+        _tadMudRows = rows;
+        _tadApplyMudMask();
+        try { if (typeof drawGrid === 'function') drawGrid(); } catch(_){}
+        try { showEventBanner('💫 MUD IS RISING — ' + rows + ' ROWS BLOCKED!'); } catch(_){}
+      } catch(_){}
+    }, ms);
+  });
+}
+function _tadClearMud(){
+  _tadMudActive = false;
+  _tadMudRows = 0;
+  try { if(_tadMudGrowTimer){ clearInterval(_tadMudGrowTimer); _tadMudGrowTimer = null; } } catch(_){}
+  // Only null out gridMask if it isn't claimed by another mechanic (LV5 frog).
+  if (!_tadLv5MaskApplied) {
+    try { gridMask = null; } catch(_){}
+  }
+}
+
+// LV9: rising water. Drives _tokyoFloodLevel directly so isMasked() blocks the
+// flooded bottom rows for free. Tide cycles: calm → rising 1 row / 10s up to 4
+// → peak 3s → falling 1 row / 4s → calm 5s → repeat. Does NOT call
+// _tokyoStartTide() (that engine is hard-bound to cm_gfLevel === 4).
+const TAD_FLOOD_MAX = 4;
+function _tadStartTide(){
+  _tadStopTide();
+  _tadFloodActive = true;
+  _tadFloodPhase = 'calm';
+  if (typeof _tokyoFloodLevel === 'number') _tokyoFloodLevel = 0;
+  if (typeof _tokyoFloodTarget === 'number') _tokyoFloodTarget = 0;
+  // Start a rAF loop that smooths _tokyoFloodLevel toward _tokyoFloodTarget.
+  // Tokyo already has its own rAF; only start ours when Tokyo's isn't running.
+  if (typeof _tokyoFloodRafId === 'undefined' || !_tokyoFloodRafId) {
+    const animTick = () => {
+      if (typeof _tokyoFloodWavePhase === 'number') _tokyoFloodWavePhase += 0.06;
+      const diff = (_tokyoFloodTarget||0) - (_tokyoFloodLevel||0);
+      if (Math.abs(diff) > 0.01) _tokyoFloodLevel += diff * 0.12;
+      else _tokyoFloodLevel = _tokyoFloodTarget||0;
+      try { if (typeof drawGrid === 'function') drawGrid(); } catch(_){}
+      if (_tadFloodActive) _tokyoFloodRafId = requestAnimationFrame(animTick);
+    };
+    _tokyoFloodRafId = requestAnimationFrame(animTick);
+  }
+  // Step the tide every N ms
+  const step = () => {
+    try {
+      if (activeChallengeMode !== 'standard' || !gameActive) {
+        _tadFloodTimer = setTimeout(step, 1000);
+        return;
+      }
+      if (typeof level !== 'number' || (level !== 9 && level !== 10)) {
+        _tadFloodTimer = setTimeout(step, 1000);
+        return;
+      }
+      let nextMs = 10000;
+      if (_tadFloodPhase === 'calm' || _tadFloodPhase === 'off') {
+        _tadFloodPhase = 'rising';
+        _tokyoFloodTarget = Math.min(TAD_FLOOD_MAX, (_tokyoFloodTarget||0) + 1);
+        try { showEventBanner('🌊 RISING WATER — ROWS SUBMERGING!'); } catch(_){}
+        nextMs = 10000;
+      } else if (_tadFloodPhase === 'rising') {
+        if ((_tokyoFloodTarget||0) < TAD_FLOOD_MAX) {
+          _tokyoFloodTarget = Math.min(TAD_FLOOD_MAX, (_tokyoFloodTarget||0) + 1);
+          try { showEventBanner('🌊 RISING WATER — ' + _tokyoFloodTarget + '/' + TAD_FLOOD_MAX); } catch(_){}
+          nextMs = 10000;
+        } else {
+          _tadFloodPhase = 'peak';
+          try { showEventBanner('⚠️ FLOOD PEAK — HOLD ON!'); } catch(_){}
+          nextMs = 3000;
+        }
+      } else if (_tadFloodPhase === 'peak') {
+        _tadFloodPhase = 'falling';
+        _tokyoFloodTarget = Math.max(0, (_tokyoFloodTarget||0) - 1);
+        try { showEventBanner('🌊 WATER — RECEDING'); } catch(_){}
+        nextMs = 4000;
+      } else if (_tadFloodPhase === 'falling') {
+        if ((_tokyoFloodTarget||0) > 0) {
+          _tokyoFloodTarget = Math.max(0, (_tokyoFloodTarget||0) - 1);
+          nextMs = 4000;
+        } else {
+          _tadFloodPhase = 'calm';
+          try { showEventBanner('🌟 CALM — BREATHE'); } catch(_){}
+          nextMs = 5000;
+        }
+      }
+      _tadFloodTimer = setTimeout(step, nextMs);
+    } catch(_e){
+      _tadFloodTimer = setTimeout(step, 2000);
+    }
+  };
+  // 8s grace before the first rise
+  _tadFloodTimer = setTimeout(step, 8000);
+}
+function _tadStopTide(){
+  _tadFloodActive = false;
+  _tadFloodPhase = 'off';
+  try { if(_tadFloodTimer){ clearTimeout(_tadFloodTimer); _tadFloodTimer = null; } } catch(_){}
+  // Don't touch Tokyo's rAF if Tokyo (Golden Frog LV4) is the one running it.
+  // We only own it when activeChallengeMode === 'standard'.
+  if (activeChallengeMode === 'standard') {
+    try {
+      if (typeof _tokyoFloodRafId !== 'undefined' && _tokyoFloodRafId) {
+        cancelAnimationFrame(_tokyoFloodRafId);
+        _tokyoFloodRafId = null;
+      }
+      if (typeof _tokyoFloodLevel === 'number') _tokyoFloodLevel = 0;
+      if (typeof _tokyoFloodTarget === 'number') _tokyoFloodTarget = 0;
+    } catch(_){}
+  }
+}
+
+// LV10: chaos orchestrator. Periodically triggers rotations + quake bursts on
+// top of the rising water + mud + festival visitors. Frequency stays well
+// below LV7/LV8 standalone so the player still has windows to play.
+function _tadStartChaos(){
+  try { if(_tadChaosTimer){ clearInterval(_tadChaosTimer); } } catch(_){}
+  let tick = 0;
+  _tadChaosTimer = setInterval(() => {
+    try {
+      if (activeChallengeMode !== 'standard' || !gameActive) return;
+      if (typeof level !== 'number' || level !== 10) return;
+      tick++;
+      // Alternate: every 20s rotate the board; every 30s a Monaco quake gust.
+      if (tick % 2 === 0 && typeof _gfTriggerMonacoQuake === 'function') {
+        _gfTriggerMonacoQuake();
+      } else {
+        _tadRotateBoardOnce();
+      }
+    } catch(_){}
+  }, 15000);
 }
 
 // LV5: shape the playable area like a frog. 10×10 mask where 1 = playable,
@@ -8244,6 +8474,18 @@ function _drawTadpoleLevelLayer(ctx, W, H){
     if(lvl === 3 && !_tadWindQuakeTimer){ _tadStartWindQuakes(); }
     // LV5: install the frog-shaped play-area mask on entry.
     if(lvl === 5){ _tadEnsureLv5FrogMask(); }
+    // LV7: start the spinning-pond board rotation cycle.
+    if(lvl === 7 && !_tadRotationTimer){ _tadStartRotation(12000); }
+    // LV8: muddy pond — bottom row blocked from the start, grows over time.
+    if(lvl === 8 && !_tadMudActive){ _tadStartMud(1); }
+    // LV9: rising water — tide cycle drives _tokyoFloodLevel.
+    if(lvl === 9 && !_tadFloodActive){ _tadStartTide(); }
+    // LV10: chaos finale — mud + rising water + rotation + occasional quake.
+    if(lvl === 10){
+      if (!_tadMudActive) _tadStartMud(1, [[40000, 2]]);
+      if (!_tadFloodActive) _tadStartTide();
+      if (!_tadChaosTimer) _tadStartChaos();
+    }
   }
   const t = (typeof _ambientT === 'number') ? _ambientT : 0;
 
@@ -8313,55 +8555,12 @@ function _drawTadpoleLevelLayer(ctx, W, H){
   }
 
   // ── (2) PER-LEVEL SIGNATURE VISITOR ─────────────────────────
-  // LV1 → DENSE spring butterfly swarm + dragonflies. 5 flocks × 40 butterflies
-  // = 200 butterflies covering the board, plus drifting halos and 3 dragonflies.
-  // User wanted ~10× thicker so the board is genuinely obscured.
+  // LV1 → calm spring meadow. User explicitly asked to remove butterflies from
+  // LV1 (they live on LV2 now); leave only a few drifting dragonflies on top of
+  // the spring petal season overlay. NO swarms, NO obscuring — LV1 is genuinely
+  // the easiest, gentlest level.
   if(lvl === 1){
-    const palette1 = [
-      [255,170, 60], [255,120,180], [180,220,255], [200,150,255],
-      [255,230,120], [140,255,200], [255,200,200], [200,255,220]
-    ];
-    if(!_tadFlocks) _tadFlocks = [
-      _tadMakeFlock(W, H, 40, palette1, 7),
-      _tadMakeFlock(W, H, 40, palette1, 7),
-      _tadMakeFlock(W, H, 40, palette1, 7),
-      _tadMakeFlock(W, H, 40, palette1, 7),
-      _tadMakeFlock(W, H, 40, palette1, 7),
-    ];
-    for(const f of _tadFlocks){
-      _tadTickFlock(f, W, H, t);
-      // Larger, slightly stronger halo so flocks read as cloud-like cover
-      ctx.save();
-      const halo = ctx.createRadialGradient(f.cx, f.cy, 0, f.cx, f.cy, 110);
-      halo.addColorStop(0,   'rgba(255,240,250,0.28)');
-      halo.addColorStop(0.5, 'rgba(255,240,250,0.12)');
-      halo.addColorStop(1,   'rgba(255,240,250,0.00)');
-      ctx.fillStyle = halo;
-      ctx.beginPath(); ctx.arc(f.cx, f.cy, 110, 0, Math.PI*2); ctx.fill();
-      // Butterflies
-      for(const b of f.items){
-        const bx = f.cx + b.ox + Math.sin(t*0.04+b.phase)*4;
-        const by = f.cy + b.oy + Math.cos(t*0.035+b.phase)*3;
-        const flap = 0.55 + Math.abs(Math.sin(t*0.18+b.phase))*0.45;
-        ctx.save();
-        ctx.translate(bx, by);
-        ctx.rotate(Math.sin(t*0.025+b.phase)*0.20);
-        // Wing pair
-        ctx.fillStyle = `rgba(${b.col[0]},${b.col[1]},${b.col[2]},0.92)`;
-        ctx.beginPath(); ctx.ellipse(-b.size*0.55, 0, b.size*0.78*flap, b.size*0.55, -0.25, 0, Math.PI*2); ctx.fill();
-        ctx.beginPath(); ctx.ellipse( b.size*0.55, 0, b.size*0.78*flap, b.size*0.55,  0.25, 0, Math.PI*2); ctx.fill();
-        // Inner lighter spot
-        ctx.fillStyle = 'rgba(255,255,255,0.55)';
-        ctx.beginPath(); ctx.ellipse(-b.size*0.55, 0, b.size*0.30*flap, b.size*0.22, -0.25, 0, Math.PI*2); ctx.fill();
-        ctx.beginPath(); ctx.ellipse( b.size*0.55, 0, b.size*0.30*flap, b.size*0.22,  0.25, 0, Math.PI*2); ctx.fill();
-        // Body
-        ctx.fillStyle = 'rgba(40,30,30,0.88)';
-        ctx.beginPath(); ctx.ellipse(0, 0, 0.7, b.size*0.42, 0, 0, Math.PI*2); ctx.fill();
-        ctx.restore();
-      }
-      ctx.restore();
-    }
-    // Keep the 3 dragonflies as accent visitors zigzagging across the swarm.
+    // Keep the 3 dragonflies as accent visitors zigzagging across the meadow.
     if(!_tadDragonflies) _tadDragonflies = Array.from({length:3}, () => ({
       x:Math.random()*W, y:Math.random()*H*0.7,
       vx:(Math.random()<0.5?-1:1)*(0.6+Math.random()*0.4),
@@ -8386,29 +8585,32 @@ function _drawTadpoleLevelLayer(ctx, W, H){
     }
   }
 
-  // LV2 → 3 butterfly flocks (REUSES TF LV1 visual, density-biased)
+  // LV2 → butterfly flocks (REUSES TF LV1 visual, density-biased)
   else if(lvl === 2){
-    // User wanted ~10× thicker butterfly cover on LV2.
-    // 5 flocks × 80 butterflies = 400 total (was 3×28=84), with much stronger halos.
+    // User wanted EVEN thicker butterfly cover on LV2: previous 5×80 still felt
+    // see-through. Push to 7 flocks × 100 = 700 butterflies, with much stronger
+    // halos so the center is genuinely opaque while edges keep some visibility.
     const palette = [[255,170,60],[255,120,180],[180,220,255],[200,150,255],[255,230,120],[140,255,200],[255,200,200],[200,255,220]];
     if(!_tadFlocks) _tadFlocks = [
-      _tadMakeFlock(W, H, 80, palette, 7),
-      _tadMakeFlock(W, H, 80, palette, 7),
-      _tadMakeFlock(W, H, 80, palette, 7),
-      _tadMakeFlock(W, H, 80, palette, 7),
-      _tadMakeFlock(W, H, 80, palette, 7),
+      _tadMakeFlock(W, H, 100, palette, 7),
+      _tadMakeFlock(W, H, 100, palette, 7),
+      _tadMakeFlock(W, H, 100, palette, 7),
+      _tadMakeFlock(W, H, 100, palette, 7),
+      _tadMakeFlock(W, H, 100, palette, 7),
+      _tadMakeFlock(W, H, 100, palette, 7),
+      _tadMakeFlock(W, H, 100, palette, 7),
     ];
     for(const f of _tadFlocks){
       _tadTickFlock(f, W, H, t);
-      // Each flock has a thick halo behind it to obscure tiles substantially
+      // Each flock has a thick halo behind it — center opaque, edges feathered.
       ctx.save();
-      const halo = ctx.createRadialGradient(f.cx, f.cy, 0, f.cx, f.cy, 130);
-      halo.addColorStop(0,   'rgba(255,240,250,0.42)');
-      halo.addColorStop(0.4, 'rgba(255,240,250,0.24)');
-      halo.addColorStop(0.75,'rgba(255,240,250,0.10)');
+      const halo = ctx.createRadialGradient(f.cx, f.cy, 0, f.cx, f.cy, 150);
+      halo.addColorStop(0,   'rgba(255,240,250,0.62)');
+      halo.addColorStop(0.35,'rgba(255,240,250,0.40)');
+      halo.addColorStop(0.70,'rgba(255,240,250,0.18)');
       halo.addColorStop(1,   'rgba(255,240,250,0.00)');
       ctx.fillStyle = halo;
-      ctx.beginPath(); ctx.arc(f.cx, f.cy, 130, 0, Math.PI*2); ctx.fill();
+      ctx.beginPath(); ctx.arc(f.cx, f.cy, 150, 0, Math.PI*2); ctx.fill();
       // Butterflies
       for(const b of f.items){
         const bx = f.cx + b.ox + Math.sin(t*0.04+b.phase)*4;
@@ -8556,13 +8758,20 @@ function _drawTadpoleLevelLayer(ctx, W, H){
     ctx.restore();
   }
 
-  // LV6 → 3 heavy mist patches (Fog the Frog reuse) — strong obscuring
+  // LV6 → heavy mist patches (Fog the Frog reuse) — user asked for MUCH thicker.
+  // 6 large patches, center opaque, edges still feathered so visible tiles peek
+  // through at the board edge (per user preference: "transitional and moves
+  // around the board with middle being non transparent and the edges with some
+  // visibility").
   else if(lvl === 6){
     if(!_tadMistPatches){
       _tadMistPatches = [
-        { x: W*0.25, y: H*0.30, r: Math.min(W,H)*0.40, vx: 0.30, vy: 0.10 },
-        { x: W*0.70, y: H*0.55, r: Math.min(W,H)*0.45, vx:-0.25, vy: 0.12 },
-        { x: W*0.50, y: H*0.75, r: Math.min(W,H)*0.38, vx: 0.18, vy:-0.08 },
+        { x: W*0.20, y: H*0.25, r: Math.min(W,H)*0.48, vx: 0.30, vy: 0.10 },
+        { x: W*0.78, y: H*0.30, r: Math.min(W,H)*0.50, vx:-0.28, vy: 0.08 },
+        { x: W*0.50, y: H*0.50, r: Math.min(W,H)*0.55, vx: 0.22, vy:-0.12 },
+        { x: W*0.30, y: H*0.72, r: Math.min(W,H)*0.46, vx:-0.18, vy: 0.10 },
+        { x: W*0.72, y: H*0.78, r: Math.min(W,H)*0.50, vx: 0.20, vy:-0.08 },
+        { x: W*0.50, y: H*0.95, r: Math.min(W,H)*0.42, vx: 0.14, vy:-0.06 },
       ];
     }
     for(const p of _tadMistPatches){
@@ -8571,11 +8780,11 @@ function _drawTadpoleLevelLayer(ctx, W, H){
       if(p.y < -p.r*0.2 || p.y > H+p.r*0.2) p.vy *= -1;
       ctx.save();
       const grd = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, p.r);
-      // Strong center, soft edges — Fog the Frog opacity model
-      grd.addColorStop(0,    'rgba(228,232,240,0.62)');
-      grd.addColorStop(0.40, 'rgba(220,225,235,0.45)');
-      grd.addColorStop(0.70, 'rgba(210,218,228,0.20)');
-      grd.addColorStop(0.92, 'rgba(200,210,222,0.05)');
+      // Stronger center, soft feathered edges — Fog the Frog opacity model.
+      grd.addColorStop(0,    'rgba(228,232,240,0.88)');
+      grd.addColorStop(0.35, 'rgba(220,225,235,0.68)');
+      grd.addColorStop(0.60, 'rgba(210,218,228,0.38)');
+      grd.addColorStop(0.85, 'rgba(200,210,222,0.12)');
       grd.addColorStop(1,    'rgba(200,210,222,0.00)');
       ctx.fillStyle = grd;
       ctx.beginPath(); ctx.arc(p.x, p.y, p.r, 0, Math.PI*2); ctx.fill();
@@ -8583,83 +8792,136 @@ function _drawTadpoleLevelLayer(ctx, W, H){
     }
   }
 
-  // LV7 → corner frost crystals + snow already handled by season
+  // LV7 → SPINNING POND. Board rotates 90° every ~12s (timer hooked above
+  // reuses the Bali rotation math). Visual layer: a swirling wind vortex with
+  // arc trails so the player has a constant cue that the pond is spinning.
+  // Per user preference, vortex is densest at the CENTER and feathers out
+  // at the edges so tiles near the edges remain visible.
   else if(lvl === 7){
-    // Frost crystals creeping in from corners
     ctx.save();
-    const corners = [
-      {x:0, y:0},
-      {x:W, y:0},
-      {x:0, y:H},
-      {x:W, y:H}
-    ];
-    for(const c of corners){
-      const grd = ctx.createRadialGradient(c.x, c.y, 0, c.x, c.y, Math.min(W,H)*0.42);
-      grd.addColorStop(0,    'rgba(220,240,255,0.55)');
-      grd.addColorStop(0.45, 'rgba(220,240,255,0.20)');
-      grd.addColorStop(1,    'rgba(220,240,255,0.00)');
-      ctx.fillStyle = grd;
-      ctx.beginPath(); ctx.arc(c.x, c.y, Math.min(W,H)*0.42, 0, Math.PI*2); ctx.fill();
+    const cx = W/2, cy = H/2;
+    const maxR = Math.min(W,H)*0.55;
+    // Soft swirling backdrop — center-opaque, edge-feathered
+    const vortex = ctx.createRadialGradient(cx, cy, 0, cx, cy, maxR);
+    vortex.addColorStop(0,    'rgba(180,210,235,0.32)');
+    vortex.addColorStop(0.35, 'rgba(160,195,225,0.22)');
+    vortex.addColorStop(0.70, 'rgba(140,180,210,0.10)');
+    vortex.addColorStop(1,    'rgba(120,170,200,0.00)');
+    ctx.fillStyle = vortex;
+    ctx.beginPath(); ctx.arc(cx, cy, maxR, 0, Math.PI*2); ctx.fill();
+    // Spiral wind arcs — trail the rotation. Use _ambientT for continuous spin
+    // PLUS _tadRotationAngle for a hard "snap" cue when the grid actually rotates.
+    const spinT = t * 0.015 + (_tadRotationAngle * Math.PI / 180);
+    ctx.strokeStyle = 'rgba(220,235,250,0.55)';
+    ctx.lineWidth = 2;
+    for(let i = 0; i < 8; i++){
+      const ringR = maxR * (0.20 + i * 0.10);
+      const startA = spinT + i * 0.35;
+      ctx.beginPath();
+      ctx.arc(cx, cy, ringR, startA, startA + Math.PI*0.55);
+      ctx.stroke();
     }
-    // A few decorative snowflake icons
-    ctx.strokeStyle = 'rgba(230,245,255,0.65)';
-    ctx.lineWidth = 1.2;
-    const flakes = [
-      {x: W*0.12, y: H*0.18, s:8},
-      {x: W*0.85, y: H*0.22, s:7},
-      {x: W*0.20, y: H*0.78, s:9},
-      {x: W*0.78, y: H*0.82, s:8},
-    ];
-    for(const fk of flakes){
+    // Inner faster spirals
+    ctx.strokeStyle = 'rgba(240,250,255,0.40)';
+    ctx.lineWidth = 1.4;
+    for(let i = 0; i < 6; i++){
+      const ringR = maxR * (0.10 + i * 0.06);
+      const startA = -spinT*1.6 + i * 0.6;
+      ctx.beginPath();
+      ctx.arc(cx, cy, ringR, startA, startA + Math.PI*0.40);
+      ctx.stroke();
+    }
+    // Whirling leaves swept by the vortex (also signal the rotation visually)
+    if(!_tadLeaves) _tadLeaves = Array.from({length:28}, () => ({
+      a: Math.random()*Math.PI*2,
+      r: 30+Math.random()*(maxR*0.85),
+      vR: -0.12-Math.random()*0.08, // spiral inward
+      vA: 0.012+Math.random()*0.018, // angular speed
+      size: 2+Math.random()*2,
+      hue: Math.floor(Math.random()*3)
+    }));
+    const leafCols = ['rgba(190,210,235,0.85)','rgba(160,200,240,0.85)','rgba(220,235,250,0.85)'];
+    for(const p of _tadLeaves){
+      p.a += p.vA; p.r += p.vR;
+      if(p.r < 8) { p.r = maxR*0.9; p.a = Math.random()*Math.PI*2; }
+      const lx = cx + Math.cos(p.a)*p.r;
+      const ly = cy + Math.sin(p.a)*p.r;
       ctx.save();
-      ctx.translate(fk.x, fk.y);
-      ctx.rotate(t*0.005);
-      for(let a=0;a<6;a++){
-        ctx.rotate(Math.PI/3);
-        ctx.beginPath();
-        ctx.moveTo(0,0); ctx.lineTo(0, fk.s);
-        ctx.moveTo(0, fk.s*0.5); ctx.lineTo(fk.s*0.3, fk.s*0.7);
-        ctx.moveTo(0, fk.s*0.5); ctx.lineTo(-fk.s*0.3, fk.s*0.7);
-        ctx.stroke();
-      }
+      ctx.translate(lx, ly);
+      ctx.rotate(p.a + Math.PI/2);
+      ctx.fillStyle = leafCols[p.hue];
+      ctx.beginPath(); ctx.ellipse(0,0,p.size*1.6,p.size*0.7,0,0,Math.PI*2); ctx.fill();
       ctx.restore();
     }
     ctx.restore();
   }
 
-  // LV8 → sandstorm tint + drifting sand particles (Cairo/Accra monument theme)
+  // LV8 → MUDDY POND. Bottom 1-3 rows are masked (mud) — player can't place
+  // tiles there. Mud is rendered AFTER tiles as a thick brown organic gradient
+  // so it reads as a physical bog. _tadStartMud() (called above on level entry)
+  // installs the gridMask; this block paints the visible mud surface.
   else if(lvl === 8){
-    // Warm sand wash across entire canvas
-    ctx.save();
-    ctx.globalCompositeOperation = 'overlay';
-    ctx.fillStyle = 'rgba(220,170,90,0.20)';
-    ctx.fillRect(0,0,W,H);
-    ctx.restore();
-    // Sand particles streaking horizontally
-    if(!_tadSandParticles) _tadSandParticles = Array.from({length:80}, () => ({
-      x:Math.random()*W, y:Math.random()*H,
-      vx:2.5+Math.random()*1.8, vy:(Math.random()-0.5)*0.3,
-      r:0.8+Math.random()*1.2,
-      alpha:0.3+Math.random()*0.3
-    }));
-    ctx.save();
-    for(const s of _tadSandParticles){
-      s.x += s.vx; s.y += s.vy;
-      if(s.x > W+5) { s.x = -5; s.y = Math.random()*H; }
-      if(s.y < 0) s.y = H; else if(s.y > H) s.y = 0;
-      ctx.fillStyle = `rgba(230,200,140,${s.alpha})`;
-      ctx.beginPath(); ctx.arc(s.x, s.y, s.r, 0, Math.PI*2); ctx.fill();
+    if (_tadMudActive && _tadMudRows > 0) {
+      const cellPx = (typeof CELL === 'number' && CELL > 0) ? CELL : (H / ROWS);
+      const mudTop = (ROWS - _tadMudRows) * cellPx;
+      ctx.save();
+      // Mud body — thick opaque brown gradient
+      const mg = ctx.createLinearGradient(0, mudTop, 0, H);
+      mg.addColorStop(0,    'rgba(95,55,25,0.85)');
+      mg.addColorStop(0.30, 'rgba(75,45,20,0.95)');
+      mg.addColorStop(0.70, 'rgba(55,30,15,0.98)');
+      mg.addColorStop(1,    'rgba(40,20,10,1.00)');
+      ctx.fillStyle = mg;
+      ctx.fillRect(0, mudTop, W, H - mudTop);
+      // Organic wavy top edge (bubbling mud surface)
+      ctx.beginPath();
+      ctx.moveTo(0, mudTop);
+      for(let x = 0; x <= W; x += 4){
+        const wave = Math.sin(x*0.03 + t*0.04) * 4 + Math.sin(x*0.07 - t*0.03) * 2.5;
+        ctx.lineTo(x, mudTop + wave);
+      }
+      ctx.lineTo(W, mudTop); ctx.closePath();
+      ctx.fillStyle = 'rgba(110,70,30,0.85)';
+      ctx.fill();
+      // Bubbles rising in the mud
+      ctx.fillStyle = 'rgba(160,110,55,0.75)';
+      for(let i = 0; i < 14; i++){
+        const bx = (i * 67 + Math.sin(t*0.02 + i)*18) % W;
+        const cycle = (t*0.6 + i*30) % (H - mudTop + 20);
+        const by = H - cycle;
+        if(by > mudTop + 6 && by < H - 2){
+          ctx.beginPath();
+          ctx.arc(bx, by, 2 + Math.sin(t*0.05 + i)*0.8, 0, Math.PI*2);
+          ctx.fill();
+        }
+      }
+      // Reedy grass tufts poking up from the mud surface
+      ctx.strokeStyle = 'rgba(70,90,40,0.9)';
+      ctx.lineWidth = 1.6;
+      for(let i = 0; i < 9; i++){
+        const gx = (i * 95 + 30) % W;
+        const sway = Math.sin(t*0.03 + i)*3;
+        ctx.beginPath();
+        ctx.moveTo(gx, mudTop + 2);
+        ctx.quadraticCurveTo(gx + sway, mudTop - 4, gx + sway*1.5, mudTop - 10);
+        ctx.stroke();
+      }
+      ctx.restore();
     }
-    ctx.restore();
   }
 
-  // LV9 → rain + safe lightning + drifting storm fog (TF LV9 visual)
+  // LV9 → RISING WATER. _tadStartTide() (called above on entry) drives
+  // _tokyoFloodLevel; isMasked() already blocks flooded rows so tiles can't be
+  // placed on submerged cells. The actual water VISUAL is drawn in drawGrid()
+  // (gated for tadpole mode via the Tokyo-tide draw path we extended below).
+  // Here we just add storm ambience on top — rain + drifting fog — so the level
+  // reads as a thunderstorm flooding the pond.
   else if(lvl === 9){
     // Drifting storm fog patches (2)
     if(!_tadMistPatches){
       _tadMistPatches = [
         { x: W*0.30, y: H*0.40, r: Math.min(W,H)*0.42, vx: 0.20, vy: 0.08 },
-        { x: W*0.70, y: H*0.60, r: Math.min(W,H)*0.45, vx:-0.18, vy: 0.10 },
+        { x: W*0.70, y: H*0.50, r: Math.min(W,H)*0.45, vx:-0.18, vy: 0.10 },
       ];
     }
     for(const p of _tadMistPatches){
@@ -8709,8 +8971,36 @@ function _drawTadpoleLevelLayer(ctx, W, H){
     }
   }
 
-  // LV10 → festival: butterflies + fireflies + petals + shooting stars + soft fog
+  // LV10 → CHAOS FINALE. Mud + rising water + periodic board rotation +
+  // occasional quake gusts are all driven by the timers started above on entry.
+  // This block paints the festival visitors (butterflies + fireflies + shooting
+  // stars) PLUS a brown mud surface (because gridMask hides the bottom row).
   else if(lvl === 10){
+    // Mud surface visual (the mask itself is set by _tadStartMud above).
+    if (_tadMudActive && _tadMudRows > 0) {
+      const cellPx = (typeof CELL === 'number' && CELL > 0) ? CELL : (H / ROWS);
+      const mudTop = (ROWS - _tadMudRows) * cellPx;
+      ctx.save();
+      const mg = ctx.createLinearGradient(0, mudTop, 0, H);
+      mg.addColorStop(0,    'rgba(85,50,25,0.78)');
+      mg.addColorStop(0.5,  'rgba(60,35,18,0.95)');
+      mg.addColorStop(1,    'rgba(40,22,10,1.00)');
+      ctx.fillStyle = mg;
+      ctx.fillRect(0, mudTop, W, H - mudTop);
+      // Bubbles
+      ctx.fillStyle = 'rgba(150,100,50,0.7)';
+      for(let i = 0; i < 10; i++){
+        const bx = (i * 79 + Math.sin(t*0.03 + i)*16) % W;
+        const cycle = (t*0.5 + i*30) % (H - mudTop + 20);
+        const by = H - cycle;
+        if(by > mudTop + 6 && by < H - 2){
+          ctx.beginPath();
+          ctx.arc(bx, by, 1.8, 0, Math.PI*2);
+          ctx.fill();
+        }
+      }
+      ctx.restore();
+    }
     // 2 butterfly flocks
     const bpal = [[255,170,60],[255,120,180],[180,220,255],[200,150,255],[255,230,120]];
     if(!_tadFlocks) _tadFlocks = [
@@ -22475,7 +22765,10 @@ function drawGrid(){
   // Tokyo TIDE: draw water layer covering flooded rows. Drawn BEFORE tiles so
   // any tiles caught by the rising water render on top — they look submerged
   // because of the translucent blue overlay drawn later.
-  if (typeof _tokyoFloodLevel === 'number' && _tokyoFloodLevel > 0.01 && cm_gfLevel === 4) {
+  if (typeof _tokyoFloodLevel === 'number' && _tokyoFloodLevel > 0.01 && (
+        cm_gfLevel === 4 ||
+        (activeChallengeMode === 'standard' && (level === 9 || level === 10) && _tadFloodActive)
+      )) {
     const floodTopY = (ROWS - _tokyoFloodLevel) * CELL;
     const W = gridCanvas.width;
     const H = gridCanvas.height;
