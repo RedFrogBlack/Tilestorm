@@ -8133,6 +8133,8 @@ function _tadResetVisitors(){
   _tadWindShakeAmp = 0; _tadLightning = 0; _tadLightningTimer = 0;
   // Stop the LV3 wind-quake timer when level changes; restart only if new level is 3.
   try { if(_tadWindQuakeTimer){ clearInterval(_tadWindQuakeTimer); _tadWindQuakeTimer = null; } } catch(_){}
+  // Drop the LV5 frog-shape mask when leaving LV5; re-applied on entering LV5.
+  try { _tadClearLv5FrogMask(); } catch(_){}
 }
 
 // LV3: gust of wind that physically pushes a few placed tiles to empty spaces.
@@ -8149,6 +8151,52 @@ function _tadStartWindQuakes(){
       if (typeof _gfTriggerMonacoQuake === 'function') _gfTriggerMonacoQuake();
     } catch(_){}
   }, 10000);
+}
+
+// LV5: shape the playable area like a frog. 10×10 mask where 1 = playable,
+// 0 = outside the frog (cell can't accept a tile, line-clear logic already
+// excludes masked cells via isMasked()).
+const TAD_LV5_FROG_MASK = [
+  // r0: two eye bumps at the top (cols 3 and 6)
+  [ 0, 0, 0, 1, 0, 0, 1, 0, 0, 0 ],
+  // r1: eye bases broader
+  [ 0, 0, 1, 1, 1, 1, 1, 1, 0, 0 ],
+  // r2: head top
+  [ 0, 1, 1, 1, 1, 1, 1, 1, 1, 0 ],
+  // r3-r6: wide cheeks, full body width
+  [ 1, 1, 1, 1, 1, 1, 1, 1, 1, 1 ],
+  [ 1, 1, 1, 1, 1, 1, 1, 1, 1, 1 ],
+  [ 1, 1, 1, 1, 1, 1, 1, 1, 1, 1 ],
+  [ 1, 1, 1, 1, 1, 1, 1, 1, 1, 1 ],
+  // r7-r9: chin tapers inward
+  [ 0, 1, 1, 1, 1, 1, 1, 1, 1, 0 ],
+  [ 0, 0, 1, 1, 1, 1, 1, 1, 0, 0 ],
+  [ 0, 0, 0, 1, 1, 1, 1, 0, 0, 0 ],
+];
+let _tadLv5MaskApplied = false;
+function _tadEnsureLv5FrogMask(){
+  // Only install in Tadpole/standard mode on LV5; avoid stomping on Monument or
+  // other masks set by other modes.
+  if (activeChallengeMode !== 'standard') return;
+  if (typeof level !== 'number' || level !== 5) return;
+  if (_tadLv5MaskApplied && gridMask) return;
+  try {
+    gridMask = Array.from({length: ROWS}, (_, r) =>
+      Array.from({length: COLS}, (_, c) => !!TAD_LV5_FROG_MASK[r][c])
+    );
+    _tadLv5MaskApplied = true;
+    // Clear any tiles that landed on now-masked cells from a previous level.
+    if (grid && grid.length) {
+      for (let r=0; r<ROWS; r++) for (let c=0; c<COLS; c++) {
+        if (!gridMask[r][c]) grid[r][c] = 0;
+      }
+    }
+  } catch(_){}
+}
+function _tadClearLv5FrogMask(){
+  if (!_tadLv5MaskApplied) return;
+  try { gridMask = null; } catch(_){}
+  _tadLv5MaskApplied = false;
 }
 
 // Create a flock of N items orbiting a moving center.
@@ -8194,6 +8242,8 @@ function _drawTadpoleLevelLayer(ctx, W, H){
     _tadLastLvl = lvl;
     // LV3: start recurring wind-gust quakes that push placed tiles around.
     if(lvl === 3 && !_tadWindQuakeTimer){ _tadStartWindQuakes(); }
+    // LV5: install the frog-shaped play-area mask on entry.
+    if(lvl === 5){ _tadEnsureLv5FrogMask(); }
   }
   const t = (typeof _ambientT === 'number') ? _ambientT : 0;
 
@@ -8466,69 +8516,15 @@ function _drawTadpoleLevelLayer(ctx, W, H){
     }
   }
 
-  // LV5 → frog-head silhouette mask + bottom-row water tint (TF LV5 visual reuse).
-  // The frog-head mask darkens cells OUTSIDE the frog shape so the play area
-  // visually reads as a frog face. Tiles inside the frog stay fully bright; tiles
-  // outside get a heavy dark-green tint. Reuses the Monument zone-map pattern
-  // (see MN_TOWER_BRIDGE_ZONES) but as a mask instead of a building.
+  // LV5 → actual play-area shaped like a frog (mask cells outside the shape
+  // so tiles can't be placed there). Backdrop stays the standard tadpole pond —
+  // no dark tint or extra overlay. Setting gridMask is handled in
+  // _tadEnsureLv5FrogMask(), invoked when entering LV5 below.
+  // The on-canvas drawing here is a light decorative outline so the player can
+  // see exactly which cells are masked off (drawn over the masked cells only).
   else if(lvl === 5){
-    // 10×10 frog-head silhouette (1 = inside frog, 0 = outside).
-    // Drawn on top of tiles so outside cells get darkened.
-    const TAD_FROG_HEAD = [
-      [ 0, 0, 1, 1, 1, 1, 1, 1, 0, 0 ], // top of head
-      [ 0, 1, 1, 1, 1, 1, 1, 1, 1, 0 ],
-      [ 1, 1, 0, 1, 1, 1, 1, 0, 1, 1 ], // eyes (gaps)
-      [ 1, 1, 1, 1, 1, 1, 1, 1, 1, 1 ],
-      [ 1, 1, 1, 1, 1, 1, 1, 1, 1, 1 ],
-      [ 1, 1, 1, 1, 1, 1, 1, 1, 1, 1 ], // wide cheeks
-      [ 0, 1, 1, 1, 1, 1, 1, 1, 1, 0 ],
-      [ 0, 1, 1, 0, 0, 0, 0, 1, 1, 0 ], // mouth
-      [ 0, 0, 1, 1, 1, 1, 1, 1, 0, 0 ],
-      [ 0, 0, 0, 1, 1, 1, 1, 0, 0, 0 ], // chin
-    ];
-    try {
-      const CW = W / 10;
-      // Outside cells: dark tint (obscures tiles there).
-      ctx.save();
-      for(let r=0; r<10; r++){
-        for(let c=0; c<10; c++){
-          if(TAD_FROG_HEAD[r][c] === 0){
-            ctx.fillStyle = 'rgba(8,20,12,0.65)';
-            ctx.fillRect(c*CW, r*CW, CW, CW);
-          }
-        }
-      }
-      // Frog outline: thin green stroke around the silhouette edge.
-      ctx.strokeStyle = 'rgba(80,180,100,0.55)';
-      ctx.lineWidth = 2;
-      for(let r=0; r<10; r++){
-        for(let c=0; c<10; c++){
-          if(TAD_FROG_HEAD[r][c] === 1){
-            // Check each neighbor; draw an edge where neighbor is 0 (or out of bounds).
-            if(r === 0 || TAD_FROG_HEAD[r-1][c] === 0){
-              ctx.beginPath(); ctx.moveTo(c*CW, r*CW); ctx.lineTo((c+1)*CW, r*CW); ctx.stroke();
-            }
-            if(r === 9 || TAD_FROG_HEAD[r+1][c] === 0){
-              ctx.beginPath(); ctx.moveTo(c*CW, (r+1)*CW); ctx.lineTo((c+1)*CW, (r+1)*CW); ctx.stroke();
-            }
-            if(c === 0 || TAD_FROG_HEAD[r][c-1] === 0){
-              ctx.beginPath(); ctx.moveTo(c*CW, r*CW); ctx.lineTo(c*CW, (r+1)*CW); ctx.stroke();
-            }
-            if(c === 9 || TAD_FROG_HEAD[r][c+1] === 0){
-              ctx.beginPath(); ctx.moveTo((c+1)*CW, r*CW); ctx.lineTo((c+1)*CW, (r+1)*CW); ctx.stroke();
-            }
-          }
-        }
-      }
-      // Two pupils inside the frog's eye gaps (cells [2][2] and [2][7]).
-      ctx.fillStyle = 'rgba(60,200,90,0.85)';
-      [ [2,2], [2,7] ].forEach(([rr,cc]) => {
-        ctx.beginPath();
-        ctx.arc(cc*CW + CW/2, rr*CW + CW/2, CW*0.22, 0, Math.PI*2);
-        ctx.fill();
-      });
-      ctx.restore();
-    } catch(_){}
+    // Install the mask each frame in case any other code reset it.
+    try { _tadEnsureLv5FrogMask(); } catch(_){}
     ctx.save();
     // Rising water gradient over bottom 35% of canvas
     const waterTop = H * 0.65;
@@ -25447,13 +25443,14 @@ window.__devSoloSetLevel = function(targetLv){
       if (isGfMode && typeof _gfStopAllMechanics === 'function') { try { _gfStopAllMechanics(); } catch(e){} }
       // Wipe grid + reset GF lines counter on level change (clean board feel)
       if (isGfMode && typeof cm_gfLinesCleared !== 'undefined') cm_gfLinesCleared = 0;
-      if (isGfMode || isFogMode || isTfMode) {
-        try {
-          if (typeof grid !== 'undefined' && grid && grid.length) {
-            for (let r=0;r<grid.length;r++) for (let c=0;c<grid[r].length;c++) grid[r][c] = 0;
-          }
-        } catch(_e2) {}
-      }
+      // Wipe the grid on every dev level skip (Tadpole/standard included).
+      // Without this, tiles from the previous level persist visually and may
+      // appear in positions that the new level’s mask considers unplayable.
+      try {
+        if (typeof grid !== 'undefined' && grid && grid.length) {
+          for (let r=0;r<grid.length;r++) for (let c=0;c<grid[r].length;c++) grid[r][c] = 0;
+        }
+      } catch(_e2) {}
       if (isGfMode && typeof _cdProgress !== 'undefined') _cdProgress.setLastLevel('goldenfrog', lv);
     } catch(_e){}
     // Reset any in-flight challenge round so HUD/timer reflect the new level
