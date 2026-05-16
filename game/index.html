@@ -11260,7 +11260,18 @@ function _tfHazardBlocks(row, col){
   if((_tfHazardCfg.kind === 'water' || _tfHazardCfg.kind === 'combo') && row >= ROWS - Math.floor(_tfWaterRiseRows)){
     return true;
   }
-  // Cloud-based: blocked if opaque-core covers cell
+  // Butterflies: flying flocks do NOT block placement (visual only).
+  // ONLY block the row a flock is RESTING on (restPhase === 2),
+  // until it takes off again.
+  if(_tfHazardCfg.kind === 'butterflies'){
+    if(_tfHazardPatches && _tfHazardPatches.length){
+      for(const p of _tfHazardPatches){
+        if(p.restPhase === 2 && p.restRow === row) return true;
+      }
+    }
+    return false;
+  }
+  // Other cloud-based hazards: blocked if opaque-core covers cell
   if(_tfHazardCfg.patches > 0 && _tfHazardTileAlpha.length){
     const a = (_tfHazardTileAlpha[row] && _tfHazardTileAlpha[row][col]) || 0;
     if(a >= 0.65) return true;
