@@ -11794,20 +11794,25 @@ function _tfDrawBranchOverlay(ctx, W, H, CW){
 function _tfTickFireflies(isActive){
   const tt = (typeof _ambientT === 'number') ? _ambientT : _tfHazardTickAccum;
 
-  // Colour palette: 6 distinct firefly hues (warm + cool jewel tones)
+  // Colour palette: 8 distinct firefly hues — every firefly gets its OWN colour
+  // (not per-flock) so the swarm is vividly multicoloured everywhere.
   const palette = [
     [255, 220,  90],   // warm yellow — classic firefly
-    [255, 140, 180],   // pink
+    [255, 140, 180],   // hot pink
     [120, 220, 255],   // cyan
     [180, 120, 255],   // violet
-    [120, 255, 140],   // green
+    [140, 255, 160],   // green
     [255, 170,  60],   // amber
+    [255, 100, 100],   // coral red
+    [220, 240, 255],   // soft white
   ];
 
-  // Seed 5 flock anchors (like butterfly patches) + 200 fireflies distributed among them
+  // Seed 8 flock anchors (more flocks = more spread across board)
+  // + 2000 fireflies distributed among them. Each firefly gets a random
+  // colour from the palette (independent of its flock) for visual variety.
   if(_tfFireflies.length === 0){
     _tfFireflies._flocks = [];
-    const FLOCKS = 5;
+    const FLOCKS = 8;
     for(let f=0; f<FLOCKS; f++){
       _tfFireflies._flocks.push({
         anchorX:  1.5 + Math.random() * (COLS - 3),
@@ -11816,32 +11821,42 @@ function _tfTickFireflies(isActive){
         driftPhase: 'hover',
         driftTimer: 60 * (2.5 + Math.random()*1.5),
         phase:    Math.random() * Math.PI * 2,
-        // Each flock gets one palette colour
-        col: palette[f % palette.length],
       });
     }
-    // Initialise targets to anchors
     for(const fl of _tfFireflies._flocks){ fl.targetX = fl.anchorX; fl.targetY = fl.anchorY; }
 
-    // Spawn 200 fireflies distributed evenly across flocks
-    const TOTAL = 200;
+    // Spawn 4000 fireflies distributed across flocks. Each one picks its own
+    // palette colour at random so flocks have mixed-colour appearance.
+    // Density-biased distribution: ~60% of fireflies cluster TIGHT to flock
+    // center (within 1.4 tiles) so the middle becomes visually opaque while
+    // edges remain semi-transparent (matches user preference: "middle being
+    // non transparent and the edges with some visibility").
+    const TOTAL = 4000;
     for(let i=0; i<TOTAL; i++){
       const flockIdx = i % FLOCKS;
+      // Density-bias: bias most fireflies toward center using sqrt of random
+      // (inverse — favours small radii). 60% tight, 40% wider scatter.
+      const tight = Math.random() < 0.6;
+      const r = tight
+        ? Math.pow(Math.random(), 1.6) * 1.4   // tight: hugs the center
+        : 1.4 + Math.pow(Math.random(), 0.7) * 3.6; // wider halo out to ~5 tiles
+      const ang = Math.random() * Math.PI * 2;
       _tfFireflies.push({
         flock: flockIdx,
-        // Offset from flock anchor (spread within ~2.5 cells radius)
-        ox: (Math.random()-0.5) * 3.0,
-        oy: (Math.random()-0.5) * 3.0,
-        vx: 0, vy: 0,
-        // Position derived from anchor+offset; initialised here
+        ox: Math.cos(ang) * r,
+        oy: Math.sin(ang) * r,
+        // Distance from flock center (used by renderer for size + alpha falloff)
+        rad: r,
         x: 0, y: 0,
         phase: Math.random()*Math.PI*2,
-        pulseSpeed: 0.035 + Math.random()*0.06,
-        size: 2.2 + Math.random()*3.0,
-        // Per-firefly micro-wobble for organic motion
+        pulseSpeed: 0.030 + Math.random()*0.060,
+        // Bigger particles in the dense core, smaller on edges (visual thickness)
+        size: tight ? (2.4 + Math.random()*2.8) : (1.4 + Math.random()*1.8),
         wobAmp: 0.10 + Math.random()*0.20,
         wobFreq: 0.020 + Math.random()*0.030,
         wobPhase: Math.random()*Math.PI*2,
+        // PER-FIREFLY colour from palette (mixed within each flock)
+        col: palette[Math.floor(Math.random() * palette.length)],
       });
     }
   }
@@ -11905,30 +11920,78 @@ function _tfTickFireflies(isActive){
 }
 
 function _tfDrawFireflies(ctx, W, H, CW){
-  const flocks = _tfFireflies._flocks || [];
-  for(const ff of _tfFireflies){
-    const fl = flocks[ff.flock];
-    if(!fl) continue;
-    const col = fl.col;
-    const px = ff.x*CW + CW*0.5, py = ff.y*CW + CW*0.5;
-    const pulse = 0.35 + 0.65*Math.abs(Math.sin(ff.phase));
-    // Outer glow halo — flock colour
-    const glowR = ff.size * 4.8 * pulse;
-    const grd = ctx.createRadialGradient(px, py, 0, px, py, glowR);
-    grd.addColorStop(0,   `rgba(${col[0]},${col[1]},${col[2]},${0.55*pulse})`);
-    grd.addColorStop(0.4, `rgba(${col[0]},${col[1]},${col[2]},${0.22*pulse})`);
-    grd.addColorStop(1,   `rgba(${col[0]},${col[1]},${col[2]},0)`);
-    ctx.save();
+  // 4000 fireflies — three-pass rendering for THICK, semi-opaque swarm clouds:
+  //   1. Source-over base mass at each flock center (warm tinted blob, opaque
+  //      in middle, fading at edges) — this is what actually OBSCURES tiles
+  //      so user can't see them when swarm passes over.
+  //   2. Additive halo pass — soft glow around every firefly.
+  //   3. Additive bright core dots — the sparkly highlights.
+  // Each firefly's alpha falls off with distance from flock center so edges
+  // stay semi-transparent (matches the "transitional" preference).
+  const flocks = _tfFireflies._flocks;
+  if(!flocks) return;
+
+  // ===== PASS 1: Opaque base mass (source-over) — obscures the tiles =====
+  // Draw a soft radial cloud per flock so the middle of the swarm is dense
+  // enough to hide tiles. Uses a warm dark-amber tint with feathered edges.
+  ctx.save();
+  ctx.globalCompositeOperation = 'source-over';
+  for(const fl of flocks){
+    if(typeof fl.curX !== 'number') continue;
+    const cx = fl.curX * CW + CW*0.5;
+    const cy = fl.curY * CW + CW*0.5;
+    const R  = CW * 2.4;  // ~2.4-tile radius cloud
+    const grd = ctx.createRadialGradient(cx, cy, 0, cx, cy, R);
+    grd.addColorStop(0.00, 'rgba(35, 28, 18, 0.78)');   // opaque dark warm center
+    grd.addColorStop(0.35, 'rgba(45, 35, 22, 0.55)');
+    grd.addColorStop(0.70, 'rgba(55, 42, 28, 0.20)');
+    grd.addColorStop(1.00, 'rgba(60, 45, 30, 0.00)');   // fades to transparent
     ctx.fillStyle = grd;
-    ctx.beginPath(); ctx.arc(px, py, glowR, 0, Math.PI*2); ctx.fill();
-    // Bright core dot — lightened flock colour for hot center
-    const hotR = Math.min(255, col[0]+60);
-    const hotG = Math.min(255, col[1]+60);
-    const hotB = Math.min(255, col[2]+60);
-    ctx.fillStyle = `rgba(${hotR},${hotG},${hotB},${0.95*pulse})`;
-    ctx.beginPath(); ctx.arc(px, py, ff.size*0.55*pulse, 0, Math.PI*2); ctx.fill();
-    ctx.restore();
+    ctx.beginPath();
+    ctx.arc(cx, cy, R, 0, Math.PI*2);
+    ctx.fill();
   }
+  ctx.restore();
+
+  // ===== PASS 2: Soft coloured halos (additive, MUCH lower alpha) =====
+  // With 4000 particles, additive blending easily saturates to white. Keep
+  // halo alpha very low so colours stay visible instead of blowing out.
+  ctx.save();
+  ctx.globalCompositeOperation = 'lighter';
+  for(const ff of _tfFireflies){
+    const col = ff.col;
+    const px = ff.x*CW + CW*0.5, py = ff.y*CW + CW*0.5;
+    const pulse = 0.45 + 0.55*Math.abs(Math.sin(ff.phase));
+    // Edge falloff: fireflies near flock center are brighter & bigger
+    const edge = ff.rad < 1.4 ? 1.0 : Math.max(0.50, 1.0 - (ff.rad - 1.4) * 0.18);
+    // Soft halo — low alpha so 4000 don't saturate to white
+    ctx.fillStyle = `rgba(${col[0]},${col[1]},${col[2]},${0.06*pulse*edge})`;
+    ctx.beginPath();
+    ctx.arc(px, py, ff.size * 2.2 * pulse, 0, Math.PI*2);
+    ctx.fill();
+  }
+  ctx.restore();
+
+  // ===== PASS 3: Crisp coloured cores (source-over, preserves colour) =====
+  // Use source-over (not additive) for the bright cores so each firefly's
+  // colour stays vivid and individual instead of merging into white.
+  ctx.save();
+  ctx.globalCompositeOperation = 'source-over';
+  for(const ff of _tfFireflies){
+    const col = ff.col;
+    const px = ff.x*CW + CW*0.5, py = ff.y*CW + CW*0.5;
+    const pulse = 0.45 + 0.55*Math.abs(Math.sin(ff.phase));
+    const edge = ff.rad < 1.4 ? 1.0 : Math.max(0.50, 1.0 - (ff.rad - 1.4) * 0.18);
+    // Slightly brightened core colour
+    const hotR = Math.min(255, col[0]+30);
+    const hotG = Math.min(255, col[1]+30);
+    const hotB = Math.min(255, col[2]+30);
+    ctx.fillStyle = `rgba(${hotR},${hotG},${hotB},${0.85*pulse*edge})`;
+    ctx.beginPath();
+    ctx.arc(px, py, ff.size * 0.7 * pulse, 0, Math.PI*2);
+    ctx.fill();
+  }
+  ctx.restore();
 }
 
 // ════════════════════════════════════════════════════════════════════════════
