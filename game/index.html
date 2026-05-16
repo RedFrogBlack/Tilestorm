@@ -8129,6 +8129,7 @@ let _tadRotationAngle = 0;     // LV7: cosmetic angle for the wind ring visual
 let _tadMudActive    = false;  // LV8: bottom rows masked + brown mud overlay
 let _tadMudRows      = 0;      // LV8: number of bottom rows currently muddy
 let _tadMudGrowTimer = null;   // LV8: grows mud over time
+let _tadMudCycleTimer = null;  // LV8: toggles mud on/off every 5s
 let _tadFloodActive  = false;  // LV9: drives _tokyoFloodLevel for the rising tide
 let _tadFloodTimer   = null;   // LV9: tide cycle stepper
 let _tadFloodPhase   = 'off';  // LV9: calm | rising | peak | falling
@@ -8145,8 +8146,9 @@ function _tadResetVisitors(){
   // Stop the LV7 board-rotation timer when level changes; restart only if new level is 7 (or 10).
   try { if(_tadRotationTimer){ clearInterval(_tadRotationTimer); _tadRotationTimer = null; } } catch(_){}
   _tadRotationAngle = 0;
-  // Stop the LV8 mud grow timer + clear the mud mask if it was applied.
+  // Stop the LV8 mud grow timer + cycle timer + clear the mud mask if it was applied.
   try { if(_tadMudGrowTimer){ clearInterval(_tadMudGrowTimer); _tadMudGrowTimer = null; } } catch(_){}
+  try { if(_tadMudCycleTimer){ clearInterval(_tadMudCycleTimer); _tadMudCycleTimer = null; } } catch(_){}
   try { if(_tadMudActive){ _tadClearMud(); } } catch(_){}
   _tadMudActive = false; _tadMudRows = 0;
   // Stop the LV9 rising-water tide cycle when leaving LV9.
@@ -8268,6 +8270,44 @@ function _tadClearMud(){
   if (!_tadLv5MaskApplied) {
     try { gridMask = null; } catch(_){}
   }
+}
+
+// LV8: cycle mud on and off every `periodMs` (default 5000ms). When ON,
+// `rows` bottom rows are muddy + masked. When OFF, mud clears entirely.
+function _tadStartMudCycle(rows, periodMs){
+  const r = Math.max(1, (rows|0) || 1);
+  const period = Math.max(500, (periodMs|0) || 5000);
+  try { if(_tadMudCycleTimer){ clearInterval(_tadMudCycleTimer); _tadMudCycleTimer = null; } } catch(_){}
+  // Start with mud ON immediately.
+  _tadMudActive = true;
+  _tadMudRows = r;
+  try { _tadApplyMudMask(); } catch(_){}
+  try { if (typeof drawGrid === 'function') drawGrid(); } catch(_){}
+  try { showEventBanner('💫 MUDDY POND — MUD COMES AND GOES!'); } catch(_){}
+  _tadMudCycleTimer = setInterval(() => {
+    try {
+      if (activeChallengeMode !== 'standard' || !gameActive) return;
+      if (typeof level !== 'number' || level !== 8) {
+        try { clearInterval(_tadMudCycleTimer); } catch(_){}
+        _tadMudCycleTimer = null;
+        return;
+      }
+      if (_tadMudActive) {
+        // Toggle OFF — clear the mud mask but keep cycle running.
+        _tadMudActive = false;
+        _tadMudRows = 0;
+        if (!_tadLv5MaskApplied) {
+          try { gridMask = null; } catch(_){}
+        }
+      } else {
+        // Toggle ON — re-apply the mud mask.
+        _tadMudActive = true;
+        _tadMudRows = r;
+        try { _tadApplyMudMask(); } catch(_){}
+      }
+      try { if (typeof drawGrid === 'function') drawGrid(); } catch(_){}
+    } catch(_){}
+  }, period);
 }
 
 // LV9: rising water. Drives _tokyoFloodLevel directly so isMasked() blocks the
@@ -8476,8 +8516,8 @@ function _drawTadpoleLevelLayer(ctx, W, H){
     if(lvl === 5){ _tadEnsureLv5FrogMask(); }
     // LV7: start the spinning-pond board rotation cycle.
     if(lvl === 7 && !_tadRotationTimer){ _tadStartRotation(12000); }
-    // LV8: muddy pond — bottom row blocked from the start, grows over time.
-    if(lvl === 8 && !_tadMudActive){ _tadStartMud(1); }
+    // LV8: muddy pond — bottom row blocked, cycles on/off every 5s.
+    if(lvl === 8 && !_tadMudCycleTimer){ _tadStartMudCycle(1, 5000); }
     // LV9: rising water — tide cycle drives _tokyoFloodLevel.
     if(lvl === 9 && !_tadFloodActive){ _tadStartTide(); }
     // LV10: chaos finale — mud + rising water + rotation + occasional quake.
