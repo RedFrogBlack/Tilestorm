@@ -11024,6 +11024,7 @@ let _tfHazardTileAlpha = [];        // [r][c] per-cell opacity 0..1
 let _tfHazardLvlInited = -1;
 let _tfHazardTickAccum = 0;         // 60fps accumulator
 let _tfShakeAmp = 0;                // current board shake amplitude
+let _tfWindLastGust = -1;           // cycle idx of last LV2 wind gust (one-shot per cycle)
 let _tfWaterRiseRows = 0;           // current flooded rows from bottom (LV5)
 let _tfWaterTargetRows = 0;
 let _tfLightningTimer = 0;          // frames until next lightning flash
@@ -11267,11 +11268,8 @@ function _tfTickHazard(){
     _tfShakeAmp = Math.max(0, _tfShakeAmp - 0.1);
   }
   // Apply shake transform to grid canvas (mirrors Golden Frog quake pattern)
-  // EXCEPT for LV2 wind — LV2 jitters each tile INDEPENDENTLY (see drawTile)
-  // so the tiles look like they're being blown all over the place rather
-  // than the whole board moving as one rigid unit.
   if(typeof gridCanvas !== 'undefined' && gridCanvas){
-    if(_tfShakeAmp > 0.1 && cfg.kind !== 'wind'){
+    if(_tfShakeAmp > 0.1){
       const off = _tfGetShakeOffset();
       gridCanvas.style.transform = 'translate(' + off.x.toFixed(2) + 'px,' + off.y.toFixed(2) + 'px)';
     } else if(gridCanvas.style.transform && gridCanvas.style.transform.indexOf('translate') !== -1){
@@ -11513,11 +11511,43 @@ function _tfTickWind(isActive){
     if(lf.y < -0.5) lf.y = ROWS + 0.2;
     if(lf.y > ROWS + 0.5) lf.y = -0.2;
   }
-  // Shake: use _tfShakeAmp directly (reusing existing shake pipeline)
+  // Shake: subtle ambient shake during active (the visual chaos comes from
+  // the tile-RELOCATION via _gfTriggerMonacoQuake, not from camera shake).
   if(isActive){
-    _tfShakeAmp = 5 + Math.sin(tt*0.08)*1.0;
+    _tfShakeAmp = 1.5 + Math.sin(tt*0.08)*0.4;
   } else {
     _tfShakeAmp = Math.max(0, _tfShakeAmp - 0.15);
+  }
+
+  // ── ONE-SHOT GUST: at the start of each 5s active window, physically
+  //    move some tiles to new positions by reusing the Golden Frog Monaco
+  //    quake slide system. The wind 'blows' tiles to new spots on the board.
+  // _tfWindLastGust tracks the cycle index of the last gust we fired.
+  if(isActive && typeof _gfTriggerMonacoQuake === 'function'){
+    const cycleIdx = Math.floor(_tfHazardTickAccum / ((_tfHazardCfg.cycleSec||10) * 60));
+    if(_tfWindLastGust !== cycleIdx){
+      _tfWindLastGust = cycleIdx;
+      try {
+        _gfTriggerMonacoQuake();
+        // After the slide animates, re-check for cleared lines (Tree Frog
+        // doesn't share Golden Frog's recheck, so do it inline).
+        setTimeout(() => {
+          try {
+            if(typeof findCompletedLines === 'function' && typeof clearLines === 'function'){
+              const completed = findCompletedLines();
+              const total = (completed.completedRows||[]).length
+                          + (completed.completedCols||[]).length
+                          + (completed.completedHalfRows||[]).length;
+              if(total > 0){
+                clearLines(completed);
+                if(typeof drawGrid === 'function') drawGrid();
+                if(typeof updateUI === 'function') updateUI();
+              }
+            }
+          } catch(_e){}
+        }, 750);
+      } catch(_e){}
+    }
   }
 }
 
@@ -20897,23 +20927,8 @@ function drawTile(r,c,color,alpha=1,glow=false,gold=false){
       return;
     }
   } catch(_e) {}
-  let x=c*CELL+PAD,y=r*CELL+PAD;
-  const w=CELL-PAD*2,h=CELL-PAD*2;
+  const x=c*CELL+PAD,y=r*CELL+PAD,w=CELL-PAD*2,h=CELL-PAD*2;
   const rad=Math.max(4,CELL*0.13);
-  // LV2 Strong Wind Gusts: each tile jitters INDEPENDENTLY so the board
-  // looks like tiles are being blown around, not moving as one rigid block.
-  // Phase per (r,c) gives each tile its own swirling motion.
-  if(typeof activeChallengeMode !== 'undefined' && activeChallengeMode === 'frenzy'
-     && typeof cm_frenzyLevel !== 'undefined' && (cm_frenzyLevel|0) === 2
-     && typeof _tfShakeAmp === 'number' && _tfShakeAmp > 0.1){
-    const tt = (typeof _ambientT === 'number') ? _ambientT : 0;
-    const ph = (r*31 + c*17) * 0.37;          // unique phase per cell
-    const amp = _tfShakeAmp * 1.6;            // amplified vs whole-board shake
-    const jx = Math.sin(tt*1.4 + ph)*amp + Math.cos(tt*2.2 + ph*1.3)*amp*0.45;
-    const jy = Math.cos(tt*1.7 + ph*1.1)*amp*0.9 + Math.sin(tt*2.6 + ph)*amp*0.35;
-    x += jx;
-    y += jy;
-  }
   ctx.save();
   ctx.globalAlpha=alpha;
   // Outer glow on placed tiles
@@ -28536,7 +28551,7 @@ function _gfTriggerMonacoQuake() {
   } catch (_e) {}
 
   if (!moves.length) {
-    showEventBanner('✨ MONACO QUAKE — NOTHING TO SHIFT');
+    if (activeChallengeMode === 'goldenfrog') showEventBanner('✨ MONACO QUAKE — NOTHING TO SHIFT');
     return;
   }
 
@@ -28592,7 +28607,7 @@ function _gfTriggerMonacoQuake() {
     }
   };
   _gfQuakeRafId = requestAnimationFrame(tick);
-  showEventBanner('✨ MONACO QUAKE — TILES SHIFTING!');
+  if (activeChallengeMode === 'goldenfrog') showEventBanner('✨ MONACO QUAKE — TILES SHIFTING!');
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
