@@ -8263,8 +8263,55 @@ function _drawTadpoleLevelLayer(ctx, W, H){
   }
 
   // ── (2) PER-LEVEL SIGNATURE VISITOR ─────────────────────────
-  // LV1 → spring meadow + 2 dragonflies (gentle, decorative)
+  // LV1 → DENSE spring butterfly swarm + dragonflies. 5 flocks × 40 butterflies
+  // = 200 butterflies covering the board, plus drifting halos and 3 dragonflies.
+  // User wanted ~10× thicker so the board is genuinely obscured.
   if(lvl === 1){
+    const palette1 = [
+      [255,170, 60], [255,120,180], [180,220,255], [200,150,255],
+      [255,230,120], [140,255,200], [255,200,200], [200,255,220]
+    ];
+    if(!_tadFlocks) _tadFlocks = [
+      _tadMakeFlock(W, H, 40, palette1, 7),
+      _tadMakeFlock(W, H, 40, palette1, 7),
+      _tadMakeFlock(W, H, 40, palette1, 7),
+      _tadMakeFlock(W, H, 40, palette1, 7),
+      _tadMakeFlock(W, H, 40, palette1, 7),
+    ];
+    for(const f of _tadFlocks){
+      _tadTickFlock(f, W, H, t);
+      // Larger, slightly stronger halo so flocks read as cloud-like cover
+      ctx.save();
+      const halo = ctx.createRadialGradient(f.cx, f.cy, 0, f.cx, f.cy, 110);
+      halo.addColorStop(0,   'rgba(255,240,250,0.28)');
+      halo.addColorStop(0.5, 'rgba(255,240,250,0.12)');
+      halo.addColorStop(1,   'rgba(255,240,250,0.00)');
+      ctx.fillStyle = halo;
+      ctx.beginPath(); ctx.arc(f.cx, f.cy, 110, 0, Math.PI*2); ctx.fill();
+      // Butterflies
+      for(const b of f.items){
+        const bx = f.cx + b.ox + Math.sin(t*0.04+b.phase)*4;
+        const by = f.cy + b.oy + Math.cos(t*0.035+b.phase)*3;
+        const flap = 0.55 + Math.abs(Math.sin(t*0.18+b.phase))*0.45;
+        ctx.save();
+        ctx.translate(bx, by);
+        ctx.rotate(Math.sin(t*0.025+b.phase)*0.20);
+        // Wing pair
+        ctx.fillStyle = `rgba(${b.col[0]},${b.col[1]},${b.col[2]},0.92)`;
+        ctx.beginPath(); ctx.ellipse(-b.size*0.55, 0, b.size*0.78*flap, b.size*0.55, -0.25, 0, Math.PI*2); ctx.fill();
+        ctx.beginPath(); ctx.ellipse( b.size*0.55, 0, b.size*0.78*flap, b.size*0.55,  0.25, 0, Math.PI*2); ctx.fill();
+        // Inner lighter spot
+        ctx.fillStyle = 'rgba(255,255,255,0.55)';
+        ctx.beginPath(); ctx.ellipse(-b.size*0.55, 0, b.size*0.30*flap, b.size*0.22, -0.25, 0, Math.PI*2); ctx.fill();
+        ctx.beginPath(); ctx.ellipse( b.size*0.55, 0, b.size*0.30*flap, b.size*0.22,  0.25, 0, Math.PI*2); ctx.fill();
+        // Body
+        ctx.fillStyle = 'rgba(40,30,30,0.88)';
+        ctx.beginPath(); ctx.ellipse(0, 0, 0.7, b.size*0.42, 0, 0, Math.PI*2); ctx.fill();
+        ctx.restore();
+      }
+      ctx.restore();
+    }
+    // Keep the 3 dragonflies as accent visitors zigzagging across the swarm.
     if(!_tadDragonflies) _tadDragonflies = Array.from({length:3}, () => ({
       x:Math.random()*W, y:Math.random()*H*0.7,
       vx:(Math.random()<0.5?-1:1)*(0.6+Math.random()*0.4),
@@ -8277,10 +8324,8 @@ function _drawTadpoleLevelLayer(ctx, W, H){
       if(d.y<10) d.vy=Math.abs(d.vy); else if(d.y>H*0.8) d.vy=-Math.abs(d.vy);
       ctx.save();
       ctx.translate(d.x, d.y);
-      // Body
       ctx.fillStyle = 'rgba(120,210,180,0.85)';
       ctx.beginPath(); ctx.ellipse(0,0,5,1.4,0,0,Math.PI*2); ctx.fill();
-      // Wings (translucent)
       const wf = 6 + Math.abs(Math.sin(t*0.5+d.phase))*2;
       ctx.fillStyle = 'rgba(200,245,255,0.35)';
       ctx.beginPath(); ctx.ellipse(-1, -1.5, wf, 1.8, -0.35, 0, Math.PI*2); ctx.fill();
@@ -8293,22 +8338,27 @@ function _drawTadpoleLevelLayer(ctx, W, H){
 
   // LV2 → 3 butterfly flocks (REUSES TF LV1 visual, density-biased)
   else if(lvl === 2){
-    const palette = [[255,170,60],[255,120,180],[180,220,255],[200,150,255],[255,230,120],[140,255,200]];
+    // User wanted ~10× thicker butterfly cover on LV2.
+    // 5 flocks × 80 butterflies = 400 total (was 3×28=84), with much stronger halos.
+    const palette = [[255,170,60],[255,120,180],[180,220,255],[200,150,255],[255,230,120],[140,255,200],[255,200,200],[200,255,220]];
     if(!_tadFlocks) _tadFlocks = [
-      _tadMakeFlock(W, H, 28, palette, 6),
-      _tadMakeFlock(W, H, 28, palette, 6),
-      _tadMakeFlock(W, H, 28, palette, 6),
+      _tadMakeFlock(W, H, 80, palette, 7),
+      _tadMakeFlock(W, H, 80, palette, 7),
+      _tadMakeFlock(W, H, 80, palette, 7),
+      _tadMakeFlock(W, H, 80, palette, 7),
+      _tadMakeFlock(W, H, 80, palette, 7),
     ];
     for(const f of _tadFlocks){
       _tadTickFlock(f, W, H, t);
-      // Each flock has a soft halo behind it to obscure tiles
+      // Each flock has a thick halo behind it to obscure tiles substantially
       ctx.save();
-      const halo = ctx.createRadialGradient(f.cx, f.cy, 0, f.cx, f.cy, 80);
-      halo.addColorStop(0, 'rgba(255,240,250,0.18)');
-      halo.addColorStop(0.6, 'rgba(255,240,250,0.06)');
-      halo.addColorStop(1, 'rgba(255,240,250,0.00)');
+      const halo = ctx.createRadialGradient(f.cx, f.cy, 0, f.cx, f.cy, 130);
+      halo.addColorStop(0,   'rgba(255,240,250,0.42)');
+      halo.addColorStop(0.4, 'rgba(255,240,250,0.24)');
+      halo.addColorStop(0.75,'rgba(255,240,250,0.10)');
+      halo.addColorStop(1,   'rgba(255,240,250,0.00)');
       ctx.fillStyle = halo;
-      ctx.beginPath(); ctx.arc(f.cx, f.cy, 80, 0, Math.PI*2); ctx.fill();
+      ctx.beginPath(); ctx.arc(f.cx, f.cy, 130, 0, Math.PI*2); ctx.fill();
       // Butterflies
       for(const b of f.items){
         const bx = f.cx + b.ox + Math.sin(t*0.04+b.phase)*4;
@@ -8362,23 +8412,32 @@ function _drawTadpoleLevelLayer(ctx, W, H){
 
   // LV4 → 4 firefly flocks (TF LV4 reuse, lower density)
   else if(lvl === 4){
-    const palette = [[255,230,120],[180,255,200],[160,220,255],[255,180,220]];
+    // User wanted ~10× thicker firefly cover.
+    // 8 flocks × 60 fireflies = 480 total (was 4×22=88), each with a much thicker
+    // opaque base mass so the night/firefly haze genuinely hides the tiles.
+    const palette = [[255,230,120],[180,255,200],[160,220,255],[255,180,220],[255,200,140],[200,240,255]];
     if(!_tadFireflyFlocks) _tadFireflyFlocks = [
-      _tadMakeFlock(W, H, 22, palette, 2),
-      _tadMakeFlock(W, H, 22, palette, 2),
-      _tadMakeFlock(W, H, 22, palette, 2),
-      _tadMakeFlock(W, H, 22, palette, 2),
+      _tadMakeFlock(W, H, 60, palette, 2),
+      _tadMakeFlock(W, H, 60, palette, 2),
+      _tadMakeFlock(W, H, 60, palette, 2),
+      _tadMakeFlock(W, H, 60, palette, 2),
+      _tadMakeFlock(W, H, 60, palette, 2),
+      _tadMakeFlock(W, H, 60, palette, 2),
+      _tadMakeFlock(W, H, 60, palette, 2),
+      _tadMakeFlock(W, H, 60, palette, 2),
     ];
     for(const f of _tadFireflyFlocks){
       _tadTickFlock(f, W, H, t);
-      // Opaque base mass at flock center (obscures tiles)
+      // Thick opaque base mass at flock center — actually obscures tiles.
+      // Larger radius (110 vs 50) + much higher alpha (0.82 vs 0.40).
       ctx.save();
-      const base = ctx.createRadialGradient(f.cx, f.cy, 0, f.cx, f.cy, 50);
-      base.addColorStop(0, 'rgba(40,40,60,0.40)');
-      base.addColorStop(0.6, 'rgba(40,40,60,0.12)');
-      base.addColorStop(1, 'rgba(40,40,60,0.00)');
+      const base = ctx.createRadialGradient(f.cx, f.cy, 0, f.cx, f.cy, 110);
+      base.addColorStop(0,    'rgba(30,30,55,0.82)');
+      base.addColorStop(0.45, 'rgba(30,30,55,0.55)');
+      base.addColorStop(0.75, 'rgba(30,30,55,0.22)');
+      base.addColorStop(1,    'rgba(30,30,55,0.00)');
       ctx.fillStyle = base;
-      ctx.beginPath(); ctx.arc(f.cx, f.cy, 50, 0, Math.PI*2); ctx.fill();
+      ctx.beginPath(); ctx.arc(f.cx, f.cy, 110, 0, Math.PI*2); ctx.fill();
       ctx.restore();
       // Halos (additive)
       ctx.save();
@@ -8387,11 +8446,11 @@ function _drawTadpoleLevelLayer(ctx, W, H){
         const bx = f.cx + b.ox + Math.sin(t*0.05+b.phase)*5;
         const by = f.cy + b.oy + Math.cos(t*0.045+b.phase)*4;
         const glow = 0.55 + 0.45*Math.sin(t*0.06 + b.phase);
-        const halo = ctx.createRadialGradient(bx, by, 0, bx, by, 14);
-        halo.addColorStop(0, `rgba(${b.col[0]},${b.col[1]},${b.col[2]},${0.42*glow})`);
+        const halo = ctx.createRadialGradient(bx, by, 0, bx, by, 16);
+        halo.addColorStop(0, `rgba(${b.col[0]},${b.col[1]},${b.col[2]},${0.55*glow})`);
         halo.addColorStop(1, `rgba(${b.col[0]},${b.col[1]},${b.col[2]},0)`);
         ctx.fillStyle = halo;
-        ctx.beginPath(); ctx.arc(bx, by, 14, 0, Math.PI*2); ctx.fill();
+        ctx.beginPath(); ctx.arc(bx, by, 16, 0, Math.PI*2); ctx.fill();
       }
       ctx.restore();
       // Cores
@@ -8401,7 +8460,7 @@ function _drawTadpoleLevelLayer(ctx, W, H){
         const by = f.cy + b.oy + Math.cos(t*0.045+b.phase)*4;
         const glow = 0.55 + 0.45*Math.sin(t*0.06 + b.phase);
         ctx.fillStyle = `rgba(${b.col[0]},${b.col[1]},${b.col[2]},${0.7+0.25*glow})`;
-        ctx.beginPath(); ctx.arc(bx, by, 1.8, 0, Math.PI*2); ctx.fill();
+        ctx.beginPath(); ctx.arc(bx, by, 2.0, 0, Math.PI*2); ctx.fill();
       }
       ctx.restore();
     }
