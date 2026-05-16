@@ -11111,7 +11111,7 @@ function _tfSpawnHazardPatches(){
       angle: Math.random()*Math.PI*2,
       flightStyle: flightStyle,
       // Resting row state (butterflies occasionally land on a row of tiles)
-      restTimer: 60 * (4 + Math.random()*4),  // start resting after 4-8s
+      restTimer: 60 * (15 + Math.random()*10),  // first rest opportunity after 15-25s
       restRow: -1,
       restPhase: 0,  // 0=flying, 1=landing, 2=resting, 3=taking off
     };
@@ -11152,9 +11152,14 @@ function _tfTickHazard(){
   }
 
   // Cloud-style hazards: spawn at cycle start, drift, expire.
+  // Butterflies spawn ONCE per level (persistent flocks); other hazards
+  // respawn every cycleSec to keep waves coming.
   if(cfg.patches > 0){
     const cycleFrames = cfg.cycleSec * 60;
-    if(_tfHazardTickAccum % cycleFrames === 1 || _tfHazardPatches.length === 0){
+    const shouldRespawn = (cfg.kind === 'butterflies')
+      ? (_tfHazardPatches.length === 0)  // only if missing (level start)
+      : (_tfHazardTickAccum % cycleFrames === 1 || _tfHazardPatches.length === 0);
+    if(shouldRespawn){
       _tfSpawnHazardPatches();
     }
     // Advance + decay
@@ -11173,21 +11178,32 @@ function _tfTickHazard(){
         p.x += p.vx;
         p.y += p.vy;
       }
-      p.life--;
-      // Smooth radius envelope: grow in, hold, fade out (last 25% of life shrinks)
-      const lifeFrac = p.life / p.maxLife;
-      let envelope = 1.0;
-      if(lifeFrac > 0.75) envelope = (1 - lifeFrac) / 0.25;       // grow in
-      else if(lifeFrac < 0.25) envelope = lifeFrac / 0.25;        // fade out
-      p.radius = p.baseRadius * Math.max(0.2, envelope);
-      // Keep alive if still on board or has life. Butterflies have a wider
-      // off-board tolerance (they can drift up/down out of view too).
-      const margin = (cfg.kind === 'butterflies') ? p.baseRadius*3 : p.baseRadius*2;
-      const inBounds = (cfg.kind === 'butterflies')
-        ? (p.x > -margin && p.x < COLS + margin && p.y > -margin && p.y < ROWS + margin)
-        : (p.x > -margin && p.x < COLS + margin);
-      if(p.life > 0 && inBounds){
+      // Butterflies: persist for the whole level (no life decay / cycle
+      // respawn). They drift forever inside the board so the player
+      // experiences continuous flocks rather than puff-in/puff-out clouds.
+      if(cfg.kind === 'butterflies'){
+        p.radius = p.baseRadius;
+        // Grow-in envelope on first 1.5s only
+        if(p.maxLife - p.life < 90){
+          const growT = (p.maxLife - p.life) / 90;
+          p.radius = p.baseRadius * Math.max(0.3, growT);
+        }
+        // Persistent: never expire, never go inBounds-check (anchored to board)
         _alive.push(p);
+      } else {
+        p.life--;
+        // Smooth radius envelope: grow in, hold, fade out (last 25% of life shrinks)
+        const lifeFrac = p.life / p.maxLife;
+        let envelope = 1.0;
+        if(lifeFrac > 0.75) envelope = (1 - lifeFrac) / 0.25;       // grow in
+        else if(lifeFrac < 0.25) envelope = lifeFrac / 0.25;        // fade out
+        p.radius = p.baseRadius * Math.max(0.2, envelope);
+        // Keep alive if still on board or has life.
+        const margin = p.baseRadius*2;
+        const inBounds = (p.x > -margin && p.x < COLS + margin);
+        if(p.life > 0 && inBounds){
+          _alive.push(p);
+        }
       }
     }
     _tfHazardPatches = _alive;
@@ -11374,13 +11390,23 @@ function _tfDrawHazardOverlay(ctx){
 function _tfTickButterflyPatch(p, cfg, tt){
   // ---- Resting behavior: occasionally land on a row of tiles ----
   // Phase 0 = flying, 1 = descending to row, 2 = resting, 3 = ascending
+  // Resting is a RARE event — when a flock sits on a row, that row is
+  // frozen until they take off, which can frustrate the player.
+  // Keep rests infrequent so most of the time the board is freely placeable.
   if(p.restPhase === 0){
     p.restTimer--;
-    if(p.restTimer <= 0 && Math.random() < 0.4){
-      // Pick a row in middle band to rest on
-      p.restRow = 4 + Math.floor(Math.random() * Math.max(1, ROWS - 8));
-      p.restPhase = 1;
-      p.restTimer = 50; // ~0.8s to descend
+    if(p.restTimer <= 0){
+      // Only one patch may rest at a time — others wait.
+      const someoneElseResting = _tfHazardPatches.some(o => o !== p && (o.restPhase === 1 || o.restPhase === 2 || o.restPhase === 3));
+      if(!someoneElseResting && Math.random() < 0.15){
+        // Pick a row in middle band to rest on
+        p.restRow = 4 + Math.floor(Math.random() * Math.max(1, ROWS - 8));
+        p.restPhase = 1;
+        p.restTimer = 50; // ~0.8s to descend
+      } else {
+        // Retry in another 2-3s
+        p.restTimer = 60 * (2 + Math.random());
+      }
     }
   } else if(p.restPhase === 1){
     // Descend toward chosen row
@@ -11392,7 +11418,7 @@ function _tfTickButterflyPatch(p, cfg, tt){
     if(p.restTimer <= 0 || Math.abs(p.y - targetY) < 0.2){
       p.y = p.restRow;
       p.restPhase = 2;
-      p.restTimer = 60 * (2.5 + Math.random()*2.0); // rest 2.5-4.5s
+      p.restTimer = 60 * (2.0 + Math.random()*1.5); // rest 2.0-3.5s
     }
   } else if(p.restPhase === 2){
     // Resting: small bob/quiver, no horizontal drift
@@ -11410,7 +11436,8 @@ function _tfTickButterflyPatch(p, cfg, tt){
     if(p.restTimer <= 0){
       p.restPhase = 0;
       p.restRow = -1;
-      p.restTimer = 60 * (5 + Math.random()*5); // wait 5-10s before next rest
+      // Wait 20-35s before considering another rest (long flying stretches)
+      p.restTimer = 60 * (20 + Math.random()*15);
     }
   }
   // ---- Flight motion (skip when resting in phase 2) ----
