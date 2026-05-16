@@ -11057,6 +11057,7 @@ let _tfRainDrops = [];              // [{x,y,len,speed}]
 let _tfBlackoutAlpha = 0;           // 0=clear, >0 = dark overlay
 let _tfBlackoutTimer = 0;           // countdown to next blackout
 let _tfBlackoutFade = 0;            // 1=fading in, -1=fading out, 0=off
+let _tfStormFogPatches = [];        // LV9: drifting storm fog clouds, ~40% coverage
 // LV10: animals
 let _tfAnimals = [];                // [{kind,x,y,vx,vy,landedCell,landTimer,size}]
 let _tfAnimalBlockedCells = [];     // [{r,c}] cells occupied by landed animals
@@ -11121,6 +11122,7 @@ function _tfInitHazard(lvl){
   _tfRainDrops = [];
   _tfBlackoutAlpha = 0;
   _tfBlackoutTimer = 0;
+  _tfStormFogPatches = [];
   _tfBlackoutFade = 0;
   // LV10: animals
   _tfAnimals = [];
@@ -12244,40 +12246,151 @@ function _tfDrawIceOverlay(ctx, W, H, CW){
 // ════════════════════════════════════════════════════════════════════════════
 // LV8: MUD / SWAMP SINKHOLES — dark brown splatters with bubbles
 // ════════════════════════════════════════════════════════════════════════════
+// LV8 mud floods: three rolling sub-phases inside the 5s active window
+//   Sub-phase A (0.0-1.7s): BOTTOM row floods (row 9, all cols)
+//   Sub-phase B (1.7-3.3s): SPLATTER — 8-12 mud patches across the board
+//   Sub-phase C (3.3-5.0s): TOP TWO rows flood (rows 0,1, all cols)
+// Each cell uses .lifeF to fade in over ~12 frames and fade out over ~18.
 function _tfTickMud(isActive){
-  _tfMudRespawnTimer--;
-  if(isActive && (_tfMudTiles.length === 0 || _tfMudRespawnTimer <= 0)){
-    const count = 2 + Math.floor(Math.random()*2);
-    _tfMudTiles = [];
-    const used = new Set();
-    for(let i=0;i<count*10 && _tfMudTiles.length < count;i++){
-      const r = Math.floor(Math.random()*ROWS);
-      const c = Math.floor(Math.random()*COLS);
-      const key = r*100+c;
-      if(!used.has(key)){ used.add(key); _tfMudTiles.push({r, c, bubblePhase: Math.random()*Math.PI*2}); }
+  // Compute the per-cycle frame counter locally (mirrors _tfTickHazard line ~11194).
+  // 60fps × 5s active = 300 frames, split into 3 × 100-frame sub-phases.
+  const cfg = _tfHazardCfg || { cycleSec: 10 };
+  const activeF = _tfHazardTickAccum % (cfg.cycleSec * 60);
+  // 60fps → 5s active = 300 frames; split into 3 × 100-frame sub-phases
+  const subPhase = isActive ? Math.min(2, Math.floor(activeF / 100)) : -1;
+  if(_tfMudSubPhasePrev === undefined) _tfMudSubPhasePrev = -2;
+
+  // On sub-phase change, queue the new wave of cells (existing cells fade out)
+  if(isActive && subPhase !== _tfMudSubPhasePrev){
+    _tfMudSubPhasePrev = subPhase;
+    // Mark all existing cells to fade out
+    for(const t of _tfMudTiles){ t.fadingOut = true; }
+    // Build new wave
+    const newCells = [];
+    if(subPhase === 0){
+      // Bottom row flood (row 9)
+      for(let c=0; c<COLS; c++) newCells.push({r: ROWS-1, c, type:'flood'});
+    } else if(subPhase === 1){
+      // Splatter: 9-13 mud patches across middle rows (2-7) avoiding total chaos
+      const used = new Set();
+      const count = 9 + Math.floor(Math.random()*5);
+      for(let i=0; i<count*8 && newCells.length<count; i++){
+        const r = 2 + Math.floor(Math.random()*6); // rows 2-7
+        const c = Math.floor(Math.random()*COLS);
+        const key = r*100+c;
+        if(!used.has(key)){ used.add(key); newCells.push({r, c, type:'splat'}); }
+      }
+    } else if(subPhase === 2){
+      // Top two rows flood (rows 0,1)
+      for(let c=0; c<COLS; c++){
+        newCells.push({r:0, c, type:'flood'});
+        newCells.push({r:1, c, type:'flood'});
+      }
     }
-    _tfMudRespawnTimer = 300;
+    // Add new cells with staggered fade-in delays for a wave/splash feel
+    for(const cell of newCells){
+      _tfMudTiles.push({
+        r: cell.r,
+        c: cell.c,
+        type: cell.type,
+        bubblePhase: Math.random()*Math.PI*2,
+        // Per-cell stagger: splatter cells spawn randomly, floods sweep left→right
+        fadeInDelay: cell.type === 'flood' ? cell.c * 2 : Math.floor(Math.random()*18),
+        lifeF: 0,        // counts up; alpha = min(1, lifeF/12) while not fading
+        fadingOut: false,
+        fadeOutF: 0,     // counts up once fadingOut=true; alpha = max(0, 1 - fadeOutF/18)
+      });
+    }
   }
-  if(!isActive) _tfMudTiles = [];
-  // Advance bubble animation
-  for(const t of _tfMudTiles) t.bubblePhase += 0.04;
+
+  if(!isActive){
+    // During rest phase, mark everything to fade out
+    for(const t of _tfMudTiles){ t.fadingOut = true; }
+    _tfMudSubPhasePrev = -2;
+  }
+
+  // Advance per-cell timers + cull fully faded cells
+  const survivors = [];
+  for(const t of _tfMudTiles){
+    if(t.fadeInDelay > 0){ t.fadeInDelay--; }
+    else if(!t.fadingOut){ t.lifeF++; }
+    if(t.fadingOut){ t.fadeOutF++; }
+    t.bubblePhase += 0.05;
+    if(!t.fadingOut || t.fadeOutF < 18) survivors.push(t);
+  }
+  _tfMudTiles = survivors;
 }
+let _tfMudSubPhasePrev;
 
 function _tfDrawMudOverlay(ctx, W, H, CW){
-  const tt = (typeof _ambientT === 'number') ? _ambientT : _tfHazardTickAccum;
   for(const t of _tfMudTiles){
+    if(t.fadeInDelay > 0) continue; // still waiting to appear
+    // Compute alpha based on fade in/out state
+    let alpha;
+    if(t.fadingOut){
+      alpha = Math.max(0, 1 - t.fadeOutF / 18);
+    } else {
+      alpha = Math.min(1, t.lifeF / 12);
+    }
+    if(alpha <= 0.01) continue;
     const x = t.c*CW, y = t.r*CW;
     ctx.save();
-    // Dark brown radial gradient — murky swamp pool
-    const grd = ctx.createRadialGradient(x+CW*0.5, y+CW*0.6, 2, x+CW*0.5, y+CW*0.6, CW*0.52);
-    grd.addColorStop(0,    'rgba(55,32,12,0.97)');
-    grd.addColorStop(0.45, 'rgba(70,42,16,0.88)');
-    grd.addColorStop(0.80, 'rgba(90,58,24,0.65)');
-    grd.addColorStop(1,    'rgba(100,70,30,0)');
-    ctx.fillStyle = grd;
-    ctx.beginPath(); ctx.ellipse(x+CW*0.5, y+CW*0.6, CW*0.50, CW*0.42, 0, 0, Math.PI*2); ctx.fill();
-    // Bubbles — light brown circles pulsing
-    for(let b=0;b<4;b++){
+    ctx.globalAlpha = alpha;
+    // Splat shape: irregular blob for splatter, full-tile fill for flood
+    if(t.type === 'flood'){
+      // Edge-to-edge flood with soft top edge so it looks like rising mud
+      const grd = ctx.createLinearGradient(0, y, 0, y+CW);
+      grd.addColorStop(0,    'rgba(80,52,22,0.55)');
+      grd.addColorStop(0.30, 'rgba(60,38,16,0.92)');
+      grd.addColorStop(1,    'rgba(45,28,12,0.98)');
+      ctx.fillStyle = grd;
+      ctx.fillRect(x, y, CW, CW);
+      // Surface ripples — horizontal squiggles on top edge
+      ctx.strokeStyle = 'rgba(130,90,42,0.55)';
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      for(let i=0; i<3; i++){
+        const yy = y + CW*(0.08 + i*0.07) + Math.sin(t.bubblePhase + i)*1.5;
+        ctx.moveTo(x+2, yy);
+        for(let xx=x+2; xx<x+CW-2; xx+=4){
+          ctx.lineTo(xx, yy + Math.sin((xx+t.bubblePhase*10)*0.3)*0.8);
+        }
+      }
+      ctx.stroke();
+    } else {
+      // Splatter: lumpy radial blob with a few mini satellite splats
+      const cx = x+CW*0.5, cy = y+CW*0.55;
+      const grd = ctx.createRadialGradient(cx, cy, 2, cx, cy, CW*0.55);
+      grd.addColorStop(0,    'rgba(55,32,12,0.98)');
+      grd.addColorStop(0.45, 'rgba(70,42,16,0.90)');
+      grd.addColorStop(0.80, 'rgba(90,58,24,0.55)');
+      grd.addColorStop(1,    'rgba(100,70,30,0)');
+      ctx.fillStyle = grd;
+      // Irregular shape — 7-pointed bumpy blob
+      ctx.beginPath();
+      const pts = 9;
+      for(let i=0; i<=pts; i++){
+        const ang = (i/pts) * Math.PI*2;
+        const wob = 0.42 + 0.18*Math.sin(ang*3 + t.bubblePhase*0.5);
+        const px = cx + Math.cos(ang)*CW*wob;
+        const py = cy + Math.sin(ang)*CW*wob*0.92;
+        if(i===0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
+      }
+      ctx.closePath();
+      ctx.fill();
+      // 2-3 satellite splats around the main blob
+      ctx.fillStyle = 'rgba(60,38,16,0.78)';
+      for(let s=0; s<3; s++){
+        const sang = t.bubblePhase*0.2 + s*2.1;
+        const sd = CW*0.38;
+        const sx = cx + Math.cos(sang)*sd;
+        const sy = cy + Math.sin(sang)*sd*0.85;
+        const sr = 2 + (s%2)*1.5;
+        ctx.beginPath(); ctx.arc(sx, sy, sr, 0, Math.PI*2); ctx.fill();
+      }
+    }
+    // Bubbles — pulsing on top of mud (both flood + splat)
+    for(let b=0; b<4; b++){
       const bph = t.bubblePhase + b*1.57;
       const bx = x + CW*(0.2 + b*0.18) + Math.sin(bph)*CW*0.04;
       const by = y + CW*(0.55 - Math.abs(Math.sin(bph))*0.18);
@@ -12285,10 +12398,6 @@ function _tfDrawMudOverlay(ctx, W, H, CW){
       ctx.fillStyle = `rgba(${130+b*8},${85+b*6},${40+b*5},${0.7 + 0.3*Math.abs(Math.sin(bph))})`;
       ctx.beginPath(); ctx.arc(bx, by, bs, 0, Math.PI*2); ctx.fill();
     }
-    // Highlight border
-    ctx.strokeStyle = 'rgba(80,48,16,0.60)';
-    ctx.lineWidth = 2;
-    ctx.strokeRect(x+1, y+1, CW-2, CW-2);
     ctx.restore();
   }
 }
@@ -12300,6 +12409,43 @@ function _tfDrawMudOverlay(ctx, W, H, CW){
 // ════════════════════════════════════════════════════════════════════════════
 function _tfTickStorm(isActive){
   const tt = (typeof _ambientT === 'number') ? _ambientT : _tfHazardTickAccum;
+
+  // ─── STORM FOG PATCHES (≈40% coverage, drifting) ────────────────────────────
+  // Reuses Fog the Frog's patch model. 3 large patches drifting with wall
+  // bounce — keeps the playfield partially veiled so LV9 feels active even
+  // between rain/lightning beats. Cool blue-gray colour fits the storm mood.
+  if(_tfStormFogPatches.length === 0){
+    // Target ~40% coverage: total opaque area = 0.40 * ROWS * COLS = 40 cells
+    // Split across 3 patches → ~13.3 cells each. Core opaque region is inner
+    // 70% of radius (π(0.7r)²), so r = sqrt(area / (π * 0.49)).
+    const targetCoverage = 0.40;
+    const nPatches = 3;
+    const corePerPatch = (targetCoverage * ROWS * COLS) / nPatches;
+    const baseR = Math.sqrt(corePerPatch / (Math.PI * 0.49)) * 0.92;
+    const speed = 1.55;
+    for(let i=0; i<nPatches; i++){
+      _tfStormFogPatches.push({
+        x: (COLS / (nPatches+1)) * (i+1) + (Math.random()-0.5)*0.6,
+        y: ROWS * (0.30 + Math.random()*0.40),
+        vx: (Math.random()>0.5?1:-1) * speed * (0.6 + Math.random()*0.5),
+        vy: (Math.random()>0.5?0.35:-0.35) * speed,
+        radius: baseR * (0.92 + Math.random()*0.16),
+        wobblePhase: Math.random() * Math.PI * 2,
+      });
+    }
+  }
+  // Drift patches and bounce off the playfield edges
+  for(const p of _tfStormFogPatches){
+    p.x += p.vx / 60;
+    p.y += p.vy / 60;
+    p.wobblePhase += 0.02;
+    const margin = p.radius * 0.6;
+    if(p.x < -margin){ p.x = -margin; p.vx = Math.abs(p.vx); }
+    if(p.x > COLS + margin){ p.x = COLS + margin; p.vx = -Math.abs(p.vx); }
+    if(p.y < -margin){ p.y = -margin; p.vy = Math.abs(p.vy); }
+    if(p.y > ROWS + margin){ p.y = ROWS + margin; p.vy = -Math.abs(p.vy); }
+  }
+
   // Rain drops — always present, more during active
   const targetDrops = isActive ? 120 : 30;
   while(_tfRainDrops.length < targetDrops){
@@ -12318,36 +12464,52 @@ function _tfTickStorm(isActive){
     if(d.y > ROWS + 0.2){ d.y = -0.3; d.x = Math.random()*(COLS+2)-1; }
     if(d.x > COLS + 0.5) d.x -= COLS + 1;
   }
-  // Blackout: every ~1s during active, 100-200ms dark overlay
+  // ─── PHOTOSENSITIVE SAFETY ────────────────────────────────────────────────
+  // WCAG 2.3.1 (Level A) limits full-screen flashes to no more than 3 per
+  // second AND requires the luminance amplitude of each flash to stay below
+  // certain thresholds. Our canvas fills most of the player's foveal field so
+  // the small-area exception (≤25% of a 10° viewport) does NOT apply.
+  // Constraints enforced below:
+  //   • Lightning min interval: 1.5s (90 frames)        • Lightning peak alpha: 0.35 (was 0.60)
+  //   • Blackout min interval: 1.8s (108 frames)        • Blackout peak alpha: 0.55 (was 0.72)
+  //   • Mutual lockout: blackout suppressed if a lightning flash fired or is
+  //     still fading within the last 36 frames (0.6s). This guarantees the
+  //     combined flash rate stays ≤1.5/sec worst-case, well under WCAG 3/sec.
+  //   • Slower fades on both effects → gentler luminance transitions.
+  // ────────────────────────────────────────────────────────────────────────
   if(isActive){
     if(_tfBlackoutFade === 0){
       _tfBlackoutTimer--;
-      if(_tfBlackoutTimer <= 0){
-        _tfBlackoutFade = 1;   // start fading in
+      // Suppress blackout while lightning recently fired (mutual lockout)
+      const lightningHot = _tfLightningFlash > 0.05;
+      if(_tfBlackoutTimer <= 0 && !lightningHot){
+        _tfBlackoutFade = 1;
         _tfBlackoutAlpha = 0;
-        _tfBlackoutTimer = 55 + Math.floor(Math.random()*15); // ~1s interval
+        _tfBlackoutTimer = 108 + Math.floor(Math.random()*30); // 1.8-2.3s
       }
     }
     if(_tfBlackoutFade === 1){
-      _tfBlackoutAlpha = Math.min(0.72, _tfBlackoutAlpha + 0.12);
-      if(_tfBlackoutAlpha >= 0.72) _tfBlackoutFade = -1;
+      _tfBlackoutAlpha = Math.min(0.55, _tfBlackoutAlpha + 0.06); // slower fade-in
+      if(_tfBlackoutAlpha >= 0.55) _tfBlackoutFade = -1;
     }
     if(_tfBlackoutFade === -1){
-      _tfBlackoutAlpha = Math.max(0, _tfBlackoutAlpha - 0.06);
+      _tfBlackoutAlpha = Math.max(0, _tfBlackoutAlpha - 0.035); // slower fade-out
       if(_tfBlackoutAlpha <= 0) { _tfBlackoutFade = 0; }
     }
   } else {
-    _tfBlackoutAlpha = Math.max(0, _tfBlackoutAlpha - 0.08);
+    _tfBlackoutAlpha = Math.max(0, _tfBlackoutAlpha - 0.05);
     _tfBlackoutFade = 0;
-    _tfBlackoutTimer = 60;
+    _tfBlackoutTimer = 108;
   }
-  // Lightning flash timer
-  _tfLightningFlash = Math.max(0, _tfLightningFlash - 0.06);
+  // Lightning flash — slower fade so the luminance transition is gentler
+  _tfLightningFlash = Math.max(0, _tfLightningFlash - 0.035);
   if(isActive){
     _tfLightningTimer--;
-    if(_tfLightningTimer <= 0){
+    // Suppress lightning while a blackout is mid-cycle (mutual lockout)
+    const blackoutHot = _tfBlackoutAlpha > 0.08;
+    if(_tfLightningTimer <= 0 && !blackoutHot){
       _tfLightningFlash = 1.0;
-      _tfLightningTimer = 55 + Math.floor(Math.random()*65); // 0.9-2s
+      _tfLightningTimer = 90 + Math.floor(Math.random()*90); // 1.5-3.0s
     }
   }
 }
@@ -12360,6 +12522,30 @@ function _tfDrawStormOverlay(ctx, W, H, CW){
   ctx.fillStyle = 'rgba(20,30,60,1)';
   ctx.fillRect(0, 0, W, H);
   ctx.restore();
+  // ─── DRIFTING STORM FOG PATCHES (≈40% coverage) ───────────────────────
+  // Cool blue-gray storm fog — reuses Fog the Frog's radial-gradient blob
+  // pattern but tinted bluer to read as rain-borne mist not white fog.
+  // Opaque center (matches user pref for "middle non-transparent, edges with
+  // some visibility"), feathered edges.
+  if(_tfStormFogPatches.length){
+    ctx.save();
+    for(const p of _tfStormFogPatches){
+      const px = p.x * CW + CW/2;
+      const py = p.y * CW + CW/2;
+      // Pulse the radius gently for an organic feel
+      const pulseR = p.radius * (1.0 + Math.sin(p.wobblePhase)*0.05) * CW;
+      const grd = ctx.createRadialGradient(px, py, 1, px, py, pulseR);
+      grd.addColorStop(0,    'rgba(170,182,200,0.85)');  // dense cool gray center
+      grd.addColorStop(0.40, 'rgba(160,175,195,0.66)');
+      grd.addColorStop(0.65, 'rgba(148,164,184,0.36)');
+      grd.addColorStop(0.82, 'rgba(140,156,176,0.16)');
+      grd.addColorStop(0.94, 'rgba(132,148,168,0.04)');
+      grd.addColorStop(1,    'rgba(124,140,160,0.00)');  // feathered edge
+      ctx.fillStyle = grd;
+      ctx.beginPath(); ctx.arc(px, py, pulseR, 0, Math.PI*2); ctx.fill();
+    }
+    ctx.restore();
+  }
   // Rain drops — reuse diagonal line pattern from _ambientTreeFrog
   ctx.save();
   ctx.strokeStyle = 'rgba(180,210,255,0.70)';
@@ -12373,11 +12559,14 @@ function _tfDrawStormOverlay(ctx, W, H, CW){
   }
   ctx.globalAlpha = 1;
   ctx.restore();
-  // Lightning flash — white overlay (reuse pattern from _ambientTreeFrog)
+  // Lightning flash — PHOTOSENSITIVE SAFETY: peak alpha capped at 0.35 (was 0.60)
+  // so the luminance jump stays well below the WCAG general-flash threshold,
+  // and the tint is shifted to a softer cool-white to avoid saturated red/white
+  // contrast that can trigger seizures.
   if(_tfLightningFlash > 0.01){
     ctx.save();
-    ctx.globalAlpha = _tfLightningFlash * 0.60;
-    ctx.fillStyle = 'rgba(230,240,255,1)';
+    ctx.globalAlpha = _tfLightningFlash * 0.35;
+    ctx.fillStyle = 'rgba(210,225,245,1)';
     ctx.fillRect(0,0,W,H);
     ctx.restore();
   }
