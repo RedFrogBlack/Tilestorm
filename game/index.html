@@ -8087,73 +8087,144 @@ function _ambientDraw(timestamp) {
 }
 
 // ═════════════════════════════════════════════════════════════════
-//  TADPOLE PER-LEVEL AMBIENCE — gentle, decorative, never blocking.
-//  Reuses visual patterns from Tree Frog (seasons, butterflies, fireflies,
-//  fog patches) and Fog the Frog (mist drift). Effects are subtle by
-//  design: Tadpole is the EASY tier, so no hazards — just flavour.
+//  TADPOLE PER-LEVEL AMBIENCE — visual obscuring, never blocks.
+//  Each level borrows a signature effect from another mode and
+//  scales it so it actually changes how the board looks/feels:
+//    LV1  spring meadow + dragonfly flocks (Tree Frog day/season)
+//    LV2  3 butterfly flocks that cluster densely (TF LV1 style)
+//    LV3  wind canvas sway + drifting leaves (Monaco quake feel)
+//    LV4  4 firefly flocks (TF LV4 lite)
+//    LV5  bottom-row water tint + lily-pad cluster (TF LV5 visual)
+//    LV6  drifting heavy mist patches (Fog the Frog patches)
+//    LV7  heavy snow + corner frost crystals (TF LV7 visual)
+//    LV8  sandstorm tint + drifting sand particles (Cairo monument)
+//    LV9  rain + safe lightning + drifting storm fog (TF LV9 visual)
+//    LV10 festival: flocks + fog + petals + shooting stars
+//  ALL effects are non-blocking — tiles can still be placed anywhere.
 // ═════════════════════════════════════════════════════════════════
-// Signature season per level (matches Tree Frog mapping with mild tweaks)
 function _tadGetSeason(lvl){
   const map = ['spring','summer','summer','spring','autumn','autumn','winter','autumn','winter','spring'];
   return map[Math.min(Math.max((lvl|0)-1,0),9)];
 }
-// Persistent state for Tadpole per-level visitors (separate from TF state
-// so the two modes never conflict).
-let _tadButterflies = null;
-let _tadFireflies   = null;
+
+// State buckets — keep cluster/flock structure so visuals are coherent.
+let _tadFlocks      = null;  // butterfly flocks (LV2, LV10)
+let _tadFireflyFlocks = null;// firefly flocks (LV4, LV10)
 let _tadSnow        = null;
 let _tadPetals      = null;
 let _tadLeaves      = null;
-let _tadMistPatch   = null;
+let _tadMistPatches = null;  // multiple drifting fog patches
 let _tadDrizzle     = null;
-let _tadFestival    = null;
+let _tadRain        = null;
+let _tadDragonflies = null;
 let _tadShootStar   = null;
+let _tadSandParticles = null;
+let _tadWindShakeAmp = 0;    // current canvas shake amplitude (LV3)
 let _tadLastLvl     = -1;
+let _tadLightning   = 0;     // LV9 lightning flash alpha
+let _tadLightningTimer = 0;
+let _tadWindQuakeTimer = null; // LV3: recurring tile-relocation (reuses Monaco quake)
 
-// Reset per-level state when level changes so visitors match current LV.
 function _tadResetVisitors(){
-  _tadButterflies = null; _tadFireflies = null; _tadSnow = null;
-  _tadPetals = null; _tadLeaves = null; _tadMistPatch = null;
-  _tadDrizzle = null; _tadFestival = null; _tadShootStar = null;
+  _tadFlocks = null; _tadFireflyFlocks = null; _tadSnow = null;
+  _tadPetals = null; _tadLeaves = null; _tadMistPatches = null;
+  _tadDrizzle = null; _tadRain = null; _tadDragonflies = null;
+  _tadShootStar = null; _tadSandParticles = null;
+  _tadWindShakeAmp = 0; _tadLightning = 0; _tadLightningTimer = 0;
+  // Stop the LV3 wind-quake timer when level changes; restart only if new level is 3.
+  try { if(_tadWindQuakeTimer){ clearInterval(_tadWindQuakeTimer); _tadWindQuakeTimer = null; } } catch(_){}
+}
+
+// LV3: gust of wind that physically pushes a few placed tiles to empty spaces.
+// Reuses Golden Frog's Monaco quake (single-tile slide animation already built).
+// Visual-only relocation — player can still drop new pieces anywhere valid.
+function _tadStartWindQuakes(){
+  try { if(_tadWindQuakeTimer){ clearInterval(_tadWindQuakeTimer); } } catch(_){}
+  // First gust after a brief delay so the player has a moment to read the board,
+  // then a gust every ~10s while we remain on LV3 (standard / tadpole mode only).
+  _tadWindQuakeTimer = setInterval(() => {
+    try {
+      if (activeChallengeMode !== 'standard' || !gameActive) return;
+      if (typeof level !== 'number' || level !== 3) return;
+      if (typeof _gfTriggerMonacoQuake === 'function') _gfTriggerMonacoQuake();
+    } catch(_){}
+  }, 10000);
+}
+
+// Create a flock of N items orbiting a moving center.
+function _tadMakeFlock(W, H, count, palette, sizeBase){
+  const cx = W*(0.20 + Math.random()*0.60);
+  const cy = H*(0.20 + Math.random()*0.55);
+  const vx = (Math.random()<0.5?-1:1) * (0.20 + Math.random()*0.30);
+  const vy = (Math.random()-0.5) * 0.15;
+  const items = [];
+  for(let i=0;i<count;i++){
+    // Density-biased: 70% tight to center, 30% scattered
+    const tight = Math.random() < 0.7;
+    const r = tight ? Math.random()*40 : 40+Math.random()*70;
+    const ang = Math.random()*Math.PI*2;
+    items.push({
+      ox: Math.cos(ang)*r,
+      oy: Math.sin(ang)*r * 0.7,
+      phase: Math.random()*Math.PI*2,
+      col: palette[Math.floor(Math.random()*palette.length)],
+      size: sizeBase * (0.7 + Math.random()*0.6),
+      jitter: Math.random()*0.5
+    });
+  }
+  return { cx, cy, vx, vy, items };
+}
+
+// Animate flock center (gentle wandering)
+function _tadTickFlock(f, W, H, t){
+  f.cx += f.vx + Math.sin(t*0.012)*0.15;
+  f.cy += f.vy + Math.cos(t*0.009)*0.10;
+  // Wall bounce keeping flock fully on-board
+  if(f.cx < W*0.15){ f.vx = Math.abs(f.vx); }
+  else if(f.cx > W*0.85){ f.vx = -Math.abs(f.vx); }
+  if(f.cy < H*0.15){ f.vy = Math.abs(f.vy); }
+  else if(f.cy > H*0.80){ f.vy = -Math.abs(f.vy); }
 }
 
 // Main entry: draws season + per-level signature on top of pond.
 function _drawTadpoleLevelLayer(ctx, W, H){
   const lvl = (typeof level === 'number' && level >= 1) ? Math.min(level, 10) : 1;
-  if(lvl !== _tadLastLvl){ _tadResetVisitors(); _tadLastLvl = lvl; }
+  if(lvl !== _tadLastLvl){
+    _tadResetVisitors();
+    _tadLastLvl = lvl;
+    // LV3: start recurring wind-gust quakes that push placed tiles around.
+    if(lvl === 3 && !_tadWindQuakeTimer){ _tadStartWindQuakes(); }
+  }
   const t = (typeof _ambientT === 'number') ? _ambientT : 0;
 
   // ── (1) SEASON OVERLAY ──────────────────────────────────────
   const season = _tadGetSeason(lvl);
-  // Spring petals (LV1, LV4, LV10)
   if(season === 'spring'){
-    if(!_tadPetals) _tadPetals = Array.from({length:18}, () => ({
+    if(!_tadPetals) _tadPetals = Array.from({length:30}, () => ({
       x:Math.random()*W, y:Math.random()*H,
-      r:1.5+Math.random()*2, vx:0.2+Math.random()*0.35,
-      vy:0.25+Math.random()*0.4, rot:Math.random()*Math.PI*2, rotV:0.015
+      r:1.8+Math.random()*2.2, vx:0.25+Math.random()*0.4,
+      vy:0.3+Math.random()*0.5, rot:Math.random()*Math.PI*2, rotV:0.018
     }));
     for(const p of _tadPetals){
-      p.x += p.vx + Math.sin(t*0.015+p.rot)*0.35;
+      p.x += p.vx + Math.sin(t*0.015+p.rot)*0.4;
       p.y += p.vy; p.rot += p.rotV;
       if(p.y>H) p.y=-5;
       if(p.x>W+5) p.x=-5;
       ctx.save(); ctx.translate(p.x,p.y); ctx.rotate(p.rot);
-      ctx.fillStyle = 'rgba(255,200,215,0.70)';
+      ctx.fillStyle = 'rgba(255,200,215,0.78)';
       ctx.beginPath(); ctx.ellipse(0,0,p.r*1.8,p.r*0.9,0,0,Math.PI*2); ctx.fill();
       ctx.restore();
     }
-  }
-  // Autumn leaves (LV5, LV6, LV8)
-  else if(season === 'autumn'){
-    if(!_tadLeaves) _tadLeaves = Array.from({length:14}, () => ({
+  } else if(season === 'autumn'){
+    if(!_tadLeaves) _tadLeaves = Array.from({length:24}, () => ({
       x:Math.random()*W, y:Math.random()*H,
-      r:2.5+Math.random()*2, vx:0.3+Math.random()*0.5,
-      vy:0.35+Math.random()*0.55, rot:Math.random()*Math.PI*2,
-      rotV:0.03*(Math.random()-0.5), hue:Math.floor(Math.random()*3)
+      r:2.8+Math.random()*2.5, vx:0.35+Math.random()*0.6,
+      vy:0.4+Math.random()*0.65, rot:Math.random()*Math.PI*2,
+      rotV:0.035*(Math.random()-0.5), hue:Math.floor(Math.random()*3)
     }));
-    const colors = ['rgba(220,120,40,0.75)','rgba(190,70,30,0.72)','rgba(230,170,60,0.72)'];
+    const colors = ['rgba(220,120,40,0.82)','rgba(190,70,30,0.80)','rgba(230,170,60,0.80)'];
     for(const p of _tadLeaves){
-      p.x += p.vx + Math.sin(t*0.02+p.rot)*0.5;
+      p.x += p.vx + Math.sin(t*0.022+p.rot)*0.6;
       p.y += p.vy; p.rot += p.rotV;
       if(p.y>H) p.y=-5;
       if(p.x>W+5) p.x=-5;
@@ -8162,175 +8233,482 @@ function _drawTadpoleLevelLayer(ctx, W, H){
       ctx.beginPath(); ctx.ellipse(0,0,p.r*1.5,p.r*0.7,0,0,Math.PI*2); ctx.fill();
       ctx.restore();
     }
-  }
-  // Winter snow (LV7, LV9) — overlay cool tint + flakes
-  else if(season === 'winter'){
+  } else if(season === 'winter'){
     ctx.save();
     ctx.globalCompositeOperation = 'overlay';
-    ctx.fillStyle = 'rgba(180,210,235,0.10)';
+    ctx.fillStyle = 'rgba(180,210,235,0.14)';
     ctx.fillRect(0,0,W,H);
     ctx.restore();
-    if(!_tadSnow) _tadSnow = Array.from({length:35}, () => ({
+    if(!_tadSnow) _tadSnow = Array.from({length:70}, () => ({
       x:Math.random()*W, y:Math.random()*H,
-      r:1+Math.random()*2, vx:Math.random()*0.3-0.15,
-      vy:0.35+Math.random()*0.6, phase:Math.random()*Math.PI*2
+      r:1.2+Math.random()*2.2, vx:Math.random()*0.4-0.2,
+      vy:0.45+Math.random()*0.75, phase:Math.random()*Math.PI*2
     }));
     ctx.save();
-    ctx.fillStyle = 'rgba(245,250,255,0.82)';
+    ctx.fillStyle = 'rgba(245,250,255,0.88)';
     for(const p of _tadSnow){
-      p.x += p.vx + Math.sin(t*0.02+p.phase)*0.25;
+      p.x += p.vx + Math.sin(t*0.02+p.phase)*0.3;
       p.y += p.vy;
       if(p.y>H) p.y=-5;
       if(p.x<-5) p.x=W+5; else if(p.x>W+5) p.x=-5;
       ctx.beginPath(); ctx.arc(p.x,p.y,p.r,0,Math.PI*2); ctx.fill();
     }
     ctx.restore();
-  }
-  // Summer (LV2, LV3) — just a soft warm wash, no particles (butterflies handle it)
-  else if(season === 'summer'){
+  } else if(season === 'summer'){
     ctx.save();
     ctx.globalCompositeOperation = 'overlay';
-    ctx.fillStyle = 'rgba(255,220,140,0.05)';
+    ctx.fillStyle = 'rgba(255,220,140,0.07)';
     ctx.fillRect(0,0,W,H);
     ctx.restore();
   }
 
   // ── (2) PER-LEVEL SIGNATURE VISITOR ─────────────────────────
-  // LV1 → spring meadow (just petals from above, no extra visitors)
-  // LV2 → butterfly drift (reused visual pattern from TF LV1)
-  if(lvl === 2){
-    if(!_tadButterflies) _tadButterflies = Array.from({length:12}, () => ({
+  // LV1 → spring meadow + 2 dragonflies (gentle, decorative)
+  if(lvl === 1){
+    if(!_tadDragonflies) _tadDragonflies = Array.from({length:3}, () => ({
       x:Math.random()*W, y:Math.random()*H*0.7,
-      vx:(Math.random()<0.5?-1:1)*(0.4+Math.random()*0.5),
-      vy:(Math.random()-0.5)*0.3,
-      phase:Math.random()*Math.PI*2,
-      col:[[255,170,60],[255,120,180],[180,220,255],[200,150,255],[255,230,120]][Math.floor(Math.random()*5)]
+      vx:(Math.random()<0.5?-1:1)*(0.6+Math.random()*0.4),
+      vy:(Math.random()-0.5)*0.2,
+      phase:Math.random()*Math.PI*2
     }));
-    for(const b of _tadButterflies){
-      b.x += b.vx + Math.sin(t*0.04+b.phase)*0.4;
-      b.y += b.vy + Math.cos(t*0.03+b.phase)*0.25;
-      if(b.x<-10) b.x=W+10; else if(b.x>W+10) b.x=-10;
-      if(b.y<10) b.vy=Math.abs(b.vy); else if(b.y>H*0.85) b.vy=-Math.abs(b.vy);
-      const flutter = Math.abs(Math.sin(t*0.35+b.phase));
-      const wingW = 5 + flutter*3, wingH = 4;
-      ctx.save(); ctx.translate(b.x, b.y);
-      ctx.fillStyle = `rgba(${b.col[0]},${b.col[1]},${b.col[2]},0.82)`;
-      ctx.beginPath(); ctx.ellipse(-wingW*0.5, 0, wingW*0.55, wingH, 0, 0, Math.PI*2); ctx.fill();
-      ctx.beginPath(); ctx.ellipse( wingW*0.5, 0, wingW*0.55, wingH, 0, 0, Math.PI*2); ctx.fill();
-      ctx.fillStyle = 'rgba(40,30,25,0.85)';
-      ctx.beginPath(); ctx.ellipse(0, 0, 1.2, 3, 0, 0, Math.PI*2); ctx.fill();
+    for(const d of _tadDragonflies){
+      d.x += d.vx; d.y += d.vy + Math.sin(t*0.05+d.phase)*0.4;
+      if(d.x<-15) d.x=W+15; else if(d.x>W+15) d.x=-15;
+      if(d.y<10) d.vy=Math.abs(d.vy); else if(d.y>H*0.8) d.vy=-Math.abs(d.vy);
+      ctx.save();
+      ctx.translate(d.x, d.y);
+      // Body
+      ctx.fillStyle = 'rgba(120,210,180,0.85)';
+      ctx.beginPath(); ctx.ellipse(0,0,5,1.4,0,0,Math.PI*2); ctx.fill();
+      // Wings (translucent)
+      const wf = 6 + Math.abs(Math.sin(t*0.5+d.phase))*2;
+      ctx.fillStyle = 'rgba(200,245,255,0.35)';
+      ctx.beginPath(); ctx.ellipse(-1, -1.5, wf, 1.8, -0.35, 0, Math.PI*2); ctx.fill();
+      ctx.beginPath(); ctx.ellipse(-1,  1.5, wf, 1.8,  0.35, 0, Math.PI*2); ctx.fill();
+      ctx.beginPath(); ctx.ellipse( 2, -1.5, wf*0.7, 1.5, -0.30, 0, Math.PI*2); ctx.fill();
+      ctx.beginPath(); ctx.ellipse( 2,  1.5, wf*0.7, 1.5,  0.30, 0, Math.PI*2); ctx.fill();
       ctx.restore();
     }
   }
-  // LV3 → extra dragonflies + gentle wind streaks (summer breeze)
-  else if(lvl === 3){
-    // Wind streaks (subtle, top half only)
-    ctx.save();
-    ctx.strokeStyle = 'rgba(220,240,255,0.18)';
-    ctx.lineWidth = 1;
-    for(let i=0;i<6;i++){
-      const sy = ((t*0.6 + i*60) % (H*0.6));
-      const sx = ((t*1.8 + i*120) % (W+80)) - 40;
-      ctx.beginPath();
-      ctx.moveTo(sx, sy); ctx.lineTo(sx+24, sy+3); ctx.stroke();
-    }
-    ctx.restore();
-  }
-  // LV4 → fireflies (gentle, ~25)
-  else if(lvl === 4){
-    if(!_tadFireflies) _tadFireflies = Array.from({length:25}, () => ({
-      x:Math.random()*W, y:Math.random()*H,
-      vx:(Math.random()-0.5)*0.4, vy:(Math.random()-0.5)*0.4,
-      phase:Math.random()*Math.PI*2,
-      col:[[255,230,120],[180,255,200],[160,220,255]][Math.floor(Math.random()*3)]
-    }));
-    ctx.save();
-    for(const f of _tadFireflies){
-      f.x += f.vx; f.y += f.vy;
-      // Gentle wander
-      f.vx += (Math.random()-0.5)*0.05;
-      f.vy += (Math.random()-0.5)*0.05;
-      f.vx = Math.max(-0.6, Math.min(0.6, f.vx));
-      f.vy = Math.max(-0.6, Math.min(0.6, f.vy));
-      if(f.x<0) f.x=W; else if(f.x>W) f.x=0;
-      if(f.y<0) f.y=H; else if(f.y>H) f.y=0;
-      const glow = 0.5 + 0.5*Math.sin(t*0.06 + f.phase);
-      // Halo
-      ctx.globalCompositeOperation = 'lighter';
-      const halo = ctx.createRadialGradient(f.x, f.y, 0, f.x, f.y, 10);
-      halo.addColorStop(0, `rgba(${f.col[0]},${f.col[1]},${f.col[2]},${0.32*glow})`);
-      halo.addColorStop(1, `rgba(${f.col[0]},${f.col[1]},${f.col[2]},0)`);
+
+  // LV2 → 3 butterfly flocks (REUSES TF LV1 visual, density-biased)
+  else if(lvl === 2){
+    const palette = [[255,170,60],[255,120,180],[180,220,255],[200,150,255],[255,230,120],[140,255,200]];
+    if(!_tadFlocks) _tadFlocks = [
+      _tadMakeFlock(W, H, 28, palette, 6),
+      _tadMakeFlock(W, H, 28, palette, 6),
+      _tadMakeFlock(W, H, 28, palette, 6),
+    ];
+    for(const f of _tadFlocks){
+      _tadTickFlock(f, W, H, t);
+      // Each flock has a soft halo behind it to obscure tiles
+      ctx.save();
+      const halo = ctx.createRadialGradient(f.cx, f.cy, 0, f.cx, f.cy, 80);
+      halo.addColorStop(0, 'rgba(255,240,250,0.18)');
+      halo.addColorStop(0.6, 'rgba(255,240,250,0.06)');
+      halo.addColorStop(1, 'rgba(255,240,250,0.00)');
       ctx.fillStyle = halo;
-      ctx.beginPath(); ctx.arc(f.x, f.y, 10, 0, Math.PI*2); ctx.fill();
-      // Core
-      ctx.globalCompositeOperation = 'source-over';
-      ctx.fillStyle = `rgba(${f.col[0]},${f.col[1]},${f.col[2]},${0.65+0.3*glow})`;
-      ctx.beginPath(); ctx.arc(f.x, f.y, 1.5, 0, Math.PI*2); ctx.fill();
+      ctx.beginPath(); ctx.arc(f.cx, f.cy, 80, 0, Math.PI*2); ctx.fill();
+      // Butterflies
+      for(const b of f.items){
+        const bx = f.cx + b.ox + Math.sin(t*0.04+b.phase)*4;
+        const by = f.cy + b.oy + Math.cos(t*0.035+b.phase)*3;
+        const flutter = Math.abs(Math.sin(t*0.35+b.phase));
+        const wingW = b.size * (0.85 + flutter*0.5);
+        const wingH = b.size * 0.7;
+        ctx.translate(bx, by);
+        ctx.fillStyle = `rgba(${b.col[0]},${b.col[1]},${b.col[2]},0.88)`;
+        ctx.beginPath(); ctx.ellipse(-wingW*0.5, 0, wingW*0.55, wingH, 0, 0, Math.PI*2); ctx.fill();
+        ctx.beginPath(); ctx.ellipse( wingW*0.5, 0, wingW*0.55, wingH, 0, 0, Math.PI*2); ctx.fill();
+        ctx.fillStyle = 'rgba(40,30,25,0.88)';
+        ctx.beginPath(); ctx.ellipse(0, 0, wingH*0.18, wingH*0.55, 0, 0, Math.PI*2); ctx.fill();
+        ctx.translate(-bx, -by);
+      }
+      ctx.restore();
+    }
+  }
+
+  // LV3 → wind: drifting leaves + canvas sway (shake already applied above)
+  else if(lvl === 3){
+    // Wind streaks across the board
+    ctx.save();
+    ctx.strokeStyle = 'rgba(220,240,255,0.32)';
+    ctx.lineWidth = 1.2;
+    for(let i=0;i<14;i++){
+      const sy = ((t*0.9 + i*44) % H);
+      const sx = ((t*2.5 + i*90) % (W+100)) - 50;
+      ctx.beginPath();
+      ctx.moveTo(sx, sy); ctx.lineTo(sx+38, sy+5); ctx.stroke();
     }
     ctx.restore();
-  }
-  // LV5 → autumn leaves already from season; nothing extra
-  // LV6 → light mist (1 drifting patch, very low alpha — Fog the Frog inspired)
-  else if(lvl === 6){
-    if(!_tadMistPatch) _tadMistPatch = {
-      x: W*0.4, y: H*0.4, r: Math.min(W,H)*0.55,
-      vx: 0.25, vy: 0.12
-    };
-    const p = _tadMistPatch;
-    p.x += p.vx; p.y += p.vy;
-    if(p.x < -p.r*0.5 || p.x > W+p.r*0.5) p.vx *= -1;
-    if(p.y < -p.r*0.3 || p.y > H+p.r*0.3) p.vy *= -1;
-    ctx.save();
-    const grd = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, p.r);
-    grd.addColorStop(0,    'rgba(225,228,236,0.22)');
-    grd.addColorStop(0.55, 'rgba(218,222,232,0.12)');
-    grd.addColorStop(0.85, 'rgba(208,214,224,0.04)');
-    grd.addColorStop(1,    'rgba(200,208,220,0.00)');
-    ctx.fillStyle = grd;
-    ctx.beginPath(); ctx.arc(p.x, p.y, p.r, 0, Math.PI*2); ctx.fill();
-    ctx.restore();
-  }
-  // LV7 → snow already from season
-  // LV8 → drizzle (extra gentle rain drops over the pond)
-  else if(lvl === 8){
-    if(!_tadDrizzle) _tadDrizzle = Array.from({length:30}, () => ({
+    // Extra drifting summer leaves (green) carried by wind
+    if(!_tadLeaves) _tadLeaves = Array.from({length:18}, () => ({
       x:Math.random()*W, y:Math.random()*H,
-      len: 8+Math.random()*5, speed: 3+Math.random()*2,
-      alpha: 0.18+Math.random()*0.18
+      r:2.5+Math.random()*2, vx:1.2+Math.random()*0.8,
+      vy:0.3+Math.random()*0.4, rot:Math.random()*Math.PI*2, rotV:0.06*(Math.random()-0.5)
     }));
+    for(const p of _tadLeaves){
+      p.x += p.vx + Math.sin(t*0.04+p.rot)*0.8;
+      p.y += p.vy;
+      p.rot += p.rotV;
+      if(p.x>W+10) p.x=-10;
+      if(p.y>H) p.y=-5;
+      ctx.save(); ctx.translate(p.x, p.y); ctx.rotate(p.rot);
+      ctx.fillStyle = 'rgba(110,180,80,0.85)';
+      ctx.beginPath(); ctx.ellipse(0,0,p.r*1.8,p.r*0.7,0,0,Math.PI*2); ctx.fill();
+      ctx.restore();
+    }
+  }
+
+  // LV4 → 4 firefly flocks (TF LV4 reuse, lower density)
+  else if(lvl === 4){
+    const palette = [[255,230,120],[180,255,200],[160,220,255],[255,180,220]];
+    if(!_tadFireflyFlocks) _tadFireflyFlocks = [
+      _tadMakeFlock(W, H, 22, palette, 2),
+      _tadMakeFlock(W, H, 22, palette, 2),
+      _tadMakeFlock(W, H, 22, palette, 2),
+      _tadMakeFlock(W, H, 22, palette, 2),
+    ];
+    for(const f of _tadFireflyFlocks){
+      _tadTickFlock(f, W, H, t);
+      // Opaque base mass at flock center (obscures tiles)
+      ctx.save();
+      const base = ctx.createRadialGradient(f.cx, f.cy, 0, f.cx, f.cy, 50);
+      base.addColorStop(0, 'rgba(40,40,60,0.40)');
+      base.addColorStop(0.6, 'rgba(40,40,60,0.12)');
+      base.addColorStop(1, 'rgba(40,40,60,0.00)');
+      ctx.fillStyle = base;
+      ctx.beginPath(); ctx.arc(f.cx, f.cy, 50, 0, Math.PI*2); ctx.fill();
+      ctx.restore();
+      // Halos (additive)
+      ctx.save();
+      ctx.globalCompositeOperation = 'lighter';
+      for(const b of f.items){
+        const bx = f.cx + b.ox + Math.sin(t*0.05+b.phase)*5;
+        const by = f.cy + b.oy + Math.cos(t*0.045+b.phase)*4;
+        const glow = 0.55 + 0.45*Math.sin(t*0.06 + b.phase);
+        const halo = ctx.createRadialGradient(bx, by, 0, bx, by, 14);
+        halo.addColorStop(0, `rgba(${b.col[0]},${b.col[1]},${b.col[2]},${0.42*glow})`);
+        halo.addColorStop(1, `rgba(${b.col[0]},${b.col[1]},${b.col[2]},0)`);
+        ctx.fillStyle = halo;
+        ctx.beginPath(); ctx.arc(bx, by, 14, 0, Math.PI*2); ctx.fill();
+      }
+      ctx.restore();
+      // Cores
+      ctx.save();
+      for(const b of f.items){
+        const bx = f.cx + b.ox + Math.sin(t*0.05+b.phase)*5;
+        const by = f.cy + b.oy + Math.cos(t*0.045+b.phase)*4;
+        const glow = 0.55 + 0.45*Math.sin(t*0.06 + b.phase);
+        ctx.fillStyle = `rgba(${b.col[0]},${b.col[1]},${b.col[2]},${0.7+0.25*glow})`;
+        ctx.beginPath(); ctx.arc(bx, by, 1.8, 0, Math.PI*2); ctx.fill();
+      }
+      ctx.restore();
+    }
+  }
+
+  // LV5 → frog-head silhouette mask + bottom-row water tint (TF LV5 visual reuse).
+  // The frog-head mask darkens cells OUTSIDE the frog shape so the play area
+  // visually reads as a frog face. Tiles inside the frog stay fully bright; tiles
+  // outside get a heavy dark-green tint. Reuses the Monument zone-map pattern
+  // (see MN_TOWER_BRIDGE_ZONES) but as a mask instead of a building.
+  else if(lvl === 5){
+    // 10×10 frog-head silhouette (1 = inside frog, 0 = outside).
+    // Drawn on top of tiles so outside cells get darkened.
+    const TAD_FROG_HEAD = [
+      [ 0, 0, 1, 1, 1, 1, 1, 1, 0, 0 ], // top of head
+      [ 0, 1, 1, 1, 1, 1, 1, 1, 1, 0 ],
+      [ 1, 1, 0, 1, 1, 1, 1, 0, 1, 1 ], // eyes (gaps)
+      [ 1, 1, 1, 1, 1, 1, 1, 1, 1, 1 ],
+      [ 1, 1, 1, 1, 1, 1, 1, 1, 1, 1 ],
+      [ 1, 1, 1, 1, 1, 1, 1, 1, 1, 1 ], // wide cheeks
+      [ 0, 1, 1, 1, 1, 1, 1, 1, 1, 0 ],
+      [ 0, 1, 1, 0, 0, 0, 0, 1, 1, 0 ], // mouth
+      [ 0, 0, 1, 1, 1, 1, 1, 1, 0, 0 ],
+      [ 0, 0, 0, 1, 1, 1, 1, 0, 0, 0 ], // chin
+    ];
+    try {
+      const CW = W / 10;
+      // Outside cells: dark tint (obscures tiles there).
+      ctx.save();
+      for(let r=0; r<10; r++){
+        for(let c=0; c<10; c++){
+          if(TAD_FROG_HEAD[r][c] === 0){
+            ctx.fillStyle = 'rgba(8,20,12,0.65)';
+            ctx.fillRect(c*CW, r*CW, CW, CW);
+          }
+        }
+      }
+      // Frog outline: thin green stroke around the silhouette edge.
+      ctx.strokeStyle = 'rgba(80,180,100,0.55)';
+      ctx.lineWidth = 2;
+      for(let r=0; r<10; r++){
+        for(let c=0; c<10; c++){
+          if(TAD_FROG_HEAD[r][c] === 1){
+            // Check each neighbor; draw an edge where neighbor is 0 (or out of bounds).
+            if(r === 0 || TAD_FROG_HEAD[r-1][c] === 0){
+              ctx.beginPath(); ctx.moveTo(c*CW, r*CW); ctx.lineTo((c+1)*CW, r*CW); ctx.stroke();
+            }
+            if(r === 9 || TAD_FROG_HEAD[r+1][c] === 0){
+              ctx.beginPath(); ctx.moveTo(c*CW, (r+1)*CW); ctx.lineTo((c+1)*CW, (r+1)*CW); ctx.stroke();
+            }
+            if(c === 0 || TAD_FROG_HEAD[r][c-1] === 0){
+              ctx.beginPath(); ctx.moveTo(c*CW, r*CW); ctx.lineTo(c*CW, (r+1)*CW); ctx.stroke();
+            }
+            if(c === 9 || TAD_FROG_HEAD[r][c+1] === 0){
+              ctx.beginPath(); ctx.moveTo((c+1)*CW, r*CW); ctx.lineTo((c+1)*CW, (r+1)*CW); ctx.stroke();
+            }
+          }
+        }
+      }
+      // Two pupils inside the frog's eye gaps (cells [2][2] and [2][7]).
+      ctx.fillStyle = 'rgba(60,200,90,0.85)';
+      [ [2,2], [2,7] ].forEach(([rr,cc]) => {
+        ctx.beginPath();
+        ctx.arc(cc*CW + CW/2, rr*CW + CW/2, CW*0.22, 0, Math.PI*2);
+        ctx.fill();
+      });
+      ctx.restore();
+    } catch(_){}
     ctx.save();
-    ctx.strokeStyle = 'rgba(180,210,235,1)';
-    ctx.lineWidth = 0.9;
-    for(const d of _tadDrizzle){
-      d.y += d.speed; d.x += d.speed*0.18;
-      if(d.y>H) { d.y = -10; d.x = Math.random()*W; }
-      ctx.globalAlpha = d.alpha;
+    // Rising water gradient over bottom 35% of canvas
+    const waterTop = H * 0.65;
+    const wg = ctx.createLinearGradient(0, waterTop, 0, H);
+    wg.addColorStop(0, 'rgba(60,130,200,0.0)');
+    wg.addColorStop(0.3, 'rgba(60,130,200,0.25)');
+    wg.addColorStop(1, 'rgba(40,90,160,0.55)');
+    ctx.fillStyle = wg;
+    ctx.fillRect(0, waterTop, W, H-waterTop);
+    // Water shimmer lines
+    ctx.strokeStyle = 'rgba(200,230,250,0.4)';
+    ctx.lineWidth = 0.8;
+    for(let i=0;i<8;i++){
+      const sy = waterTop + 12 + i*((H-waterTop-15)/8);
+      const phase = Math.sin(t*0.03 + i)*8;
       ctx.beginPath();
-      ctx.moveTo(d.x, d.y); ctx.lineTo(d.x - d.len*0.18, d.y - d.len);
+      ctx.moveTo(W*0.1 + phase, sy);
+      ctx.lineTo(W*0.1 + 40 + phase, sy);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(W*0.5 - phase, sy+4);
+      ctx.lineTo(W*0.5 + 35 - phase, sy+4);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(W*0.78 + phase*0.6, sy-2);
+      ctx.lineTo(W*0.78 + 38 + phase*0.6, sy-2);
       ctx.stroke();
     }
     ctx.restore();
   }
-  // LV9 → twilight stars + occasional shooting star
-  else if(lvl === 9){
-    // Extra twinkle stars across full canvas
+
+  // LV6 → 3 heavy mist patches (Fog the Frog reuse) — strong obscuring
+  else if(lvl === 6){
+    if(!_tadMistPatches){
+      _tadMistPatches = [
+        { x: W*0.25, y: H*0.30, r: Math.min(W,H)*0.40, vx: 0.30, vy: 0.10 },
+        { x: W*0.70, y: H*0.55, r: Math.min(W,H)*0.45, vx:-0.25, vy: 0.12 },
+        { x: W*0.50, y: H*0.75, r: Math.min(W,H)*0.38, vx: 0.18, vy:-0.08 },
+      ];
+    }
+    for(const p of _tadMistPatches){
+      p.x += p.vx; p.y += p.vy;
+      if(p.x < -p.r*0.3 || p.x > W+p.r*0.3) p.vx *= -1;
+      if(p.y < -p.r*0.2 || p.y > H+p.r*0.2) p.vy *= -1;
+      ctx.save();
+      const grd = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, p.r);
+      // Strong center, soft edges — Fog the Frog opacity model
+      grd.addColorStop(0,    'rgba(228,232,240,0.62)');
+      grd.addColorStop(0.40, 'rgba(220,225,235,0.45)');
+      grd.addColorStop(0.70, 'rgba(210,218,228,0.20)');
+      grd.addColorStop(0.92, 'rgba(200,210,222,0.05)');
+      grd.addColorStop(1,    'rgba(200,210,222,0.00)');
+      ctx.fillStyle = grd;
+      ctx.beginPath(); ctx.arc(p.x, p.y, p.r, 0, Math.PI*2); ctx.fill();
+      ctx.restore();
+    }
+  }
+
+  // LV7 → corner frost crystals + snow already handled by season
+  else if(lvl === 7){
+    // Frost crystals creeping in from corners
     ctx.save();
-    ctx.fillStyle = 'rgba(255,255,255,0.7)';
-    for(let i=0;i<18;i++){
-      const sx = ((i*73 + W*0.13) % W);
-      const sy = ((i*41) % (H*0.6));
-      const tw = 0.4 + 0.6*Math.abs(Math.sin(t*0.04 + i));
-      ctx.globalAlpha = 0.45 * tw;
-      ctx.beginPath(); ctx.arc(sx, sy, 0.8 + tw*0.6, 0, Math.PI*2); ctx.fill();
+    const corners = [
+      {x:0, y:0},
+      {x:W, y:0},
+      {x:0, y:H},
+      {x:W, y:H}
+    ];
+    for(const c of corners){
+      const grd = ctx.createRadialGradient(c.x, c.y, 0, c.x, c.y, Math.min(W,H)*0.42);
+      grd.addColorStop(0,    'rgba(220,240,255,0.55)');
+      grd.addColorStop(0.45, 'rgba(220,240,255,0.20)');
+      grd.addColorStop(1,    'rgba(220,240,255,0.00)');
+      ctx.fillStyle = grd;
+      ctx.beginPath(); ctx.arc(c.x, c.y, Math.min(W,H)*0.42, 0, Math.PI*2); ctx.fill();
+    }
+    // A few decorative snowflake icons
+    ctx.strokeStyle = 'rgba(230,245,255,0.65)';
+    ctx.lineWidth = 1.2;
+    const flakes = [
+      {x: W*0.12, y: H*0.18, s:8},
+      {x: W*0.85, y: H*0.22, s:7},
+      {x: W*0.20, y: H*0.78, s:9},
+      {x: W*0.78, y: H*0.82, s:8},
+    ];
+    for(const fk of flakes){
+      ctx.save();
+      ctx.translate(fk.x, fk.y);
+      ctx.rotate(t*0.005);
+      for(let a=0;a<6;a++){
+        ctx.rotate(Math.PI/3);
+        ctx.beginPath();
+        ctx.moveTo(0,0); ctx.lineTo(0, fk.s);
+        ctx.moveTo(0, fk.s*0.5); ctx.lineTo(fk.s*0.3, fk.s*0.7);
+        ctx.moveTo(0, fk.s*0.5); ctx.lineTo(-fk.s*0.3, fk.s*0.7);
+        ctx.stroke();
+      }
+      ctx.restore();
     }
     ctx.restore();
+  }
+
+  // LV8 → sandstorm tint + drifting sand particles (Cairo/Accra monument theme)
+  else if(lvl === 8){
+    // Warm sand wash across entire canvas
+    ctx.save();
+    ctx.globalCompositeOperation = 'overlay';
+    ctx.fillStyle = 'rgba(220,170,90,0.20)';
+    ctx.fillRect(0,0,W,H);
+    ctx.restore();
+    // Sand particles streaking horizontally
+    if(!_tadSandParticles) _tadSandParticles = Array.from({length:80}, () => ({
+      x:Math.random()*W, y:Math.random()*H,
+      vx:2.5+Math.random()*1.8, vy:(Math.random()-0.5)*0.3,
+      r:0.8+Math.random()*1.2,
+      alpha:0.3+Math.random()*0.3
+    }));
+    ctx.save();
+    for(const s of _tadSandParticles){
+      s.x += s.vx; s.y += s.vy;
+      if(s.x > W+5) { s.x = -5; s.y = Math.random()*H; }
+      if(s.y < 0) s.y = H; else if(s.y > H) s.y = 0;
+      ctx.fillStyle = `rgba(230,200,140,${s.alpha})`;
+      ctx.beginPath(); ctx.arc(s.x, s.y, s.r, 0, Math.PI*2); ctx.fill();
+    }
+    ctx.restore();
+  }
+
+  // LV9 → rain + safe lightning + drifting storm fog (TF LV9 visual)
+  else if(lvl === 9){
+    // Drifting storm fog patches (2)
+    if(!_tadMistPatches){
+      _tadMistPatches = [
+        { x: W*0.30, y: H*0.40, r: Math.min(W,H)*0.42, vx: 0.20, vy: 0.08 },
+        { x: W*0.70, y: H*0.60, r: Math.min(W,H)*0.45, vx:-0.18, vy: 0.10 },
+      ];
+    }
+    for(const p of _tadMistPatches){
+      p.x += p.vx; p.y += p.vy;
+      if(p.x < -p.r*0.3 || p.x > W+p.r*0.3) p.vx *= -1;
+      if(p.y < -p.r*0.2 || p.y > H+p.r*0.2) p.vy *= -1;
+      ctx.save();
+      const grd = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, p.r);
+      grd.addColorStop(0,    'rgba(120,130,160,0.35)');
+      grd.addColorStop(0.55, 'rgba(110,120,150,0.18)');
+      grd.addColorStop(0.85, 'rgba(100,110,140,0.05)');
+      grd.addColorStop(1,    'rgba(100,110,140,0.00)');
+      ctx.fillStyle = grd;
+      ctx.beginPath(); ctx.arc(p.x, p.y, p.r, 0, Math.PI*2); ctx.fill();
+      ctx.restore();
+    }
+    // Rain
+    if(!_tadRain) _tadRain = Array.from({length:70}, () => ({
+      x:Math.random()*W, y:Math.random()*H,
+      len: 12+Math.random()*8, speed: 7+Math.random()*4,
+      alpha: 0.35+Math.random()*0.3
+    }));
+    ctx.save();
+    ctx.strokeStyle = 'rgba(180,210,235,1)';
+    ctx.lineWidth = 1.1;
+    for(const d of _tadRain){
+      d.y += d.speed; d.x += d.speed*0.22;
+      if(d.y>H) { d.y = -10; d.x = Math.random()*W-20; }
+      ctx.globalAlpha = d.alpha;
+      ctx.beginPath();
+      ctx.moveTo(d.x, d.y); ctx.lineTo(d.x - d.len*0.22, d.y - d.len);
+      ctx.stroke();
+    }
+    ctx.restore();
+    // Lightning (photosensitive-safe: ≤1 flash per 3s, max alpha 0.35)
+    _tadLightningTimer++;
+    if(_tadLightningTimer > 180 && Math.random() < 0.015 && _tadLightning < 0.02){
+      _tadLightning = 0.35;
+      _tadLightningTimer = 0;
+    }
+    if(_tadLightning > 0.02){
+      ctx.save();
+      ctx.fillStyle = `rgba(220,235,255,${_tadLightning})`;
+      ctx.fillRect(0,0,W,H);
+      ctx.restore();
+      _tadLightning *= 0.85;
+    }
+  }
+
+  // LV10 → festival: butterflies + fireflies + petals + shooting stars + soft fog
+  else if(lvl === 10){
+    // 2 butterfly flocks
+    const bpal = [[255,170,60],[255,120,180],[180,220,255],[200,150,255],[255,230,120]];
+    if(!_tadFlocks) _tadFlocks = [
+      _tadMakeFlock(W, H, 18, bpal, 5),
+      _tadMakeFlock(W, H, 18, bpal, 5),
+    ];
+    for(const f of _tadFlocks){
+      _tadTickFlock(f, W, H, t);
+      for(const b of f.items){
+        const bx = f.cx + b.ox + Math.sin(t*0.04+b.phase)*4;
+        const by = f.cy + b.oy + Math.cos(t*0.035+b.phase)*3;
+        const flutter = Math.abs(Math.sin(t*0.35+b.phase));
+        const wingW = b.size * (0.85 + flutter*0.5);
+        const wingH = b.size * 0.7;
+        ctx.save();
+        ctx.translate(bx, by);
+        ctx.fillStyle = `rgba(${b.col[0]},${b.col[1]},${b.col[2]},0.85)`;
+        ctx.beginPath(); ctx.ellipse(-wingW*0.5, 0, wingW*0.55, wingH, 0, 0, Math.PI*2); ctx.fill();
+        ctx.beginPath(); ctx.ellipse( wingW*0.5, 0, wingW*0.55, wingH, 0, 0, Math.PI*2); ctx.fill();
+        ctx.fillStyle = 'rgba(40,30,25,0.85)';
+        ctx.beginPath(); ctx.ellipse(0, 0, wingH*0.18, wingH*0.55, 0, 0, Math.PI*2); ctx.fill();
+        ctx.restore();
+      }
+    }
+    // 2 firefly flocks
+    const fpal = [[255,230,120],[255,180,220],[180,255,200]];
+    if(!_tadFireflyFlocks) _tadFireflyFlocks = [
+      _tadMakeFlock(W, H, 15, fpal, 2),
+      _tadMakeFlock(W, H, 15, fpal, 2),
+    ];
+    for(const f of _tadFireflyFlocks){
+      _tadTickFlock(f, W, H, t);
+      ctx.save();
+      ctx.globalCompositeOperation = 'lighter';
+      for(const b of f.items){
+        const bx = f.cx + b.ox + Math.sin(t*0.05+b.phase)*5;
+        const by = f.cy + b.oy + Math.cos(t*0.045+b.phase)*4;
+        const glow = 0.55 + 0.45*Math.sin(t*0.06 + b.phase);
+        const halo = ctx.createRadialGradient(bx, by, 0, bx, by, 12);
+        halo.addColorStop(0, `rgba(${b.col[0]},${b.col[1]},${b.col[2]},${0.38*glow})`);
+        halo.addColorStop(1, `rgba(${b.col[0]},${b.col[1]},${b.col[2]},0)`);
+        ctx.fillStyle = halo;
+        ctx.beginPath(); ctx.arc(bx, by, 12, 0, Math.PI*2); ctx.fill();
+      }
+      ctx.restore();
+    }
     // Shooting star (rare)
     if(!_tadShootStar || _tadShootStar.life > _tadShootStar.maxLife){
-      if(Math.random() < 0.004){
+      if(Math.random() < 0.006){
         _tadShootStar = {
           x: Math.random()*W*0.6, y: Math.random()*H*0.25,
-          vx: 6+Math.random()*3, vy: 1.5+Math.random()*1,
-          life:0, maxLife: 28
+          vx: 7+Math.random()*3, vy: 1.8+Math.random()*1,
+          life:0, maxLife: 30
         };
       } else _tadShootStar = null;
     }
@@ -8339,71 +8717,17 @@ function _drawTadpoleLevelLayer(ctx, W, H){
       s.x += s.vx; s.y += s.vy; s.life++;
       const fade = 1 - s.life/s.maxLife;
       ctx.save();
-      ctx.strokeStyle = `rgba(255,255,235,${0.85*fade})`;
-      ctx.lineWidth = 1.5;
+      ctx.strokeStyle = `rgba(255,255,235,${0.9*fade})`;
+      ctx.lineWidth = 1.6;
       ctx.beginPath();
-      ctx.moveTo(s.x, s.y);
-      ctx.lineTo(s.x - s.vx*4, s.y - s.vy*4);
+      ctx.moveTo(s.x, s.y); ctx.lineTo(s.x - s.vx*4, s.y - s.vy*4);
       ctx.stroke();
       ctx.fillStyle = `rgba(255,255,240,${fade})`;
-      ctx.beginPath(); ctx.arc(s.x, s.y, 1.5, 0, Math.PI*2); ctx.fill();
+      ctx.beginPath(); ctx.arc(s.x, s.y, 1.8, 0, Math.PI*2); ctx.fill();
       ctx.restore();
     }
   }
-  // LV10 → gentle festival: butterflies + fireflies + petals (spring season)
-  else if(lvl === 10){
-    // Reuse butterflies
-    if(!_tadButterflies) _tadButterflies = Array.from({length:8}, () => ({
-      x:Math.random()*W, y:Math.random()*H*0.7,
-      vx:(Math.random()<0.5?-1:1)*(0.4+Math.random()*0.5),
-      vy:(Math.random()-0.5)*0.3,
-      phase:Math.random()*Math.PI*2,
-      col:[[255,170,60],[255,120,180],[180,220,255],[200,150,255],[255,230,120]][Math.floor(Math.random()*5)]
-    }));
-    for(const b of _tadButterflies){
-      b.x += b.vx + Math.sin(t*0.04+b.phase)*0.4;
-      b.y += b.vy + Math.cos(t*0.03+b.phase)*0.25;
-      if(b.x<-10) b.x=W+10; else if(b.x>W+10) b.x=-10;
-      if(b.y<10) b.vy=Math.abs(b.vy); else if(b.y>H*0.85) b.vy=-Math.abs(b.vy);
-      const flutter = Math.abs(Math.sin(t*0.35+b.phase));
-      const wingW = 5 + flutter*3, wingH = 4;
-      ctx.save(); ctx.translate(b.x, b.y);
-      ctx.fillStyle = `rgba(${b.col[0]},${b.col[1]},${b.col[2]},0.82)`;
-      ctx.beginPath(); ctx.ellipse(-wingW*0.5, 0, wingW*0.55, wingH, 0, 0, Math.PI*2); ctx.fill();
-      ctx.beginPath(); ctx.ellipse( wingW*0.5, 0, wingW*0.55, wingH, 0, 0, Math.PI*2); ctx.fill();
-      ctx.fillStyle = 'rgba(40,30,25,0.85)';
-      ctx.beginPath(); ctx.ellipse(0, 0, 1.2, 3, 0, 0, Math.PI*2); ctx.fill();
-      ctx.restore();
-    }
-    // Festival fireflies (subset of LV4 style, fewer + lower)
-    if(!_tadFireflies) _tadFireflies = Array.from({length:15}, () => ({
-      x:Math.random()*W, y:Math.random()*H,
-      vx:(Math.random()-0.5)*0.35, vy:(Math.random()-0.5)*0.35,
-      phase:Math.random()*Math.PI*2,
-      col:[[255,230,120],[255,180,220],[180,255,200]][Math.floor(Math.random()*3)]
-    }));
-    ctx.save();
-    for(const f of _tadFireflies){
-      f.x += f.vx; f.y += f.vy;
-      f.vx += (Math.random()-0.5)*0.04;
-      f.vy += (Math.random()-0.5)*0.04;
-      f.vx = Math.max(-0.5, Math.min(0.5, f.vx));
-      f.vy = Math.max(-0.5, Math.min(0.5, f.vy));
-      if(f.x<0) f.x=W; else if(f.x>W) f.x=0;
-      if(f.y<0) f.y=H; else if(f.y>H) f.y=0;
-      const glow = 0.5 + 0.5*Math.sin(t*0.06 + f.phase);
-      ctx.globalCompositeOperation = 'lighter';
-      const halo = ctx.createRadialGradient(f.x, f.y, 0, f.x, f.y, 9);
-      halo.addColorStop(0, `rgba(${f.col[0]},${f.col[1]},${f.col[2]},${0.30*glow})`);
-      halo.addColorStop(1, `rgba(${f.col[0]},${f.col[1]},${f.col[2]},0)`);
-      ctx.fillStyle = halo;
-      ctx.beginPath(); ctx.arc(f.x, f.y, 9, 0, Math.PI*2); ctx.fill();
-      ctx.globalCompositeOperation = 'source-over';
-      ctx.fillStyle = `rgba(${f.col[0]},${f.col[1]},${f.col[2]},${0.65+0.3*glow})`;
-      ctx.beginPath(); ctx.arc(f.x, f.y, 1.4, 0, Math.PI*2); ctx.fill();
-    }
-    ctx.restore();
-  }
+
 }
 
 function _drawPondAmbient(ctx, W, H, rand, lerp) {
@@ -8582,9 +8906,10 @@ function _drawPondAmbient(ctx, W, H, rand, lerp) {
     }
   }
 
-  // ── PER-LEVEL TADPOLE LAYER (season + signature visitor) ─────
-  // Drawn last so it sits ON TOP of pond, but BEFORE the game board.
-  try { _drawTadpoleLevelLayer(ctx, W, H); } catch(_) {}
+  // ── PER-LEVEL TADPOLE LAYER moved out of ambient ─────────────
+  // Was drawn here pre-tile (background), but it needs to actually obscure tiles.
+  // It is now called from drawGrid() AFTER tiles are rendered (post-tile overlay).
+  // See `_drawTadpoleLevelLayer` invocation near the Tree Frog hazard overlay.
 }
 
 // ──────────────────────────────────────────────────────────────────
@@ -22360,6 +22685,14 @@ function drawGrid(){
   // Drifting clouds of butterflies/leaves/fog/fire/bugs + rising water + lightning
   if (activeChallengeMode === 'frenzy' && typeof _tfDrawHazardOverlay === 'function') {
     _tfDrawHazardOverlay(ctx);
+  }
+
+  // ─ TADPOLE (standard) PER-LEVEL OBSCURING OVERLAY ─────────────────────────────────
+  // Visual-only obscuring effects per level (butterflies, mist, fireflies, sandstorm, etc.)
+  // Drawn AFTER tiles so it genuinely obscures the board, like Tree Frog hazards.
+  // NOTE: never blocks placement — tile drag/drop hit-testing is logic-only.
+  if (activeChallengeMode === 'standard' && gameActive && typeof _drawTadpoleLevelLayer === 'function') {
+    try { _drawTadpoleLevelLayer(ctx, W, H); } catch(_) {}
   }
 
   // ─ GOLDEN FROG BLACKOUT: animated curtain falls top→bot, recedes bot→top, with vertical opacity gradient + flickering window lights ──────
