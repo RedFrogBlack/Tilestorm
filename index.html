@@ -11070,7 +11070,7 @@ function _tfGetHazardCfg(lvl){
     // LV2-10: 5s active / 5s rest (cycleSec:10, activeSec:5). patches:0 = no cloud patch system.
     case 2:  return { kind:'wind',        name:'Strong Wind Gusts',  patches:0, baseRadius:0,   speed:0,     blocks:false, color:[220,210,180], cycleSec:10, activeSec:5, shakeAmp:5 };
     case 3:  return { kind:'branches',    name:'Falling Branches',   patches:0, baseRadius:0,   speed:0,     blocks:true,  color:[120,80,40],   cycleSec:10, activeSec:5 };
-    case 4:  return { kind:'fireflies',   name:'Firefly Swarm',      patches:0, baseRadius:0,   speed:0,     blocks:true,  color:[200,240,80],  cycleSec:10, activeSec:5 };
+    case 4:  return { kind:'fireflies',   name:'Firefly Swarm',      patches:0, baseRadius:0,   speed:0,     blocks:false, color:[200,240,80],  cycleSec:10, activeSec:5 };
     case 5:  return { kind:'flood',       name:'Rising Water',       patches:0, baseRadius:0,   speed:0,     blocks:true,  color:[80,140,200],  cycleSec:10, activeSec:5, maxRiseRows:4 };
     case 6:  return { kind:'bushes',      name:'Plant Overgrowth',   patches:0, baseRadius:0,   speed:0,     blocks:true,  color:[60,140,60],   cycleSec:10, activeSec:5 };
     case 7:  return { kind:'ice',         name:'Ice Freeze',         patches:0, baseRadius:0,   speed:0,     blocks:true,  color:[160,220,255], cycleSec:10, activeSec:5 };
@@ -11788,90 +11788,145 @@ function _tfDrawBranchOverlay(ctx, W, H, CW){
 // ════════════════════════════════════════════════════════════════════════════
 // LV4: BUG SWARMS / FIREFLIES — glowing drifting dots, cluster blocks cells
 // ════════════════════════════════════════════════════════════════════════════
+// LV4: FIREFLY SWARM — reuses LV1 butterfly hover/drift flock motion. Multiple
+// flocks roam the board, each firefly glows in a distinct colour. NO tile-blocking
+// (per user spec) — hazard is purely visual + atmospheric, gusts via brightness pulses.
 function _tfTickFireflies(isActive){
   const tt = (typeof _ambientT === 'number') ? _ambientT : _tfHazardTickAccum;
-  // Initialise firefly cloud on first tick
+
+  // Colour palette: 6 distinct firefly hues (warm + cool jewel tones)
+  const palette = [
+    [255, 220,  90],   // warm yellow — classic firefly
+    [255, 140, 180],   // pink
+    [120, 220, 255],   // cyan
+    [180, 120, 255],   // violet
+    [120, 255, 140],   // green
+    [255, 170,  60],   // amber
+  ];
+
+  // Seed 5 flock anchors (like butterfly patches) + 200 fireflies distributed among them
   if(_tfFireflies.length === 0){
-    for(let i=0;i<120;i++){
-      _tfFireflies.push({
-        x: 2 + Math.random()*(COLS-4),
-        y: 2 + Math.random()*(ROWS-4),
-        vx: (Math.random()-0.5)*0.04,
-        vy: (Math.random()-0.5)*0.03,
-        phase: Math.random()*Math.PI*2,
-        pulseSpeed: 0.04 + Math.random()*0.06,
-        size: 2.5 + Math.random()*3.5,
-        cluster: Math.floor(Math.random()*2),  // 0 or 1 = which of 2 clusters
-        cx: 3 + Math.random()*(COLS-6),
-        cy: 2 + Math.random()*(ROWS-4),
+    _tfFireflies._flocks = [];
+    const FLOCKS = 5;
+    for(let f=0; f<FLOCKS; f++){
+      _tfFireflies._flocks.push({
+        anchorX:  1.5 + Math.random() * (COLS - 3),
+        anchorY:  1.5 + Math.random() * (ROWS - 3),
+        targetX:  0, targetY: 0,
+        driftPhase: 'hover',
+        driftTimer: 60 * (2.5 + Math.random()*1.5),
+        phase:    Math.random() * Math.PI * 2,
+        // Each flock gets one palette colour
+        col: palette[f % palette.length],
       });
     }
-    // Seed 2 cluster anchors
-    _tfFireflies._clusterA = { x: 3 + Math.random()*(COLS-6), y: 2 + Math.random()*(ROWS-4) };
-    _tfFireflies._clusterB = { x: 3 + Math.random()*(COLS-6), y: 2 + Math.random()*(ROWS-4) };
-  }
-  // Drift cluster anchors slowly
-  const cA = _tfFireflies._clusterA, cB = _tfFireflies._clusterB;
-  cA.x += (Math.random()-0.5)*0.015; cA.y += (Math.random()-0.5)*0.012;
-  cB.x += (Math.random()-0.5)*0.015; cB.y += (Math.random()-0.5)*0.012;
-  cA.x = Math.max(1.5, Math.min(COLS-1.5, cA.x));
-  cA.y = Math.max(1,   Math.min(ROWS-1,   cA.y));
-  cB.x = Math.max(1.5, Math.min(COLS-1.5, cB.x));
-  cB.y = Math.max(1,   Math.min(ROWS-1,   cB.y));
-  for(const ff of _tfFireflies){
-    const anchor = ff.cluster === 0 ? cA : cB;
-    // Pull toward cluster anchor
-    ff.vx += (anchor.x - ff.x) * 0.002;
-    ff.vy += (anchor.y - ff.y) * 0.002;
-    // Damp velocity
-    ff.vx *= 0.97; ff.vy *= 0.97;
-    ff.x += ff.vx; ff.y += ff.vy;
-    ff.phase += ff.pulseSpeed;
-  }
-  // Active: pick 2-3 cells near each cluster anchor to block
-  _tfFireflyRespawnTimer--;
-  if(isActive && (_tfFireflyBlockedCells.length === 0 || _tfFireflyRespawnTimer <= 0)){
-    _tfFireflyBlockedCells = [];
-    for(const anchor of [cA, cB]){
-      const r = Math.max(0, Math.min(ROWS-1, Math.round(anchor.y)));
-      const c = Math.max(0, Math.min(COLS-1, Math.round(anchor.x)));
-      _tfFireflyBlockedCells.push({r, c});
-      // Add 1 neighbour cell
-      const nr = Math.max(0, Math.min(ROWS-1, r + (Math.random()<0.5?-1:1)));
-      const nc = Math.max(0, Math.min(COLS-1, c + (Math.random()<0.5?-1:1)));
-      _tfFireflyBlockedCells.push({r:nr, c:nc});
+    // Initialise targets to anchors
+    for(const fl of _tfFireflies._flocks){ fl.targetX = fl.anchorX; fl.targetY = fl.anchorY; }
+
+    // Spawn 200 fireflies distributed evenly across flocks
+    const TOTAL = 200;
+    for(let i=0; i<TOTAL; i++){
+      const flockIdx = i % FLOCKS;
+      _tfFireflies.push({
+        flock: flockIdx,
+        // Offset from flock anchor (spread within ~2.5 cells radius)
+        ox: (Math.random()-0.5) * 3.0,
+        oy: (Math.random()-0.5) * 3.0,
+        vx: 0, vy: 0,
+        // Position derived from anchor+offset; initialised here
+        x: 0, y: 0,
+        phase: Math.random()*Math.PI*2,
+        pulseSpeed: 0.035 + Math.random()*0.06,
+        size: 2.2 + Math.random()*3.0,
+        // Per-firefly micro-wobble for organic motion
+        wobAmp: 0.10 + Math.random()*0.20,
+        wobFreq: 0.020 + Math.random()*0.030,
+        wobPhase: Math.random()*Math.PI*2,
+      });
     }
-    _tfFireflyRespawnTimer = 60 * 10; // reposition every 10s cycle
   }
-  if(!isActive) _tfFireflyBlockedCells = [];
+
+  const flocks = _tfFireflies._flocks;
+
+  // ===== FLOCK-LEVEL motion (mirrors LV1 hover-drift-hover pattern) =====
+  for(const fl of flocks){
+    fl.driftTimer--;
+    if(fl.driftPhase === 'hover'){
+      // Tiny anchor jitter so flocks aren't perfectly still
+      const t = tt * 0.025;
+      const ox = Math.sin(t + fl.phase) * 0.35;
+      const oy = Math.cos(t*0.8 + fl.phase) * 0.25;
+      fl.curX = fl.anchorX + ox;
+      fl.curY = fl.anchorY + oy;
+      if(fl.driftTimer <= 0){
+        // Pick new drift target — any of 8 directions, 2-3.5 tiles away
+        const dirAngle = Math.random()*Math.PI*2;
+        const dist = 2 + Math.random()*1.8;
+        let tx = fl.anchorX + Math.cos(dirAngle)*dist;
+        let ty = fl.anchorY + Math.sin(dirAngle)*dist;
+        const m = 1.5;
+        if(tx < m) tx = m; if(tx > COLS-m) tx = COLS-m;
+        if(ty < m) ty = m; if(ty > ROWS-m) ty = ROWS-m;
+        fl.targetX = tx; fl.targetY = ty;
+        fl.driftPhase = 'drift';
+        fl.driftTimer = 60 * (2.8 + Math.random()*1.8);
+      }
+    } else {
+      // Drift phase: ease toward target
+      const ease = 0.014;
+      fl.anchorX += (fl.targetX - fl.anchorX) * ease;
+      fl.anchorY += (fl.targetY - fl.anchorY) * ease;
+      fl.curX = fl.anchorX;
+      fl.curY = fl.anchorY;
+      if(fl.driftTimer <= 0 ||
+         (Math.abs(fl.anchorX - fl.targetX) < 0.25 && Math.abs(fl.anchorY - fl.targetY) < 0.25)){
+        fl.driftPhase = 'hover';
+        fl.driftTimer = 60 * (2.5 + Math.random()*1.8);
+      }
+    }
+  }
+
+  // ===== Per-firefly motion: hover around flock anchor + organic wobble =====
+  // Active phase: faster wobble + slightly larger spread (more energetic glow)
+  const energy = isActive ? 1.4 : 0.85;
+  for(const ff of _tfFireflies){
+    const fl = flocks[ff.flock];
+    if(!fl) continue;
+    // Each firefly sits at flock anchor + its personal offset + micro-wobble
+    const wob = Math.sin(tt * ff.wobFreq + ff.wobPhase) * ff.wobAmp;
+    const wob2 = Math.cos(tt * ff.wobFreq*0.7 + ff.wobPhase) * ff.wobAmp;
+    const tx = fl.curX + ff.ox + wob;
+    const ty = fl.curY + ff.oy + wob2;
+    // Smoothly ease firefly toward its target slot (creates flowing flock motion)
+    ff.x += (tx - ff.x) * 0.06 * energy;
+    ff.y += (ty - ff.y) * 0.06 * energy;
+    ff.phase += ff.pulseSpeed * energy;
+  }
 }
 
 function _tfDrawFireflies(ctx, W, H, CW){
-  const tt = (typeof _ambientT === 'number') ? _ambientT : _tfHazardTickAccum;
+  const flocks = _tfFireflies._flocks || [];
   for(const ff of _tfFireflies){
+    const fl = flocks[ff.flock];
+    if(!fl) continue;
+    const col = fl.col;
     const px = ff.x*CW + CW*0.5, py = ff.y*CW + CW*0.5;
-    const pulse = 0.4 + 0.6*Math.abs(Math.sin(ff.phase));
-    // Outer glow halo (reuse technique from monument snowflake glow)
-    const glowR = ff.size * 4.5 * pulse;
+    const pulse = 0.35 + 0.65*Math.abs(Math.sin(ff.phase));
+    // Outer glow halo — flock colour
+    const glowR = ff.size * 4.8 * pulse;
     const grd = ctx.createRadialGradient(px, py, 0, px, py, glowR);
-    grd.addColorStop(0,   `rgba(200,255,80,${0.55*pulse})`);
-    grd.addColorStop(0.4, `rgba(160,255,40,${0.25*pulse})`);
-    grd.addColorStop(1,   'rgba(120,200,0,0)');
+    grd.addColorStop(0,   `rgba(${col[0]},${col[1]},${col[2]},${0.55*pulse})`);
+    grd.addColorStop(0.4, `rgba(${col[0]},${col[1]},${col[2]},${0.22*pulse})`);
+    grd.addColorStop(1,   `rgba(${col[0]},${col[1]},${col[2]},0)`);
     ctx.save();
     ctx.fillStyle = grd;
     ctx.beginPath(); ctx.arc(px, py, glowR, 0, Math.PI*2); ctx.fill();
-    // Bright core dot
-    ctx.fillStyle = `rgba(230,255,120,${0.9*pulse})`;
+    // Bright core dot — lightened flock colour for hot center
+    const hotR = Math.min(255, col[0]+60);
+    const hotG = Math.min(255, col[1]+60);
+    const hotB = Math.min(255, col[2]+60);
+    ctx.fillStyle = `rgba(${hotR},${hotG},${hotB},${0.95*pulse})`;
     ctx.beginPath(); ctx.arc(px, py, ff.size*0.55*pulse, 0, Math.PI*2); ctx.fill();
-    ctx.restore();
-  }
-  // Highlight blocked cells with a soft warm-yellow ring
-  for(const cell of _tfFireflyBlockedCells){
-    const bx = cell.c*CW, by = cell.r*CW;
-    ctx.save();
-    ctx.strokeStyle = 'rgba(200,255,60,0.65)';
-    ctx.lineWidth = 2;
-    ctx.strokeRect(bx+1, by+1, CW-2, CW-2);
     ctx.restore();
   }
 }
