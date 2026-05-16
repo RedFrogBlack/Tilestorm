@@ -9016,30 +9016,40 @@ function _drawTadpoleLevelLayer(ctx, W, H){
   // This block paints the festival visitors (butterflies + fireflies + shooting
   // stars) PLUS a brown mud surface (because gridMask hides the bottom row).
   else if(lvl === 10){
-    // Mud surface visual (the mask itself is set by _tadStartMud above).
+    // Mud surface visual (the mask itself is set by _tadStartMudCycle above).
+    // Skip painting mud on rows that are already under flood water, otherwise
+    // the brown gradient bleeds through the water as tile-shaped silhouettes.
     if (_tadMudActive && _tadMudRows > 0) {
       const cellPx = (typeof CELL === 'number' && CELL > 0) ? CELL : (H / ROWS);
-      const mudTop = (ROWS - _tadMudRows) * cellPx;
-      ctx.save();
-      const mg = ctx.createLinearGradient(0, mudTop, 0, H);
-      mg.addColorStop(0,    'rgba(85,50,25,0.78)');
-      mg.addColorStop(0.5,  'rgba(60,35,18,0.95)');
-      mg.addColorStop(1,    'rgba(40,22,10,1.00)');
-      ctx.fillStyle = mg;
-      ctx.fillRect(0, mudTop, W, H - mudTop);
-      // Bubbles
-      ctx.fillStyle = 'rgba(150,100,50,0.7)';
-      for(let i = 0; i < 10; i++){
-        const bx = (i * 79 + Math.sin(t*0.03 + i)*16) % W;
-        const cycle = (t*0.5 + i*30) % (H - mudTop + 20);
-        const by = H - cycle;
-        if(by > mudTop + 6 && by < H - 2){
-          ctx.beginPath();
-          ctx.arc(bx, by, 1.8, 0, Math.PI*2);
-          ctx.fill();
+      const floodRows = (typeof _tokyoFloodLevel === 'number') ? _tokyoFloodLevel : 0;
+      // mudTop = top of the muddy band; raise it above the flood waterline.
+      const mudTopRowF = (ROWS - _tadMudRows);
+      const floodTopRowF = (ROWS - floodRows);
+      const visibleTopRowF = Math.max(mudTopRowF, floodTopRowF);
+      // If flood fully covers the mud band, skip mud overlay entirely.
+      if (visibleTopRowF < ROWS - 0.05) {
+        const mudTop = visibleTopRowF * cellPx;
+        ctx.save();
+        const mg = ctx.createLinearGradient(0, mudTop, 0, H);
+        mg.addColorStop(0,    'rgba(85,50,25,0.78)');
+        mg.addColorStop(0.5,  'rgba(60,35,18,0.95)');
+        mg.addColorStop(1,    'rgba(40,22,10,1.00)');
+        ctx.fillStyle = mg;
+        ctx.fillRect(0, mudTop, W, H - mudTop);
+        // Bubbles
+        ctx.fillStyle = 'rgba(150,100,50,0.7)';
+        for(let i = 0; i < 10; i++){
+          const bx = (i * 79 + Math.sin(t*0.03 + i)*16) % W;
+          const cycle = (t*0.5 + i*30) % (H - mudTop + 20);
+          const by = H - cycle;
+          if(by > mudTop + 6 && by < H - 2){
+            ctx.beginPath();
+            ctx.arc(bx, by, 1.8, 0, Math.PI*2);
+            ctx.fill();
+          }
         }
+        ctx.restore();
       }
-      ctx.restore();
     }
     // 2 butterfly flocks
     const bpal = [[255,170,60],[255,120,180],[180,220,255],[200,150,255],[255,230,120]];
@@ -22782,9 +22792,22 @@ function drawGrid(){
       // City Pack: composite animated sky layer
       ctx.drawImage(_skyCanvas, 0, 0);
     } else {
-      // Fallback: plain dark masked cells
+      // Fallback: plain dark masked cells.
+      // In Tadpole standard mode the flood, mud, and LV5 frog mask each draw
+      // their own visuals — the per-cell dark rectangles draw on top of the
+      // flood water as tile-shaped silhouettes, which looks like a blue tile
+      // highlight. Skip cells that are masked by flood/mud so the water and
+      // mud overlays read cleanly.
+      const _tadStdMode = (activeChallengeMode === 'standard');
+      const _floodRows = (typeof _tokyoFloodLevel === 'number') ? _tokyoFloodLevel : 0;
+      const _mudRows   = (_tadStdMode && _tadMudActive) ? (_tadMudRows|0) : 0;
+      const _floodTopRow = ROWS - _floodRows;
+      const _mudTopRow   = ROWS - _mudRows;
       for(let r=0;r<ROWS;r++) for(let c=0;c<COLS;c++){
         if(isMasked(r,c)){
+          if (_tadStdMode && (r >= _floodTopRow - 0.0001 || r >= _mudTopRow - 0.0001) && (_floodRows > 0 || _mudRows > 0)) {
+            continue; // flood/mud overlay handles this cell visually
+          }
           ctx.fillStyle='rgba(0,0,0,0.75)';
           ctx.beginPath();ctx.roundRect(c*CELL+1,r*CELL+1,CELL-2,CELL-2,3);ctx.fill();
         }
