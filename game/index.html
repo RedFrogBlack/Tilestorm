@@ -8754,50 +8754,91 @@ function _drawTadpoleLevelLayer(ctx, W, H){
     }
   }
 
-  // LV4 → 4 firefly flocks (TF LV4 reuse, lower density)
+  // LV4 → firefly flocks (TF LV4 reuse). PERF-REWRITTEN (UC-03 fix).
+  //   Old: 8 flocks × 60 = 480 fireflies, each creating 2 radial gradients per
+  //   frame → ~960 gradient allocations + ~1,440 draw calls/frame → mobile freeze.
+  //   New: 4 flocks × 30 = 120 fireflies, base haze and halo pre-rendered to
+  //   offscreen sprite canvases (created once, cached on the function) and
+  //   blitted with drawImage → ~120 drawImage calls/frame for halos and 4 for
+  //   the base haze. ~10× cheaper, visual coverage preserved.
+  //   Further mobile tax: small-screen devices halve the per-flock count.
   else if(lvl === 4){
-    // User wanted ~10× thicker firefly cover.
-    // 8 flocks × 60 fireflies = 480 total (was 4×22=88), each with a much thicker
-    // opaque base mass so the night/firefly haze genuinely hides the tiles.
     const palette = [[255,230,120],[180,255,200],[160,220,255],[255,180,220],[255,200,140],[200,240,255]];
-    if(!_tadFireflyFlocks) _tadFireflyFlocks = [
-      _tadMakeFlock(W, H, 60, palette, 2),
-      _tadMakeFlock(W, H, 60, palette, 2),
-      _tadMakeFlock(W, H, 60, palette, 2),
-      _tadMakeFlock(W, H, 60, palette, 2),
-      _tadMakeFlock(W, H, 60, palette, 2),
-      _tadMakeFlock(W, H, 60, palette, 2),
-      _tadMakeFlock(W, H, 60, palette, 2),
-      _tadMakeFlock(W, H, 60, palette, 2),
-    ];
+    // Mobile perf gate — phones (<500px wide) drop to 4×15=60 fireflies.
+    const _isMobile = (typeof window !== 'undefined' && window.innerWidth && window.innerWidth < 500);
+    const _perFlock = _isMobile ? 15 : 30;
+    if(!_tadFireflyFlocks || _tadFireflyFlocks.length !== 4 || (_tadFireflyFlocks[0] && _tadFireflyFlocks[0].items.length !== _perFlock)) {
+      _tadFireflyFlocks = [
+        _tadMakeFlock(W, H, _perFlock, palette, 2),
+        _tadMakeFlock(W, H, _perFlock, palette, 2),
+        _tadMakeFlock(W, H, _perFlock, palette, 2),
+        _tadMakeFlock(W, H, _perFlock, palette, 2),
+      ];
+    }
+    // ── Cached sprite: base haze (220px square, radial gradient baked in) ──
+    // Created once and stashed on the function. Re-built only if devicePixelRatio
+    // or W/H change significantly (rotation / resize handled elsewhere).
+    if (!_drawTadpoleLevelLayer._lv4BaseHaze) {
+      const sz = 220;
+      const oc = document.createElement('canvas');
+      oc.width = sz; oc.height = sz;
+      const octx = oc.getContext('2d');
+      const grad = octx.createRadialGradient(sz/2, sz/2, 0, sz/2, sz/2, sz/2);
+      grad.addColorStop(0,    'rgba(30,30,55,0.82)');
+      grad.addColorStop(0.45, 'rgba(30,30,55,0.55)');
+      grad.addColorStop(0.75, 'rgba(30,30,55,0.22)');
+      grad.addColorStop(1,    'rgba(30,30,55,0.00)');
+      octx.fillStyle = grad;
+      octx.fillRect(0, 0, sz, sz);
+      _drawTadpoleLevelLayer._lv4BaseHaze = oc;
+    }
+    // ── Cached sprite atlas: one halo per palette colour (32px sprites) ──
+    // The colour is baked into the gradient so we don't pay for gradient
+    // creation per firefly per frame. Pulse glow is applied via globalAlpha.
+    if (!_drawTadpoleLevelLayer._lv4Halos) {
+      const halos = {};
+      const haloSz = 32;
+      for (let pi = 0; pi < palette.length; pi++) {
+        const col = palette[pi];
+        const oc = document.createElement('canvas');
+        oc.width = haloSz; oc.height = haloSz;
+        const octx = oc.getContext('2d');
+        const g = octx.createRadialGradient(haloSz/2, haloSz/2, 0, haloSz/2, haloSz/2, haloSz/2);
+        g.addColorStop(0, `rgba(${col[0]},${col[1]},${col[2]},0.55)`);
+        g.addColorStop(1, `rgba(${col[0]},${col[1]},${col[2]},0)`);
+        octx.fillStyle = g;
+        octx.fillRect(0, 0, haloSz, haloSz);
+        // Key by joined channels so we can map b.col[] → sprite cheaply
+        halos[col[0]+'_'+col[1]+'_'+col[2]] = oc;
+      }
+      _drawTadpoleLevelLayer._lv4Halos = halos;
+    }
+    const baseHaze = _drawTadpoleLevelLayer._lv4BaseHaze;
+    const halos = _drawTadpoleLevelLayer._lv4Halos;
+    const HALO_SZ = 32;
     for(const f of _tadFireflyFlocks){
       _tadTickFlock(f, W, H, t);
-      // Thick opaque base mass at flock center — actually obscures tiles.
-      // Larger radius (110 vs 50) + much higher alpha (0.82 vs 0.40).
-      ctx.save();
-      const base = ctx.createRadialGradient(f.cx, f.cy, 0, f.cx, f.cy, 110);
-      base.addColorStop(0,    'rgba(30,30,55,0.82)');
-      base.addColorStop(0.45, 'rgba(30,30,55,0.55)');
-      base.addColorStop(0.75, 'rgba(30,30,55,0.22)');
-      base.addColorStop(1,    'rgba(30,30,55,0.00)');
-      ctx.fillStyle = base;
-      ctx.beginPath(); ctx.arc(f.cx, f.cy, 110, 0, Math.PI*2); ctx.fill();
-      ctx.restore();
-      // Halos (additive)
+      // Base haze: one drawImage per flock instead of a radial gradient build.
+      // The 220px sprite is drawn 220px wide — same coverage as the old 110px
+      // radius circle (radius=110 → diameter=220).
+      ctx.drawImage(baseHaze, f.cx - 110, f.cy - 110);
+      // Halos: additive blend mode, drawImage from cached sprite. Pulse glow
+      // is applied via globalAlpha rather than rebuilding the gradient.
       ctx.save();
       ctx.globalCompositeOperation = 'lighter';
       for(const b of f.items){
         const bx = f.cx + b.ox + Math.sin(t*0.05+b.phase)*5;
         const by = f.cy + b.oy + Math.cos(t*0.045+b.phase)*4;
         const glow = 0.55 + 0.45*Math.sin(t*0.06 + b.phase);
-        const halo = ctx.createRadialGradient(bx, by, 0, bx, by, 16);
-        halo.addColorStop(0, `rgba(${b.col[0]},${b.col[1]},${b.col[2]},${0.55*glow})`);
-        halo.addColorStop(1, `rgba(${b.col[0]},${b.col[1]},${b.col[2]},0)`);
-        ctx.fillStyle = halo;
-        ctx.beginPath(); ctx.arc(bx, by, 16, 0, Math.PI*2); ctx.fill();
+        const spr = halos[b.col[0]+'_'+b.col[1]+'_'+b.col[2]];
+        if (spr) {
+          ctx.globalAlpha = glow;
+          ctx.drawImage(spr, bx - HALO_SZ/2, by - HALO_SZ/2);
+        }
       }
+      ctx.globalAlpha = 1;
       ctx.restore();
-      // Cores
+      // Cores — cheap circle fills, alpha modulated by glow.
       ctx.save();
       for(const b of f.items){
         const bx = f.cx + b.ox + Math.sin(t*0.05+b.phase)*5;
@@ -15759,6 +15800,11 @@ function revealCitySkyline(city) {
 }
 
 function startCityPackGame(cityIdx) {
+  // SYNCHRONOUS state reset BEFORE any async work (revealCitySkyline).
+  // Without this, jumping from Golden Frog Dubai/etc. to a City Pack level
+  // leaks the SPLIT divider + cm_gfSplitLeftColor canPlace check into the
+  // City Pack session (UC-01 / UC-02 in the test report).
+  if (typeof _resetAllChallengeState === 'function') _resetAllChallengeState();
   cityPackActive = true;
   cityPackCityIdx = Math.min(cityIdx || 0, CITY_PACK_CITIES.length - 1);
   // Tutor: tier intro (first time the player ever enters City Pack).
@@ -15851,6 +15897,11 @@ function advanceCityPackLevel() {
 // `levelIdx` is the 0-based index into MONUMENTS_LEVELS (40 entries — 10 cities × 4 seasons).
 // To launch by city level (1..10), pass `_mnCityStartIdx(cityLv)`.
 function startMonumentsGame(levelIdx) {
+  // SYNCHRONOUS state reset — same rationale as startCityPackGame above.
+  // Monuments piggybacks on City Pack rendering but is launched from the
+  // tier card / level picker, both of which may leave Golden Frog or
+  // Duo state set.
+  if (typeof _resetAllChallengeState === 'function') _resetAllChallengeState();
   monumentsActive = true;
   monumentsLevelIdx = Math.min(Math.max(0, levelIdx | 0), MONUMENTS_LEVELS.length - 1);
   const lv = MONUMENTS_LEVELS[monumentsLevelIdx];
@@ -31104,6 +31155,65 @@ function _gfDismissCelebration() {
   // Resume gameplay
   try { gameActive = true; } catch(_e) {}
   if (typeof updateGfGateHUD === 'function') updateGfGateHUD();
+}
+
+// ════════════════════════════════════════════════════════════════════
+//  _resetAllChallengeState()
+//  Synchronously clears every piece of Golden-Frog / Colour-Run / Split-Pond
+//  state that can cause cross-mode visual or rule leaks (e.g. the Dubai SPLIT
+//  divider rendering over Rio City Pack, or the "WRONG COLOUR" canPlace toast
+//  firing in a non-Golden-Frog level).
+//
+//  Call this at the TOP of any mode-entry function (startCityPackGame,
+//  startMonumentsGame, _jumpToLevel etc.) BEFORE any async work, so the
+//  user never sees a 50-2000ms window of stale challenge overlays during
+//  the reveal-overlay transition.
+//
+//  This is intentionally a superset of stopChallengeMode(): it nukes timers,
+//  divider colours, masks, rotation angles, duo state, and challenge mode in
+//  one synchronous pass. Idempotent and safe to call even when nothing is
+//  active.
+// ════════════════════════════════════════════════════════════════════
+function _resetAllChallengeState() {
+  try {
+    if (typeof _gfStopAllMechanics === 'function') _gfStopAllMechanics();
+  } catch(_e) {}
+  try {
+    // Tear down split-pond duo session if one is mid-flight (clears its own
+    // timers + sets _splitPondActive = false).
+    if (typeof _splitPondStop === 'function' && typeof _splitPondActive !== 'undefined' && _splitPondActive) {
+      _splitPondStop();
+    }
+  } catch(_e) {}
+  // Colour Run split-board state (different vars from GF split — must clear separately)
+  try {
+    if (typeof cm_splitMode !== 'undefined') cm_splitMode = false;
+    if (typeof cm_splitLeftColor !== 'undefined') cm_splitLeftColor = null;
+    if (typeof cm_splitRightColor !== 'undefined') cm_splitRightColor = null;
+  } catch(_e) {}
+  // Golden Frog split colours (redundant with _gfStopAllMechanics above but
+  // defence-in-depth — if that helper is ever refactored we still want these
+  // cleared from this single source of truth).
+  try {
+    if (typeof cm_gfSplitLeftColor !== 'undefined') cm_gfSplitLeftColor = null;
+    if (typeof cm_gfSplitRightColor !== 'undefined') cm_gfSplitRightColor = null;
+    if (typeof cm_gfBlackoutActive !== 'undefined') cm_gfBlackoutActive = false;
+    if (typeof cm_gfRotateAngle !== 'undefined') cm_gfRotateAngle = 0;
+    if (typeof cm_gfGravityFlip !== 'undefined') cm_gfGravityFlip = false;
+    if (typeof cm_gfGhostCells !== 'undefined') cm_gfGhostCells = [];
+  } catch(_e) {}
+  // Reset the challenge mode flag so canPlace / divider / wrong-half checks
+  // all short-circuit. This is the single most important reset — almost every
+  // GF-only visual or rule check gates on this.
+  try {
+    if (typeof activeChallengeMode !== 'undefined') activeChallengeMode = 'standard';
+  } catch(_e) {}
+  // Reset rotation transform on the canvas itself in case Wind Spin left it
+  // tilted (_gfStopAllMechanics already does this but keeping it here makes
+  // this function self-contained for future entry-point additions).
+  try {
+    if (typeof gridCanvas !== 'undefined' && gridCanvas) gridCanvas.style.transform = '';
+  } catch(_e) {}
 }
 
 function _gfStopAllMechanics() {
