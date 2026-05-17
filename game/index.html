@@ -2941,77 +2941,28 @@
     .opp-score-item span { color: var(--white); display: block; font-size: var(--fs-label); }
 
     /* ═══════════════ SPLIT POND MODE ═══════════════
-       When body.split-pond-mode is active, the opponent mini-board
-       blows up into a prominent panel that sits BELOW the topbar and
-       ABOVE the main grid, so both pond surfaces read clearly. */
-    /* Split Pond places opp board IN the upper-right corner under the topbar
-       as a sizeable square that doesn't overlap the main grid. The main grid
-       is also shrunk so both ponds breathe (see the layout cap in calcLayout). */
-    body.split-pond-mode #opp-mini-board {
-      position: fixed;
-      top: var(--sp-panel-top, 70px);
-      right: 8px; left: auto;
-      width: min(36vw, 160px);
-      padding: 6px 8px 8px;
-      border: 1.5px solid #22D3EE;
-      box-shadow: 0 0 18px rgba(34,211,238,0.18), 0 6px 22px rgba(0,0,0,0.6);
-      background: linear-gradient(180deg, rgba(34,211,238,0.05) 0%, var(--black2) 100%);
-      z-index: 8;
-    }
-    body.split-pond-mode #opp-mini-board .opp-label {
-      color: #22D3EE; font-size: var(--fs-micro); margin-bottom: 4px;
-      /* Inset slightly from the right so the floating pause button doesn't sit
-         on top of the label text. */
-      padding-right: 18px;
-      text-align: left;
-    }
-    body.split-pond-mode #opp-mini-canvas {
-      width: 100% !important; height: auto !important;
-      aspect-ratio: 1 / 1;
-    }
-    /* Tighter score row in split pond layout */
-    body.split-pond-mode #opp-mini-board .opp-score-row {
-      margin-top: 3px; gap: 6px;
-    }
-    /* Anchor the main grid to the left so it doesn't overlap the panel. */
-    body.split-pond-mode .grid-center {
-      justify-content: flex-start;
-      padding-left: 8px;
-    }
-    /* Trigger layout recalc by tagging body — grid-canvas itself reads CELL
-       from the JS calcLayout which already accounts for the reserved width. */
-    /* Side-swap visual flip */
-    body.split-pond-swapped #grid-canvas {
-      transform: scaleX(-1);
-      transition: transform 0.4s ease;
-    }
-    body.split-pond-swapped #opp-mini-canvas {
-      transform: scaleX(-1);
-      transition: transform 0.4s ease;
-    }
-    /* Quick Place window — freeze own board, pulse opp board */
+       Single full-size board, vertical divider at GF_SPLIT_COL (=5).
+       Left half (cols 0-4) = YOU. Right half (cols 5-9) = OPPONENT mirror.
+       No floating mini-board chrome — everything is rendered into
+       #grid-canvas by the splitPondPaintDivider() hook called from drawGrid. */
+    body.split-pond-mode #opp-mini-board { display: none !important; }
+    /* Quick Place window — freeze own board, pulse divider */
     body.split-pond-frozen #grid-canvas {
-      filter: grayscale(0.6) brightness(0.7);
-      pointer-events: none;
+      filter: grayscale(0.55) brightness(0.78);
       transition: filter 0.2s ease;
     }
-    body.split-pond-target #opp-mini-board {
+    body.split-pond-target #grid-canvas {
       animation: spPondTargetPulse 0.9s ease-in-out infinite;
     }
     @keyframes spPondTargetPulse {
-      0%, 100% { box-shadow: 0 0 18px rgba(34,211,238,0.18), 0 6px 22px rgba(0,0,0,0.6); }
-      50%      { box-shadow: 0 0 36px rgba(255,217,61,0.55), 0 6px 26px rgba(0,0,0,0.65); }
+      0%, 100% { box-shadow: 0 0 18px rgba(34,211,238,0.0); }
+      50%      { box-shadow: 0 0 36px rgba(255,217,61,0.45); }
     }
-    /* Wind Spin — rotate both canvases visually */
-    body.split-pond-spun-90 #grid-canvas,
-    body.split-pond-spun-90 #opp-mini-canvas { transform: rotate(90deg); }
-    body.split-pond-spun-180 #grid-canvas,
-    body.split-pond-spun-180 #opp-mini-canvas { transform: rotate(180deg); }
-    body.split-pond-spun-270 #grid-canvas,
-    body.split-pond-spun-270 #opp-mini-canvas { transform: rotate(270deg); }
-    body.split-pond-mode.split-pond-spun-90 #grid-canvas,
-    body.split-pond-mode.split-pond-spun-180 #grid-canvas,
-    body.split-pond-mode.split-pond-spun-270 #grid-canvas { transition: transform 0.5s ease; }
+    /* Side Swap: a brief flip animation across the board so the swap is felt */
+    body.split-pond-swap-flash #grid-canvas {
+      transform: scaleX(-1);
+      transition: transform 0.5s ease;
+    }
     /* Quick Place countdown timer pill */
     #split-pond-timer {
       position: fixed; top: 92px; left: 50%;
@@ -7191,13 +7142,7 @@ function calcLayout(){
   const challengeHudH=(document.getElementById('challenge-hud')?.offsetHeight||0)*(gameActive?1:0);
   // Cap width at 480px on desktop, subtract safe margins on mobile
   const safeMargin = window.innerWidth < 500 ? 16 : 8;
-  let maxW=Math.min(window.innerWidth-safeMargin, 480);
-  // Split Pond mode: reserve right-side gutter for the opponent pond panel.
-  if (typeof _splitPondActive !== 'undefined' && _splitPondActive && document.body.classList.contains('split-pond-mode')) {
-    // Panel is min(38vw, 170px) + 8px right inset + ~12px breathing room.
-    var spReserve = Math.min(window.innerWidth * 0.38, 170) + 20;
-    maxW = Math.max(220, maxW - spReserve);
-  }
+  const maxW=Math.min(window.innerWidth-safeMargin, 480);
   const availW=maxW;
   // Tray cell size — must fit a 4-wide piece in one third of the tray width
   // tray-wrap padding is 12px each side = 24px; 3 slots; max piece width = 4 cells
@@ -21344,7 +21289,17 @@ function advanceMonumentsLevel(reason) {
 
 // ── Grid helpers ──────────────────────────────────────────────────
 function initGrid(){grid=Array.from({length:ROWS},()=>new Array(COLS).fill(0));}
-function canPlace(shape,r,c){return shape.every(([dr,dc])=>{const nr=r+dr,nc=c+dc;return nr>=0&&nr<ROWS&&nc>=0&&nc<COLS&&!isMasked(nr,nc)&&grid[nr][nc]===0;});}
+function canPlace(shape,r,c){return shape.every(([dr,dc])=>{const nr=r+dr,nc=c+dc;if(nr<0||nr>=ROWS||nc<0||nc>=COLS||isMasked(nr,nc)||grid[nr][nc]!==0)return false;
+  // Split Pond: you can ONLY place on your half (LV1-3 left, LV4 may flip).
+  // During a Quick Place window (LV2), placement on the opponent half is
+  // routed through endDrag's _splitPondTryStealDrop — not via canPlace.
+  if(typeof _splitPondActive!=='undefined'&&_splitPondActive){
+    var mine=_splitPondMyHalf();
+    if(mine==='left'  && nc>=GF_SPLIT_COL) return false;
+    if(mine==='right' && nc<GF_SPLIT_COL)  return false;
+  }
+  return true;
+});}
 function placeShape(shape,r,c,color){shape.forEach(([dr,dc])=>{grid[r+dr][c+dc]=color;});}
 // Returns true when the active mode is a half-board mode (Dubai split or
 // Amalfi gauntlet). In half-board modes, a row counts as complete when
@@ -21356,6 +21311,8 @@ function _isHalfBoardMode(){
       const _cfg = GF_LOCATIONS_CFG[Math.min((cm_gfLevel|0)-1, 9)];
       return !!(_cfg && (_cfg.mechanic === 'split' || _cfg.mechanic === 'gauntlet'));
     }
+    // Split Pond duo: row clears when YOUR HALF is full.
+    if (typeof _splitPondActive !== 'undefined' && _splitPondActive) return true;
   } catch(_e) {}
   return false;
 }
@@ -23564,6 +23521,10 @@ function drawGrid(){
   if (typeof monumentsActive !== 'undefined' && monumentsActive && typeof _mnDrawHazards === 'function') {
     _mnDrawHazards();
   }
+  // Split Pond: paint the right-half opponent mirror + vertical divider.
+  if (typeof splitPondPaintBoard === 'function' && _splitPondActive) {
+    try { splitPondPaintBoard(); } catch(_e) {}
+  }
   drawMascot();
 }
 
@@ -23705,32 +23666,18 @@ function endDrag(cx,cy){
     }
   }
 
-  // Split Pond LV2 Quick Place: if a drop-on-opp window is open, route this
-  // release onto the OPPONENT's pond (one drop per window). Picks a free cell
-  // close to the hover position so the placement feels intentional.
+  // Split Pond LV2 Quick Place: during the 4s window, a release on the OPP
+  // half (other side of the divider) is allowed even though canPlace blocks
+  // it normally. Routed to _splitPondTryStealDrop which broadcasts the drop.
   if (_splitPondActive && _splitPondIsLevel(2) && Date.now() <= _splitPondTargetUntil && !_splitPondQuickPlaceUsed && hoverCell && dragShape) {
-    var spOppGrid = (vsFrogActive && typeof _vsFrogGrid !== 'undefined' && _vsFrogGrid) ? _vsFrogGrid : oppGrid;
-    var spCanFitOpp = (function(){
-      if (!spOppGrid) return false;
-      return dragShape.every(function(rc){
-        var rr = hoverCell.r + rc[0], cc = hoverCell.c + rc[1];
-        return rr>=0 && rr<ROWS && cc>=0 && cc<COLS && !spOppGrid[rr][cc];
-      });
-    })();
-    // Find a fallback empty cell on opp if direct hover position is occupied.
-    var spDropR = hoverCell.r, spDropC = hoverCell.c;
-    if (!spCanFitOpp && spOppGrid) {
-      outer: for (var rr2=0; rr2<ROWS; rr2++) for (var cc2=0; cc2<COLS; cc2++) {
-        var ok = true;
-        for (var k=0; k<dragShape.length; k++) {
-          var rrr = rr2 + dragShape[k][0], ccc = cc2 + dragShape[k][1];
-          if (rrr>=ROWS || ccc>=COLS || spOppGrid[rrr][ccc]) { ok = false; break; }
-        }
-        if (ok) { spDropR = rr2; spDropC = cc2; spCanFitOpp = true; break outer; }
-      }
-    }
-    if (spCanFitOpp && _splitPondTryStealDrop(dragShape, dragColor, spDropR, spDropC)) {
-      // Consume this tray slot, refresh visuals, no scoring (it's an attack).
+    var spOppCol0 = (_splitPondOppHalf() === 'left') ? 0 : GF_SPLIT_COL;
+    var spOppCol1 = spOppCol0 + 4;
+    var spAllOnOpp = dragShape.every(function(rc){
+      var rr=hoverCell.r+rc[0], cc=hoverCell.c+rc[1];
+      return rr>=0 && rr<ROWS && cc>=spOppCol0 && cc<=spOppCol1;
+    });
+    if (spAllOnOpp && _splitPondTryStealDrop(dragShape, dragColor, hoverCell.r, hoverCell.c)) {
+      // Consume this tray slot — it's an attack, no scoring.
       trayUsed[dragPieceIdx] = true;
       document.querySelector('.tray-piece[data-idx="'+dragPieceIdx+'"]')?.classList.add('used');
       try { playPlace(); } catch(_e){}
@@ -27075,82 +27022,186 @@ function _fireDuoSwap() {
 }
 
 // ── SPLIT POND ──────────────────────────────────────
-// Duo game that shows both ponds side-by-side. Four levels designed:
-//   LV1 Race       — first to DUEL_WIN_LINES (10) lines wins, no twists.
-//   LV2 Quick Place — every 10s, both players get a 4s window to drop a
-//                    tile onto the opponent's pond. Own board frozen.
-//   LV3 Wind Spin  — every 12s, both boards rotate 90° in sync.
-//   LV4 Side Swap  — every 10s, both players swap which pond they
-//                    place onto. Visual flip cues the switch.
-// LV5-10 ship as “Coming Soon” locked placeholders.
-let _splitPondActive = false;
-let _splitPondLevel  = 1;
-let _splitPondTimers = [];          // all setInterval/Timeout ids for cleanup
-let _splitPondAngle  = 0;           // 0/90/180/270 — LV3
-let _splitPondSwapped = false;      // LV4 toggle
-let _splitPondFrozenUntil = 0;      // LV2 freeze (own board) timestamp ms
-let _splitPondTargetUntil = 0;      // LV2 mutual drop-window deadline ms
-let _splitPondQuickPlaceUsed = false; // did current player already use their drop?
-let _splitPondLastBroadcast = 0;
+// Inspired by Golden Frog Dubai's SPLIT layout: ONE full-size board with a
+// vertical divider at GF_SPLIT_COL (=5). Cols 0-4 = YOU. Cols 5-9 = OPPONENT
+// (mirrored from oppGrid in real time over PeerJS, or _vsFrogGrid in vs Frog).
+//
+//   LV1 Race        — first to DUEL_WIN_LINES half-rows wins.
+//   LV2 Quick Place — every 10s, both players get a 4s window to drop one
+//                     tile onto the OPPONENT'S half. Own half frozen meanwhile.
+//   LV3 Wind Spin   — every 12s the whole board rotates 90° in sync on both
+//                     sides (uses the same canvas-rotate trick as GF Bali).
+//   LV4 Side Swap   — every 10s, you and opponent swap halves. The grid
+//                     contents stay put, only ownership flips. Tray label and
+//                     the divider's name labels swap to cue the change.
+// LV5-10 are locked "Coming Soon" placeholders.
+
+let _splitPondActive          = false;
+let _splitPondLevel           = 1;
+let _splitPondTimers          = [];
+let _splitPondAngle           = 0;     // visual rotation 0/90/180/270 — LV3
+let _splitPondOwnedHalf       = 'left';// 'left' or 'right'; flips on LV4 swap
+let _splitPondFrozenUntil     = 0;
+let _splitPondTargetUntil     = 0;
+let _splitPondQuickPlaceUsed  = false;
+let _splitPondLastBroadcast   = 0;
+let _splitPondPulseT          = 0;
 
 function _splitPondIsLevel(lvl) {
   return _splitPondActive && currentDuoGame === 'split_pond' && currentDuoLevel === lvl;
 }
+function _splitPondMyHalf() { return _splitPondOwnedHalf; }
+function _splitPondOppHalf() { return _splitPondOwnedHalf === 'left' ? 'right' : 'left'; }
 
-// Broadcast our grid + score to partner so their large opponent panel updates.
-// Called from placeShape post-hook and line-clear flow.
+// ── Broadcast / receive ──────────────────────────────
+// We send only the cells on MY half (5 columns × 10 rows) so the peer can
+// paint them in their right half. A 5×10 array of color ints.
+function _splitPondMyHalfSnapshot() {
+  var snap = [];
+  var startC = (_splitPondOwnedHalf === 'left') ? 0 : GF_SPLIT_COL;
+  for (var r=0;r<ROWS;r++) {
+    var row = [];
+    for (var c=0;c<5;c++) row.push(grid[r][startC+c] | 0);
+    snap.push(row);
+  }
+  return snap;
+}
 function _splitPondBroadcastBoard() {
   if (!_splitPondActive) return;
   if (typeof grid === 'undefined' || !grid) return;
-  // Throttle to ~12 Hz to avoid flooding the data channel.
   var now = Date.now();
   if (now - _splitPondLastBroadcast < 80) return;
   _splitPondLastBroadcast = now;
   try {
     peerSend({
       type: 'opponent_update',
-      grid: grid.map(function(row){ return row.slice(); }),
+      grid: _splitPondMyHalfSnapshot(),
+      half: _splitPondOwnedHalf,
       score: (typeof score === 'number') ? score : 0,
       lines: (typeof myDuoLines === 'number') ? myDuoLines : 0
     });
   } catch(_e) {}
 }
 
-// Toggle the large opponent panel CSS mode + show timer pill placeholder.
+// Render the opponent's half onto our right half (or left half if swapped).
+// drawGrid() calls splitPondPaintBoard() AFTER all main tiles are drawn.
+function splitPondPaintBoard() {
+  if (!_splitPondActive) return;
+  var canvas = gridCanvas; if (!canvas) return;
+  var ctx2 = canvas.getContext('2d');
+  var W = canvas.width, H = canvas.height;
+  var splitX = GF_SPLIT_COL * CELL;
+
+  // Where is the opponent on MY canvas? Always on the half I don't own.
+  var oppCol0 = (_splitPondOppHalf() === 'left') ? 0 : GF_SPLIT_COL;
+  var oppCol1 = oppCol0 + 5;
+
+  // Source opp grid: 5×10 snapshot in data.grid OR _vsFrogGrid right half.
+  var src = null;
+  if (vsFrogActive && typeof _vsFrogGrid !== 'undefined' && _vsFrogGrid) {
+    // _vsFrogGrid is a full 10×10. Extract the half the AI "owns" (opposite of us).
+    var aiStart = (_splitPondOppHalf() === 'left') ? 0 : GF_SPLIT_COL;
+    src = [];
+    for (var rr=0;rr<ROWS;rr++) {
+      var r5=[];
+      for (var cc=0;cc<5;cc++) r5.push(_vsFrogGrid[rr][aiStart+cc] | 0);
+      src.push(r5);
+    }
+  } else if (oppGrid && Array.isArray(oppGrid) && oppGrid.length === ROWS) {
+    // Real-partner snapshot stored in oppGrid (5 cols expected; tolerate 10).
+    src = [];
+    for (var rr2=0;rr2<ROWS;rr2++) {
+      var row = oppGrid[rr2] || [];
+      if (row.length === 5)      src.push(row.slice());
+      else if (row.length === COLS) {
+        // Old-style full grid — take the half the peer owns.
+        var peerStart = (_splitPondOppHalf() === 'left') ? 0 : GF_SPLIT_COL;
+        src.push(row.slice(peerStart, peerStart+5));
+      } else src.push([0,0,0,0,0]);
+    }
+  }
+
+  // Dim/clear the opp half cells before drawing.
+  ctx2.save();
+  ctx2.fillStyle = 'rgba(8,12,22,0.55)';
+  ctx2.fillRect(oppCol0*CELL, 0, 5*CELL, H);
+
+  // Paint opp tiles a touch desaturated/dim so they read as "other side".
+  if (src) {
+    for (var r3=0;r3<ROWS;r3++) {
+      for (var c3=0;c3<5;c3++) {
+        var v = src[r3][c3];
+        if (!v) continue;
+        var col = getTileColor(v);
+        var px = (oppCol0 + c3) * CELL, py = r3 * CELL;
+        ctx2.fillStyle = col;
+        ctx2.globalAlpha = 0.78;
+        ctx2.fillRect(px+2, py+2, CELL-4, CELL-4);
+        // Inner border
+        ctx2.globalAlpha = 0.45;
+        ctx2.strokeStyle = '#000';
+        ctx2.lineWidth = 1;
+        ctx2.strokeRect(px+2, py+2, CELL-4, CELL-4);
+      }
+    }
+    ctx2.globalAlpha = 1;
+  }
+
+  // Glowing dashed divider, identical look to Golden Frog SPLIT.
+  _splitPondPulseT = (_splitPondPulseT + 0.04) % (Math.PI * 2);
+  var pulse = (Math.sin(_splitPondPulseT) * 0.5 + 0.5);
+  ctx2.strokeStyle = 'rgba(34,211,238,' + (0.55 + 0.35*pulse) + ')';
+  ctx2.lineWidth = 2.5;
+  ctx2.setLineDash([6, 4]);
+  ctx2.beginPath(); ctx2.moveTo(splitX, 0); ctx2.lineTo(splitX, H); ctx2.stroke();
+  ctx2.setLineDash([]);
+
+  // Half labels (YOU / OPP or FROG).
+  ctx2.font = 'bold ' + (CELL * 0.34) + 'px var(--font-display, sans-serif)';
+  ctx2.textAlign = 'center';
+  ctx2.globalAlpha = 0.65;
+  var youX  = (_splitPondOwnedHalf === 'left') ? splitX/2 : splitX + (W-splitX)/2;
+  var oppX  = (_splitPondOwnedHalf === 'left') ? splitX + (W-splitX)/2 : splitX/2;
+  var oppLabel = vsFrogActive ? '🐸 FROG' : 'OPPONENT';
+  ctx2.fillStyle = '#FFD93D';
+  ctx2.fillText('YOU', youX, H - CELL * 0.30);
+  ctx2.fillStyle = '#22D3EE';
+  ctx2.fillText(oppLabel, oppX, H - CELL * 0.30);
+  ctx2.globalAlpha = 1;
+
+  // LV2 Quick Place: highlight the opp half target zone during a window.
+  if (_splitPondIsLevel(2) && Date.now() <= _splitPondTargetUntil) {
+    ctx2.fillStyle = 'rgba(255,217,61,' + (0.10 + 0.10*pulse) + ')';
+    ctx2.fillRect(oppCol0*CELL, 0, 5*CELL, H);
+    ctx2.strokeStyle = 'rgba(255,217,61,' + (0.6 + 0.3*pulse) + ')';
+    ctx2.lineWidth = 3;
+    ctx2.strokeRect(oppCol0*CELL+2, 2, 5*CELL-4, H-4);
+  }
+
+  // LV2 own-half frozen overlay (drag is disabled by canPlace; tint to cue it).
+  if (_splitPondIsLevel(2) && Date.now() <= _splitPondFrozenUntil) {
+    var myCol0 = (_splitPondOwnedHalf === 'left') ? 0 : GF_SPLIT_COL;
+    ctx2.fillStyle = 'rgba(20,30,50,0.30)';
+    ctx2.fillRect(myCol0*CELL, 0, 5*CELL, H);
+  }
+  ctx2.restore();
+}
+
+// ── Chrome (just toggles a body class — no DOM panels) ──
 function _splitPondApplyChrome(on) {
   if (on) {
     document.body.classList.add('split-pond-mode');
-    var opp = document.getElementById('opp-mini-board');
-    if (opp) {
-      opp.classList.add('visible');
-      var label = opp.querySelector('.opp-label');
-      if (label) label.textContent = (vsFrogActive ? '🐸 FROG POND' : 'OPP POND');
-      // Upscale the canvas so we get crisp big tiles. drawOppMiniBoard
-      // uses canvas.width / 10 for cell math, so we just bump width.
-      var c = document.getElementById('opp-mini-canvas');
-      if (c) { c.width = 200; c.height = 200; }
-    }
-    // Position the opp panel just under the topbar (+ extra so the floating
-    // pause button — fixed at ~12-50px on the right — doesn't overlap the label).
-    try {
-      var topH = document.querySelector('.game-topbar')?.offsetHeight || 60;
-      document.documentElement.style.setProperty('--sp-panel-top', (topH + 14) + 'px');
-    } catch(_e) {}
-    // Recompute main grid so it shrinks to leave room for the panel.
-    try { if (typeof calcLayout === 'function') calcLayout(); } catch(_e) {}
+    // The original mini-board is hidden via CSS while split-pond-mode is on.
+    var miniLabel = document.querySelector('#opp-mini-board .opp-label');
+    if (miniLabel) miniLabel.textContent = (vsFrogActive ? '🐸 FROG' : 'OPP');
+    // Force a redraw so the divider/opp half appear immediately.
     try { if (typeof drawGrid === 'function') drawGrid(); } catch(_e) {}
   } else {
     document.body.classList.remove(
-      'split-pond-mode','split-pond-swapped','split-pond-frozen',
-      'split-pond-target','split-pond-spun-90','split-pond-spun-180',
-      'split-pond-spun-270'
+      'split-pond-mode','split-pond-frozen','split-pond-target','split-pond-swap-flash'
     );
-    var c2 = document.getElementById('opp-mini-canvas');
-    if (c2) { c2.width = 68; c2.height = 68; }
     var pill = document.getElementById('split-pond-timer');
     if (pill) pill.classList.remove('visible','urgent');
-    try { if (typeof calcLayout === 'function') calcLayout(); } catch(_e) {}
-    try { if (typeof drawGrid === 'function') drawGrid(); } catch(_e) {}
   }
 }
 
@@ -27176,68 +27227,66 @@ function _splitPondStop() {
   _splitPondClearTimers();
   _splitPondApplyChrome(false);
   _splitPondAngle = 0;
-  _splitPondSwapped = false;
+  _splitPondOwnedHalf = 'left';
   _splitPondFrozenUntil = 0;
   _splitPondTargetUntil = 0;
   _splitPondQuickPlaceUsed = false;
 }
 
-// ── LV3 Wind Spin ───────────────────────────────────────────────
-// Rotate own grid 90° (math identical to _tadRotateBoardOnce) and trigger
-// the same visual flip on the opp mini-board via a body class.
+// ── LV3 Wind Spin ─────────────────────────────────────
+// Rotate the WHOLE board 90° and broadcast so the partner does the same.
+// Halves stay attached to their owners (the swap is purely visual rotation).
 function _splitPondRotateOwnGrid() {
   if (typeof grid === 'undefined' || !grid || !grid.length) return;
   var newGrid = Array.from({length:ROWS}, function(){ return new Array(COLS).fill(0); });
-  for (var r = 0; r < ROWS; r++) {
-    for (var c = 0; c < COLS; c++) {
-      var nr = c, nc = ROWS - 1 - r;
-      if (nr < ROWS && nc < COLS) newGrid[nr][nc] = grid[r][c];
-    }
+  for (var r=0;r<ROWS;r++) for (var c=0;c<COLS;c++) {
+    var nr = c, nc = ROWS-1-r;
+    if (nr<ROWS && nc<COLS) newGrid[nr][nc] = grid[r][c];
   }
-  for (var r2 = 0; r2 < ROWS; r2++) for (var c2 = 0; c2 < COLS; c2++) grid[r2][c2] = newGrid[r2][c2];
+  for (var r2=0;r2<ROWS;r2++) for (var c2=0;c2<COLS;c2++) grid[r2][c2] = newGrid[r2][c2];
   try { if (typeof drawGrid === 'function') drawGrid(); } catch(_){}
-  try { if (typeof _gfRecheckLinesAfterMutation === 'function') _gfRecheckLinesAfterMutation(); } catch(_){}
 }
 
 function _splitPondFireWindSpin() {
   if (!_splitPondIsLevel(3)) return;
   _splitPondRotateOwnGrid();
-  // Visual rotation class — we cycle through 90/180/270/0.
   _splitPondAngle = (_splitPondAngle + 90) % 360;
-  document.body.classList.remove('split-pond-spun-90','split-pond-spun-180','split-pond-spun-270');
-  if (_splitPondAngle === 90)  document.body.classList.add('split-pond-spun-90');
-  if (_splitPondAngle === 180) document.body.classList.add('split-pond-spun-180');
-  if (_splitPondAngle === 270) document.body.classList.add('split-pond-spun-270');
-  showEventBanner('🌬️ WIND SPIN — BOTH PONDS TURN!');
+  showEventBanner('🌬️ WIND SPIN — POND TURNS!');
+  // Also rotate _vsFrogGrid so the AI's half stays consistent.
+  if (vsFrogActive && typeof _vsFrogGrid !== 'undefined' && _vsFrogGrid) {
+    var ng = Array.from({length:ROWS}, function(){ return new Array(COLS).fill(0); });
+    for (var r=0;r<ROWS;r++) for (var c=0;c<COLS;c++) {
+      var nr=c, nc=ROWS-1-r;
+      if (nr<ROWS && nc<COLS) ng[nr][nc] = _vsFrogGrid[r][c];
+    }
+    for (var r2=0;r2<ROWS;r2++) for (var c2=0;c2<COLS;c2++) _vsFrogGrid[r2][c2] = ng[r2][c2];
+  }
+  try { peerSend({ type: 'split_rotate' }); } catch(_e) {}
   _splitPondBroadcastBoard();
 }
 
-// ── LV4 Side Swap ───────────────────────────────────────────────
-// Toggle a flag that placePiece consults so newly placed pieces are written
-// to the opponent grid instead of own. Also flips both canvases visually.
+// ── LV4 Side Swap ─────────────────────────────────────
+// Flip which half is "yours". A brief mirror animation cues the swap.
 function _splitPondFireSideSwap() {
   if (!_splitPondIsLevel(4)) return;
-  _splitPondSwapped = !_splitPondSwapped;
-  document.body.classList.toggle('split-pond-swapped', _splitPondSwapped);
-  showEventBanner(_splitPondSwapped
-    ? '🔄 SIDE SWAP — YOU NOW PLACE ON OPPONENT!'
-    : '🔄 SIDE SWAP — BACK TO YOUR OWN POND!');
-  // Mild haptic cue: random tray shuffle so the swap feels material.
-  if (typeof trayUsed !== 'undefined') {
-    // Just visually nudge the tray label.
-    var tl = document.querySelector('.tray-label');
-    if (tl) {
-      var orig = tl.textContent;
-      tl.textContent = _splitPondSwapped ? 'Drag to OPPONENT pond' : 'Drag to YOUR pond';
-      setTimeout(function(){ if (tl) tl.textContent = orig; }, 2600);
-    }
+  _splitPondOwnedHalf = (_splitPondOwnedHalf === 'left') ? 'right' : 'left';
+  document.body.classList.add('split-pond-swap-flash');
+  setTimeout(function(){ document.body.classList.remove('split-pond-swap-flash'); }, 520);
+  showEventBanner('🔄 SIDE SWAP — YOU PLAY THE ' + _splitPondOwnedHalf.toUpperCase() + ' HALF!');
+  var tl = document.querySelector('.tray-label');
+  if (tl) {
+    var orig = tl.textContent;
+    tl.textContent = 'PLAY THE ' + _splitPondOwnedHalf.toUpperCase() + ' HALF';
+    setTimeout(function(){ if (tl) tl.textContent = orig; }, 2400);
   }
+  try { peerSend({ type: 'split_swap_ack', host_owned: _splitPondOwnedHalf }); } catch(_e) {}
+  _splitPondBroadcastBoard();
 }
 
-// ── LV2 Quick Place ──────────────────────────────────
-// Every 10s a mutual 4s window opens. Both players see the target glow,
-// their own board freezes, and a single tile drop on the opponent canvas
-// is accepted and broadcast as a 'split_drop' message.
+// ── LV2 Quick Place ───────────────────────────────────
+// Every 10s a mutual 4s window opens. Both players see their half tinted
+// (frozen) and the OPP half glow. A single drop on the opp half is allowed
+// and is broadcast as 'split_drop'.
 function _splitPondOpenQuickPlaceWindow() {
   if (!_splitPondIsLevel(2) || !gameActive) return;
   var WINDOW_MS = 4000;
@@ -27246,18 +27295,11 @@ function _splitPondOpenQuickPlaceWindow() {
   _splitPondQuickPlaceUsed = false;
   document.body.classList.add('split-pond-frozen','split-pond-target');
   showEventBanner('⚡ QUICK PLACE — 4s TO DROP ON OPPONENT!');
-  // Update countdown pill every 200ms.
   var tickId = setInterval(function(){
     var rem = Math.max(0, _splitPondTargetUntil - Date.now());
-    if (rem <= 0) {
-      clearInterval(tickId);
-      _splitPondCloseQuickPlaceWindow();
-      return;
-    }
-    _splitPondSetTimerPill(
-      '⚡ ' + Math.ceil(rem/1000) + 's — drop on opp',
-      rem < 1500
-    );
+    if (rem <= 0) { clearInterval(tickId); _splitPondCloseQuickPlaceWindow(); return; }
+    _splitPondSetTimerPill('⚡ ' + Math.ceil(rem/1000) + 's — DROP ON OPP', rem < 1500);
+    if (typeof drawGrid === 'function') drawGrid();
   }, 200);
   _splitPondTimers.push(tickId);
   var closeId = setTimeout(_splitPondCloseQuickPlaceWindow, WINDOW_MS + 80);
@@ -27269,97 +27311,87 @@ function _splitPondCloseQuickPlaceWindow() {
   _splitPondTargetUntil = 0;
   document.body.classList.remove('split-pond-frozen','split-pond-target');
   _splitPondSetTimerPill(null);
+  if (typeof drawGrid === 'function') drawGrid();
 }
 
-// Called when the user releases a piece while a Quick Place window is open.
-// Returns true if the drop was “stolen” by Split Pond (i.e. routed to opp).
+// Called when the user releases a piece while a Quick Place window is open
+// AND hoverCell is on the opp half. Routes the drop to opp half (broadcast)
+// and consumes the tray slot.
 function _splitPondTryStealDrop(shape, color, r, c) {
   if (!_splitPondIsLevel(2)) return false;
   if (Date.now() > _splitPondTargetUntil) return false;
   if (_splitPondQuickPlaceUsed) return false;
+  // Only allow drops where every cell of the shape lands on the opp half and
+  // every target cell is empty.
+  var oppHalf = _splitPondOppHalf();
+  var oppCol0 = (oppHalf === 'left') ? 0 : GF_SPLIT_COL;
+  var oppCol1 = oppCol0 + 4;
+  for (var k=0;k<shape.length;k++) {
+    var rr=r+shape[k][0], cc=c+shape[k][1];
+    if (rr<0||rr>=ROWS||cc<oppCol0||cc>oppCol1) return false;
+    // In vs Frog, opp half lives directly in `grid` — must be empty.
+    if (vsFrogActive && grid[rr][cc]) return false;
+  }
   _splitPondQuickPlaceUsed = true;
-  // Tell partner / AI to apply this drop on THEIR board.
   try {
-    peerSend({
-      type: 'split_drop',
-      shape: shape,
-      color: color,
-      row: r,
-      col: c
-    });
+    peerSend({ type:'split_drop', shape:shape, color:color, row:r, col:c });
   } catch(_e) {}
-  // If we're playing vs Frog, apply locally to oppGrid.
-  if (vsFrogActive && typeof _vsFrogGrid !== 'undefined' && _vsFrogGrid) {
-    try { _splitPondApplyDropToFrog(shape, color, r, c); } catch(_e) {}
+  // In vs Frog the opp half IS our `grid` — just write to it.
+  if (vsFrogActive) {
+    shape.forEach(function(rc){
+      var nr=r+rc[0], nc=c+rc[1];
+      if (nr>=0&&nr<ROWS&&nc>=0&&nc<COLS) grid[nr][nc] = color || 1;
+    });
   }
-  // Visual: brief flash on the opp panel.
-  var opp = document.getElementById('opp-mini-board');
-  if (opp) {
-    opp.style.outline = '3px solid #FFD93D';
-    setTimeout(function(){ if (opp) opp.style.outline = ''; }, 400);
-  }
-  showEventBanner('🎯 TILE DROPPED ON OPPONENT POND!');
+  showEventBanner('🎯 TILE DROPPED ON OPPONENT!');
+  try { if (typeof drawGrid === 'function') drawGrid(); } catch(_e){}
   return true;
 }
 
-function _splitPondApplyDropToFrog(shape, color, r, c) {
-  if (!Array.isArray(shape)) return;
-  shape.forEach(function(rc){
-    var dr = rc[0], dc = rc[1];
-    var nr = r + dr, nc = c + dc;
-    if (nr>=0 && nr<ROWS && nc>=0 && nc<COLS) _vsFrogGrid[nr][nc] = color || 1;
-  });
-  if (typeof drawOppMiniBoard === 'function') {
-    oppGrid = _vsFrogGrid;
-    drawOppMiniBoard();
-  }
-}
-
-// Apply a split_drop received from partner (their tile landing on OUR pond).
+// Apply a split_drop received from partner (their tile landing on OUR half).
 function _splitPondReceiveDrop(shape, color, r, c) {
   if (!_splitPondActive) return;
   if (typeof grid === 'undefined' || !grid) return;
   if (!Array.isArray(shape)) return;
-  // Force-place even if would normally fail — partner has earned this slot.
+  // The partner sent the drop position FROM THEIR perspective. They placed on
+  // THEIR opp half — which is OUR own half. We mirror the column index across
+  // the divider when their owned half is opposite ours (always true here).
+  var myCol0 = (_splitPondOwnedHalf === 'left') ? 0 : GF_SPLIT_COL;
   shape.forEach(function(rc){
-    var dr = rc[0], dc = rc[1];
-    var nr = r + dr, nc = c + dc;
-    if (nr>=0 && nr<ROWS && nc>=0 && nc<COLS) grid[nr][nc] = color || 1;
+    var dr=rc[0], dc=rc[1];
+    // Their col 'c+dc' was on their opp half. Translate to our local half col.
+    // Simpler: just place into MY half mirrored 0..4 → myCol0..myCol0+4
+    var localCol = myCol0 + ((c + dc) % 5);
+    var nr=r+dr;
+    if (nr>=0 && nr<ROWS && localCol<COLS) grid[nr][localCol] = color || 1;
   });
   try { if (typeof drawGrid === 'function') drawGrid(); } catch(_){}
-  try { if (typeof _gfRecheckLinesAfterMutation === 'function') _gfRecheckLinesAfterMutation(); } catch(_){}
-  showEventBanner('⚡ OPPONENT DROPPED A TILE ON YOU!');
+  showEventBanner('⚡ OPPONENT DROPPED ON YOU!');
   _splitPondBroadcastBoard();
 }
 
-// ── AI Frog twist scheduler ─────────────────────────────────────
-// When playing vs Frog, run the same twist on the AI side so it stays in
-// sync with the level mechanic.
+// ── AI Frog twist scheduler ───────────────────────────
 function _splitPondMaybeAITwist(kind) {
   if (!vsFrogActive) return;
-  if (kind === 'rotate' && typeof _vsFrogGrid !== 'undefined' && _vsFrogGrid) {
-    var ng = Array.from({length:ROWS}, function(){ return new Array(COLS).fill(0); });
-    for (var r=0;r<ROWS;r++) for (var c=0;c<COLS;c++) {
-      var nr=c, nc=ROWS-1-r;
-      if (nr<ROWS && nc<COLS) ng[nr][nc] = _vsFrogGrid[r][c];
-    }
-    for (var r2=0;r2<ROWS;r2++) for (var c2=0;c2<COLS;c2++) _vsFrogGrid[r2][c2] = ng[r2][c2];
-    oppGrid = _vsFrogGrid;
-    if (typeof drawOppMiniBoard === 'function') drawOppMiniBoard();
+  if (kind === 'rotate') {
+    // Already handled inline in _splitPondFireWindSpin.
+    return;
   }
   if (kind === 'quickplace' && typeof _vsFrogGrid !== 'undefined' && _vsFrogGrid) {
-    // AI “drops” a 1-2 cell shape on a random empty cell of OUR pond.
     setTimeout(function(){
       if (!_splitPondIsLevel(2) || !gameActive) return;
+      var myCol0 = (_splitPondOwnedHalf === 'left') ? 0 : GF_SPLIT_COL;
       var empties = [];
-      for (var r=0;r<ROWS;r++) for (var c=0;c<COLS;c++) if (!grid[r][c]) empties.push([r,c]);
+      for (var r=0;r<ROWS;r++) for (var c=myCol0;c<myCol0+5;c++) if (!grid[r][c]) empties.push([r,c]);
       if (!empties.length) return;
       var pick = empties[Math.floor(Math.random()*empties.length)];
       var shape = [[0,0]];
-      // 50% chance to drop a 2-tile blob
-      if (Math.random() < 0.5 && pick[1] < COLS-1 && !grid[pick[0]][pick[1]+1]) shape.push([0,1]);
+      if (Math.random() < 0.5 && pick[1] < myCol0+4 && !grid[pick[0]][pick[1]+1]) shape.push([0,1]);
       var col = 1 + Math.floor(Math.random()*7);
-      _splitPondReceiveDrop(shape, col, pick[0], pick[1]);
+      grid[pick[0]][pick[1]] = col;
+      if (shape.length > 1) grid[pick[0]][pick[1]+1] = col;
+      try { if (typeof drawGrid === 'function') drawGrid(); } catch(_e){}
+      showEventBanner('⚡ FROG DROPPED ON YOU!');
     }, 1500 + Math.random()*1500);
   }
 }
@@ -27368,12 +27400,9 @@ function _splitPondStart(level) {
   _splitPondStop();
   _splitPondActive = true;
   _splitPondLevel  = level;
+  _splitPondOwnedHalf = 'left';     // host plays left by default
   _splitPondApplyChrome(true);
-  // LV-specific scheduling
-  if (level === 1) {
-    // pure race — no twists, just the duel mode does its thing.
-  } else if (level === 2) {
-    // Quick Place — first window after 10s, then every 10s.
+  if (level === 2) {
     var qpId = setInterval(function(){
       if (!_splitPondIsLevel(2)) return;
       _splitPondOpenQuickPlaceWindow();
@@ -27384,7 +27413,6 @@ function _splitPondStart(level) {
     var wsId = setInterval(function(){
       if (!_splitPondIsLevel(3)) return;
       _splitPondFireWindSpin();
-      _splitPondMaybeAITwist('rotate');
     }, 12000);
     _splitPondTimers.push(wsId);
   } else if (level === 4) {
@@ -27394,19 +27422,16 @@ function _splitPondStart(level) {
     }, 10000);
     _splitPondTimers.push(ssId);
   }
-  // Periodic board broadcast (covers cases the placeShape hook misses).
   var bcId = setInterval(_splitPondBroadcastBoard, 750);
   _splitPondTimers.push(bcId);
-  // Initial banner
   setTimeout(function(){
-    var names = {1:'🏁 RACE — FIRST TO 10 LINES!',
-                 2:'⚡ QUICK PLACE — GUARD YOUR POND!',
-                 3:'🌬️ WIND SPIN — BOARDS WILL TURN!',
-                 4:'🔄 SIDE SWAP — PONDS WILL SWITCH!'};
+    var names = {1:'🏁 RACE — FIRST TO 10 HALF-LINES!',
+                 2:'⚡ QUICK PLACE — GUARD YOUR HALF!',
+                 3:'🌬️ WIND SPIN — POND WILL TURN!',
+                 4:'🔄 SIDE SWAP — HALVES WILL SWITCH!'};
     showEventBanner(names[level] || '🌓 SPLIT POND — GO!');
   }, 1200);
 }
-
 // ── Duo Ambient FX ──────────────────────────────────────
 
 let _duoAmbientCanvas = null;
@@ -28767,12 +28792,17 @@ function handleWSMessage(data) {
     case 'opponent_update':
       oppScore = data.score || 0;
       oppLines = data.lines || 0;
-      if (data.grid) { oppGrid = data.grid; drawOppMiniBoard(); }
+      if (data.grid) {
+        oppGrid = data.grid;
+        // If split pond is on, the paint happens on the main grid canvas.
+        if (_splitPondActive) { if (typeof drawGrid === 'function') drawGrid(); }
+        else { drawOppMiniBoard(); }
+      }
       const oScoreEl = document.getElementById('opp-score-val');
       const oLinesEl = document.getElementById('opp-lines-val');
       if (oScoreEl) oScoreEl.textContent = oppScore.toLocaleString();
       if (oLinesEl) oLinesEl.textContent = oppLines;
-      if (duoMode === 'duel' && oppLines >= DUEL_WIN_LINES) {
+      if ((duoMode === 'duel' || _splitPondActive) && oppLines >= DUEL_WIN_LINES) {
         showEventBanner('🏆 OPPONENT WINS!');
         setTimeout(() => endDuoGame('opponent'), 1200);
       }
@@ -28790,6 +28820,17 @@ function handleWSMessage(data) {
       // Host-authoritative wind spin notification — we rotate our local grid.
       if (_splitPondActive) {
         _splitPondRotateOwnGrid();
+      }
+      break;
+    case 'split_swap_ack':
+      // Partner swapped halves in LV4 — mirror locally so layout stays in sync.
+      if (_splitPondActive) {
+        // Partner now owns data.host_owned; we own the OTHER half.
+        _splitPondOwnedHalf = (data.host_owned === 'left') ? 'right' : 'left';
+        document.body.classList.add('split-pond-swap-flash');
+        setTimeout(function(){ document.body.classList.remove('split-pond-swap-flash'); }, 520);
+        if (typeof drawGrid === 'function') drawGrid();
+        showEventBanner('🔄 SIDE SWAP — NOW YOU PLAY ' + _splitPondOwnedHalf.toUpperCase() + '!');
       }
       break;
     case 'coop_place':
